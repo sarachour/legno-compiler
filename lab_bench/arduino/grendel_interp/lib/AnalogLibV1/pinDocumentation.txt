@@ -1,0 +1,69 @@
+/*GLOBALLY SHARED PINS*/
+
+ctrRstPin = 2; /*ctrRst*/
+spiClkPin = 7; /*spi clk*/
+spiMosiPin = 8; /*spi master out slave in*/
+moMiEnPin = 13; /*moMiEn*/
+
+/*CHIP 0 PINS*/
+
+chip 0 tile parallel output is macro 0 or macro 1 pin = 25
+chip 0 tile parallel output is macro 1 or macro 3 pin = 24
+
+chip 0 macro 0 spiSSPin = 3
+chip 0 macro 1 spiSSPin = 4
+chip 0 macro 2 spiSSPin = 5
+chip 0 macro 3 spiSSPin = 6
+
+chip 0 macro 0 spiMisoPin = 9
+chip 0 macro 1 spiMisoPin = 10
+chip 0 macro 2 spiMisoPin = 11
+chip 0 macro 3 spiMisoPin = 12
+
+chip 0 analog output 12 positive = analog 0
+chip 0 analog output 12 negative = analog 1
+chip 0 analog output 13 positive = analog 2
+chip 0 analog output 13 negative = analog 3
+chip 0 analog output 14 positive = analog 4
+chip 0 analog output 14 negative = analog 5
+chip 0 analog output 15 positive = analog 6
+chip 0 analog output 15 negative = analog 7
+
+/*CHIP 1 PINS*/
+
+chip 1 tile parallel output is macro 0 or macro 1 pin = 23
+chip 1 tile parallel output is macro 1 or macro 3 pin = 22
+
+chip 1 macro 0 spiSSPin = 50
+chip 1 macro 1 spiSSPin = 51
+chip 1 macro 2 spiSSPin = 52
+chip 1 macro 3 spiSSPin = 53
+
+chip 1 macro 0 spiMisoPin = 14
+chip 1 macro 1 spiMisoPin = 15
+chip 1 macro 2 spiMisoPin = 16
+chip 1 macro 3 spiMisoPin = 17
+
+chip 1 macro 3 anaOutPinBase = 0
+
+/*HCDC DIGITAL INPUT PINS*/
+tdiClkPin = 33; /*trigger signal*/
+tdi0Pin = 35;
+tdi1Pin = 37;
+tdi2Pin = 39;
+tdi3Pin = 41;
+tdi4Pin = 43;
+tdi5Pin = 45;
+tdi6Pin = 47;
+tdi7Pin = 49;
+
+/*HCDC DIGITAL OUTPUT PINS*/
+tdoClkPin = 32; /*trigger signal*/
+tdo0Pin = 34;
+tdo1Pin = 36;
+tdo2Pin = 38;
+tdo3Pin = 40;
+tdo4Pin = 42;
+tdo5Pin = 44;
+tdo6Pin = 46;
+tdo7Pin = 48;
