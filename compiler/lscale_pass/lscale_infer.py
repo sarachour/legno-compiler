@@ -336,8 +336,9 @@ def sc_build_lscale_env(prog,circ, \
                                     mape=mape, \
                                     vmape=vmape, \
                                     mc=mc)
-    for block in ignore_models:
-        scenv.model_db.add_ignore(block)
+    if not ignore_models is None:
+        for block in ignore_models:
+            scenv.model_db.add_ignore(block)
 
     # declare scaling factors
     lscale_common.decl_scale_variables(scenv,circ)
