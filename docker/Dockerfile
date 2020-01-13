@@ -4,6 +4,7 @@ RUN apt-get update
 RUN apt-get install -y python3-pip libatlas-base-dev git graphviz
 RUN echo yes yes | git clone https://github.com/sendyne/legno-compiler.git /root/legno-compiler
 WORKDIR /root/legno-compiler
+RUN git checkout asplos20-artifact
 #RUN git checkout artifact
 RUN pip3 install -r packages-legno.list
 RUN pip3 install -r packages-grendel.list
