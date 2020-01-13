@@ -1,0 +1,241 @@
+\chapter{Legno Quickstart}
+
+The \legno compiler (\tx{legno.py}) enables developers to compile dynamical
+systems down to configurations for the analog hardware. The \legno compiler
+requires that dynamical systems be specified in the \tx{dynamical system
+  language}, a high level language that supports writing first-order
+differential equations. The \legno compiler also accepts a specification of the
+target analog device, described using the Analog Device API. The \legno compiler
+generates an \tx{analog device program} which implements the target dynamical
+system on the specified analog device. In the following quickstart guide, we
+walk through an example where we compile a dynamical system that models the
+cosine function for the \hcdc analog device. 
+
+\subsection{Installation}
+
+\begin{snippet}
+  sudo apt-get install -y python3-pip libatlas-base-dev
+\end{snippet}
+
+The \grendel runtime is a pure python program. To install the python
+dependencies, execute the following command:
+
+\begin{snippet}
+  pip3 install -f https://download.mosek.com/stable/wheel/index.html Mosek
+  pip3 install -r packages.list
+\end{snippet}
+
+The \legno compiler works with a \tx{config.py}
+file that specifies the relevant output directories and database files. To use
+the default configuration, execute the following copy command:
+
+\begin{snippet}
+cp util/config_local.py util/config.py
+\end{snippet}
+
+\subsection{Dynamical System Program}
+The following dynamical system program implements the cosine function:
+\begin{dssnippet}
+def make_prog():
+  params = {
+    'v(0)':0.0,
+    'p(0)':1.0
+  }
+  prog = DSProg(cos)
+  prog.decl_stvar('v','-p',ic='{v(0)}', params=params)
+  prog.decl_stvar('p','v',ic='{p(0)}', params=params)
+  prog.decl_var('pos','emit p')
+  prog.range('v',-1,1)
+  prog.range('p',-1,1)
+  prog.max_time = 100
+  prog.check()
+  menv = DSSim(20)
+  return prog,menv
+  
+\end{dssnippet}
+In this dynamical system, the position \tx{pos} corresponds to the amplitude of
+the cosine function. The $v$ and $p$ variables are internal variables that are
+used to model the dynamics of the system. We describe each line of the program
+below:
+
+\begin{itemize}
+  \item\tx{prog = DSProg('cos')}: This statement creates a new  dynamical
+    system program
+    with the name \tx{cos}. 
+  \item \tx{prog.decl_stvar('v','-p',ic='{v(0)}',params=params)}: This statement declares a variable $v$ that has
+    the dynamics $v' = -p$, and an initial value of $p(0)$, where $p(0)$ is
+    defined in the parameter dictionary \tx{params}. Note that any variables in
+    curly braces are replaced with values from the parameter dictionary.
+  \item \tx{prog.decl_stvar('p','v',ic='{p(0)}',params=params)}: This statement declares the variable $p$ that
+      has the dynamics $p = v$ and an initial value of 1.0;
+  \item \tx{prog.decl_var('pos', 'emit p')}: this  statement communicates to the
+    compiler that we want to measure the position of the system. We name the
+    emitted signal \tx{pos}.
+  \item\tx{prog.range('v',-1,1) and prog.range('p',-1,1)}: These statements
+    promise to the compiler that the position and velocity variables will be
+    between -1 and 1. The range of the \tx{pos} variable is inferred from the
+    ranges of the \tx{p} and \tx{v} variables.
+  \item\tx{prog.max_time=100}: The maximum time this simulation will ever be
+    run for, in simulation units. This is useful for situations where the
+    measurement hardware does not support recording signals for long periods
+    of time.
+  \item\tx{prog.check()}: This command checks that the program is well formed. A
+    program is well formed if all the variables are bounded. 
+  \item\tx{menv = DSSim(20)}: This statement defines a simulation that executes
+    for 20 simulation units.  Unlike the dynamical system program, which is used
+    throughout the the compilation process, the dynamical system simulation
+    object is only used at the very end.
+\end{itemize}
+
+The above dynamical system program is written to \tx{cos.py} in the
+\tx{bmark/bmarks/quickstart/} directory. In order for \tx{legno.py} to find the
+benchmark, the \tx{bmark/bmarks/quickstart/__init__.py} file must be modified to
+include the cosine benchmark in the array returned by \tx{get_benchmarks}:
+
+\begin{pysnippet}
+  import bmark.bmarks.quickstart.cos as cos
+
+  def get_benchmarks():
+     return [cos.model()]
+  
+\end{pysnippet}
+
+This modification to \tx{__init__.py} enables \tx{legno.py} to find the cosine
+benchmark.
+
+\subsubsection{Executing the \tx{cos} Dynamical System with a ODE Solver}
+
+TODO
+
+\subsection{Compiling the \tx{cos} Program}
+
+The \legno compiler first generates an unscaled analog device program that
+implements the \tx{cos} benchmark. An analog device program (\tx{.circ})
+consists of a set of block configurations and digitally programmable connections
+to write to the device. This program is unscaled, meaning that the parameters
+have not been changed so that dynamical system operates within the constraints
+of the device. We generate the analog device program for the \tx{cos} benchmark
+with the following command:
+
+\begin{snippet}
+  python3 legno.py --subset standard cos arco --abs-circuits 1
+      --conc-circuits 1
+\end{snippet}
+
+This step of the compilation process is called the \lgraph compilation pass.
+The \tx{--subset} flag indicates what subset of device features to use to generate
+the graph. The \tx{standard} subset limits the accepted modes for each block,
+which restricts the dynamic range of the device. The \tx{--abs-circuits} and
+\tx{--conc-circuits} parameters control the search space explored by \lgraph
+compilation pass. Specifying higher numbers to these flags produces more analog
+device programs.
+
+For the \tx{cos} dynamical system with the \tx{standard} set of features, all
+unscaled circuits are stored in the following directory:
+\begin{snippet}
+  outputs/legno/standard/cos/abs-circ
+\end{snippet}
+
+The \lgraph command presented above produces exactly one unscaled analog device program: 
+
+\begin{snippet}
+  cos_0_0_0_0.circ
+\end{snippet}
+
+Since the analog device program is not human readable, the compiler also
+produces a graph that describes the analog device program.
+
+\begin{snippet}
+  outputs/legno/standard/cos/abs-graph/cos_0_0_0_0.png
+\end{snippet}
+
+\subsubsection{Parameter Scaling with LScale}
+
+Next, we direct the \legno compiler to scale each unscaled analog device program
+in the \tx{abs-circ} directory:
+
+\begin{snippet}
+  python3 legno.py --subset standard cos jaunt --search
+     --model naive --scale-circuits 1
+\end{snippet}
+
+This step of the compilation process is called the \lscale compilation pass. The
+\tx{--subset} flag indicates what subset of device features to use. The
+\tx{--model} argument indicates whether delta models should be considered when
+scaling the system (A delta model is a model that describes the physical
+hardware behavior). The \tx{naive} model assumes each block delivers its
+expected behavior with no deviations. The \tx{--scale-circuits} parameter
+determines how many scaled programs to produce from each unscaled program.
+Finally the \tx{--search} parameter tells \legno to search for the scaling
+transform that produces the best signal-to-noise ratio.
+
+For the \tx{cos} dynamical system with the \tx{standard} set of features, the
+resulting scaled programs are written to the following directory:
+
+\begin{snippet}
+  outputs/legno/standard/cos/conc-circ
+\end{snippet}
+
+The \lscale execution presented above produces exactly one scaled analog device program: 
+
+ \begin{snippet}
+  cos_0_0_0_0_s0_nq1.53d1.10b_obsslow.circ
+\end{snippet}
+
+Since the analog device program is not human readable, the compiler
+also produces graphs that visually depict the circuit each program implements.
+These graphs are stored in the following directory:
+
+\begin{snippet}
+  outputs/legno/standard/cos/conc-graph
+\end{snippet}
+
+\subsubsection{Source Generation}
+
+For each scaled analog device program, legno generates a low-level \grendel
+script that executes the experiment on the analog hardware. 
+
+\begin{snippet}
+  python3 legno.py --subset standard cos srcgen default --trials 1
+\end{snippet}
+
+This command generates a \grendel script for each scaled analog device program.
+For the \tx{cos} dynamical system with the \tx{standard} set of features, all the \grendel scripts are
+stored in the following directory:
+
+\begin{snippet}
+  outputs/legno/standard/cos/grendel
+\end{snippet}
+
+Since the \tx{cos} benchmark only has one scaled circuit, only one \grendel
+script is produced:
+
+\begin{snippet}
+  cos_0_0_0_0_s0_nq1.53d1.10b_obsslow_t20_default.grendel
+\end{snippet}
+
+This grendel script can be dispatched to the \hcdc analog device with the
+following commands:
+
+\begin{snippet}
+  python3 exp_driver.py scan
+  python3 exp_driver.py run
+\end{snippet}
+
+These commands execute the cosine dynamical system described in
+Section~\ref{XXX}. For the \tx{cos} benchmark with the \tx{standard} set of
+features, the waveforms are stored in the following directory:
+\begin{snippet}
+  outputs/legno/standard/cos/out-waveform
+\end{snippet}
+
+The collected waveforms can then be analyzed (compared with the expected cosine function) with the following command:
+
+\begin{snippet}
+  python3 exp_driver.py analyze
+\end{snippet}
+
+The relevant visualizations are stored in the following directory:
+\begin{snippet}
+  outputs/legno/standard/cos/plots
+\end{snippet}

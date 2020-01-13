@@ -1,0 +1,208 @@
+\chapter{Analog to Digital Converter (\tx{ADC} Block)}
+
+The analog to digital converter is a hybrid digital-analog block available on
+the \hcdc device~\cite{adc.h}. Figures~\ref{adc:values} and \ref{adc:types}
+presents the complete list of digitally settable codes for each ADC block. The
+analog to digital converter accepts one analog input (\tx{in}), and emits one digital
+output that is then read by a lookup table.
+
+\noindent\textbf{Location}: Each even slice on the \hcdc{device} contains one
+ADC. The ADC may write values to the lookup tables resident on slice 0
+ or slice 2.
+
+\noindent\textbf{\static and \dynamic Codes}: We describe the digitally settable
+codes resident on the block below:
+
+\begin{itemize}
+\item\tx{enable}: Determines whether the block is enabled (true) or disabled
+  (false).
+\item\tx{range}: Configures the current limit of the analog input. This code cannot be set to \tx{RANGE_LOW}
+\item\tx{test} codes: Places the block in various test modes. Currently unused,
+  and therefore set to false.
+\end{itemize}
+
+
+\begin{marginfigure}
+    \small
+    \begin{tabular}{l|l}
+      code &values\\
+      \hline
+      \tx{enable} &\tx{bool_t}\\
+      \tx{range} &\tx{range_t}\\
+      \tx{test_en} & \tx{bool_t}\\
+      \tx{test_adc} & \tx{bool_t}\\
+      \tx{test_i2v} & \tx{bool_t}\\
+      \tx{test_rs} & \tx{bool_t}\\
+      \tx{test_rsinc} & \tx{bool_t}\\
+      \tx{pmos} & 8 \\
+      \tx{pmos2} & 8 \\
+      \tx{nmos} & 8 \\
+      \tx{i2v_cal} & 64 \\
+      \tx{upper} & 64 \\
+      \tx{lower} & 64 \\
+      \tx{upper_fs} & 4 \\
+      \tx{lower_fs} & 4 \\
+     \end{tabular}
+    \caption{ADC values \cite{fu.h}}
+    \label{dac:values}
+  \end{marginfigure}
+
+  
+\begin{marginfigure}
+    \small
+    \begin{tabular}{l|l}
+      code &values\\
+      \hline
+      \tx{enable} &\static\\
+      \tx{range} &\static\\
+      \tx{test_en} & \static\\
+      \tx{test_adc} & \static\\
+      \tx{test_i2v} & \static\\
+      \tx{test_rs} & \static\\
+      \tx{test_rsinc} & \static\\
+      \tx{pmos} & \hidden \\
+      \tx{pmos2} & \hidden \\
+      \tx{nmos} & \hidden \\
+      \tx{i2v_cal} & \hidden \\
+      \tx{upper} & \hidden \\
+      \tx{lower} & \hidden \\
+      \tx{upper_fs} & \hidden \\
+      \tx{lower_fs} & \hidden \\
+     \end{tabular}
+    \caption{ADC values \cite{fu.h}}
+    \label{adc:types}
+  \end{marginfigure}
+
+  
+\section{Block Function}\label{adc:blockfun}
+
+The behavior of block is dictated by the relation presented below. At a high
+level, the ADC converts an analog signal to a digital code. The value returned
+by the function is the digital value (0-255) emitted by the ADC. Any behavior
+not covered by the algorithm below is undefined:
+  
+\begin{algorithmic}
+  \If {\tx{enable}}
+  \State {$min((scale(\tx{range})^{-1} \cdot \tx{in}) \cdot 128 + 128, 255)$}
+  \EndIf
+\end{algorithmic}
+
+Since the \tx{range} code affects the current limit accepted by the ADC, it also
+introduces and implicit gain into the function governing the behavior of the
+block. More concretely, if \tx{range} code is set to \tx{RANGE_HIGH}, the
+analog signal is scaled down by 10x (scaled by $0.1$) before being converted to
+a digital signal.
+
+\subsection{Operating Ranges}
+
+The current range of the analog input \tx{in} is determined by the \tx{range} code of the
+ADC. The \tx{range} code is limited to medium (\tx{RANGE_MED}) or high (\tx{RANGE_HIGH}) mode:
+
+\begin{algorithmic}
+  \State{$\tx{in} \in scale(\tx{range}) \cdot [-2 \mu A, 2 \mu A] $}
+\end{algorithmic}
+
+
+\subsection{\analoglib Implementation}
+
+The \tx{adc.h} file provides a \tx{computeOutput} function that implements the
+block function presented above, given a set of \dynamic and \static codes and an
+analog input value. The analog input value is provided to the function in the
+form of a normalized (divided by $2 \mu A$), floating point value. 
+
+
+\section{Calibration}
+The ADC block has eight hidden codes:
+
+\begin{itemize}
+\item\tx{i2v_cal}: This code controls the gain of the internal current-to-voltage
+  converter in the ADC.
+\item\tx{upper_fs},\tx{lower_fs},\tx{upper} and \tx{lower}: These codes affect
+  how the analog signal is mapped a digital value.
+\item\tx{pmos}, \tx{pmos2} and \tx{nmos}: These codes control the magnitude of the
+  \tx{i2v_cal} code.
+\end{itemize}
+
+The \tx{pmos} and \tx{pmos2} codes are always set to $XXX$ and $XXX$
+respectively.  The remaining six codes are set using the block's calibration
+routine. The ADC is calibrated using the following
+algorithm~\cite{adc_calib.cpp}.
+
+\begin{algorithmic}
+  \For{fs in 0..3}
+  \State{lowerFs = fs}
+  \State{upperFs = fs}
+    \For{spread in 0..31}
+    \For{lsign in [-1,1]}
+    \For{usign in [-1,1]}
+      \State{lower = $31 + spread \cdot lsign$}
+      \State{upper = $31 + spread \cdot usign$}
+      \For{nmos in 0..7}
+        \For{i2v in 0..63 with stride=16}
+          \State{score = obj(lowerFs,upperFs,lower,upper,nmos,i2v)}
+          \State{tbl $\leftarrow$ score,(lowerFs,upperFs,
+            lower,upper,nmos,i2v)}
+        \EndFor
+      \EndFor
+    \EndFor
+    \EndFor
+    \EndFor
+  \EndFor
+  \State{}
+  \For{i2v in 0..63}
+    \State{score = obj(tbl.lowerFs,tbl.upperFs,tbl.lower,tbl.upper,tbl.nmos,i2v)}
+    \State{table $\leftarrow$ score,(tbl.lowerFs,tbl.upperFs.tbl.lower,tbl.upper,tbl.nmos,i2v)}
+  \EndFor
+  \State{}
+  \State{return tbl.lowerFs,tbl.upperFs,tbl.lower,tbl.upper,tbl.nmos,tbl.i2v}
+\end{algorithmic}
+
+At a high level, the calibration routine finds the best combination of
+\tx{lowerFs}, \tx{upperFs}, \tx{lower}, \tx{nmos} and \tx{upper} values, and
+then finds the best \tx{i2v_cal} code for the best combination of these codes.
+The algorithm doesn't exhaustively iterate over every \tx{lower} and \tx{upper}
+code value. The algorithm used to iterate over \tx{lower} and \tx{upper} codes
+is lifted from the original calibration routine implemented by the hardware
+designer.
+
+\noindent\textit{Assumptions}: XXX
+
+\section{Profiling}
+
+XXX
+
+\section{Grendel API Hook}
+
+\grendel supports configuring ADC blocks using the \tx{use_adc} command. We
+present the general formulation of the \tx{user_adc} command below:
+
+\lstset{ 
+  morekeywords={use_adc,rng},
+  basicstyle=\small
+}
+\begin{lstlisting}
+  use_adc chip tile slice rng range
+\end{lstlisting}
+
+The \tx{use_adc} command accepts an ADC location in the form of a chip, tile and
+slice and a range argument (\tx{range}) which is used to determine the range
+\static code of the ADC.  If the \tx{range} argument is set to \tx{m}, the
+\tx{range} static code is set to \tx{RANGE_MED}. If the \tx{range} argument is
+set to \tx{h}, the \tx{range} static code is set to \tx{RANGE_HIGH}.
+
+\subsection{Example Usage}
+
+This invocation configures the ADC on chip 0, tile 3, slice 2 to accept an
+analog signal in $[-2,2] \mu A$.
+
+\begin{lstlisting}
+  use_adc 0 3 2 rng m 
+\end{lstlisting}
+
+
+This invocation configures the ADC on chip 1, tile 0, slice 1 to accept an
+analog signal in $[-20,20] \mu A$.
+
+\begin{lstlisting}
+  use_adc 1 0 1 rng h
+\end{lstlisting}

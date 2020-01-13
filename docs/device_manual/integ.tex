@@ -1,0 +1,180 @@
+\chapter{Analog Integrator (\tx{Integ} Block)}
+
+The analog integrator is an analog block available on the \hcdc
+device~\cite{int.h}. Figures~\ref{int:values} and \ref{int:types} present the
+complete list of digitally settable codes in the integrator block. The analog
+integrator accepts one analog input current (\tx{in}) and produces one analog
+output current (\tx{out}).
+
+\noindent\textbf{Location}: Each slice on the \hcdc device contains one
+integrator.
+
+
+\noindent\textbf{\static and \dynamic Codes}: We describe the digitally settable
+codes resident on the block below:
+\begin{itemize}
+\item\tx{enable}: Determines whether the block is enabled (true) or disabled
+  (false).
+\item\tx{inv}: Determines whether the output of the integrator is inverted or not.
+\item\tx{range[in]}: Configures the current range of the input current
+  accepted by the integrator.
+\item\tx{range[out]}: Configures the current range of the output current
+  produced by the integrator. If this code is set to \tx{RANGE_HIGH} or
+  \tx{RANGE_LOW}, an implicit gain is introduced into the block function. Refer
+  to the description of \tx{range[in]} for a detailed description of how the
+   code values map to current limits. 
+ \item\tx{ic_code}: Configures the initial condition of the integrator. 
+\end{itemize}
+  
+\begin{marginfigure}
+    \small
+    \begin{tabular}{l|l}
+      code &values\\
+      \hline
+      \tx{enable} &\tx{bool_t}\\
+      \tx{exception} &\tx{bool_t}\\
+      \tx{inv} & \tx{bool_t}\\
+      \tx{range[in]} & \tx{range_t}\\
+      \tx{range[out]} & \tx{range_t}\\
+      \tx{ic_code} & 256\\
+      \tx{pmos} & 8\\
+      \tx{nmos} & 8\\
+      \tx{gain_cal} & 64\\
+      \tx{port_cal[in]} & 64\\
+      \tx{port_cal[out]} & 64\\
+    \end{tabular}
+    \caption{Integrator Values \cite{fu.h}}
+    \label{int:values}
+  \end{marginfigure}
+
+\begin{marginfigure}
+    \small
+    \begin{tabular}{l|l}
+      code &type\\
+      \hline
+      \tx{enable} & \static\\
+      \tx{exception} & \static\\
+      \tx{inv} & \static \\
+      \tx{range[in]} & \static \\
+      \tx{range[out]} & \static \\
+      \tx{ic_code} & \dynamic \\
+      \tx{pmos} & \hidden \\
+      \tx{nmos} & \hidden \\
+      \tx{gain_cal} & 64\\
+      \tx{port_cal[in]} & 64\\
+      \tx{port_cal[out]} & 64\\
+    \end{tabular}
+    \caption{Integrator Types \cite{fu.h}}
+    \label{int:types}
+  \end{marginfigure}
+
+  \section{Block Function}\label{integ:blockfun}
+
+
+The behavior of the block is dictated by the relation presented below. At a high
+level, the integrator integrates the input signal. The value returned by the
+function is the value of the current in $\mu A$. Any behavior not covered by the
+algorithm is undefined:
+
+\begin{algorithmic}
+  \If {\tx{enable}}
+  \State{$\tx{out}= \int sign(\tx{inv}) \cdot scale(\tx{range[out]}) \cdot
+    scale(\tx{range[in]})^{-1} \omega \cdot \tx{in}$}
+  \State{$\tx{out}(0) = 2 \cdot sign(\tx{inv}) \cdot scale(\tx{range[out]})(\tx{ic_code}-128) \cdot 128.0^{-1}$}
+  \EndIf
+\end{algorithmic}
+
+\noindent\textbf{Time Constant}: The time constant is of the integrator is
+$scale(\tx{range[out]} \cdot scale(\tx{range[in]})^{-1} \cdot \omega)$. The
+nominal time constant $\omega$ is 126000.
+
+\subsection{Operating Ranges}
+The current range of the analog input and
+output of the integrator is determined by the value of the \tx{range} code. The
+equations below describe the current range of the input and output: 
+
+\begin{algorithmic}
+  \State{$\tx{in} \in scale(\tx{range[in]}) \cdot [-2 \mu A, 2 \mu A] $}
+  \State{$\tx{out} \in scale(\tx{range[out]}) \cdot [-2 \mu A, 2 \mu A] $}
+\end{algorithmic}
+
+\subsection{\analoglib Implementation}
+The \tx{int.h} file provides convenience functions that implement the block
+function described above:
+\begin{itemize}
+\item\tx{computeOutput}: Given a set of \static and \dynamic codes and an
+  analog input value, this function returns the expected analog output in $\mu A$. This
+  function assumes that the current state of the integrator is 0.
+\item\tx{computeTimeConstant}: Given a set of \static and \dynamic codes,
+  this function returns the expected time constant.
+\item\tx{computeInitCond}: Given a set of \static and \dynamic codes, this
+  function returns the expected initial value of the analog output in $\mu
+      A$.
+\end{itemize}
+
+\subsection{Calibration}
+The integrator has five hidden codes:
+\begin{itemize}
+  \item\tx{port_cal[in]}: This code injects a bias correction current into the
+    analog input of the integrator.
+  \item\tx{port_cal[out]}: This code injects a bias correction current into the
+    analog output of the integrator.
+  \item\tx{gain_cal}: This code controls the gain of the initial condition.
+  \item\tx{pmos} and \tx{nmos}: These codes control the magnitude of the
+    \tx{gain_cal} code.
+\end{itemize}
+
+The \tx{pmos} code is always set of $XXX$. The remaining four codes are set using the block's calibration routine. The
+calibration algorithm is broken up into two subroutines:
+\begin{itemize}
+\item\textbf{calibrateClosedLoop}: This routine configures the device to implement the
+  idiomatic circuit presented in Figure~\ref{XXX}. For each \tx{nmos} code, this
+  algorithm finds the set of \tx{port_cal[in]} and \tx{port_cal[out]}
+  assignments that brings the output of this circuit closest to zero.
+\item\textbf{calibrateInitialCond}: This routine finds the best \tx{nmos} and
+  \tx{gain_cal} code that minimizes the loss of the objective function
+  \textit{obj}. This algorithm works with the set of \tx{port_cal[in]} and
+  \tx{port_cal[out]} assignments computed by the \tx{closedLoop} routine. 
+\end{itemize}
+
+\subsection{\tx{calibrateClosedLoop} Subroutine}
+
+\begin{algorithmic}
+  \State{bias0 = measure out0 of fan}
+  \State{bias1 = measure out1 of fan}
+  \State{bias= bias0+bias1}
+  \For{nmos in 0..7}
+  \State{$\tx{port_cal[out]} \leftarrow 32$} 
+  \State{$\tx{gain_cal} \leftarrow 32$}
+  \State{tbls[nmos] = make()}
+  \For{calIn in 0..63}
+  \State{$\tx{port_cal[in]} \leftarrow$ calIn}
+  \State{obs = measure out of integ}
+  \State{loss = |obs-bias|}
+  \State{tbl $\leftarrow$ loss,(calIn,32)}
+  \EndFor
+  \EndFor
+  \For{nmos in 0..7}
+  \State{$\tx{port_cal[in]} \leftarrow$ tbls[nmos].calIn}
+  \For{calOut in 0..63}
+  \State{$\tx{port_cal[out]} \leftarrow$ calOut}
+  \State{obs = measure out of integ}
+  \State{loss = |obs-bias|}
+  \State{tbl $\leftarrow$ loss,(calIn,calOut)}
+  \EndFor
+  \EndFor
+  \State{return tbls}
+\end{algorithmic}
+
+\subsection{\tx{calibrateInitialCond} Subroutine}
+
+\begin{algorithmic}
+  \State{cltbl = calibrateClosedLoop()}
+  \For{nmos in 0..7}
+  \For{gainCal in 0...63}
+  \EndFor
+  \EndFor
+\end{algorithmic}
+\section{Profiling}\label{fanout:calib}
+\section{Grendel API Hook}
+\subsection{Example Usage}

@@ -1,0 +1,37 @@
+\chapter{Appendix}
+
+\section{Measurements}
+
+XXX describe how I2V XXX
+
+\section{Calibration Utilities}
+
+\textit{calibration table}~\cite{calib_util.h}: XXX
+
+\section{Digitally Settable Code Types}
+
+\begin{marginfigure}
+    \small
+    \begin{tabular}{c|cc}
+      \tx{bool_t} & \tx{true}\\
+                  & \tx{false}\\
+      \tx{range_t} & \tx{RANGE_MED}\\
+                  & \tx{RANGE_HIGH}\\
+                  & \tx{RANGE_LOW}\\
+    \end{tabular}
+    \label{code:types}
+\end{marginfigure}
+
+Figure~\ref{code:types} presents a summary of the types of digitally settable
+codes. All other digitally settable codes are unsigned integers.
+
+\subsection{Utility Functions}
+\noindent\textit{sign}(\tx{bool_t} inverted): The sign function returns a
+constant coefficient of $-1$ if inverted is set, otherwise it returns a
+coefficient of $1$. Refer to \tx{sign_to_coeff} in \tx{util.h}~\cite{util.h}.
+
+\noindent\textit{scale}(\tx{range_t} range): The range function a constant
+coefficient that corresponds to the selected current range. The function returns
+1.0 if the range is \tx{RANGE_MED}, 10.0 if the range is \tx{RANGE_HIGH} and 0.1
+if the range is \tx{RANGE_LOW}. Refer to \tx{range_to_coeff} in
+\tx{util.h}~\cite{util.h}.

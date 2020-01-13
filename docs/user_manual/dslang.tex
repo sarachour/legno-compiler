@@ -1,0 +1,263 @@
+\chapter{Dynamical System Language}
+\label{sec:dslang}
+The \legno compiler (\tx{legno.py}) enables developers to compile dynamical
+systems down to configurations for the analog hardware. The \legno compiler
+requires that dynamical systems be specified in the \tx{dynamical system
+  language}, a high level language that supports writing first-order
+differential equations.
+
+\section{Example: Cosine Program}
+
+The following dynamical system program implements the cosine function. This
+program can be found in \tx{progs/quickstart/cos.py}. In order for \tx{legno.py}
+to find the program, the program must be placed in the \tx{progs/} directory.:
+\begin{dssnippet}
+
+from dslang.dsprog import DSProg
+from dslang.dssim import DSSim,DSInfo
+
+def dsname():
+  return "cos"
+
+def dsinfo():
+  return DSInfo(name=dsname(), \
+                desc="cosine",
+                meas="signal",
+                units="signal")
+  info.nonlinear = False
+  return info
+
+def dsprog(prob):
+  params = {
+    'P0': 1.0,
+    'V0' :0.0
+  }
+  prob.decl_stvar("V","(-P)","{V0}",params)
+  prob.decl_stvar("P","V","{P0}",params)
+  prob.emit("P","Position")
+  prob.interval("P",-1.0,1.0)
+  prob.interval("V",-1.0,1.0)
+  prob.check()
+  return prob
+
+def dssim():
+  exp = DSSim('t20')
+  exp.set_sim_time(20)
+  return exp
+  
+\end{dssnippet}
+
+\noindent A dynamical system program must define four python functions in order to be used
+by the compiler:
+
+\begin{itemize}
+\item\textbf{dsname}: This function returns the name of the program. The user
+  can later refer to this program by its name during compilation.
+\item\textbf{dsinfo}: This function returns detailed information about the
+  program. This includes a short description of the program, the name of the
+  signal being measured and the units of the signal being measured. Only one
+  signal can be measured right now.
+\item\textbf{dsprog}: This function returns the dynamical system associated
+  with the program. The dynamical system is defined as a collection of state variable and
+  function declarations. The dynamical system also contains interval annotations
+  for each state variable (this defines the bounds for each variable) and which
+  variable is measured. The \tx{check()} function checks to see that the system
+  is bounded. 
+  \item\textbf{dssim}: This function returns the simulation parameters. This
+    program is to be run for 20 simulation units.  
+\end{itemize}
+
+\subsection{Breaking Down \tx{dsprog}}
+In this dynamical system, the position \tx{P} corresponds to the amplitude of
+the cosine function. The $V$ and $P$ variables are internal variables that are
+used to model the dynamics of the system. We describe each line of the program
+below:
+
+\begin{itemize}
+   \item\tx{params = {..}}: This statement creates a parameter map. The
+     parameter map associates names with values. This is used to fill in
+     parameters when defining the dynamical system. Parameters are referred to
+     by their name, enclosed in curly braces (for example \tx{\{V0\}} refers to
+     the parameter V0). 
+   \item\tx{prob.decl_stvar("V","(-P)","{V0}",params)}: This statement defines a
+     state variable $V$, whose dynamics are governed by $V' = -P$. The initial
+     value of the state variable is the value of parameter V0. The last argument
+     is the parameter map to use.
+   \item\tx{prob.decl_stvar("P","V","{P0}",params)}: This statement defines a
+     state variable $P$, whose dynamics are governed by $P' = V$. The initial
+     value of the state variable is the value of parameter P0. The last argument
+     is the parameter map to use. 
+
+   \item\tx{prob.emit("P","Position")}: This statement indicates the expression
+     $P$ is of interest, and should be observed. The observation is named
+     \tx{Position}.
+   \item\tx{prob.interval("P",-1.0,1.0)}: This statement defines the variable
+     \tx{P} as falling within the bounds [-1,1]. All state variables must be
+       restricted to a user-defined interval in order for the program to pass
+       the well formedness check (\tx{check()} invocation).
+   \item\tx{prob.interval("V",-1.0,1.0)}: This statement defines the variable
+     \tx{V} as falling within the bounds[-1,1].
+   \item\tx{prob.check()}: This statement checks that all the variables in the
+     dynamical system are bounded. This function must pass (not trigger an error) in
+     order for the program to compile successfully.
+\end{itemize}
+
+
+
+\subsection{Executing the \tx{cos} Dynamical System with a ODE Solver}
+
+The \legno compiler supports digitally simulating dynamical systems for testing
+purposes.
+
+\begin{snippet}
+  python3 legno.py --subset extended simulate cos --reference
+\end{snippet}
+
+The \tx{--reference} argument tells the compiler to perform a digital
+simulation and produce reference figures. To profile the runtime of the
+reference simulation, add the \tx{--runtime} argument.
+
+Note that the \tx{--subset} argument is used to determine where to write the reference
+simulation -- it does not impact the behavior of the simulation. The digital simulator
+writes the plots of the state variable trajectories to the following directory:
+
+\begin{snippet}
+  legno-compiler/outputs/legno/extended/cos/sim/ref/
+\end{snippet}
+
+
+\section{Creating your own Dynamical System}
+
+The following section walks through how to create a dynamical system named
+\tx{deg} that implements exponential decay. First, copy the dynamical system
+template to a new file. This file will automatically be picked up by the compiler:
+
+\begin{snippet}
+  cp progs/template.py progs/deg.py
+\end{snippet}
+
+Next we modify the contents of \tx{test.py} to implement the desired dynamical
+system. First we change the name of the program to \tx{decay}:
+
+\begin{dssnippet}
+def dsname():
+   return "decay"
+\end{dssnippet}
+
+Next, we implement the dynamical system by populating the \tx{dsprog} function.
+The exponential decay function is implemented as $x' = -k \cdot x$, where $k$
+is the decay parameter. The dynamical system takes one additional parameter,
+$x(0)$, the initial condition of the system. We are interested in executing the
+dynamical system with $k=0.1$ and $x(0) = 10$. We define the following parameter
+dictionary:
+
+\begin{dssnippet}
+  params = {'k':0.1,'x0':10.0}
+\end{dssnippet}
+
+This system has one state variable, $x$. We next define the dynamics of $x$ with
+the statement below.
+
+
+\begin{dssnippet}
+  prog.decl_stvar("x","{k}*(-x)","{x0}",params)
+\end{dssnippet}
+
+This statement creates a new state variable named \tx{x}, whose derivative is
+\tx{k*(-x)} (\tx{k} is a parameter) and initial condition is the
+parameter \tx{x0}. Wrapping a variable in curly braces indicates it's a
+parameter -- the compiler will look for the parameter in the parameter map
+that is passed in. The last argument, \tx{params}, provides the parameter map to
+the compiler. 
+
+We are interested in observing this state variable; we tell the compiler we
+would like to forward this variable to an external pin for observation with the
+\tx{emit} command. This signal will be named \tx{OBS} in any generated plots:
+
+\begin{dssnippet}
+  prog.emit('x','OBS')
+\end{dssnippet}
+
+We also need to provide an interval range annotation for $x$. This annotation
+tells the compiler the range of values $x$ may take on. It is important to set
+an appropriate dynamic range for each variable. If this range is smaller
+than the actual dynamic range of $x$, it may saturate. If this range is much
+larger than the actual dynamic range, then $x$ might be overtaken by noise and
+error during execution.
+
+We know that $x$ starts at $10.0$ and decays to $0.0$. It therefore always falls
+within $[0,10.0]$. We set the interval of $x$ with the following command:
+
+\begin{dssnippet}
+  prog.interval('x',0,10.0)
+\end{dssnippet}
+
+The interval of $OBS$ is automatically derived from $x$. The full \tx{dsprog}
+function is shown below:
+
+\begin{dssnippet}
+def dsprog(prog):
+  params = {'k':0.1,'x0':10.0}
+  prog.decl_stvar("x","-{k}*x","{x0}",params)
+  prog.emit('x','OBS')
+  prog.interval('x',0,10.0)
+  prog.check()
+  return
+\end{dssnippet}
+
+We next need to provide the simulation parameters of the system by changing the
+\tx{dssim} function. We are fine with executing the simulation for 20 simulation
+units, so we can leave the \tx{dssim} function as is:
+
+\begin{dssnippet}
+def dssim():
+  exp = DSSim('t20')
+  exp.set_sim_time(20)
+  return exp
+\end{dssnippet}
+
+Next, we change the program information to reflect the exponential decay
+system. The \tx{decay} system is a linear system that tracks the trajectory of $x$, which is
+measured in arbitrary units. 
+
+\begin{dssnippet}
+def dsinfo():
+  info = DSInfo(dsname(), \
+                desc="exponential decay"
+                meas="trajectory",
+                units="units")
+  info.nonlinear = False
+  return info
+\end{dssnippet}
+
+We can test the dynamical system by digitally simulating with using the command below:
+
+\begin{snippet}
+ python3 legno.py --subset extended simulate decay --reference
+\end{snippet}
+
+The command will write plots of \tx{x} and \tx{OBS} to the following directory:
+
+\begin{snippet}
+ legno-compiler/outputs/legno/extended/decay/sim/ref/
+\end{snippet}
+
+\section{Troubleshooting}
+
+\subsection{\tx{handle not in interval} when executing \tx{check()}}
+
+If you get the following error:
+
+\begin{snippet}
+  Exception: handle not in interval: :h0
+\end{snippet}
+
+This indicates that the compiler could not compute intervals for all the
+variables in the dynamical system. Please make sure all state variables and
+functions (optionally, usually) are bounded using \tx{interval} commands.
+
+\subsection{\legno cannot find my dynamical system program!}
+
+Make sure that (1) the program is a \tx{.py} file that resides somewhere in the
+\tx{legno-compiler/prog} directory (2) the \tx{dssim}, \tx{dsinfo}, \tx{dsname}
+and \tx{dsprog} functions are defined in the file.

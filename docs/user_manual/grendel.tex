@@ -1,0 +1,252 @@
+\chapter{Generating and Executing Grendel Scripts}
+\label{sec:grendel}
+
+\section{Example: Cosine Program}
+
+\subsection{Anatomy of a Grendel Script}
+
+\noindent We present the \tx{.grendel} script below generated for the cosine program
+below:
+
+
+\begin{snippet}
+micro_reset
+micro_use_osc
+osc_set_volt_range 0 0.102000 1.310000
+osc_set_sim_time 2.063e-03
+osc_set_volt_range 1 0.102000 1.310000
+osc_set_sim_time 2.063e-03
+micro_set_sim_time 1.587e-03
+micro_use_chip
+use_integ 0 3 0 sgn + val 0.0 rng h m debug
+use_integ 0 3 1 sgn + val 0.9765625 rng h m debug
+use_fanout 0 3 0 0  sgn + - + rng m two
+mkconn fanout 0 3 0 0 port 0 tile_output 0 3 0 0
+mkconn tile_output 0 3 0 0 chip_output 0 3 2
+mkconn fanout 0 3 0 0 port 1 integ 0 3 0
+mkconn integ 0 3 1 fanout 0 3 0 0
+mkconn integ 0 3 0 integ 0 3 1
+osc_setup_trigger
+micro_run
+osc_get_values differential 0 1 Position outputs/legno/extended/cos/out-waveform/<file>.json
+get_integ_status 0 3 0
+get_integ_status 0 3 1
+micro_get_status
+disable integ 0 3 0
+disable integ 0 3 1
+disable fanout 0 3 0 0
+rmconn fanout 0 3 0 0 port 0 tile_output 0 3 0 0
+rmconn tile_output 0 3 0 0 chip_output 0 3 2
+rmconn fanout 0 3 0 0 port 1 integ 0 3 0
+rmconn integ 0 3 1 fanout 0 3 0 0
+rmconn integ 0 3 0 integ 0 3 1
+\end{snippet}
+
+\noindent Next we walk through the parts of the grendel script step-by-step:
+
+\begin{snippet}
+micro_reset
+micro_use_osc
+\end{snippet}
+
+\noindent the \tx{micro_reset} resets the
+state of the micro-controller (not the analog device). The \tx{micro_use_osc}
+command tells the microcontroller to emit a trigger signal on the \tx{SDA1} pin
+right before it begins executing the program:
+
+\begin{snippet}
+osc_set_volt_range 0 0.102000 1.310000
+osc_set_sim_time 2.063e-03
+osc_set_volt_range 1 0.102000 1.310000
+osc_set_sim_time 2.063e-03
+\end{snippet}
+
+\noindent the \tx{osc_set_sim_time} command sends the amount of time the
+oscilloscope should record for. This is automatically set by the compiler to be
+slightly more than the scaled simulation time. The \tx{osc_set_volt_range} is
+the voltage range the oscilloscope should monitor. These quantities are
+converted to voltage and time divisions by the oscilloscope driver.
+
+\begin{snippet}
+micro_set_sim_time 1.587e-03
+micro_use_chip
+\end{snippet}
+
+\noindent the \tx{micro_set_sim_time} command tells the microcontroller how long
+to wait for after triggering the simulation. The \tx{micro_use_chip} command
+tells the microcontroller that the analog chip will be used by the program.
+
+\begin{snippet}
+use_integ 0 3 0 sgn + val 0.0 rng h m debug
+use_integ 0 3 1 sgn + val 0.9765625 rng h m debug
+use_fanout 0 3 0 0  sgn + - + rng m two
+\end{snippet}
+
+\noindent the \tx{use_integ} and \tx{use_fanout} blocks configure the
+blocks in the circuit. The first \tx{use_integ} command sets the input of the
+integrator to high (\tx{h}) and the output of the integrator to medium (\tx{m}).
+The \tx{debug} flag tells the integrator to watch out for overflows.
+The output is noninverted (\tx{sgn +}) and the initial condition is 0.0. The
+fanout is set to be in medium mode (\tx{m}). The second current copy is negated
+(\tx{+ - +}). 
+
+\noindent\textbf{Use Commands and Calibration/Profiling}: The calibration and
+profiling routines find all the use commands in the script and generate
+calibration or profiling commands for each use command. Both calibration and
+profiling are performed for each block configuration. 
+
+\begin{snippet}
+mkconn fanout 0 3 0 0 port 0 tile_output 0 3 0 0
+mkconn tile_output 0 3 0 0 chip_output 0 3 2
+mkconn fanout 0 3 0 0 port 1 integ 0 3 0
+mkconn integ 0 3 1 fanout 0 3 0 0
+mkconn integ 0 3 0 integ 0 3 1
+\end{snippet}
+
+\noindent the \tx{mkconn} command programs the required connections for
+integrating the circuit.
+
+\begin{snippet}
+osc_setup_trigger
+micro_run
+osc_get_values differential 0 1 Position outputs/legno/extended/cos/out-waveform/<file>.json
+get_integ_status 0 3 0
+get_integ_status 0 3 1
+micro_get_status
+\end{snippet}
+
+\noindent the \tx{osc_setup_trigger} command sets up the trigger on the
+oscilloscope. The \tx{micro_run} command runs the program. The
+\tx{osc_get_values} command retrieves the data from the oscilloscope. The
+waveform is computed by taking the differential signal between channel 0 and 1,
+and is named \tx{Position}. For brevity we omit the complete path to the
+\tx{.json} file. Finally, the script retrieves the overflow status of the
+integrators and the status of the microcontroller.
+
+\noindent\textbf{The Output Waveform}: All of the post-processing and analysis
+routines process the output waveform produced by the \tx{osc_get_values}
+command. The existence of this output waveform is used to determine if the
+script has been executed. 
+
+\begin{snippet}
+disable integ 0 3 0
+disable integ 0 3 1
+disable fanout 0 3 0 0
+rmconn fanout 0 3 0 0 port 0 tile_output 0 3 0 0
+rmconn tile_output 0 3 0 0 chip_output 0 3 2
+rmconn fanout 0 3 0 0 port 1 integ 0 3 0
+rmconn integ 0 3 1 fanout 0 3 0 0
+rmconn integ 0 3 0 integ 0 3 1
+\end{snippet}
+
+\noindent The \tx{disable} and \tx{rmconn} teardown the program circuit by
+removing programmed connections and disabling used blocks.
+
+\subsection{Generating Grendel Scripts with \tx{Legno}}
+
+For each scaled analog device program, legno generates a low-level \grendel
+script that executes the experiment on the analog hardware. 
+
+\begin{snippet}
+  python3 legno.py --subset extended srcgen cos --hwenv osc --trials 1
+\end{snippet}
+
+This command generates a \grendel script for each scaled analog device program.
+The \tx{--hwenv} parameter specifies the surrounding hardware environment
+(e.g. oscilloscope). Since we're using the Sigilent 1020XE oscilloscope, we use
+\tx{--hwenv osc}, which contains the channel configuration described in section~\ref{setup-osc}.
+
+\noindent\textbf{no oscilloscope}: If you're not using a supported measurement
+device and want to discard the voltage and time information, use
+\tx{--hwenv noosc} -- this will still generate a trigger signal, but will not
+generate the commands to setup the measurement device. Note these commands can
+always be ignored during execution using the \tx{--no-oscilloscope} flag. 
+
+For the \tx{cos} dynamical system with the \tx{extended} set of features, all
+the \grendel scripts are stored in the following directory:
+
+\begin{snippet}
+  outputs/legno/extended/cos/grendel
+\end{snippet}
+
+Since the \tx{cos} benchmark only has one scaled circuit, only one \grendel
+script is produced:
+
+\begin{snippet}
+  cos_g0x0_s0_ngd3.00a3.77v1.77c97.00_obsfast_t20_osc.grendel
+\end{snippet}
+
+We will refer to this script as \tx{<file>.grendel} for the remainder of this
+example.
+
+\subsection{Calibrating Blocks in the Grendel Script}
+
+The grendel runtime (\tx{grendel.py}) executes \tx{.grendel} scripts generated
+by the \legno compiler. Before executing the script, we must calibrate any
+uncalibrated blocks. The \tx{--calib-obj} argument specifies which calibration
+objective to use (\tx{min_error} or \tx{max_fit}).
+
+
+\begin{snippet}
+python3 grendel.py calibrate --calib-obj max_fit \
+  outputs/legno/extended/cos/grendel/<file>.grendel 
+\end{snippet}
+
+\noindent The calibration information is stored in \tx{device-state/state.db}, and reused
+for subsequent executions. Any blocks that already have calibration information
+in \tx{state.db} are automatically skipped. If you wish to recalibrate these
+blocks, use the \tx{--recompute} flag. 
+
+
+\noindent\textbf{No Oscilloscope}: If you are not using the
+Sigilent 1020XE oscilloscope, include the \tx{--no-oscilloscope} flag to prevent
+the runtime from attempting to communicate with the measurement device.
+
+\subsection{Executing the Grendel Script}
+
+
+We can run the benchmark after all the block have been calibrated. Executing the
+following command to executes the program on the analog device:
+
+\begin{snippet}
+  python3 grendel.py run --calib-obj max_fit \
+  outputs/legno/extended/cos/grendel/<file>.grendel
+\end{snippet}
+
+\noindent This should write the configuration to the device, and execute the cosine
+function for 20 simulation units.
+
+\noindent\textbf{No Oscilloscope}: If you are not using the
+Sigilent 1020XE oscilloscope, include the \tx{--no-oscilloscope} flag to prevent
+the runtime from attempting to communicate with the measurement device.
+
+\begin{comment}
+\section{Mass-Execution and Analysis (oscilloscope required)}
+The \tx{exp_driver.py} script automatically runs and analyzes \tx{.grendel}
+scripts in the \tx{output} directory. The \tx{exp_driver.py} script works by
+invoking \tx{grendel.py} and populates the following subdirectories in the program
+directory (Section XXX).
+
+\begin{itemize}
+\item\tx{out-waveform}[OSC]: this directory contains the output waveforms
+  collected by the oscilloscope during execution.
+\item\tx{plots}[OSC]: this directory contains visualizations of the output
+  waveforms collected by the oscilloscope. These plots are generated by
+  \tx{exp_driver.py}.
+\end{itemize}
+
+We first scan for all \tx{.grendel} files in the \tx{output directory}:
+
+\begin{snippet}
+  python3 exp_driver.py scan
+\end{snippet}
+
+Next, we mass-execute any outstanding \tx{.grendel} scripts,
+calibrating blocks when necessary. This mass execution step ignores any grendel
+scripts that already have output waveforms (it scans the grendel scripts for a
+\tx{osc_get_values} command and checks to see if the associated file exists). 
+
+\begin{snippet}
+  python3 exp_driver.py run --calibrate
+\end{snippet}
+\end{comment}

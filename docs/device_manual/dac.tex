@@ -1,0 +1,228 @@
+\chapter{Digital to Analog Converter (\tx{DAC} Block)}
+
+The digital to analog converter is a hybrid digital-analog block available on
+the \hcdc device~\cite{dac.h}. Figures~\ref{dac:values} and \ref{dac:types}
+presents the complete list of digitally settable codes in each DAC block. The
+digital to analog converter accepts one digital input that is either read from
+memory or a lookup table, and produces one analog output current. 
+
+\noindent\textbf{Location}: Each slice on the \hcdc device contains one
+DAC. The DAC may read values from the lookup tables resident on slice 0 
+(\tx{source} is \tx{DSRC_LUT0}) or slice 2 (\tx{source} is \tx{DSRC_LUT1})
+of the same tile.
+
+\noindent\textbf{\static and \dynamic Codes}: We describe the digitally settable
+codes resident on the block below:
+
+\begin{itemize}
+\item\tx{enable}: Determines whether the block is enabled (true) or disabled
+  (false).
+\item\tx{range}: Configures the current range of the analog current emitted by
+  the DAC. This range cannot be set to low mode (\tx{RANGE_LOW}).
+  \item\tx{inv}: Determines whether the output of the DAC is inverted or not.
+    This is useful if multiple DACs are reading from the same lookup table, as
+    some DACs can by configured to negate the value of the lookup table.
+  \item\tx{source}: Determines where the DAC reads the digital value from. If
+    the code is set to \tx{DSRC_MEM}, the digital code stored in \tx{const_code}
+    is converted to an analog signal. If the code is set to \tx{DSRC_LUT0} or
+    \tx{DSRC_LUT1}, the digital code emitted by the lookup table on slices 0 and
+    2 respectively is converted to an analog signal. If the DAC is configured to
+    read from the lookup table, it is placed in free-running mode. This allows
+    the DAC to handle dynamic digital values.  
+\end{itemize}
+
+\begin{marginfigure}
+    \small
+    \begin{tabular}{l|l}
+      code &values\\
+      \hline
+      \tx{enable} &\tx{bool_t}\\
+      \tx{inv}    &\tx{bool_t}\\
+      \tx{range}  &\tx{range_t}\\
+      \tx{source} &\tx{dac_src_t}\\
+      \tx{const_code} &256\\
+      \tx{pmos}\caveat&8\\
+      \tx{nmos}&8\\
+      \tx{gain_cal}&64\\
+    \end{tabular}
+    \caption{DAC Values \cite{fu.h}}
+    \label{dac:values}
+  \end{marginfigure}
+  
+  \begin{marginfigure}
+    \small
+    \begin{tabular}{l|l}
+      code & type \\
+      \hline
+      \tx{enable} & \static\\
+      \tx{inv}    & \static\\
+      \tx{range}  &\static\\
+      \tx{source} & \static\\
+      \tx{const_code} & \dynamic\\
+      \tx{pmos}\caveat&\hidden\\
+      \tx{nmos}&\hidden\\
+      \tx{gain_cal}&\hidden\\
+    \end{tabular}
+    \caption{DAC Code Types\cite{fu.h}}
+    \label{dac:types}
+  \end{marginfigure}
+  
+\section{Block Function}\label{dac:blockfun}
+
+Given a DAC at location \hslice{chip}{tile}{slice}, the behavior of the block
+is dictated by the relation presented below. At a high level, the DAC block converts a
+digital code to an analog current. The value returned by the function is the
+value of the current in $\mu A$. Any behavior not covered in the algorithm
+below is undefined:
+
+\begin{algorithmic}
+  \If {\tx{enable}}
+    \If {\tx{source} = \tx{DSRC_MEM}}
+
+    \State $2 \cdot sign(\tx{inv}) \cdot scale(\tx{range}) \cdot (\tx{const_code}-128)\cdot 128^{-1}$
+    \ElsIf {\tx{source} = \tx{DSRC_LUT0}}
+
+    \State $2 \cdot sign(\tx{inv}) \cdot scale(\tx{range}) \cdot (\tx{lut}\hslice{chip}{tile}{0}-128)\cdot 128^{-1}$
+    \ElsIf {\tx{source} = \tx{DSRC_LUT1}}
+
+    \State $2 \cdot sign(\tx{inv}) \cdot scale(\tx{range}) \cdot (\tx{lut}\hslice{chip}{tile}{2}-128)\cdot 128^{-1}$
+    \EndIf
+ \EndIf
+\end{algorithmic}
+
+The \tx{inv} code determines whether the output signal should be inverted or
+not. The \tx{range} code scales the output signal by 1x or 10x. Note
+that all \static and \dynamic codes are used in the block function.
+
+\subsection{Operating Ranges}
+
+The magnitude of the analog output is determined by the \tx{range} code of the
+DAC. The \tx{range} code is limited to medium (\tx{RANGE_MED}) or high
+(\tx{RANGE_HIGH}) mode:
+
+\begin{algorithmic}
+  \State{$\tx{out} \in scale(\tx{range}) \cdot [-2 \mu A, 2 \mu A] $}
+\end{algorithmic}
+
+\subsection{\analoglib Implementation}
+The \tx{dac.h} file provides a \tx{computeOutput} function that implements the
+block function presented above, given a set of \dynamic and \static codes. The
+returned value of this function is normalized (divided by $2 \mu A$).
+
+\section{Calibration}
+The DAC block has three hidden codes:
+\begin{itemize}
+\item\tx{gain_cal}: This code controls the gain of the DAC.
+\item\tx{pmos} and \tx{nmos}: These codes control the magnitude of the
+  \tx{gain_cal} code.
+\end{itemize}
+The \tx{pmos} code is always set to $0$. The remaining codes are set by the block's
+calibration routine. The DAC is calibrated using the following
+algorithm~\cite{dac_calib.cpp}:
+
+\begin{algorithmic}
+  \State{\tx{table} = \tx{make}()}
+  \For{\tx{nmos} in $0...7$ }
+  \For{\tx{gain_cal} in $0...63$ with stride 16 }
+    \State {loss = obj(\tx{nmos},\tx{gain_cal})}
+    \State {\tx{table} $\leftarrow$ loss,(\tx{nmos},\tx{gain_cal})}
+    \EndFor
+  \EndFor
+
+  \For{\tx{gain_cal} in $0...63$}
+    \State {loss = obj(\tx{table.nmos},\tx{gain_cal})}
+    \State {\tx{table} $\leftarrow$ loss,(\tx{nmos},\tx{gain_cal})}
+  \EndFor
+  \State{return \tx{table.nmos},\tx{table.gain_cal}}
+\end{algorithmic}
+
+At a high level, the calibration algorithm iterates over \tx{nmos} and
+\tx{gain_cal} codes and computes the loss for each combination of codes. The
+loss function is computed using the objective function, \textit{obj}. Objective
+functions are evaluated over a collection of 4
+test points unless specified otherwise (\tx{const_code} that encodes
+0.0,0.8,-0.8,0.5). The expected behavior is computed using the block function
+specified in Section~\ref{dac:blockfun}. The DAC block supports three objective functions:
+\begin{itemize}
+\item\tx{CALIB_MINIMIZE_ERROR}: This objective function minimizes the average
+  error between the observed signal and the expected behavior. 
+\item\tx{CALIB_MAXIMIZE_DELTA_FIT}: This objective function minimizes the gain
+  variance and magnitude bias of the block. The magnitude bias $b$ is computed
+  by measuring the signal for test point $0.0$. For the nonzero test
+  points, the gain is computed by taking the ratio of the observed to the
+  expected value. The gain variance $\sigma^2$ is the computed by taking the
+  variance over computed gains. The final returned loss is $min(\sigma,|b|)$.
+  \item\tx{CALIB_FAST}: This objective function minimizes the error for test
+    point $1.0$. This quickly calibrates the gain to have good gain characteristics.
+  \end{itemize}
+
+\noindent\textit{Assumptions}: XXX
+  
+\section{Profiling}
+
+XXX profiling algorithm here XXX
+
+\section{Grendel API Hook}
+
+\grendel supports configuring DAC blocks using the \tx{use_dac} command. We
+present the general formulation of the \tx{use_dac} command below:
+
+\lstset{ 
+  morekeywords={use_dac,src,sgn,val,rng},
+  basicstyle=\small
+}
+\begin{lstlisting}
+use_dac chip tile slice src dsrc sgn sign val value rng range
+\end{lstlisting}
+
+The \tx{use_dac} command accepts a DAC location in the form of a chip, tile and slice
+index and several additional arguments (\tx{dsrc}, \tx{sign},
+\tx{value} and \tx{range}) which are used set the \static and \dynamic codes in the block:
+\begin{itemize}
+\item\tx{dsrc} argument: This argument sets the \tx{source} \static code for
+  the block, and accepts \tx{mem}, \tx{lut0} and \tx{lut1} as input values.
+  These input values correspond to \tx{DSRC_MEM}, \tx{DSRC_LUT0} and \tx{DSRC_LUT1} respectively.
+
+\item\tx{sign} argument:This argument sets the \tx{inv} \static code for the
+  block, and accepts \tx{+} or \tx{-} as values, where the \tx{-} value sets the
+  \tx{inv} code to true.
+
+\item\tx{val} argument: This argument indirectly sets the \tx{const_code}
+  \dynamic code of the block, and accepts a floating point value between -1 and
+  1. The \tx{val} argument is converted to a digital code using the following function:
+\[
+  min(value \cdot 128 + 128,255)
+\]
+\item\tx{rng}: This argument sets the \tx{range} \static code in the block,
+and accepts \tx{m} and \tx{h} as input values. The \tx{m} input value
+corresponds to \tx{RANGE_MED} and the \tx{h} input value corresponds to
+\tx{RANGE_HIGH}.
+
+\end{itemize}
+
+\subsection{Example Usage}
+
+The following invocation configures the DAC on chip 1, tile 3, slice 0 to emit
+an analog signal of $10 \mu A$:
+
+\begin{lstlisting}
+use_dac 1 3 0 src mem sgn + val 0.5 rng h
+\end{lstlisting}
+
+
+The following invocation configures the DAC on chip 0, tile 0, slice 0 to emit
+an analog signal of $0.25 \mu A$:
+
+\begin{lstlisting}
+use_dac 0 0 0 src mem sgn + val 0.125 rng m
+\end{lstlisting}
+
+
+
+The following invocation configures the DAC on chip 0, tile 2, slice 1 to
+convert the output of the LUT at chip 0, tile 2, slice 2 to an analog signal.
+The resulting analog signal is scaled up by ten:
+
+\begin{lstlisting}
+use_dac 0 2 1 src lut1 sgn + val 0.0 rng h
+\end{lstlisting}

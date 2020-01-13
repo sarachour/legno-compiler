@@ -1,0 +1,112 @@
+
+\chapter{Lookup Table (\tx{LUT} Block)}
+
+The digital to analog converter is a digital block available on the \hcdc
+device~\cite{lut.h}. Figures~\ref{lut:values} and \ref{lut:types} present the
+complete list of digitally settable codes in each LUT block. The digital to
+analog converter accepts one digital input and produces one digital output. The
+function the LUT block implements is set by the end-user.
+
+\noindent\textbf{Location}: Each slice on the \hcdc device contains one LUT. The
+LUT may read values from ADCs resident on slice 0 (\tx{source} is
+\tx{LSRC_ADC0}) or slice 2 (\tx{source} is \tx{LSRC_ADC1}) on the same tile.
+
+
+\noindent\textbf{\static and \dynamic Codes}: The lookup table accepts one
+\static code, \tx{source}, that determines which ADC the LUT should read from.
+If \tx{source} is \tx{LSRC_ADC0}, it reads from the ADC on slice 0 of the same
+tile. If \tx{source} is \tx{LSRC_ADC1}, it reads from the ADC on slice 2 of the
+same tile. 
+
+\begin{marginfigure}
+  \small
+  \begin{tabular}{l|l}
+    code &values\\
+    \hline
+    source & \tx{lut_source_t}\\
+  \end{tabular}
+  \caption{LUT Values \cite{fu.h}}
+  \label{lut:values}
+\end{marginfigure}
+
+
+\begin{marginfigure}
+  \small
+  \begin{tabular}{l|l}
+    code &values\\
+    \hline
+    source & \static\\
+  \end{tabular}
+  \caption{LUT Types \cite{fu.h}}
+  \label{lut:types}
+\end{marginfigure}
+
+\section{Block Function}
+Given a LUT as location \hslice{chip}{tile}{slice}, the behavior of the block is
+dictated by the function encoded in the lookup table. The function is
+implemented as a 256-value array (\tx{MAP}), where each value is an 8-bit
+number. The index into the 256 value array is the input value, and the value at
+that cell is the output value. We formally describe the behavior of the block
+with the following relation: 
+
+
+\begin{algorithmic}
+\If {\tx{source} = \tx{LSRC_ADC0}}
+  \State $TABLE[\tx{adc}\hslice{chip}{tile}{0}]$
+\ElsIf {\tx{source} = \tx{LSRC_ADC1}}
+  \State $TABLE[\tx{adc}\hslice{chip}{tile}{2}]$
+\EndIf
+    
+\end{algorithmic}
+
+\subsection{\analoglib Implementation}
+
+This function is written to the LUT block by setting each input-output pair
+using the \tx{setLut} function~\cite{lut.h}. The \tx{addr} argument is the
+digital code of the input, and the \tx{data} argument is the digital code of the
+output.
+
+
+\section{Grendel API Hook}
+
+\grendel supports configuring the LUT block using \tx{use_lut} and
+\tx{write_lut} functions. The \tx{use_lut} function sets the ADC the LUT reads
+from, and the \tx{write_lut} function sets the one-input one-output function the
+LUT implements:
+
+\lstset{ 
+  morekeywords={use_lut,write_lut,src},
+  basicstyle=\small
+}
+\begin{lstlisting}
+  use_lut 0 3 0 src source
+  write_lut chip tile slice [input] function
+\end{lstlisting}
+
+Both commands accept a LUT location in the form of a chip, tile and slice. The
+\tx{use_lut} command accepts a \tx{source} argument that determines which ADC to
+read from. The \tx{source} value may be either \tx{adc0} or \tx{adc1}. The
+\tx{write_lut} command accepts an function and input argument. The function
+argument is a python expression and the input argument specifies the name of the
+input variable that appears in the function. The provided function will be
+executed on decimal values between [-1,1], and must produce values within the range [-1,1].
+
+\subsection{Example Usage}
+
+The following invocation configures the LUT at chip 0, tile 3, slice 0 to read
+digital values from the ADC at chip 0, tile 3, slice 2. The LUT is then
+configured to implement the function $0.5 sgn(in) \cdot \sqrt{in}$.
+
+\begin{lstlisting}
+  use_lut 0 3 0 src adc1
+  write_lut 0 3 0 [in_] ((0.5)*math.copysign(1,in_)*(math.sqrt(abs(in_))))
+\end{lstlisting}
+
+The following invocation configures the LUT at chip 0, tile 3, slice 2 to read
+digital values from the ADC at chip 0, tile 3, slice 0. The LUT is then
+configured to implement the function $sin(in^2)$. 
+\begin{lstlisting}
+  use_lut 0 3 2 src adc0
+  write_lut 0 3 2 [in_] (sin(in_*in_))
+\end{lstlisting}
+

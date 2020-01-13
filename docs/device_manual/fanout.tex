@@ -1,0 +1,188 @@
+\chapter{Current Copier Block (\tx{fanout} Block)}
+
+The current copier block is an analog block available on the \hcdc
+device~\cite{fan.h}. Figures~\ref{fan:values} and \ref{fan:types} presents a
+complete summary of the digitally settable codes for the block. The current
+copier accepts one analog input (\tx{in}) and produces three analog outputs (\tx{out0},
+\tx{out1} and \tx{out2}), where the analog outputs are copies of the provided signal.
+
+\noindent\textbf{Location}: Each slice of the \hcdc device contains two current
+copier blocks. Given a slice at \hslice{chip}{tile}{slice}, the two current
+copiers on the slice are written as \hindex{chip}{tile}{slice}{0}
+and \hindex{chip}{tile}{slice}{1}.
+
+\begin{marginfigure}
+  \small
+  \begin{tabular}{l|l}
+    code &values\\
+    \hline
+    \tx{enable}& \tx{bool_t}\\ 
+    \tx{third}& \tx{bool_t}\\ 
+    \tx{range}& \tx{range_t}\\
+    \tx{inv[out0Id]}& \tx{bool_t}\\
+    \tx{inv[out1Id]}& \tx{bool_t}\\
+    \tx{inv[out2Id]}& \tx{bool_t}\\
+    \tx{nmos} & 8\\
+    \tx{pmos}\caveat & 8\\
+    \tx{port_cal[out0Id]}& 64\\
+    \tx{port_cal[out1Id]}& 64\\
+    \tx{port_cal[out2Id]}& 64\\
+  \end{tabular}
+  \caption{Fanout Values \cite{fu.h}}
+  \label{fan:values}
+\end{marginfigure}
+  
+\begin{marginfigure}
+  \small
+  \begin{tabular}{l|l}
+    code & type \\
+    \hline
+    \tx{enable}& \static \\ 
+    \tx{range}& \static \\
+    \tx{inv[out0]}& \static \\
+    \tx{inv[out1]}& \static \\
+    \tx{inv[out2]}& \static \\
+    \tx{nmos} & \hidden \\
+    \tx{pmos}\caveat & \hidden \\
+    \tx{port_cal[out0]}& \hidden \\
+    \tx{port_cal[out1]}& \hidden\\
+    \tx{port_cal[out2]}& \hidden \\
+  \end{tabular}
+  \caption{Fanout Code Types\cite{fu.h}}
+  \label{fan:types}
+\end{marginfigure}
+
+  
+\section{Block Function}\label{fanout:blockfun}
+The behavior of output $i$ (\tx{out}$i$) the current copier is dictated by the
+relation presented below. We write the analog input as $in$ in the presented
+relation. The value returned by the function is the value of the current in $\mu
+A$. Any behavior not covered by this algorithm is undefined.
+
+\begin{algorithmic}
+  \If{\tx{enable}}
+  \State{sign(\tx{inv}[\tx{out}$i$]) \tx{in}} 
+  \EndIf
+\end{algorithmic}
+
+The \tx{inv} code for the output $i$ determines the whether the copied signal
+should be inverted or not. Note that all \static codes, with the exception of
+the \tx{range} and \tx{third} codes, are used in the block function. The \tx{range} code is
+used to configure the current limitations of the block, and the \tx{third} code
+determines if the third output (\tx{out2}) of the current copier is in use.
+
+\subsection{Operating Ranges}
+
+The magnitude of the analog input $in$ must fall within the current limits of
+the current copier. These limits are determined by the \tx{range} code:
+
+\begin{algorithmic}
+  \State{$\tx{in} \in scale(\tx{range}) \cdot [-2 \mu A, 2 \mu A] $}
+  \State{$\tx{out0} \in scale(\tx{range}) \cdot [-2 \mu A, 2 \mu A] $}
+  \State{$\tx{out1} \in scale(\tx{range}) \cdot [-2 \mu A, 2 \mu A] $}
+  \State{$\tx{out2} \in scale(\tx{range}) \cdot [-2 \mu A, 2 \mu A] $}
+\end{algorithmic}
+\section{Calibration}\label{fanout:calib}
+
+The fanout block has five hidden codes:
+
+\begin{itemize}
+\item\tx{port_cal[out0]}, \tx{port_cal[out1]}, \tx{port_cal[out2]}: These bias
+  correction codes control the currents injected into
+  the \tx{out0}, \tx{out1} and \tx{out2} outputs of the current copier. These
+  injected currents are used to correct for any unwanted biases in the block. A
+  \tx{port_cal} value of 32 approximately corresponds to an injected current of zero.
+\item\tx{pmos} and \tx{nmos}: These current reference codes affect the magnitude of the
+  bias correction codes. They correspond to iref currents in the schematic of
+  the block. 
+\end{itemize}
+
+The \tx{pmos} code is always set to $3$ and the \tx{nmos} code is always set to
+$0$. The remaining codes are set by the block's calibration routine. The calibration routine implements the following algorithm:
+
+\begin{algorithmic}
+  \State {ctbl = \tx{make_table()}}
+  \State {tbl0 = \tx{make_table()}}
+  \For{cal0 in 0...64 with stride=4}
+  \For{cal1 in 0...64 with stride=4}
+  \For{cal2 in 0...64 with stride=4}
+  \State {loss = obj(cal0,cal1,cal2)}
+  \State {ctbl $\leftarrow$ loss,(cal0,cal1,cal2)}
+  \EndFor
+  \EndFor
+  \EndFor
+  \State {tbl = \tx{make_table()}}
+  \For{i in -3..3}
+  \State{cal0 = ctbl.cal0+i}
+  \For{j in -3..3}
+  \State{cal1 = ctbl.cal1+j}
+  \For{k in -3..3}
+  \State{cal2 = ctbl.cal2+k}
+  \State {loss = obj(cal0,cal1,cal2)}
+  \State{tbl $\leftarrow$ loss,(cal0,cal1,cal2)}
+  \EndFor
+  \EndFor
+  \EndFor
+  \State{return tbl.cal0,tbl.cal1,tbl.cal2}
+\end{algorithmic}
+
+At a high level, the calibration algorithm independently finds the best
+coarse-grained assignments for the \tx{port_cal[out0Id]}, \tx{port_cal[out1Id]}
+and \tx{port_cal[out2Id]} bias correction codes. It then fine tunes the
+coarse-grained set of assignments by doing a local search in the vicinity of values
+around the coarse-grained set of assignments. 
+
+The objective function used by the fanout calibration routine  XXX
+
+
+\section{Profiling}\label{fanout:calib}
+
+
+\section{Grendel API Hook}
+
+\grendel supports configuring fanout blocks using the \tx{use_fanout} command.
+We present the general formulation of the \tx{use_fanout} command below:
+
+\lstset{ 
+  morekeywords={use_fanout,src,sgn,val,rng,three,two},
+  basicstyle=\small
+}
+\begin{lstlisting}
+use_fanout chip tile slice index sgn sign0 sign1 sign2 rng range three|two
+\end{lstlisting}
+
+The \tx{use_fanout} command accepts a fanout location in the form of a chip,
+tile, slice and index and several additional arguments
+(\tx{sign0}, \tx{sign1}, \tx{sign2}, \tx{range}, \tx{three}, and \tx{two}) that set
+the \static and \dynamic codes of the block:
+\begin{itemize}
+\item \tx{sign0},\tx{sign1} and \tx{sign2} arguments: The sign arguments set the
+  \tx{inv} static codes for the first, second and third outputs respectively.
+  These arguments accept \tx{+} and \tx{-} as values. If the sign argument is
+  \tx{-}, the corresponding \tx{inv} code is set to true.
+  \item\tx{range} argument: The range argument sets the \tx{range} static code
+    of the block. This argument accepts \tx{m} and \tx{h} as values, where
+    \tx{m} corresponds to \tx{RANGE_MED} and \tx{h} corresponds to
+    \tx{RANGE_HIGH}.
+    \item\tx{three} or \tx{two} argument: This argument determines if the third
+      output (\tx{out2}) is enabled. If this argument is set to \tx{three}, the
+      third output is enabled.
+  \end{itemize}
+
+\subsection{Example Usage}
+
+The following invocation configures the fanout on chip 0, tile 0, slice 0, index
+0 to copy the input signal, where the input signal is within $[-2 \mu A, 2 \mu
+A]$. The first and second outputs are negated, and the third output is enabled.
+
+\begin{lstlisting}
+use_fanout 0 0 0 0 sgn - - + rng m three
+\end{lstlisting}
+
+The following invocation configures the fanout on chip 1, tile 0, slice 2, index
+1 to copy the input signal, where the input signal is within $[-20 \mu A, 20 \mu
+A]$. The second output is negated, and the third output is disabled.
+
+\begin{lstlisting}
+use_fanout 1 0 2 1 sgn + - + rng h two 
+\end{lstlisting}

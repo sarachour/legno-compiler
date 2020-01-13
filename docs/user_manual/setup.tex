@@ -1,0 +1,267 @@
+\chapter{Installation}
+
+The \legno compiler has been tested on OSX and Linux systems. It is a
+command-line utility -- all commands in this document should be executed using the command line. 
+
+
+\section{Setting up the Compilation Environment}
+\subsection{Mac OS}
+
+
+In order to install the dependencies for the \legno compiler, the \tx{brew} package manager (https://brew.sh/). Brew is installed using the following command:
+
+\begin{snippet}
+  /usr/bin/ruby -e \
+  "\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+\end{snippet}
+
+ Once brew is installed, it may be accessed using the command \tx{brew}. Next,
+ we should install the required dependences. 
+
+\begin{snippet}
+  brew install python3 git graphviz
+\end{snippet}
+
+You might need to execute the following command to get get \tx{pip3} setup:
+
+\begin{snippet}
+  brew postinstall python3 
+\end{snippet}
+
+\noindent\textbf{Testing the installation}:If this step executed correctly, each
+of these commands should return the usage information for the command: 
+
+\begin{snippet}
+  pip3 --help
+  python3 --help
+  git --help
+  dot --help
+\end{snippet}
+
+If any of these commands return the following error (where program is
+\tx{pip3}, \tx{python3}, \tx{git} or \tx{dot}), please contact me for help:
+
+\begin{snippet}
+-bash: <program>: command not found
+\end{snippet}
+
+
+\subsection{Linux}
+
+First, install the required dependencies
+
+\begin{snippet}
+sudo apt-get install -y python3-pip libatlas-base-dev git graphviz
+\end{snippet}
+
+\section{Setting up the Compilation Toolchain}
+
+
+First, we need to download the compilation toolchain and make sure we have
+selected the \tx{master} branch:
+
+\begin{snippet}
+  git clone git@github.com:sendyne/legno-compiler.git
+  git checkout master
+\end{snippet}
+
+This should create a \tx{legno-compiler} directory; inside this directory is the
+legno compiler toolchain.
+
+\subsection{Setting up the Compiler}
+The compiler is a pure python program, so almost all of the dependences can be
+installed using the python package manager, \tx{pip}. Execute the following command
+from the root directory of the \tx{legno-compiler} project to execute all the required packages:
+
+\begin{snippet}
+  pip3 install -r packages-legno.list
+\end{snippet}
+
+\section{Setting up the HCDCv2 Device}
+These steps are only necessary if you wish to execute the generated programs on
+the HCDCv2 device. To write the device firmware to the SA100ASY development
+board, you must install the Arduino IDE. To install the Arduino IDE, download
+the executable from the following link and drag it do your \tx{Applications} directory:
+
+\begin{snippet}
+https://www.arduino.cc/en/Main/Software
+\end{snippet}
+
+After installing the Arduino IDE, navigate to \tx{Tools/Board: <Board Name>} in the menu, and select the \tx{Boards Manager}
+option. After doing so, search for \tx{Due} and install the \tx{Arduino Sam
+  Boards (32 bits ARM-Cortex M3} package. We installed \tx{1.6.12} of \tx{DueTimer}.
+
+You also want to install the \tx{DueTimer} package. This can be done by navigating to the 
+\tx{Sketch/Include Library/Manage Libraries} option in the Arduino IDE and
+searching for the \tx{DueTimer} package. We installed version \tx{1.4.7} of \tx{DueTimer}.
+
+\subsection{Installing Arduino-Make}
+The firmware is built using a Makefile that extends a specialized set Arduino
+Makefiles. The Arduino makefiles are provided in the \tx{arduino-mk} package.
+
+\subsubsection{MacOS Command}
+The following installs the arduino makefiles on OSX:
+
+\begin{snippet}
+brew tap sudar/arduino-mk
+brew install --HEAD arduino-mk
+\end{snippet}
+
+\subsubsection{Linux Command}
+The following installs the arduino Makefiles on linux.
+\begin{snippet}
+sudo apt-get install -y android-mk
+\end{snippet}
+
+
+\subsection{Installing the Grendel Runtime Dependences}
+
+
+The firmware communicates with a runtime which is also written in python.
+Execute the following command from the root directory of the \tx{legno-compiler}
+project to install all the required packages.
+
+\begin{snippet}
+  pip3 install -r packages-grendel.list
+\end{snippet}
+
+\subsection{Writing Firmware to the HCDCv2 Device}
+After following these steps, it should be possible to flash the HCDCv2
+firmware to the analog device. Navigate to the following directory:
+
+\begin{snippet}
+  legno-compiler/lab_bench/arduino/grendel_interp_V1
+\end{snippet}
+
+To build the firmware, type the following command:
+\begin{snippet}
+  make
+\end{snippet}
+
+This should complete without incident. Next we will upload the firmware to the
+device. Please ensure the device is programmed via USB,
+and that the USB cable is plugged into the programming port of the device.
+This is the port closest to the DC power port. 
+After connecting the device to the computer, type the following command to flash the firmware to the device:
+
+\begin{snippet}
+  make upload
+\end{snippet}
+
+When you're done, navigate back to the \tx{legno-compiler} directory.
+
+\begin{snippet}
+  legno-compiler/
+\end{snippet}
+
+
+\subsection{Setting up the Sigilent 1020XE Oscilloscope}
+\label{sec:setup-osc}
+
+This toolchain works with the Sigilent 1020XE Oscilloscope. Any part of the
+manual that requires the oscilloscope be set up will be annotated 
+an \tx{[OSC]} tag. To use the oscilloscope, make the following connections
+between the oscilloscope and the board:
+
+\begin{enumerate}
+  \item Connect the first channel to pin A0 of the analog device (positive channel of
+    chip[0,3,2])
+  \item Connect the second channel to pin A1 of the analog device (negative channel of chip
+    [0,3,2]).
+  \item Connect the EXT lead to pin 25/SDA1 of the Arduino. The Arduino triggers the
+    oscilloscope to record data.
+\end{enumerate}
+
+Next, we have to connect the oscilloscope to the network. First, connect the
+oscilloscope to an Ethernet jack (the port is in the back of the device). We
+also need the IP address of the device. To retrieve the IP address, press the
+\tx{Utility} button on the Oscilloscope control panel. This should change the
+menu at the bottom of the screen. Navigate to page 2 of the menu, select the
+\tx{IO} option, and then select the \tx{IP Set} option. This should display
+the IP address on the oscilloscope's screen. Write it down and check you can
+reach the oscilloscope from your computer using the following command:
+
+\begin{snippet}
+ping <oscilloscope-ip>
+\end{snippet}
+
+\section{Configuring the Legno Toolchain}
+
+The \legno toolchain must first be configured before it can be used. First, copy
+the reference configuration:
+
+\begin{snippet}
+cp util/config_local.py util/config.py
+\end{snippet}
+
+The following fields may be adjusted as needed in the config file. Note that the
+only field that should definitely be changed is the \tx{OSC_IP} field:
+
+\begin{enumerate}
+\item \tx{OSC_IP}: populate this field with the IP address of the oscilloscope.
+  If you are not using an oscilloscope, you can leave this field as is. Refer
+  to Section~\ref{sec:setup-osc} for instructions on how to get the IP address
+  of the oscilloscope.
+\item\tx{DEVSTATE_PATH} (default recommended): set this field to the directory where all the device
+  data (calibration information, analog block models, etc) should be stored. We
+  recommend leaving this field unchanged.
+\item\tx{OUTPUT_PATH} (default recommended): set this field to the directory where all the compiler
+  outputs should be stored. We recommend leaving this field unchanged.
+\end{enumerate}
+
+The remaining fields are automatically populated from these three fields. We
+don't recommend directly setting any of these. The \tx{ARDUINO_FILE_DESC} field
+points to the USB port that is linked to the Arduino and is automatically
+populated by looking for the proper file descriptor in the \tx{/dev/} directory.
+
+
+\section{Troubleshooting}
+
+The following section provides fixes for common errors that occur during
+installation.
+
+\subsection{\tx{brew link} when installing \tx{python3}}
+
+\noindent If you get the following error trying to install
+\tx{python3} using brew:
+
+\begin{snippet}
+Linking /usr/local/Cellar/python/3.7.5... Error: Permission denied @ dir_s_mkdir
+- /usr/local/Frameworks
+\end{snippet}
+
+\noindent Execute the following commands to fix it:
+
+\begin{snippet}
+sudo mkdir /usr/local/Frameworks
+sudo chown -R \$(whoami) /usr/local/Frameworks/
+brew link python
+brew postinstall python3
+\end{snippet}
+
+\subsection{\tx{pyserial} missing when making firmware}
+
+
+\noindent If you get the following error when trying to compile the firmware:
+
+\begin{snippet}
+  import failed, serial not found
+\end{snippet}
+
+\noindent This is likely because \tx{arduino-mk} is using a different version of python than the rest of the project. To mitigate this, install pyserial for \tx{python2}:
+
+\begin{snippet}
+pip install pyserial
+\end{snippet}
+
+
+\subsection{ARDUINO\_DIR not defined when making firmware}
+
+\noindent If you get the following error while trying to compile the firmware:
+
+\begin{snippet}
+/usr/share/arduino/Arduino.mk:279: *** "ARDUINO_DIR is not defined". Stop.
+\end{snippet}
+
+\noindent This is likely because the Arduino IDE is not properly installed. Please make
+sure that the Arduino IDE is in the \tx{Applications} folder in OSX. 

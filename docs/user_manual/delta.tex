@@ -1,0 +1,192 @@
+\chapter{Compilation with Delta Models}
+
+A \textit{delta model} is an empirically derived model that describes a block's
+behavior. This empirical model can be used by the compiler to compensate for any
+manufacturing deviations found in the blocks.
+
+\section{Compiling the Cosine Program with Delta Models}
+
+Delta models are elicited from the chip on-demand. The general workflow for
+extracting delta models from the device is presented below:
+
+\begin{enumerate}
+\item \textbf{wishlist generation}: We ask the \legno compiler to generate a list of configured
+  blocks to calibrate and profile, in the form of a grendel script. The blocks
+  on this list appear in the provided program, but are missing delta models.
+\item \textbf{calibration and profiling}: We use the \grendel runtime to
+  calibrate and profile the configured blocks on the wishlist. The calibration
+  and profiling information are stored in \tx{state.db}
+\item \textbf{model inference}: We use the model builder to infer models from
+  the profiling information. The inferred models are stored in \tx{model.db}
+\item \textbf{compilation with delta models}: We invoke the reexecute the \legno
+  compiler with the same arguments as in the first step. This time, \legno
+  is able to find all the delta models it needs, and successfully compile the circuit.
+  
+\end{enumerate}
+
+
+\subsection{Generating the Delta Model Wishlist}
+
+First, we need to request a list of configured blocks to calibrate and profile.
+The following command asks the compiler to attempt to scale the circuits for the
+cosine benchmark using delta models (the \tx{delta-max_fit} model uses delta models): 
+
+\begin{snippet}
+  python3 legno.py --subset extended lscale cos --search \
+     --model delta-max_fit --scale-circuits 1
+   \end{snippet}
+
+This command should fail because \legno does not have the delta models
+necessary to compile the circuit. You should see output that looks something
+like this:
+
+\begin{snippet}
+  ...
+  scale mode dne: CalibrateObjective.MAX_FIT fanout[(HDACv2,0,3,0,0)].in cm=('pos', 'neg', 'pos') scm=high handle=None
+  scale mode dne: CalibrateObjective.MAX_FIT fanout[(HDACv2,0,3,0,0)].out1 cm=('pos', 'neg', 'pos') scm=high handle=None
+  scale mode dne: CalibrateObjective.MAX_FIT fanout[(HDACv2,0,3,0,0)].out2 cm=('pos', 'neg', 'pos') scm=high handle=None
+scale mode dne: CalibrateObjective.MAX_FIT fanout[(HDACv2,0,3,0,0)].out0 cm=('pos', 'neg', 'pos') scm=high handle=None
+no valid scale modes: fanout[(HDACv2,0,3,0,0)]
+scale mode dne: CalibrateObjective.MAX_FIT ext_chip_out[(HDACv2,0,3,2,0)].in cm=* scm=* handle=None
+scale mode dne: CalibrateObjective.MAX_FIT ext_chip_out[(HDACv2,0,3,2,0)].out cm=* scm=* handle=None
+no valid scale modes: ext_chip_out[(HDACv2,0,3,2,0)]
+scale mode dne: CalibrateObjective.MAX_FIT tile_out[(HDACv2,0,3,0,0)].in cm=* scm=* handle=None
+scale mode dne: CalibrateObjective.MAX_FIT tile_out[(HDACv2,0,3,0,0)].out cm=* scm=* handle=None
+no valid scale modes: tile_out[(HDACv2,0,3,0,0)]
+  ...
+  ...
+  File "/Users/sachour/Documents/git/research/legno-compiler/compiler/lscale.py", line 113, in scale
+    raise Exception("must calibrate components")
+Exception: must calibrate components
+\end{snippet}
+
+When this happens, the compiler also writes out a list of configured blocks to
+calibrate and profile to the following location. Note that if we're using
+\tx{delta-min_error}, the file will be named \tx{min_error.grendel} instead of \tx{max_fit.grendel}:
+
+\begin{snippet}
+  device-state/calibrate/max_fit.grendel
+\end{snippet}
+
+The file contains a list of block use commands and should look something like
+this:
+
+\begin{snippet}
+use_fanout 0 3 0 0  sgn + - + rng m two
+use_fanout 0 3 0 0  sgn + - + rng h two
+use_mult 0 3 0 0 val 0.0 rng m m
+use_mult 0 3 0 0 val 0.0 rng h h
+use_mult 0 3 0 0 val 0.0 rng h m
+use_mult 0 3 0 0 val 0.0 rng m h
+\end{snippet}
+
+
+\subsection{Calibrating and Profiling Blocks on Wishlist}
+
+After acquiring the list, we can calibrate and profile the blocks. We calibrate
+the blocks using the following command:
+
+\begin{snippet}
+  python3 -u grendel.py calibrate --no-oscilloscope --calib-obj max_fit \
+     device-state/calibrate/max_fit.grendel
+
+\end{snippet}
+
+This will update \tx{device-state/state.db} to contain both the calibration and
+profiling information for each block. Note that changing \tx{--calib-obj} argument to
+\tx{min_error} will calibrate blocks using the \tx{min_error} objective
+function. This step takes a long time, so get a coffee.
+
+
+\textbf{Profiling}: The blocks can be calibrated after they are profiled. The
+profiling command is shown below:
+
+\begin{snippet}
+  python3 -u grendel.py profile --no-oscilloscope --calib-obj max_fit \
+     device-state/calibrate/max_fit.grendel
+\end{snippet}
+
+
+\textit{An Aside}: The profiling information can be exported to a collection of
+\tx{.json} files for further analysis with the following command:
+
+\begin{snippet}
+  python3 grendel.py dump
+\end{snippet}
+
+This command writes the extracted datasets to the following directory:
+
+\begin{snippet}
+outputs/datasets
+\end{snippet}
+
+
+\subsection {Inferring Models from Profile Information}
+
+After the blocks have been profiled, we can infer the delta models. Execute the
+following command to infer the delta models from the profiling information:
+
+\begin{snippet}
+  python3 model_builder.py infer --calib-obj max_fit --visualize
+\end{snippet}
+
+The \tx{--visualize} flag writes visualizations of the block
+error and model error to \tx{device-state/models}. The \tx{--calib-obj} flag
+tells the model inference routine tells us which set of profiling information to
+use.
+
+\subsection{Compiling with the Delta Models}
+
+\noindent To use the inferred delta models, execute the following command:
+ 
+\begin{snippet}
+  python3 legno.py --subset extended lscale cos --search \
+     --model delta-max_fit --scale-circuits 1
+\end{snippet}
+
+\noindent This should now produce scaled circuits using scaled circuits that take into
+account the gains and time constant variations of the blocks. This command will
+write a new scaled program to the following directory:
+
+\begin{snippet}
+  legno-compiler/outputs/legno/extended/cos/lscale-adp/
+\end{snippet}
+
+\noindent The scaled program should have a name similar to the one below. Notice
+the tag in the file begins with \tx{d} instead of \tx{n}, this indicates it was compiled using a delta model:
+
+\begin{snippet}
+  cos_g0x0_s0_dgd3.00a3.77v1.77c97.00_obsfast.adp
+\end{snippet}
+
+\noindent Next, we can generate a \grendel script from the scaled circuit. The
+source generation routine will adjust the constants and functions written to
+the lookup tables to account for any biases. Execute the following command to do so:
+
+\begin{snippet}
+  python3 legno.py --subset extended srcgen cos --hwenv osc --trials 1
+\end{snippet}
+
+\noindent This will write a \grendel script to the following directory:
+
+\begin{snippet}
+  outputs/legno/extended/cos/grendel
+\end{snippet}
+
+\noindent The \grendel script should have a name similar to the one below:
+
+\begin{snippet}
+  cos_g0x0_s0_dgd3.00a3.77v1.77c97.00_obsfast_t20_osc.grendel
+\end{snippet}
+
+We will refer to the this file as \tx{<file>.grendel} for the remainder
+of this section.
+
+\subsection{Executing and Analyzing the }
+
+
+
+
+Then repeat the source generation and execution commands described above.
+
+XXX srcgen, run, scan, analyze XXX

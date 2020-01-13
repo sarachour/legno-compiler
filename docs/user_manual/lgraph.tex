@@ -1,0 +1,77 @@
+\chapter{\tx{LGraph} Compilation Pass}
+\label{sec:lgraph}
+The following section describes how to run the \lgraph compilation pass.
+
+\section{Example: Synthesizing Circuits for the Cosine Function}
+
+The \legno compiler first generates an unscaled analog device program that
+implements the \tx{cos} benchmark. An analog device program (\tx{.adp})
+consists of a set of block configurations and digitally programmable connections
+to write to the device. This program is unscaled, meaning that the parameters
+have not been changed so that dynamical system operates within the constraints
+of the device. We generate the analog device program for the \tx{cos} benchmark
+with the following command:
+
+\begin{snippet}
+  python3 legno.py --subset extended lgraph cos --abs-circuits 5 
+      --conc-circuits 5 --max-circuits 1
+\end{snippet}
+
+This step of the compilation process is called the \lgraph compilation pass. The
+\tx{--abs-circuits} and \tx{--conc-circuits} parameters control the search
+space explored by \lgraph compilation pass. Specifying higher numbers to these
+flags produces more analog device programs. The \tx{--subset} flag specifies
+what subset of features to use. We choose the \tx{extended} subset because it
+includes the broadest subset of tested features.
+
+For the \tx{cos} dynamical system with the \tx{extended} set of features, all
+unscaled circuits are stored in the following directory:
+
+\begin{snippet}
+  legno-compiler/outputs/legno/extended/cos/lgraph-adp
+\end{snippet}
+
+The \lgraph command presented above produces exactly one unscaled analog device program: 
+
+\begin{snippet}
+  cos_g0x0.adp
+\end{snippet}
+
+Since the analog device program is not human readable, the compiler also
+produces a graph that describes the analog device program.
+
+\begin{snippet}
+  outputs/legno/extended/cos/lgraph-diag/cos_g0x0.png
+\end{snippet}
+
+
+\section{\lgraph Command Reference}
+
+The following section is a command reference for the \lgraph command.
+
+\begin{itemize}
+\item \tx{--help}: show documentation for the command.
+\item \tx{--simulate}: ignore resource constraints. This is currently not supported. 
+\item \tx{--xforms}: Number of transforms to apply. A transform is a rewrite
+  rule that may be applied to a differential equation. This is currently not supported. 
+\item \tx{--abs-circuits}: number of abstract circuits to generate. The first
+  step of graph synthesis involves generating abstract circuits.
+\item \tx{--conc-circuits}: number of concrete circuits to generate per abstract
+  circuits.
+\item \tx{--max-circuits}: maximum number of circuits to generate.
+\end{itemize}
+
+
+\subsection{\tx{.adp} Naming Convention}
+
+\lgraph generates analog device programs with the following naming convention:
+
+\begin{snippet}
+outputs/legno/<subset>/<prog>/lgraph-adp/{<prog>_g<abs>x<conc>.png
+\end{snippet}
+
+The \tx{abs} and \tx{conc} fields are the numerical identifier of the
+abstract and the concrete circuit. Together, these form a unique identifier for
+the circuit.
+
+

@@ -1,0 +1,63 @@
+\chapter{\tx{LScale} Compilation Pass}
+\label{lec:lscale}
+This section describes how to use the lscale compilation pass.
+
+\section{Example: Cosine Function}
+
+Next, we direct the \legno compiler to scale each unscaled analog device program
+in the \tx{abs-circ} directory:
+
+\begin{snippet}
+  python3 legno.py --subset extended lscale cos --search \
+     --model naive-max_fit --scale-circuits 1
+\end{snippet}
+
+This step of the compilation process is called the \lscale compilation pass. The
+\tx{--subset} flag indicates what subset of device features to use. The
+\tx{--model} argument indicates models should be used when scaling the system.
+\legno supports four different modeling schemes, some of which involve delta
+models. A delta model is an empirically derived model that describes the physical behavior of the
+hardware. Please refer to Section~\ref{sec:delta} for information on how to use
+delta models with \lscale:
+
+\begin{itemize}
+\item\tx{delta-max_fit}: Scale the system using delta models derived from block
+  behavior, when the block is calibrated with the \tx{max_fit} strategy. The
+  \tx{max_fit} calibration strategy maximizes the chances a delta model can be fit to
+  account for deviations in block behavior.
+\item\tx{delta-min_error}: Scale the system using delta models derived from
+  block behavior, when the block is calibrated with the \tx{min_error} strategy.
+  The \tx{min_error} calibration strategy minimizes the error of each block.
+\item\tx{naive-max_fit} and \tx{naive-min_error}: Scale the system without delta
+  models. With these schemes, the block behavior is as described in the
+  specification. These is no behavioral difference in these models; there are
+  two models for implementation reasons. 
+\end{itemize}
+
+We do not have any delta models for the chip yet, so we will use the \tx{naive-max_fit}
+configuration. The \tx{naive_maxfit} model assumes each block delivers its
+expected behavior with no deviations. The \tx{--scale-circuits} parameter
+determines how many scaled programs to produce from each unscaled program.
+Finally the \tx{--search} parameter tells \legno to search for the scaling
+transform that produces the best signal-to-noise ratio.
+
+For the \tx{cos} dynamical system with the \tx{extended} set of features, the
+resulting scaled programs are written to the following directory:
+
+\begin{snippet}
+  legno-compiler/outputs/legno/extended/cos/lscale-adp/
+\end{snippet}
+
+The \lscale execution presented above produces exactly one scaled analog device program: 
+
+\begin{snippet}
+  cos_g0x0_s0_ngd3.00a3.77v1.77c97.00_obsfast.adp
+\end{snippet}
+
+Since the analog device program is not human readable, the compiler
+also produces graphs that visually depict the circuit each program implements.
+These graphs are stored in the following directory:
+
+\begin{snippet}
+  legno-compiler/outputs/legno/extended/cos/lscale-adp/
+\end{snippet}
