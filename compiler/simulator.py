@@ -91,10 +91,11 @@ def plot_reference_simulation(path_handler,prob,dssim):
     for series_name,values in Z.items():
         print("%s: %d" % (series_name,len(values)))
 
+    plt.rcParams.update({'font.size': 22})
     for series_name,values in Z.items():
       plot_file = path_handler.ref_sim_plot(series_name)
       print('plotting %s' % series_name)
-      plt.plot(T,values,label=series_name)
+      plt.plot(T,values,label=series_name,linewidth=4)
       plt.savefig(plot_file)
       plt.clf()
 
