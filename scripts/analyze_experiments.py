@@ -88,8 +88,6 @@ def rank(entry,debug=False):
                                             config.scale_mode,"out")
 
       score = scf*ival.bound/props.interval().bound
-      print(scf,score)
-  input()
 
 
 def execute(args,debug=False):
