@@ -8,7 +8,7 @@ def dsinfo():
   info = DSInfo(dsname(), \
                 'pendulum simulation',
                 "position of mass",
-                "m")
+                "position")
   info.nonlinear = True
   return info
 

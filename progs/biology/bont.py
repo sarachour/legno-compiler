@@ -8,7 +8,7 @@ def dsinfo():
   info = DSInfo(dsname(), \
                 "bont",
                 "signal",
-                "signal")
+                "units")
   info.nonlinear = False
   return info
 

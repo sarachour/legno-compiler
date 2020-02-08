@@ -9,7 +9,7 @@ def dsinfo():
   info = DSInfo(dsname(), \
                 "forced vanderpol oscillator",
                 "signal",
-                "signal")
+                "amplitude")
   info.nonlinear = True
   return info
 

@@ -63,8 +63,8 @@ def plot_preamble(entry,TREF,YREF):
   ax = plt.subplot(1, 1, 1)
   info = DSProgDB.get_info(entry.program)
   title = info.name
-  ax.set_xlabel('simulation time',fontsize=18)
-  ax.set_ylabel(info.units,fontsize=18)
+  ax.set_xlabel('simulation time',fontsize=32)
+  ax.set_ylabel(info.units,fontsize=32)
   ax.set_xticklabels([])
   ax.set_yticklabels([])
   #ax.set_title(title,fontsize=20)
@@ -78,7 +78,7 @@ def plot_preamble(entry,TREF,YREF):
   ax.plot(TREF,YREF,label='reference',
           linestyle='-', \
           linewidth=3, \
-          color='#EE5A24')
+          color="#E74C3C")
   return ax
 
 def plot_waveform(ax,identifier,out,alpha,real_time=False):

@@ -9,7 +9,7 @@ def dsinfo():
   return DSInfo(dsname(), \
                 "PI controller",
                 "velocity",
-                "m/s")
+                "velocity")
 
 def dsprog(prob):
   params = {

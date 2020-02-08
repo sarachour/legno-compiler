@@ -9,7 +9,7 @@ def dsinfo():
   info = DSInfo("kalman", \
                 "average tracking kalman filter",
                 "average",
-                "ampl")
+                "amplitude")
   info.nonlinear = True
   return info
 

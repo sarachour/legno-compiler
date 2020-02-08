@@ -10,7 +10,7 @@ def dsinfo():
   info = DSInfo(dsname(), \
                 "michaelis menten reaction",
                 "complex",
-                "conc")
+                "concentration")
   info.nonlinear = True
   return info
 

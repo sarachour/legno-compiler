@@ -8,7 +8,7 @@ def dsinfo():
   info = DSInfo(dsname(), \
                 "vanderpol oscillator",
                 "signal",
-                "signal")
+                "amplitude")
   info.nonlinear = True
   return info
 
