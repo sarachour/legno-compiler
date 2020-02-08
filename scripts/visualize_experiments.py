@@ -10,6 +10,7 @@ import scripts.visualize.paper_chip_summary as paper_chip_summary
 import scripts.visualize.paper_compile_time as paper_compile_time
 import scripts.visualize.paper_quality_graphs as paper_quality_graphs
 import scripts.visualize.paper_delta_summary as paper_delta_summary
+import scripts.visualize.paper_mode_summary as paper_mode_summary
 import matplotlib.pyplot as plt
 import numpy as np
 import math
@@ -31,6 +32,7 @@ def execute(args):
     'paper-compile-time': paper_compile_time.visualize,
     'paper-quality-graphs': paper_quality_graphs.visualize,
     'paper-delta-summary': paper_delta_summary.visualize,
+    'paper-mode-summary': paper_mode_summary.visualize
 
   }
   if name in opts:

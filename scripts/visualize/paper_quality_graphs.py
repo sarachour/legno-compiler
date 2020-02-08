@@ -52,7 +52,7 @@ def plot_preamble_realtime(entry):
   ax.set_ylabel(info.units,fontsize=18)
   #ax.set_xticklabels([])
   #ax.set_yticklabels([])
-  ax.set_title(title,fontsize=20)
+  #ax.set_title(title,fontsize=20)
   ax.grid(False)
   return ax
 
@@ -67,7 +67,7 @@ def plot_preamble(entry,TREF,YREF):
   ax.set_ylabel(info.units,fontsize=18)
   ax.set_xticklabels([])
   ax.set_yticklabels([])
-  ax.set_title(title,fontsize=20)
+  #ax.set_title(title,fontsize=20)
   ax.set_xlim((min(TREF),max(TREF)))
   margin = (max(YREF)-min(YREF))*0.1
   lb= min(YREF)-margin
@@ -81,10 +81,7 @@ def plot_preamble(entry,TREF,YREF):
           color='#EE5A24')
   return ax
 
-def plot_quality(identifier,experiments,real_time=False):
-
-  print(identifier)
-  def plot_waveform(out,alpha):
+def plot_waveform(ax,identifier,out,alpha,real_time=False):
     TMEAS,YMEAS = quality_analysis.read_meas_data(out.waveform)
     print(out.transform)
     TREC,YREC = quality_analysis.scale_obs_data(out, \
@@ -96,7 +93,7 @@ def plot_quality(identifier,experiments,real_time=False):
             label='measured', \
             color='#5758BB', \
             linewidth=3.0, \
-            linestyle="-" if real_time else ':' \
+            linestyle="-" if real_time else '-' \
     )
 
     if 'standard' in identifier or real_time:
@@ -106,13 +103,66 @@ def plot_quality(identifier,experiments,real_time=False):
       ub = max(YREC)+margin
       ax.set_ylim(min(lb,clb),max(ub,cub))
 
-  # compute reference using information from first element
-  entry = experiments[0]
+def plot_best(identifier,entry,outputs,filepath,real_time=False):
+  output = list(entry.outputs())[0]
+  TREF,YREF = quality_analysis.compute_ref(entry.program, \
+                                           entry.dssim, \
+                                           output.variable)
+  if real_time:
+    ax = plot_preamble_realtime(entry)
+  else:
+    ax = plot_preamble(entry,TREF,YREF)
+
+  if real_time:
+    best_output = outputs[0]
+  else:
+    best_output = min( \
+                       outputs, \
+                       key=lambda o: o.quality)
+  plot_waveform(ax,identifier,best_output,1.0,real_time)
+
+  plt.tight_layout()
+  plt.savefig(filepath)
+  plt.clf()
+
+def plot_reference(identifier,entry,outputs,filepath,real_time=False):
+  output = list(entry.outputs())[0]
+  TREF,YREF = quality_analysis.compute_ref(entry.program, \
+                                           entry.dssim, \
+                                           output.variable)
+  if real_time:
+    ax = plot_preamble_realtime(entry)
+  else:
+    ax = plot_preamble(entry,TREF,YREF)
+
+  plt.tight_layout()
+  plt.savefig(filepath)
+  plt.clf()
+
+
+
+def plot_average(identifier,entry,outputs,filepath,real_time=False):
   output = list(entry.outputs())[0]
   TREF,YREF = quality_analysis.compute_ref(entry.program, \
                                            entry.dssim, \
                                            output.variable)
 
+  if real_time:
+    ax = plot_preamble_realtime(entry)
+  else:
+    ax = plot_preamble(entry,TREF,YREF)
+  weight = math.sqrt(1.0/len(outputs))
+  for output in outputs:
+    plot_waveform(ax,identifier,output,weight,real_time)
+
+  plt.tight_layout()
+  plt.savefig(filepath)
+  plt.clf()
+
+def plot_quality(identifier,experiments,real_time=False):
+  print(identifier)
+  # compute reference using information from first element
+  entry = experiments[0]
   #ax = plot_preamble(entry,TREF,YREF)
 
   qualities = list(map(lambda e: e.quality, experiments))
@@ -122,30 +172,21 @@ def plot_quality(identifier,experiments,real_time=False):
     for out in exp.outputs():
       outputs.append(out)
 
-  if real_time:
-    ax = plot_preamble_realtime(entry)
-  else:
-    ax = plot_preamble(entry,TREF,YREF)
   valid_outputs = list(filter(lambda o: not o.quality is None or \
                               real_time, outputs))
 
   if len(valid_outputs) == 0:
     plt.clf()
     return
-
-  if real_time:
-    best_output = valid_outputs[0]
-  else:
-    best_output = min( \
-                       valid_outputs, \
-                       key=lambda o: o.quality)
-  plot_waveform(best_output,1.0)
-
-  plt.tight_layout()
+  filename = "paper-%s-ref.pdf" % (identifier)
+  filepath = common.get_path(filename)
+  plot_reference(identifier,entry,valid_outputs,filepath,real_time=real_time)
   filename = "paper-%s-best.pdf" % (identifier)
   filepath = common.get_path(filename)
-  plt.savefig(filepath)
-  plt.clf()
+  plot_best(identifier,entry,valid_outputs,filepath,real_time=real_time)
+  filename = "paper-%s-average.pdf" % (identifier)
+  filepath = common.get_path(filename)
+  plot_average(identifier,entry,valid_outputs,filepath,real_time=real_time)
 
 def to_identifier(exp):
   args = util.unpack_model(exp.model)

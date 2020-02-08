@@ -6,7 +6,7 @@ def dsname():
   return "kalconst"
 
 def dsinfo():
-  info = DSInfo(dsname(), \
+  info = DSInfo("kalman", \
                 "average tracking kalman filter",
                 "average",
                 "ampl")
