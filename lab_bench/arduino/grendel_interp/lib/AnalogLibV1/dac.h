@@ -47,7 +47,7 @@ class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::Functio
     void update(dac_code_t codes);
 		void setInv (bool inverse ); // whether output is negated
     //measurement function
-    profile_t measure(float input);
+    profile_t measure(profile_spec_t);
     //calibration function
     void calibrate(calib_objective_t obj);
     // fast measurement and make functions

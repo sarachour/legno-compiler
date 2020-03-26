@@ -125,4 +125,20 @@ typedef union {
   unsigned char charbuf[24];
 } block_code_t;
 
+
+typedef enum {
+  INPUT_OUTPUT,
+  INTEG_INITIAL_COND,
+  INTEG_DERIVATIVE_STABLE,
+  INTEG_DERIVATIVE_BIAS,
+  INTEG_DERIVATIVE_GAIN
+} profile_type_t;
+
+typedef struct {
+  float inputs[2];
+  profile_type_t type;
+  block_code_t code;
+  ifc output;
+} profile_spec_t;
+
 #endif

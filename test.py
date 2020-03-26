@@ -8,6 +8,8 @@ import hwlib2.device as devlib
 import hwlib2.adp as adplib
 import hwlib2.hcdc.llstructs as llstructs
 import hwlib2.hcdc.llenums as llenums
+
+from lab_bench.grendel_runner import GrendelRunner
 from enum import Enum
 
 '''
@@ -30,7 +32,8 @@ def build_set_state(blk,loc,cfg):
   cmd_type = llenums.CircCmdType.SET_STATE
   data = llstructs.build_circ_cmd(cmd_type,cmd_data)
   byts = llstructs.circ_cmd_t().build(data)
-  print(byts)
+  return byts
+
 
 cfg = adplib.ADP()
 loc = devlib.Location(None,[0,3,2,0])
@@ -38,4 +41,21 @@ cfg.add_instance(hwlib2.hcdc.fanout.fan,loc)
 blkcfg = cfg.configs.get('fanout',loc)
 blkcfg.modes = [['+','+','-','m']]
 state_t = build_set_state(hwlib2.hcdc.fanout.fan,loc,cfg)
+
+print("=== bytes ===")
 print(state_t)
+
+loc_t = llstructs.build_block_loc(hwlib2.hcdc.fanout.fan,loc)
+data = llstructs.build_circ_cmd(llenums.CircCmdType.DISABLE, {'inst':loc_t})
+disable_t = llstructs.circ_cmd_t().build(data)
+
+runtime = GrendelRunner()
+runtime.initialize()
+runtime.execute(state_t)
+runtime.result()
+runtime.execute(state_t)
+runtime.result()
+runtime.execute(disable_t)
+runtime.result()
+runtime.close()
+

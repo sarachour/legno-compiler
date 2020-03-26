@@ -62,7 +62,7 @@ class Fabric::Chip::Tile::Slice::Integrator : public Fabric::Chip::Tile::Slice::
     void update(integ_code_t codes);
     integ_code_t m_codes;
 		void calibrate (calib_objective_t obj);
-		profile_t measure(char mode, float input);
+		profile_t measure(profile_spec_t spec);
     void defaults();
 
 

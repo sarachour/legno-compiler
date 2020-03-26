@@ -23,9 +23,9 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
     void defaults();
     static float computeOutput(mult_code_t& m_codes, float in0, float in1);
     void calibrate (calib_objective_t obj);
-    profile_t measure(int mode,float in0, float in1);
+    profile_t measure(profile_spec_t spec);
 	private:
-    profile_t measureVga(float in0,float gain);
+    profile_t measureVga(float in0);
     profile_t measureOscVga(float gain);
 
     profile_t measureMult(float in0,float in1);

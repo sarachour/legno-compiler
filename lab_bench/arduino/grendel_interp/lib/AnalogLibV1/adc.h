@@ -44,7 +44,7 @@ class Fabric::Chip::Tile::Slice::ChipAdc : public Fabric::Chip::Tile::Slice::Fun
     adc_code_t m_codes;
 		void calibrate (calib_objective_t obj);
 
-		profile_t measure(float input);
+		profile_t measure(profile_spec_t spec);
     void defaults();
 		void setAnaIrefNmos () const override;
 	private:

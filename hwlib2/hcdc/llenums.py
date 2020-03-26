@@ -5,8 +5,7 @@ class CircCmdType(Enum):
     CONNECT = 'connect';
     BREAK = 'break';
     CALIBRATE = 'calibrate';
-    GET_INTEG_STATUS = 'get_integ_status';
-    GET_ADC_STATUS = 'get_adc_status';
+    GET_STATUS = 'get_status';
     WRITE_LUT = "write_lut";
     SET_STATE = "set_state";
     GET_STATE = "get_state";

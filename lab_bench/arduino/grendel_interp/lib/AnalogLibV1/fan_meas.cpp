@@ -3,7 +3,7 @@
 #include "calib_util.h"
 
 
-profile_t Fabric::Chip::Tile::Slice::Fanout::measure(char mode, float input) {
+profile_t Fabric::Chip::Tile::Slice::Fanout::measure(profile_spec_t spec) {
 
   int next_slice = (slice_to_int(parentSlice->sliceId) + 1) % 4;
   Dac * ref_dac = parentSlice->parentTile->slices[next_slice].dac;
@@ -41,31 +41,29 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measure(char mode, float input) {
                                         parentSlice->tileOuts[3].in0 );
   ifc port = 0;
 
-  switch(mode){
-  case 0:
+  switch(spec.output){
+  case out0Id:
     Connection (out0, this->parentSlice->tileOuts[3].in0).setConn();
-    port = out0Id;
     break;
-  case 1:
+  case out1Id:
     Connection(out1, this->parentSlice->tileOuts[3].in0).setConn();
-    port = out1Id;
     break;
-  case 2:
+  case out2Id:
     setThird(true);
     Connection(out2, this->parentSlice->tileOuts[3].in0).setConn();
-    port = out2Id;
     break;
   default:
     error("unknown mode");
   }
   in_target = val_dac->fastMakeValue(in_target);
   float out_target = Fabric::Chip::Tile::Slice::Fanout::computeOutput(this->m_codes,
-                                                                port,
+                                                                spec.output,
                                                                 in_target);
   dac_to_fan.setConn();
 	tile_to_chip.setConn();
   ref_to_tile.setConn();
 
+  m_codes = spec.codes.fanout;
   float mean,variance,dummy;
   bool measure_steady_state = false;
   calib.success &= cutil::measure_signal_robust(this,
@@ -93,14 +91,14 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measure(char mode, float input) {
   dac_to_fan.brkConn();
   tile_to_chip.brkConn();
   ref_to_tile.brkConn();
-  switch(mode){
-  case 0:
+  switch(spec.output){
+  case out0Id:
     Connection (out0, this->parentSlice->tileOuts[3].in0).brkConn();
     break;
-  case 1:
+  case out1Id:
     Connection(out2, this->parentSlice->tileOuts[3].in0).brkConn();
     break;
-  case 2:
+  case out2Id:
     setThird(false);
     Connection(out2, this->parentSlice->tileOuts[3].in0).brkConn();
     break;

@@ -7,7 +7,7 @@
 
 
 
-profile_t Fabric::Chip::Tile::Slice::Dac::measure(float in)
+profile_t Fabric::Chip::Tile::Slice::Dac::measure(profile_spec_t spec)
 {
   if(!m_codes.enable){
     print_log("DAC not enabled");
@@ -19,9 +19,9 @@ profile_t Fabric::Chip::Tile::Slice::Dac::measure(float in)
 
   int next_slice = (slice_to_int(parentSlice->sliceId) + 1) % 4;
   dac_code_t codes_dac = m_codes;
-
+  m_codes = spec.code.dac;
   m_codes.source = DSRC_MEM;
-  setConstant(in);
+  //setConstant(in);
   update(m_codes);
 
   cutil::buffer_dac_conns(calib,this);

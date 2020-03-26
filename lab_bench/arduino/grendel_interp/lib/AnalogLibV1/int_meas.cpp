@@ -4,19 +4,23 @@
 #include "fu.h"
 
 
-profile_t Fabric::Chip::Tile::Slice::Integrator::measure(char mode, float input){
-  switch(mode){
-  case 0:
-    return measureInitialCond(input);
-  case 1:
+profile_t Fabric::Chip::Tile::Slice::Integrator::measure(profile_spec_t spec){
+
+  integ_code_t codes_integ = m_codes;
+  m_codes = spec.codes.integ;
+  switch(spec.type){
+  case INTEG_INITIAL_COND:
+    return measureInitialCond();
+  case INTEG_DERIVATIVE_STABLE:
     return measureClosedLoopCircuit();
-  case 2:
+  case INTEG_DERIVATIVE_TC:
     return measureOpenLoopCircuit(OPENLOOP_TC);
-  case 3:
+  case INTEG_DERIVATIVE_BIAS:
     return measureOpenLoopCircuit(OPENLOOP_BIAS);
   default:
     error("integrator.measure : unknown mode");
   }
+  m_codes = codes_integ;
 }
 
 profile_t Fabric::Chip::Tile::Slice::Integrator::measureClosedLoopCircuit(){
@@ -186,7 +190,7 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measureOpenLoopCircuit(open_loo
   update(codes_integ);
   return result;
 }
-profile_t Fabric::Chip::Tile::Slice::Integrator::measureInitialCond(float input){
+profile_t Fabric::Chip::Tile::Slice::Integrator::measureInitialCond(){
   Dac * ref_dac = parentSlice->dac;
   //back up codes
 
@@ -215,7 +219,7 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measureInitialCond(float input)
   integ_to_tile.setConn();
 	tile_to_chip.setConn();
 
-  setInitial(input);
+  //setInitial(input);
   float target = this->computeInitCond(m_codes);
   float mean,variance;
   bool measure_steady=false;

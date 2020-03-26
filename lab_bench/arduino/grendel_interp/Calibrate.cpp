@@ -36,45 +36,43 @@ namespace calibrate {
     default:
       error("unsupported macro obj function.");
     }
+    return macro_obj;
   }
   profile_t measure(Fabric* fab,
-                         uint16_t blk,
-                         circ::circ_loc_idx1_t loc,
-                         uint8_t mode,
-                         float in0,
-                         float in1)
+                    circ::block_loc_t loc,
+                    profile_spec_t spec)
   {
     Fabric::Chip::Tile::Slice::Fanout * fanout;
     Fabric::Chip::Tile::Slice::Multiplier * mult;
     Fabric::Chip::Tile::Slice::ChipAdc * adc;
     Fabric::Chip::Tile::Slice::Dac * dac;
     Fabric::Chip::Tile::Slice::Integrator * integ;
-    Fabric::Chip::Tile::Slice::LookupTable * lut;
-    switch(blk){
+    //Fabric::Chip::Tile::Slice::LookupTable * lut;
+    switch(loc.block){
     case circ::block_type_t::FANOUT:
       fanout = common::get_fanout(fab,loc);
-      return fanout->measure(mode,in0);
+      return fanout->measure(spec);
       break;
 
     case circ::block_type_t::MULT:
       // TODO: indicate if input or output.
       mult = common::get_mult(fab,loc);
-      return mult->measure(mode,in0,in1);
+      return mult->measure(spec);
       break;
 
     case circ::block_type_t::TILE_ADC:
-      adc = common::get_slice(fab,loc.loc)->adc;
-      return adc->measure(in0);
+      adc = common::get_slice(fab,loc)->adc;
+      return adc->measure(spec);
       break;
 
     case circ::block_type_t::TILE_DAC:
-      dac = common::get_slice(fab,loc.loc)->dac;
-      return dac->measure(in0);
+      dac = common::get_slice(fab,loc)->dac;
+      return dac->measure(spec);
       break;
 
     case circ::block_type_t::INTEG:
-      integ = common::get_slice(fab,loc.loc)->integrator;
-      return integ->measure(mode,in0);
+      integ = common::get_slice(fab,loc)->integrator;
+      return integ->measure(spec);
       break;
 
     case circ::block_type_t::LUT:
@@ -82,13 +80,12 @@ namespace calibrate {
     default:
       comm::error("get_offset_code: unexpected block");
     }
+    profile_t dummy_result;
+    return dummy_result;
   }
 
- 
-
   void calibrate(Fabric* fab,
-                 uint16_t blk,
-                 circ::circ_loc_idx1_t loc,
+                 circ::block_loc_t loc,
                  calib_objective_t macro_obj)
   {
     Fabric::Chip::Tile::Slice::Fanout * fanout;
@@ -96,9 +93,8 @@ namespace calibrate {
     Fabric::Chip::Tile::Slice::ChipAdc * adc;
     Fabric::Chip::Tile::Slice::Dac * dac;
     Fabric::Chip::Tile::Slice::Integrator * integ;
-    float max_error = -1.0;
-    calib_objective_t obj = get_objective(blk,macro_obj);
-    switch(blk){
+    calib_objective_t obj = get_objective(loc.block,macro_obj);
+    switch(loc.block){
     case circ::block_type_t::FANOUT:
       fanout = common::get_fanout(fab,loc);
       fanout->calibrate(obj);
@@ -111,17 +107,17 @@ namespace calibrate {
       break;
 
     case circ::block_type_t::TILE_ADC:
-      adc = common::get_slice(fab,loc.loc)->adc;
+      adc = common::get_slice(fab,loc)->adc;
       adc->calibrate(obj);
       break;
 
     case circ::block_type_t::TILE_DAC:
-      dac = common::get_slice(fab,loc.loc)->dac;
+      dac = common::get_slice(fab,loc)->dac;
       dac->calibrate(obj);
       break;
 
     case circ::block_type_t::INTEG:
-      integ = common::get_slice(fab,loc.loc)->integrator;
+      integ = common::get_slice(fab,loc)->integrator;
       integ->calibrate(obj);
       break;
 
@@ -135,8 +131,7 @@ namespace calibrate {
   }
 
   void set_codes(Fabric* fab,
-                 uint16_t blk,
-                 circ::circ_loc_idx1_t loc,
+                 circ::block_loc_t loc,
                  block_code_t& state)
   {
     Fabric::Chip::Tile::Slice::Fanout * fanout;
@@ -146,23 +141,23 @@ namespace calibrate {
     Fabric::Chip::Tile::Slice::Integrator * integ;
     Fabric::Chip::Tile::Slice::LookupTable * lut;
 
-    switch(blk)
+    switch(loc.block)
       {
       case circ::block_type_t::FANOUT:
         fanout = common::get_fanout(fab,loc);
         fanout->update(state.fanout);
         break;
       case circ::block_type_t::TILE_ADC:
-        adc = common::get_slice(fab,loc.loc)->adc;
+        adc = common::get_slice(fab,loc)->adc;
         adc->update(state.adc);
         break;
 
       case circ::block_type_t::TILE_DAC:
-        dac = common::get_slice(fab,loc.loc)->dac;
+        dac = common::get_slice(fab,loc)->dac;
         dac->update(state.dac);
         break;
       case circ::block_type_t::LUT:
-        lut = common::get_slice(fab,loc.loc)->lut;
+        lut = common::get_slice(fab,loc)->lut;
         lut->update(state.lut);
         break;
 
@@ -171,7 +166,7 @@ namespace calibrate {
         mult->update(state.mult);
         break;
       case circ::block_type_t::INTEG:
-        integ = common::get_slice(fab,loc.loc)->integrator;
+        integ = common::get_slice(fab,loc)->integrator;
         integ->update(state.integ);
         break;
       default:
@@ -179,11 +174,9 @@ namespace calibrate {
       }
   }
   void get_codes(Fabric* fab,
-                 uint16_t blk,
-                 circ::circ_loc_idx1_t loc,
+                 circ::block_loc_t loc,
                  block_code_t& state)
   {
-    uint8_t idx = 0;
     Fabric::Chip::Tile::Slice::Fanout * fanout;
     Fabric::Chip::Tile::Slice::Multiplier * mult;
     Fabric::Chip::Tile::Slice::ChipAdc * adc;
@@ -191,7 +184,7 @@ namespace calibrate {
     Fabric::Chip::Tile::Slice::Integrator * integ;
     Fabric::Chip::Tile::Slice::LookupTable * lut;
 
-    switch(blk)
+    switch(loc.block)
       {
       case circ::block_type_t::FANOUT:
         fanout = common::get_fanout(fab,loc);
@@ -203,19 +196,19 @@ namespace calibrate {
         state.mult = mult->m_codes;
         break;
       case circ::block_type_t::TILE_ADC:
-        adc = common::get_slice(fab,loc.loc)->adc;
+        adc = common::get_slice(fab,loc)->adc;
         state.adc = adc->m_codes;
         break;
       case circ::block_type_t::LUT:
-        lut = common::get_slice(fab,loc.loc)->lut;
+        lut = common::get_slice(fab,loc)->lut;
         state.lut = lut->m_codes;
         break;
       case circ::block_type_t::TILE_DAC:
-        dac = common::get_slice(fab,loc.loc)->dac;
+        dac = common::get_slice(fab,loc)->dac;
         state.dac = dac->m_codes;
         break;
       case circ::block_type_t::INTEG:
-        integ = common::get_slice(fab,loc.loc)->integrator;
+        integ = common::get_slice(fab,loc)->integrator;
         state.integ = integ->m_codes;
         break;
       default:

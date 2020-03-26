@@ -24,7 +24,7 @@ class Fabric::Chip::Tile::Slice::Fanout : public Fabric::Chip::Tile::Slice::Func
       m_codes = codes;
       updateFu();
     }
-		profile_t measure(char mode, float input);
+		profile_t measure(profile_spec_t spec);
     void measureZero(float& bias0, float& bias1, float& bias2);
     fanout_code_t m_codes;
 	private:

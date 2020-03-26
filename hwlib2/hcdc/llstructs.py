@@ -166,17 +166,19 @@ def integ_state_t():
 
 def circ_cmd_type():
     kwargs = {
-        llenums.CircCmdType.CONNECT.name:12,
-        llenums.CircCmdType.BREAK.name:13,
-        llenums.CircCmdType.GET_INTEG_STATUS.name:14,
-        llenums.CircCmdType.GET_ADC_STATUS.name:15,
-        llenums.CircCmdType.WRITE_LUT.name:16,
-        llenums.CircCmdType.CALIBRATE.name:17,
-        llenums.CircCmdType.GET_STATE.name:19,
-        llenums.CircCmdType.SET_STATE.name:20,
-        llenums.CircCmdType.PROFILE.name:22
+        llenums.CircCmdType.NULLCMD.name:0,
+        llenums.CircCmdType.DISABLE.name:1,
+        llenums.CircCmdType.CONNECT.name:2,
+        llenums.CircCmdType.BREAK.name:3,
+        llenums.CircCmdType.GET_STATUS.name:4,
+        llenums.CircCmdType.WRITE_LUT.name:5,
+        llenums.CircCmdType.CALIBRATE.name:6,
+        llenums.CircCmdType.GET_STATE.name:7,
+        llenums.CircCmdType.SET_STATE.name:8,
+        llenums.CircCmdType.DEFAULTS.name:9,
+        llenums.CircCmdType.PROFILE.name:10
     }
-    return cstruct.Enum(cstruct.Int24ul,
+    return cstruct.Enum(cstruct.Int8ul,
                         **kwargs)
 
 
