@@ -3,61 +3,6 @@ from hwlib.hcdc import enums as specdata
 import lab_bench.lib.chipcmd.data as chipdata
 import construct as cstruct
 
-def lut_source_t():
-    kwargs = {
-        specdata.LUTSourceType.ADC0.value:0,
-        specdata.LUTSourceType.ADC1.value:1,
-        specdata.LUTSourceType.EXTERN.value:2,
-        specdata.LUTSourceType.CONTROLLER.value:3
-    }
-    return cstruct.Enum(cstruct.Int8ul,**kwargs)
-
-def dac_source_t():
-    kwargs = {
-        specdata.DACSourceType.MEM.value:0,
-        specdata.DACSourceType.EXTERN.value:1,
-        specdata.DACSourceType.LUT0.value:2,
-        specdata.DACSourceType.LUT1.value:3
-    }
-    return cstruct.Enum(cstruct.Int8ul,**kwargs)
-
-def range_t():
-    kwargs = {
-        specdata.RangeType.HIGH.value:0,
-        specdata.RangeType.MED.value:1,
-        specdata.RangeType.LOW.value:2,
-        specdata.RangeType.UNKNOWN.value:3
-    }
-    return cstruct.Enum(cstruct.Int8ul,**kwargs)
-
-def sign_t():
-    kwargs = {
-        specdata.SignType.POS.value:0,
-        specdata.SignType.NEG.value:1
-    }
-    return cstruct.Enum(cstruct.Int8ul,**kwargs)
-
-def bool_t():
-    kwargs = {
-        chipdata.BoolType.TRUE.value:1,
-        chipdata.BoolType.FALSE.value:0
-    }
-    return cstruct.Enum(cstruct.Int8ul,**kwargs)
-
-def block_type_t():
-    kwargs = {
-        BlockType.DAC.name:0,
-        BlockType.CHIP_INPUT.name:1,
-        BlockType.CHIP_OUTPUT.name:2,
-        BlockType.TILE_INPUT.name:3,
-        BlockType.TILE_OUTPUT.name:4,
-        BlockType.MULT.name:5,
-        BlockType.INTEG.name:6,
-        BlockType.FANOUT.name:7,
-        BlockType.LUT.name:8,
-        BlockType.ADC.name:9
-    }
-    return cstruct.Enum(cstruct.Int16ul,**kwargs)
 
 def experiment_cmd_type_t():
     kwargs = {
@@ -99,25 +44,8 @@ def circ_cmd_type():
     return cstruct.Enum(cstruct.Int24ul,
                         **kwargs)
 
+'''
 
-def circ_loc_t():
-    return cstruct.Struct(
-        "chip"/cstruct.Int8ul,
-        "tile"/cstruct.Int8ul,
-        "slice"/cstruct.Int8ul,
-    )
-
-def circ_loc_idx1_t():
-    return cstruct.Struct(
-        "loc"/circ_loc_t(),
-        "idx"/cstruct.Int8ul,
-    )
-
-def circ_loc_idx2_t():
-    return cstruct.Struct(
-        "idxloc" / circ_loc_idx1_t(),
-        "idx2" / cstruct.Int8ul
-    )
 
 def circ_use_integ_t():
     return cstruct.Struct(
@@ -179,6 +107,7 @@ def circ_use_fanout_t():
         "in_range" / cstruct.Int8ul,
         "third" / cstruct.Int8ul
     )
+'''
 
 def circ_connection_t():
     return cstruct.Struct(
@@ -278,93 +207,6 @@ def cmd_t():
     )
 
 
-def adc_state_t():
-    return cstruct.Struct(
-        "test_en" / bool_t(),
-        "test_adc" / bool_t(),
-        "test_i2v" / bool_t(),
-        "test_rs" / bool_t(),
-        "test_rsinc" / bool_t(),
-        "enable" / bool_t(),
-        "pmos" / cstruct.Int8ul,
-        "nmos" / cstruct.Int8ul,
-        "pmos2" / cstruct.Int8ul,
-        "i2v_cal" / cstruct.Int8ul,
-        "upper_fs" / cstruct.Int8ul,
-        "upper" / cstruct.Int8ul,
-        "lower_fs" / cstruct.Int8ul,
-        "lower" / cstruct.Int8ul,
-        "range" / range_t()
-    )
-
-def dac_state_t():
-    return cstruct.Struct(
-        "enable" / bool_t(),
-        "inv" / sign_t(),
-        "range" / range_t(),
-        "source" / dac_source_t(),
-        "pmos" / cstruct.Int8ul,
-        "nmos" / cstruct.Int8ul,
-        "gain_cal" / cstruct.Int8ul,
-        "const_code" / cstruct.Int8ul
-    )
-
-def mult_state_t():
-    return cstruct.Struct(
-        "vga" / bool_t(),
-        "enable" / bool_t(),
-        "range" / cstruct.Array(3,range_t()),
-        "pmos" / cstruct.Int8ul,
-        "nmos" / cstruct.Int8ul,
-        "port_cal" / cstruct.Array(3,cstruct.Int8ul),
-        "gain_cal" / cstruct.Int8ul,
-        "gain_code" / cstruct.Int8ul,
-        cstruct.Padding(1)
-    )
-
-def fanout_state_t():
-    return cstruct.Struct(
-        "pmos" / cstruct.Int8ul,
-        "nmos" / cstruct.Int8ul,
-        "range" / range_t(),
-        "port_cal" / cstruct.Array(5,range_t()),
-        "inv" / cstruct.Array(5,sign_t()),
-        "enable" / bool_t(),
-        "third" / bool_t()
-    )
-
-def lut_state_t():
-    return cstruct.Struct(
-        "source" / lut_source_t()
-    )
-
-def integ_state_t():
-    return cstruct.Struct(
-        "cal_enable" / cstruct.Array(3,bool_t()),
-        "inv" / sign_t(),
-        "enable" / bool_t(),
-        "exception" / bool_t(),
-        # 7 bytes in
-        "range" / cstruct.Array(3,range_t()),
-        # 10 bytes in
-        "pmos" / cstruct.Int8ul,
-        "nmos" / cstruct.Int8ul,
-        "ic_cal" / cstruct.Int8ul,
-        "ic_code" / cstruct.Int8ul,
-        # 14 bytes in
-        "port_cal" / cstruct.Array(3,cstruct.Int8ul),
-        cstruct.Padding(2)
-
-    )
-def state_t():
-    return cstruct.Union(None,
-                         "lut" / lut_state_t(),
-                         "dac"/ dac_state_t(),
-                         "mult" / mult_state_t(),
-                         "integ" / integ_state_t(),
-                         "fanout" / fanout_state_t(),
-                         "adc" / adc_state_t()
-    )
 
 def profile_t():
     return cstruct.Struct(

@@ -34,10 +34,10 @@ def report(clause,msg):
   if not clause:
     raise Exception("when parsing : %s" % (msg))
 
-def function_to_dslang_ast(dsprog,name,arguments):
+def function_to_dslang_ast(dsprog,name,arguments,ignore_missing_func=False):
   print(arguments)
   n = len(arguments)
-  if dsprog.has_lambda(name):
+  if not dsprog is None and dsprog.has_lambda(name):
     freevars,impl = dsprog.lambda_spec(name);
     report(len(freevars) == n, \
            "expected <%d> args, got <%d>" % (len(freevars),n))
@@ -62,9 +62,11 @@ def function_to_dslang_ast(dsprog,name,arguments):
     report(n == 2, "expected 2 arguments to min function")
     return op.Min(arguments[0],arguments[1])
 
-  else:
+  elif ignore_missing_func:
     raise Exception("unknown built-in function <%s>" % name)
-
+  else:
+    args = list(map(lambda i: "x%d" % i, range(n)))
+    return op.Call(arguments, op.Func(args,None))
 
 def lark_to_dslang_ast(dsprog,node):
   def recurse(ch):
@@ -147,4 +149,9 @@ def lark_to_dslang_ast(dsprog,node):
 def parse(dsprog,strrepr):
   lark_ast = PARSER.parse(strrepr)
   obj = lark_to_dslang_ast(dsprog,lark_ast)
+  return obj
+
+def parse_expr(strrepr):
+  lark_ast = PARSER.parse(strrepr)
+  obj = lark_to_dslang_ast(None,lark_ast)
   return obj

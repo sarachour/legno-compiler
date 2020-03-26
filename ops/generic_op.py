@@ -342,9 +342,11 @@ class Call(GenericOp):
     def __init__(self, params, expr):
         self._func = expr
         self._params = params
-        self._expr = self._func.apply(self._params)
-        GenericOp.__init__(self,OpType.CALL,params+[self._expr])
+        GenericOp.__init__(self,OpType.CALL,params+[self._func])
         assert(expr.op == OpType.FUNC)
+
+    #def evaluate(self):
+    #    self._expr = self._func.apply(self._params)
 
     def coefficient(self):
         return 1.0
