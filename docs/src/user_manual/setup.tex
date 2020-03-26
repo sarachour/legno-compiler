@@ -89,7 +89,8 @@ https://www.arduino.cc/en/Main/Software
 
 After installing the Arduino IDE, navigate to \tx{Tools/Board: <Board Name>} in the menu, and select the \tx{Boards Manager}
 option. After doing so, search for \tx{Due} and install the \tx{Arduino Sam
-  Boards (32 bits ARM-Cortex M3} package. We installed \tx{1.6.12} of \tx{DueTimer}.
+  Boards (32 bits ARM-Cortex M3} package. We installed \tx{1.6.12} of the
+  \tx{Sam} board firmware.
 
 You also want to install the \tx{DueTimer} package. This can be done by navigating to the 
 \tx{Sketch/Include Library/Manage Libraries} option in the Arduino IDE and
@@ -112,7 +113,6 @@ The following installs the arduino Makefiles on linux.
 \begin{snippet}
 sudo apt-get install -y android-mk
 \end{snippet}
-
 
 \subsection{Installing the Grendel Runtime Dependences}
 
@@ -138,11 +138,38 @@ To build the firmware, type the following command:
   make
 \end{snippet}
 
-This should complete without incident. Next we will upload the firmware to the
+This should complete without incident. 
+
+
+\subsubsection{[Linux] \tx{Sam.mk} not found}
+
+Some linux package managers reference an outdated version of \tx{arduino-mk}
+that does not include the \tx{Sam.mk} makefile. In these cases \tx{arduino-mk}
+must be installed from source. To do so, first clone the following repository:
+
+\begin{snippet}
+git clone git@github.com:sudar/Arduino-Makefile.git
+git checkout e870443f4824cbb
+mkdir -p /usr/local/opt/arduino-mk/
+sudo mv * /usr/local/opt/arduino-mk/
+\end{snippet}
+
+\subsubsection{[Linux] \tx{DueTimer} library not found}
+
+On some linux distributions, the installed libraries are stored in a different
+place than the device firmware. Execute the following command to move the
+\tx{DueTimer} library to the location derived by \tx{arduino-mk} (the
+\tx{ARDUINO_PLATFORM_LIB_PATH} directory).
+
+\begin{snippet}
+  mv ~/Arduino/libraries/DueTimer/ ~/.arduino15/packages/arduino/hardware/sam/1.6.12/libraries/
+\end{snippet}
+
+\subsection{Writing Firmware to the HCDCv2 Device}
+Next we will upload the firmware to the
 device. Please ensure the device is programmed via USB,
 and that the USB cable is plugged into the programming port of the device.
-This is the port closest to the DC power port. 
-After connecting the device to the computer, type the following command to flash the firmware to the device:
+This is the port closest to the DC power port. After connecting the device to the computer, type the following command to flash the firmware to the device:
 
 \begin{snippet}
   make upload
@@ -154,6 +181,32 @@ When you're done, navigate back to the \tx{legno-compiler} directory.
   legno-compiler/
 \end{snippet}
 
+
+\subsubsection{[Linux] Permission denied: \tx{'/dev/ttyACM0'}}
+
+This occurs on linux installations where the current user doesn't belong to the
+\tx{dialout} group. Execute the following command to add yourself to the
+necessary group:
+
+\begin{snippet}
+usermod -a -G dialout $USER 
+\end{snippet}
+
+After executing this command, you may need to log out and log back in again. If
+the command worked successfully, you should be able to read from
+\tx{/dev/ttyACM0} without getting a permission denied error. Verify this by
+typing in the following command:
+
+\begin{snippet}
+cat /dev/ttyACM0
+\end{snippet}
+
+\subsubsection{[Linux] SAM-BA Operation Failed}
+
+If you get the following error, there is issue with serial write operations.
+This usually happens if the microusb connector is plugged into the wrong port
+on the microcontroller. Verify that the microcontroller is properly setup
+before continuing.
 
 \subsection{Setting up the Sigilent 1020XE Oscilloscope}
 \label{sec:setup-osc}
