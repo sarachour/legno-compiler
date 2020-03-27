@@ -25,13 +25,8 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measure(profile_spec_t spec) {
                               parentSlice->parentTile->parentChip
                               ->tiles[3].slices[2].chipOutput);
   cutil::break_conns(calib);
+ 
 
-  val_dac->setEnable(true);
-  val_dac->setRange(this->m_codes.range);
-  val_dac->setInv(false);
-  val_dac->setConstant(input);
-
-  float in_target = Dac::computeOutput(val_dac->m_codes);
 
   Connection dac_to_fan = Connection ( val_dac->out0, in0 );
   Connection tile_to_chip = Connection (parentSlice->tileOuts[3].out0,
@@ -39,7 +34,6 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measure(profile_spec_t spec) {
                                 ->tiles[3].slices[2].chipOutput->in0);
   Connection ref_to_tile = Connection ( ref_dac->out0,
                                         parentSlice->tileOuts[3].in0 );
-  ifc port = 0;
 
   switch(spec.output){
   case out0Id:
@@ -55,15 +49,23 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measure(profile_spec_t spec) {
   default:
     error("unknown mode");
   }
-  in_target = val_dac->fastMakeValue(in_target);
+
+  // apply profiling state
+
+
+  this->m_codes = spec.code.fanout;
+  float in_target = Dac::computeOutput(val_dac->m_codes);
+
+  val_dac->setEnable(true);
+  val_dac->setInv(false);
+  spec.inputs[in0Id] = val_dac->fastMakeValue(spec.inputs[in0Id]);
   float out_target = Fabric::Chip::Tile::Slice::Fanout::computeOutput(this->m_codes,
                                                                 spec.output,
-                                                                in_target);
+                                                                spec.inputs[in0Id]);
   dac_to_fan.setConn();
 	tile_to_chip.setConn();
   ref_to_tile.setConn();
 
-  m_codes = spec.codes.fanout;
   float mean,variance,dummy;
   bool measure_steady_state = false;
   calib.success &= cutil::measure_signal_robust(this,
@@ -73,20 +75,13 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measure(profile_spec_t spec) {
                                                 mean,
                                                 variance);
 
-  float bias = mean-out_target;
-  sprintf(FMTBUF,"PARS target=%f obs=%f bias=%f",
-          out_target,mean,bias);
+  sprintf(FMTBUF,"PARS mean=%f variance=%f",
+          mean,variance);
   print_info(FMTBUF);
-  float in2 = 0.0;
-  profile_t prof = prof::make_profile(port,
-                                      mode,
-                                      out_target,
-                                      in_target,
-                                      in2,
-                                      bias,
-                                      variance);
+  profile_t prof = prof::make_profile(spec, mean,
+                                      sqrt(variance));
   if(!calib.success){
-    prof.mode = 255;
+    prof.status = profile_status_t::FAILED_TO_CALIBRATE;
   }
   dac_to_fan.brkConn();
   tile_to_chip.brkConn();

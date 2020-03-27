@@ -126,6 +126,50 @@ typedef union {
 } block_code_t;
 
 
+typedef enum block_type {
+  //0
+  TILE_DAC,
+  // 1-4
+  CHIP_INPUT,
+  CHIP_OUTPUT,
+  TILE_INPUT,
+  TILE_OUTPUT,
+  //5
+  MULT,
+  //6
+  INTEG,
+  //7
+  FANOUT,
+  //8-9
+  LUT,
+  TILE_ADC
+} block_type_t;
+
+/*
+typedef enum port_type {
+  IN0,
+  IN1,
+  OUT0,
+  OUT1,
+  OUT2
+} port_type_t;
+*/
+
+#define port_type_t ifc;
+
+typedef struct block_loc {
+  block_type_t block;
+  uint8_t chip;
+  uint8_t tile;
+  uint8_t slice;
+  uint8_t idx;
+} block_loc_t;
+
+typedef struct port_loc {
+  block_loc_t inst;
+  ifc port;
+} port_loc_t;
+
 typedef enum {
   INPUT_OUTPUT,
   INTEG_INITIAL_COND,
@@ -134,11 +178,33 @@ typedef enum {
   INTEG_DERIVATIVE_GAIN
 } profile_type_t;
 
+
 typedef struct {
+  block_loc_t inst;
   float inputs[2];
   profile_type_t type;
   block_code_t code;
   ifc output;
 } profile_spec_t;
+
+typedef enum {
+  SUCCESS,
+  FAILED_TO_CALIBRATE
+} profile_status_t;
+
+typedef struct {
+  profile_spec_t spec;
+  profile_status_t status;
+  float mean;
+  float stdev;
+} profile_t;
+
+/*
+typedef union {
+  profile_t result;
+  unsigned char charbuf[sizeof(profile_t)];
+} serializable_profile_t;
+*/
+
 
 #endif

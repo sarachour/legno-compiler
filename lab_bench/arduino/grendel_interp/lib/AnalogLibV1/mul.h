@@ -25,10 +25,10 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
     void calibrate (calib_objective_t obj);
     profile_t measure(profile_spec_t spec);
 	private:
-    profile_t measureVga(float in0);
-    profile_t measureOscVga(float gain);
+    profile_t measureVga(profile_spec_t spec);
+    profile_t measureOscVga(profile_spec_t spec);
+    profile_t measureMult(profile_spec_t spec);
 
-    profile_t measureMult(float in0,float in1);
     float getLoss(calib_objective_t obj,
                   Dac * val0_dac,
                   Dac * val1_dac,

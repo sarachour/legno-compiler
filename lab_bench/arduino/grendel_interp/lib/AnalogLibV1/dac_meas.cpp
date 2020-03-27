@@ -10,8 +10,9 @@
 profile_t Fabric::Chip::Tile::Slice::Dac::measure(profile_spec_t spec)
 {
   if(!m_codes.enable){
+    profile_t dummy;
     print_log("DAC not enabled");
-    return;
+    return dummy;
   }
   float scf = util::range_to_coeff(m_codes.range);
   cutil::calibrate_t calib;
@@ -37,24 +38,19 @@ profile_t Fabric::Chip::Tile::Slice::Dac::measure(profile_spec_t spec)
 
   dac_to_tile.setConn();
 	tile_to_chip.setConn();
-  float target =Fabric::Chip::Tile::Slice::Dac::computeOutput(this->m_codes);
+  this->m_codes = spec.code.dac;
   float mean,variance;
   mean = this->fastMeasureValue(variance);
-  sprintf(FMTBUF,"PARS target=%f mean=%f variance",
-          target,mean,variance);
+  sprintf(FMTBUF,"PARS mean=%f variance=%f",
+          mean,variance);
   print_info(FMTBUF);
-  float bias = (mean-target);
   const int mode = 0;
   const float in1 = 0.0;
-  profile_t result = prof::make_profile(out0Id,
-                                        mode,
-                                        target,
-                                        in,
-                                        in1,
-                                        bias,
-                                        variance);
+  profile_t result = prof::make_profile(spec,
+                                        mean,
+                                        sqrt(variance));
   if(!calib.success){
-    result.mode = 255;
+    result.status = profile_status_t::FAILED_TO_CALIBRATE;
   }
 	tile_to_chip.brkConn();
   dac_to_tile.brkConn();

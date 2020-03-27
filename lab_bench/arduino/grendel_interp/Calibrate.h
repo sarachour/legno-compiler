@@ -6,21 +6,20 @@
 
 namespace calibrate {
   profile_t measure(Fabric * fab,
-                    circ::block_loc_t loc,
                     profile_spec_t& spec);
 
 
   void calibrate(Fabric * fab,
-                 circ::block_loc_t loc,
+                 block_loc_t loc,
                  calib_objective_t obj);
 
 
   void get_codes(Fabric * fab,
-                 circ::block_loc_t loc,
+                 block_loc_t loc,
                  block_code_t& buf);
 
   void set_codes(Fabric * fab,
-                 circ::block_loc_t loc,
+                 block_loc_t loc,
                  block_code_t& buf);
 
 }

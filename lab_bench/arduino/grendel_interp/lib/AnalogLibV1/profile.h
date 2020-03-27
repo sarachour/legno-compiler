@@ -5,33 +5,16 @@
 #include "float16.h"
 
 
-typedef struct {
-  float bias;
-  float noise;
-  float target;
-  float input0;
-  float input1;
-  uint8_t port;
-  uint8_t mode;
-} profile_t;
-
-typedef union {
-  profile_t result;
-  unsigned char charbuf[sizeof(profile_t)];
-} serializable_profile_t;
 
 namespace prof {
 
   extern profile_t TEMP;
 
+  void print_profile_spec(profile_spec_t& result, int level);
   void print_profile(profile_t& result, int level);
 
-  profile_t make_profile(unsigned char prop,
-                         unsigned char mode,
-                         float target,
-                         float input0,
-                         float input1,
-                         float bias,
-                         float noise);
+  profile_t make_profile(profile_spec_t& spec,
+                         float mean,
+                         float std);
 }
 #endif

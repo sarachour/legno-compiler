@@ -10,33 +10,6 @@ namespace circ {
   const uint8_t MED_RANGE = RANGE_MED;
   const uint8_t HI_RANGE = RANGE_HIGH;
 
-  typedef enum block_type {
-    //0
-    TILE_DAC,
-    // 1-4
-    CHIP_INPUT,
-    CHIP_OUTPUT,
-    TILE_INPUT,
-    TILE_OUTPUT,
-    //5
-    MULT,
-    //6
-    INTEG,
-    //7
-    FANOUT,
-    //8-9
-    LUT,
-    TILE_ADC
-  } block_type_t;
-
-  typedef enum port_type {
-    IN0,
-    IN1,
-    OUT0,
-    OUT1,
-    OUT2
-  } port_type_t;
-
 
   // TODO interpreter for commands
   typedef enum cmd_type {
@@ -53,18 +26,6 @@ namespace circ {
     PROFILE
   } cmd_type_t;
 
-  typedef struct block_loc {
-    block_type_t block;
-    uint8_t chip;
-    uint8_t tile;
-    uint8_t slice;
-    uint8_t idx;
-  } block_loc_t;
-
-  typedef struct port_loc {
-    block_loc_t inst;
-    ifc port;
-  } port_loc_t;
 
   typedef struct write_lut {
     block_loc_t inst;
@@ -89,7 +50,6 @@ namespace circ {
   } cmd_calib_t;
 
   typedef struct {
-    block_loc_t inst;
     profile_spec_t spec;
   } cmd_profile_t;
 
@@ -132,4 +92,4 @@ namespace circ {
   void debug_command(Fabric * fab, cmd_t& cmd, float* inbuf);
 
 }
-#endif CIRCUIT_H
+#endif

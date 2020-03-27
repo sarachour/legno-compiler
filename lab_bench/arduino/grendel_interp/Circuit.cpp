@@ -20,59 +20,24 @@ Fabric* setup_board(){
   return fabric;
 }
 
-void write_block_state(block_code_t& state){
-  sprintf(FMTBUF,"%d",sizeof(state)+2);
+void write_struct_bytes(const char * bytes, unsigned int n){
+  sprintf(FMTBUF,"%d",n+1);
   comm::data(FMTBUF,"I");
   comm::payload();
-  Serial.print(sizeof(state));
-  Serial.print(" ");
-  Serial.print(true ? 1 : 0);
-  for(unsigned int i=0; i < sizeof(state); i+=1){
+  Serial.print(n);
+  for(unsigned int i = 0; i < n; i+=1){
     Serial.print(" ");
-    Serial.print(state.charbuf[i]);
+    Serial.print(bytes[i]);
   }
   Serial.println("");
 }
 
-int get_block_status(Fabric* fab, block_loc_t blk){
-  switch(blk.block){
-  case INTEG:
-    return common::get_slice(fab,blk)->integrator->getException() ? 1 : 0;
-  case TILE_ADC:
-    return common::get_slice(fab,blk)->adc->getStatusCode();
-  default:
-    return 0;
-  }
 
-}
-  void disable_block(Fabric* fab, block_loc_t blk){
-  Fabric::Chip::Tile::Slice* slice;
-  slice = common::get_slice(fab,blk);
-  switch(blk.block){
-  case INTEG:
-    slice->integrator->setEnable(false);
-    break;
-  case TILE_DAC:
-    slice->dac->setEnable(false);
-    break;
-  case TILE_ADC:
-    slice->adc->setEnable(false);
-    break;
-  case MULT:
-    slice->muls[blk.idx].setEnable(false);
-    break;
-  case FANOUT:
-    slice->fans[blk.idx].setEnable(false);
-    break;
-  default:
-    error("cannot disable unknown block");
-  }
-}
 void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
   cmd_write_lut_t wrlutd;
   cmd_connect_t connd;
   block_code_t state;
-  serializable_profile_t result;
+  profile_t result;
   uint8_t byteval;
   char buf[32];
   Fabric::Chip::Tile::Slice::LookupTable* lut;
@@ -82,7 +47,8 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
   
   case cmd_type_t::GET_BLOCK_STATUS:
     comm::response("retrieved block status",1);
-    sprintf(buf,"%d",get_block_status(fab, cmd.data.get_status.inst));
+    sprintf(buf,"%d",
+            common::get_block_status(fab, cmd.data.get_status.inst));
     comm::data(buf, "i");
     break;
   case cmd_type_t::WRITE_LUT:
@@ -98,7 +64,7 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
     comm::response("write lut",0);
     break;
   case cmd_type_t::DISABLE:
-    disable_block(fab,cmd.data.disable.inst);
+    common::disable_block(fab,cmd.data.disable.inst);
     comm::response("disabled block",0);
     break;
   case cmd_type_t::CONNECT:
@@ -118,27 +84,11 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
 
   case cmd_type_t::PROFILE:
     print_log("profiling...");
-    result.result = calibrate::measure(fab,
-                                       cmd.data.prof.inst,
-                                       cmd.data.prof.spec);
-    print_log("getting codes...");
-    calibrate::get_codes(fab,
-                         cmd.data.calib.inst,
-                         state);
-    print_log("done");
-    comm::response("profiling terminated",1);
-    sprintf(FMTBUF,"%d",sizeof(state)+sizeof(result.result)+2);
-    comm::data(FMTBUF,"I");
-    comm::payload();
-    Serial.print(sizeof(result.result));
-    Serial.print(" ");
-    for(unsigned int i=0; i < sizeof(result.result); i+=1){
-      Serial.print(" ");
-      Serial.print(result.charbuf[i]);
-    }
-    Serial.println("");
+    result = calibrate::measure(fab,
+                                cmd.data.prof.spec);
+    comm::response("completed!",1);
+    write_struct_bytes((const char *) &result, sizeof(result));
     break;
-
 
   case cmd_type_t::CALIBRATE:
     print_log("calibrating...");
@@ -151,7 +101,7 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
                          state);
     print_log("done");
     comm::response("calibration terminated",1);
-    write_block_state(state);
+    write_struct_bytes((const char *) &state, sizeof(state));
     break;
 
   case cmd_type_t::GET_STATE:
@@ -159,15 +109,7 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
                          cmd.data.get_state.inst,
                          state);
     comm::response("returning codes",1);
-    sprintf(FMTBUF,"%d",sizeof(state)+1);
-    comm::data(FMTBUF,"I");
-    comm::payload();
-    Serial.print(sizeof(state));
-    for(unsigned int i=0; i < sizeof(state); i+=1){
-      Serial.print(" ");
-      Serial.print(state.charbuf[i]);
-    }
-    Serial.println("");
+    write_struct_bytes((const char *) &state, sizeof(state));
     break;
   case cmd_type_t::SET_STATE:
     calibrate::set_codes(fab,

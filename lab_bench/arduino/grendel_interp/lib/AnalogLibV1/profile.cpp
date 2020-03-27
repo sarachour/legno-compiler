@@ -5,7 +5,13 @@ namespace prof {
 
   profile_t TEMP;
 
-  void print_profile(profile_t& result, int level){
+  void sprintf_profile_spec(profile_spec_t& result, char * buf){
+    char BUF[256];
+    sprintf_block_state()
+    sprintf(FMTBUF, "profile-spec state=%s in(%f,%f) out=%s type=%s",
+            BUF)
+  }
+  void sprintf_profile(profile_t& result, char * buf){
     sprintf(FMTBUF,
             "port=%s mode=%d out=%f in0=%f in1=%f bias=%f noise=%f",
             result.port,
@@ -18,21 +24,13 @@ namespace prof {
             );
 
   }
-  profile_t make_profile(unsigned char prop,
-                    unsigned char mode,
-                    float target, float in0, float in1,
-                    float bias, float noise){
+  profile_t make_profile(profile_spec_t& spec,
+                         float mean, float std){
     profile_t result;
-    result.port = prop;
-    result.mode = mode;
-    result.bias = bias;
-    result.noise = noise;
-    result.target = target;
-    result.input0 = in0;
-    result.input1 = in1;
-    sprintf(FMTBUF, "prof prop=%d mode=%d bias=%f noise=%f out=%f in0=%f in1=%f",
-            prop,mode,bias,noise,target,in0,in1);
-    print_log(FMTBUF);
+    result.spec = spec;
+    result.mean = mean;
+    result.std = std;
+    result.status = profile_status_t::SUCCESS;
     return result;
   }
 
