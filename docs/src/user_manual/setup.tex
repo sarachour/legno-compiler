@@ -96,6 +96,18 @@ You also want to install the \tx{DueTimer} package. This can be done by navigati
 \tx{Sketch/Include Library/Manage Libraries} option in the Arduino IDE and
 searching for the \tx{DueTimer} package. We installed version \tx{1.4.7} of \tx{DueTimer}.
 
+\subsubsection{Linux Command}
+
+Download \tx{android.tar.xz} from the above arduino website and run the following to install and open the Arduino IDE:
+
+\begin{snippet}
+tar -xvf arduino-1.8.12-linux64.tar.xz 
+cd arduino-1.8.12-linux64
+./arduino-linux-setup.sh $USER
+sudo ./install.sh
+arduino
+\end{snippet}
+
 \subsection{Installing Arduino-Make}
 The firmware is built using a Makefile that extends a specialized set Arduino
 Makefiles. The Arduino makefiles are provided in the \tx{arduino-mk} package.
@@ -109,9 +121,10 @@ brew install --HEAD arduino-mk
 \end{snippet}
 
 \subsubsection{Linux Command}
-The following installs the arduino Makefiles on linux.
+The following installs the arduino Makefiles on linux. Note that the package-manager sometimes has an outdated version of \tx{arduino-mk} that is missing \tx{Sam.mk}. Please refer to the troubleshooting section below if this is the case to install from source.
+
 \begin{snippet}
-sudo apt-get install -y android-mk
+sudo apt-get install -y arduino-mk
 \end{snippet}
 
 \subsection{Installing the Grendel Runtime Dependences}
@@ -150,8 +163,18 @@ must be installed from source. To do so, first clone the following repository:
 \begin{snippet}
 git clone git@github.com:sudar/Arduino-Makefile.git
 git checkout e870443f4824cbb
-mkdir -p /usr/local/opt/arduino-mk/
+sudo mkdir -p /usr/local/opt/arduino-mk/
 sudo mv * /usr/local/opt/arduino-mk/
+\end{snippet}
+
+\subsubsection{[Linux] \tx{ARDUINO_DIR} not defined}
+
+Sometimes, the arduino environment variables don't get set up properly. Add the following to your \tx{.profile} or \tx{.bashrc} file.Execute \tx{whereis arduino} to figure out the directory to assign \tx{ARDUINO_DIR} to (it is \tx{/usr/local/bin} for me).
+
+\begin{snippet}
+export ARDUINO_DIR=/usr/local/bin/
+export ARDMK_DIR=/usr/local/opt/arduino-mk/
+export AVR_TOOLS_DIR=/usr/include
 \end{snippet}
 
 \subsubsection{[Linux] \tx{DueTimer} library not found}
