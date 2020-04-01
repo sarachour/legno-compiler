@@ -1,10 +1,7 @@
 #ifndef CALIB_RESULT_H
 #define CALIB_RESULT_H
 
-
-#include "float16.h"
-
-
+#define VAL_DONT_CARE 0.0
 
 namespace prof {
 

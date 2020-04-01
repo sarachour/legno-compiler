@@ -7,18 +7,16 @@
 
 profile_t Fabric::Chip::Tile::Slice::Multiplier::measure(profile_spec_t spec) {
   mult_code_t backup = m_codes;
-  m_codes = spec.code.mult;
-  if(mode == 0){
-    if(this->m_codes.vga){
-      return measureVga(spec);
-    }
-    else{
-      return measureMult(spec);
-    }
+  this->m_codes = spec.code.mult;
+  profile_t result = result;
+  if(this->m_codes.vga){
+    result = measureVga(spec);
   }
-  else {
-    error("unknown mode");
+  else{
+    result = measureMult(spec);
   }
+  this->m_codes = backup;
+  return result;
 }
 
 profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(profile_spec_t spec) {
@@ -50,11 +48,10 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(profile_spec_t spec)
                                                ->parentChip->tiles[3].slices[2].chipOutput->in0 );
   Connection ref_to_tileout = Connection ( ref_dac->out0, parentSlice->tileOuts[3].in0 );
 
-  float in0val = util::range_to_coeff(this->m_codes.range[in0Id])*(normalized_in0val);
   spec.inputs[in0Id]= val1_dac->fastMakeValue(spec.inputs[in0Id]);
   float target_vga = computeOutput(this->m_codes,
                                    spec.inputs[in0Id], 
-                                   0.0);
+                                   VAL_DONT_CARE);
   if(fabs(target_vga) > 10.0){
     sprintf(FMTBUF, "can't fit %f", target_vga);
     calib.success = false;
@@ -75,10 +72,9 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(profile_spec_t spec)
                                                   variance);
   }
   print_info(FMTBUF);
-  const int mode = 0;
   profile_t prof = prof::make_profile(spec,
                                       mean,
-                                      variance);
+                                      sqrt(variance));
   if(!calib.success){
     prof.status = FAILED_TO_CALIBRATE;
   }
@@ -136,10 +132,8 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureMult(profile_spec_t spec
   ref_to_tileout.setConn();
 
 
-  float in0val = util::range_to_coeff(this->m_codes.range[in0Id])*(normalized_in0val);
-  float in1val = util::range_to_coeff(this->m_codes.range[in1Id])*(normalized_in1val);
-  float target_in0 = val1_dac->fastMakeValue(in0val);
-  float target_in1 = val2_dac->fastMakeValue(in1val);
+  float target_in0 = val1_dac->fastMakeValue(spec.inputs[in0Id]);
+  float target_in1 = val2_dac->fastMakeValue(spec.inputs[in1Id]);
   float target_mult = computeOutput(m_codes,target_in0,target_in1);
   if(fabs(target_mult) > 10.0){
     calib.success = false;
@@ -155,22 +149,12 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureMult(profile_spec_t spec
                                                   variance);
 
   }
-  sprintf(FMTBUF,"config inps=(%f,%f) in0=%f in1=%f output=%f meas=%f",
-          in0val,in1val,target_in0,target_in1,target_mult,mean);
-  print_info(FMTBUF);
-
-  float bias = mean-target_mult;
-  const int mode = 0;
-  profile_t prof = prof::make_profile(out0Id,
-                                      mode,
-                                      target_mult,
-                                      target_in0,
-                                      target_in1,
-                                      bias,
-                                      variance);
+  profile_t prof = prof::make_profile(spec,
+                                      mean,
+                                      sqrt(variance));
 
   if(!calib.success){
-    prof.mode = 255;
+    prof.status = FAILED_TO_CALIBRATE;
   }
   dac_to_in0.brkConn();
   dac_to_in1.brkConn();
