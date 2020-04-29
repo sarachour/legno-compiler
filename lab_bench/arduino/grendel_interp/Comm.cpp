@@ -2,9 +2,9 @@
 #include <Arduino.h>
 
 namespace comm {
-#define BUFSIZ 512
+#define GRENDEL_BUFSIZ 512
 
-byte INBUF[BUFSIZ];
+byte INBUF[GRENDEL_BUFSIZ];
 int WPOS=0;
 int RPOS=0;
 int MSGNO = 0;

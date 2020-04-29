@@ -17,16 +17,16 @@ class Fabric::Chip::Tile::Slice::Fanout : public Fabric::Chip::Tile::Slice::Func
 		void setThird (
 			bool third // whether third output is on
 		);
-    static float computeOutput(fanout_code_t& codes,ifc index,float in);
+    static float computeOutput(fanout_state_t& codes,ifc index,float in);
 		void calibrate (calib_objective_t obj);
     void defaults();
-    void update(fanout_code_t codes){
-      m_codes = codes;
+    void update(fanout_state_t codes){
+      m_state = codes;
       updateFu();
     }
 		profile_t measure(profile_spec_t spec);
     void measureZero(float& bias0, float& bias1, float& bias2);
-    fanout_code_t m_codes;
+    fanout_state_t m_state;
 	private:
 		class FanoutOut;
 		Fanout (Slice * parentSlice, unit unitId);

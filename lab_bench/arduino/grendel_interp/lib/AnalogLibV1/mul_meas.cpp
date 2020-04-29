@@ -6,16 +6,16 @@
 #include <float.h>
 
 profile_t Fabric::Chip::Tile::Slice::Multiplier::measure(profile_spec_t spec) {
-  mult_code_t backup = m_codes;
-  this->m_codes = spec.code.mult;
+  mult_state_t backup = m_state;
+  this->m_state = spec.state.mult;
   profile_t result = result;
-  if(this->m_codes.vga){
+  if(this->m_state.vga){
     result = measureVga(spec);
   }
   else{
     result = measureMult(spec);
   }
-  this->m_codes = backup;
+  this->m_state = backup;
   return result;
 }
 
@@ -27,9 +27,9 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(profile_spec_t spec)
   cutil::calibrate_t calib;
   cutil::initialize(calib);
   // backup state of each component that will be clobbered
-  mult_code_t codes_mult = m_codes;
-  dac_code_t codes_val1 = val1_dac->m_codes;
-  dac_code_t codes_ref = ref_dac->m_codes;
+  mult_state_t state_mult = this->m_state;
+  dac_state_t state_val1 = val1_dac->m_state;
+  dac_state_t state_ref = ref_dac->m_state;
 
   // backup connections
   cutil::buffer_mult_conns(calib,this);
@@ -49,7 +49,7 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(profile_spec_t spec)
   Connection ref_to_tileout = Connection ( ref_dac->out0, parentSlice->tileOuts[3].in0 );
 
   spec.inputs[in0Id]= val1_dac->fastMakeValue(spec.inputs[in0Id]);
-  float target_vga = computeOutput(this->m_codes,
+  float target_vga = computeOutput(this->m_state,
                                    spec.inputs[in0Id], 
                                    VAL_DONT_CARE);
   if(fabs(target_vga) > 10.0){
@@ -62,7 +62,7 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(profile_spec_t spec)
   tileout_to_chipout.setConn();
   ref_to_tileout.setConn();
   float mean,variance;
-  bool meas_steady = false;
+  const bool meas_steady = false;
   if(calib.success){
     calib.success &= cutil::measure_signal_robust(this,
                                                   ref_dac,
@@ -83,9 +83,9 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(profile_spec_t spec)
   tileout_to_chipout.brkConn();
   ref_to_tileout.brkConn();
   cutil::restore_conns(calib);
-  ref_dac->update(codes_ref);
-  val1_dac->update(codes_val1);
-  this->update(codes_mult);
+  ref_dac->update(state_ref);
+  val1_dac->update(state_val1);
+  this->update(state_mult);
   return prof;
 
 }
@@ -101,10 +101,10 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureMult(profile_spec_t spec
   cutil::calibrate_t calib;
   cutil::initialize(calib);
   // backup state of each component that will be clobbered
-  mult_code_t codes_self = m_codes;
-  dac_code_t codes_val1 = val1_dac->m_codes;
-  dac_code_t codes_val2 = val2_dac->m_codes;
-  dac_code_t codes_ref = ref_dac->m_codes;
+  mult_state_t state_self = m_state;
+  dac_state_t state_val1 = val1_dac->m_state;
+  dac_state_t state_val2 = val2_dac->m_state;
+  dac_state_t state_ref = ref_dac->m_state;
 
   // backup connections
   cutil::buffer_mult_conns(calib,this);
@@ -134,7 +134,7 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureMult(profile_spec_t spec
 
   float target_in0 = val1_dac->fastMakeValue(spec.inputs[in0Id]);
   float target_in1 = val2_dac->fastMakeValue(spec.inputs[in1Id]);
-  float target_mult = computeOutput(m_codes,target_in0,target_in1);
+  float target_mult = computeOutput(m_state,target_in0,target_in1);
   if(fabs(target_mult) > 10.0){
     calib.success = false;
   }
@@ -162,9 +162,9 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureMult(profile_spec_t spec
   tileout_to_chipout.brkConn();
   ref_to_tileout.brkConn();
   cutil::restore_conns(calib);
-  ref_dac->update(codes_ref);
-  val1_dac->update(codes_val1);
-  val2_dac->update(codes_val2);
-  this->update(codes_self);
+  ref_dac->update(state_ref);
+  val1_dac->update(state_val1);
+  val2_dac->update(state_val2);
+  this->update(state_self);
   return prof;
 }

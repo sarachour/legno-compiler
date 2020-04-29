@@ -10,9 +10,9 @@ bool helper_check_steady(Fabric * fab,
                          Fabric::Chip::Tile::Slice::Dac* dac,
                          float value
                          ){
-  dac_code_t codes_dac = dac->m_codes;
+  dac_state_t codes_dac = dac->m_state;
   dac->setConstant(value);
-  dac->update(dac->m_codes);
+  dac->update(dac->m_state);
   bool success=true;
   // get the adc code at that value
 	unsigned char adcPrev = adc->getData();
@@ -28,7 +28,6 @@ bool helper_check_steady(Fabric * fab,
 bool Fabric::Chip::Tile::Slice::ChipAdc::testValidity(Fabric::Chip::Tile::Slice::Dac * val_dac){
   Fabric* fab = parentSlice->parentTile->parentChip->parentFabric;
   const float VALID_TEST_POINTS[3] = {0,1,-1};
-  float mean,variance;
   bool succ = true;
   for(int i = 0; i < 3; i += 1){
     succ &= helper_check_steady(fab,
@@ -48,9 +47,9 @@ const float TEST_POINTS[CALIB_NPTS] = {0,0.5,-0.5,0.875,-0.875};
 
 float Fabric::Chip::Tile::Slice::ChipAdc::calibrateFast(Fabric::Chip::Tile::Slice::Dac * val_dac){
 
-  float mean,variance,dummy;
+  float mean,variance;
   float in_val = val_dac->fastMakeValue(0.0);
-  float target =Fabric::Chip::Tile::Slice::ChipAdc::computeOutput(this->m_codes,
+  float target =Fabric::Chip::Tile::Slice::ChipAdc::computeOutput(this->m_state,
                                                                   in_val);
 
   util::meas_dist_adc(this,mean,variance);
@@ -62,9 +61,9 @@ float Fabric::Chip::Tile::Slice::ChipAdc::calibrateMinError(Fabric::Chip::Tile::
   float mean,variance;
   float loss_total=0.0;
   for(int i=0; i < CALIB_NPTS; i += 1){
-    float test_pt = TEST_POINTS[i]*util::range_to_coeff(this->m_codes.range);
+    float test_pt = TEST_POINTS[i]*util::range_to_coeff(this->m_state.range);
     float in_val = val_dac->fastMakeValue(test_pt);
-    float target =Fabric::Chip::Tile::Slice::ChipAdc::computeOutput(this->m_codes,
+    float target =Fabric::Chip::Tile::Slice::ChipAdc::computeOutput(this->m_state,
                                                                    in_val);
 
     util::meas_dist_adc(this,mean,variance);
@@ -78,9 +77,10 @@ float Fabric::Chip::Tile::Slice::ChipAdc::calibrateMaxDeltaFit(Fabric::Chip::Til
   float errors[CALIB_NPTS];
   float expected[CALIB_NPTS];
   for(int i=0; i < CALIB_NPTS; i += 1){
-    float test_pt = TEST_POINTS[i]*util::range_to_coeff(this->m_codes.range);
+    // FIXME: this is definitely wrong. Why is TEST_POINTS being used over target.
+    float test_pt = TEST_POINTS[i]*util::range_to_coeff(this->m_state.range);
     float in_val = val_dac->fastMakeValue(test_pt);
-    float target =Fabric::Chip::Tile::Slice::ChipAdc::computeOutput(this->m_codes,
+    float target =Fabric::Chip::Tile::Slice::ChipAdc::computeOutput(this->m_state,
                                                                     in_val);
 
     util::meas_dist_adc(this,mean,variance);
@@ -88,7 +88,6 @@ float Fabric::Chip::Tile::Slice::ChipAdc::calibrateMaxDeltaFit(Fabric::Chip::Til
     errors[i] = ((mean-128.0)/128.0)-expected[i];
     highest_std = max(sqrt(variance)/128.0,highest_std);
   }
-  int m=0;
   float gain_mean,bias,rsq,avg_error,max_error;
   util::linear_regression(expected,errors,CALIB_NPTS,
                           gain_mean,bias,rsq,max_error,avg_error);
@@ -122,8 +121,8 @@ void Fabric::Chip::Tile::Slice::ChipAdc::calibrate (calib_objective_t obj) {
 
   Fabric::Chip::Tile::Slice::Dac * val_dac = parentSlice->dac;
   //backup
-  adc_code_t codes_adc = m_codes;
-  dac_code_t codes_dac = val_dac->m_codes;
+  adc_state_t codes_adc = this->m_state;
+  dac_state_t codes_dac = val_dac->m_state;
   const float EPS = 1e-4;
 
   cutil::calibrate_t calib;
@@ -142,8 +141,8 @@ void Fabric::Chip::Tile::Slice::ChipAdc::calibrate (calib_objective_t obj) {
   int signs[] = {-1,1};
   bool found_code = false;
   for(unsigned char fs=0; fs < 4 && !found_code; fs += 1){
-    m_codes.lower_fs = opts[fs];
-    m_codes.upper_fs = opts[fs];
+    this->m_state.lower_fs = opts[fs];
+    this->m_state.upper_fs = opts[fs];
 
     for(unsigned char spread=0; spread < 32 && !found_code; spread+=1){
       sprintf(FMTBUF,"fs=%d spread=%d",
@@ -151,54 +150,54 @@ void Fabric::Chip::Tile::Slice::ChipAdc::calibrate (calib_objective_t obj) {
       print_info(FMTBUF);
       for(unsigned char lsign=0; lsign < 2 && !found_code; lsign +=1){
         for(unsigned char usign=0; usign < 2 && !found_code; usign +=1){
-          m_codes.lower = 31+spread*signs[lsign];
-          m_codes.upper = 31+spread*signs[usign];
-          m_codes.nmos = 0;
-          update(m_codes);
+          this->m_state.lower = 31+spread*signs[lsign];
+          this->m_state.upper = 31+spread*signs[usign];
+          this->m_state.nmos = 0;
+          update(this->m_state);
           if(!testValidity(val_dac)){
             continue;
           }
 
           for(int nmos=0; nmos < MAX_NMOS && !found_code; nmos += 1){
             float error;
-            m_codes.nmos = nmos;
-            update(m_codes);
+            this->m_state.nmos = nmos;
+            update(this->m_state);
             val_dac->setConstant(0.0);
             binsearch::find_bias(this,
                                  128.0,
-                                 this->m_codes.i2v_cal,
+                                 this->m_state.i2v_cal,
                                  error,
                                  MEAS_ADC);
             sprintf(FMTBUF,"fs=(%d,%d) def=(%d,%d) nmos=%d i2v=%d loss=%f",
-                    m_codes.lower_fs,
-                    m_codes.upper_fs,
-                    m_codes.lower,
-                    m_codes.upper,
+                    this->m_state.lower_fs,
+                    this->m_state.upper_fs,
+                    this->m_state.lower,
+                    this->m_state.upper,
                     nmos,
-                    this->m_codes.i2v_cal,
+                    this->m_state.i2v_cal,
                     error);
             print_info(FMTBUF);
             if(error > 0.5){
               continue;
             }
-            update(m_codes);
+            update(this->m_state);
             float loss = getLoss(obj,val_dac);
             sprintf(FMTBUF,"fs=(%d,%d) def=(%d,%d) nmos=%d i2v=%d loss=%f",
-                    m_codes.lower_fs,
-                    m_codes.upper_fs,
-                    m_codes.lower,
-                    m_codes.upper,
+                    this->m_state.lower_fs,
+                    this->m_state.upper_fs,
+                    this->m_state.lower,
+                    this->m_state.upper,
                     nmos,
-                    this->m_codes.i2v_cal,
+                    this->m_state.i2v_cal,
                     loss);
             print_info(FMTBUF);
             cutil::update_calib_table(calib_table,loss,6,
-                                      m_codes.lower_fs,
-                                      m_codes.upper_fs,
-                                      m_codes.lower,
-                                      m_codes.upper,
+                                      this->m_state.lower_fs,
+                                      this->m_state.upper_fs,
+                                      this->m_state.lower,
+                                      this->m_state.upper,
                                       nmos,
-                                      m_codes.i2v_cal);
+                                      this->m_state.i2v_cal);
             found_code = true;
             break;
             //if(fabs(calib_table.loss) < EPS && calib_table.set)
@@ -215,21 +214,21 @@ void Fabric::Chip::Tile::Slice::ChipAdc::calibrate (calib_objective_t obj) {
   val_dac->update(codes_dac);
   this->update(codes_adc);
 
-  this->m_codes.lower_fs = calib_table.state[0];
-  this->m_codes.upper_fs = calib_table.state[1];
-  this->m_codes.lower = calib_table.state[2];
-  this->m_codes.upper = calib_table.state[3];
-  this->m_codes.nmos = calib_table.state[4];
-  this->m_codes.i2v_cal = calib_table.state[5];
-  update(this->m_codes);
+  this->m_state.lower_fs = calib_table.state[0];
+  this->m_state.upper_fs = calib_table.state[1];
+  this->m_state.lower = calib_table.state[2];
+  this->m_state.upper = calib_table.state[3];
+  this->m_state.nmos = calib_table.state[4];
+  this->m_state.i2v_cal = calib_table.state[5];
+  update(this->m_state);
 
   sprintf(FMTBUF,"BEST fs=(%d,%d) def=(%d,%d) nmos=%d i2v=%d loss=%f",
-          m_codes.lower_fs,
-          m_codes.upper_fs,
-          m_codes.lower,
-          m_codes.upper,
-          m_codes.nmos,
-          m_codes.i2v_cal,
+          this->m_state.lower_fs,
+          this->m_state.upper_fs,
+          this->m_state.lower,
+          this->m_state.upper,
+          this->m_state.nmos,
+          this->m_state.i2v_cal,
           calib_table.loss);
   print_info(FMTBUF);
 }

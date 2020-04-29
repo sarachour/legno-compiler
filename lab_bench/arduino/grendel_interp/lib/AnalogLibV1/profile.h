@@ -7,8 +7,9 @@ namespace prof {
 
   extern profile_t TEMP;
 
-  void print_profile_spec(profile_spec_t& result, int level);
-  void print_profile(profile_t& result, int level);
+  const char * profile_status_to_string(profile_status_t status);
+  void sprintf_profile_spec(profile_spec_t& result, char * buf);
+  void sprintf_profile(profile_t& result, char * buf);
 
   profile_t make_profile(profile_spec_t& spec,
                          float mean,

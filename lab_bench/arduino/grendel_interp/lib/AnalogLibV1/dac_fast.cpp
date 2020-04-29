@@ -8,9 +8,9 @@
 // this model for the high-mode dac.
 
 void fast_calibrate_dac(Fabric::Chip::Tile::Slice::Dac * aux_dac){
-  if(!aux_dac->calibrated){
+  if(!aux_dac->m_is_calibrated){
     // do a naive calibration to make sure we have enough range.
-    dac_code_t codes = aux_dac->m_codes;
+    dac_state_t codes = aux_dac->m_state;
     aux_dac->setEnable(true);
     aux_dac->setRange(RANGE_MED);
     aux_dac->setInv(false);
@@ -18,16 +18,16 @@ void fast_calibrate_dac(Fabric::Chip::Tile::Slice::Dac * aux_dac){
     aux_dac->calibrate(CALIB_FAST);
     //aux_dac->m_codes.nmos = 7;
     //aux_dac->m_codes.gain_cal = 63;
-    aux_dac->calibrated = true;
-    aux_dac->calib_codes = aux_dac->m_codes;
+    aux_dac->m_is_calibrated = true;
+    aux_dac->m_calib_state = aux_dac->m_state;
     aux_dac->fastMakeDacModel();
-    aux_dac->m_codes = codes;
+    aux_dac->m_state= codes;
 
   }
-  aux_dac->m_codes.pmos = aux_dac->calib_codes.pmos;
-  aux_dac->m_codes.nmos = aux_dac->calib_codes.nmos;
-  aux_dac->m_codes.gain_cal = aux_dac->calib_codes.gain_cal;
-  aux_dac->update(aux_dac->m_codes);
+  aux_dac->m_state.pmos = aux_dac->m_calib_state.pmos;
+  aux_dac->m_state.nmos = aux_dac->m_calib_state.nmos;
+  aux_dac->m_state.gain_cal = aux_dac->m_calib_state.gain_cal;
+  aux_dac->update(aux_dac->m_state);
 }
 void Fabric::Chip::Tile::Slice::Dac::fastMakeDacModel(){
 #define NPTS 5
@@ -36,19 +36,20 @@ void Fabric::Chip::Tile::Slice::Dac::fastMakeDacModel(){
   float codes[NPTS];
   for(int i=0; i < NPTS; i += 1){
     measurements[i] = this->fastMakeHighValue(values[i],0.2);
-    codes[i] = this->m_codes.const_code;
+    codes[i] = this->m_state.const_code;
     sprintf(FMTBUF," v=%f m=%f c=%f", values[i],measurements[i],codes[i]);
     print_info(FMTBUF);
   }
   float max_error,avg_error;
   util::linear_regression(codes,measurements,NPTS,
-                          this->dac_model.alpha,
-                          this->dac_model.beta,
-                          this->dac_model.rsq,
+                          this->m_dac_model.alpha,
+                          this->m_dac_model.beta,
+                          this->m_dac_model.rsq,
                           max_error,avg_error);
-  sprintf(FMTBUF,"alpha=%f beta=%f rsq=%f", dac_model.alpha,
-          dac_model.beta,
-          dac_model.rsq);
+  sprintf(FMTBUF,"alpha=%f beta=%f rsq=%f",
+          this->m_dac_model.alpha,
+          this->m_dac_model.beta,
+          this->m_dac_model.rsq);
   print_info(FMTBUF);
 }
 float Fabric::Chip::Tile::Slice::Dac::fastMakeValue(float target){
@@ -62,7 +63,7 @@ float Fabric::Chip::Tile::Slice::Dac::fastMakeValue(float target){
 float Fabric::Chip::Tile::Slice::Dac::fastMakeMedValue(float target,
                                                        float max_error){
 
-  dac_code_t codes_dac = m_codes;
+  dac_state_t codes_dac = this->m_state;
   cutil::calibrate_t calib;
   cutil::initialize(calib);
   cutil::buffer_dac_conns(calib,this);
@@ -90,7 +91,7 @@ float Fabric::Chip::Tile::Slice::Dac::fastMakeMedValue(float target,
   // start out with no code offset
   int delta = 0;
   // store the base code
-  int base_code = this->m_codes.const_code;
+  int base_code = this->m_state.const_code;
   // start off with a terrible measured difference
   float mean = 1e6;
   // adjust the code until we fall within some bound of our
@@ -100,8 +101,8 @@ float Fabric::Chip::Tile::Slice::Dac::fastMakeMedValue(float target,
     if(next_code < 0 || next_code > 255){
       break;
     }
-    this->m_codes.const_code = next_code;
-    update(this->m_codes);
+    this->m_state.const_code = next_code;
+    update(this->m_state);
     mean = util::meas_chip_out(this);
     /*
     sprintf(FMTBUF,"DIFF delta=%d targ=%f meas=%f err=%f max_err=%f suc=%s",
@@ -123,8 +124,8 @@ float Fabric::Chip::Tile::Slice::Dac::fastMakeHighValue(float target,
                                                         float max_error){
   int next_slice = (slice_to_int(parentSlice->sliceId) + 1) % 4;
   Dac * ref_dac = parentSlice->parentTile->slices[next_slice].dac;
-  dac_code_t codes_dac = m_codes;
-  dac_code_t codes_ref = ref_dac->m_codes;
+  dac_state_t codes_dac = this->m_state;
+  dac_state_t codes_ref = ref_dac->m_state;
   cutil::calibrate_t calib;
   cutil::initialize(calib);
   cutil::buffer_dac_conns(calib,this);
@@ -209,7 +210,7 @@ float Fabric::Chip::Tile::Slice::Dac::fastMakeHighValue(float target,
   // start out with no code offset
   int delta = 0;
   // store the base code
-  int base_code = this->m_codes.const_code;
+  int base_code = this->m_state.const_code;
   // start off with a terrible measured difference
   float mean = 1e6;
   // adjust the code until we fall within some bound of our
@@ -219,8 +220,8 @@ float Fabric::Chip::Tile::Slice::Dac::fastMakeHighValue(float target,
     if(next_code < 0 || next_code > 255){
       break;
     }
-    this->m_codes.const_code = next_code;
-    update(this->m_codes);
+    this->m_state.const_code = next_code;
+    update(this->m_state);
     mean = util::meas_fast_chip_out(this);
     /*
     sprintf(FMTBUF,"DIFF delta=%d targ=%f meas=%f err=%f max_err=%f suc=%s",
@@ -241,7 +242,7 @@ float Fabric::Chip::Tile::Slice::Dac::fastMakeHighValue(float target,
 }
 
 float Fabric::Chip::Tile::Slice::Dac::fastMeasureValue(float& variance){
-  if(this->m_codes.range == RANGE_HIGH){
+  if(this->m_state.range == RANGE_HIGH){
     return fastMeasureHighValue(variance);
   }
   else {
@@ -250,7 +251,7 @@ float Fabric::Chip::Tile::Slice::Dac::fastMeasureValue(float& variance){
 }
 
 float Fabric::Chip::Tile::Slice::Dac::fastMeasureMedValue(float& variance){
-  dac_code_t codes_dac = m_codes;
+  dac_state_t codes_dac = this->m_state;
   cutil::calibrate_t calib;
   cutil::initialize(calib);
   cutil::buffer_dac_conns(calib,this);
@@ -313,13 +314,13 @@ float tune_dac_value(Fabric::Chip::Tile::Slice::Dac* dac,
   bool terminate_search;
   meas = util::meas_fast_chip_out(dac);
   do {
-    int code = dac->m_codes.const_code;
+    int code = dac->m_state.const_code;
     terminate_search = update_code(code,step);
     dac->setConstantCode(code);
     meas = util::meas_fast_chip_out(dac);
   } while(fabs(meas) < max_meas && !terminate_search);
 
-  return Fabric::Chip::Tile::Slice::Dac::computeOutput(dac->m_codes);
+  return Fabric::Chip::Tile::Slice::Dac::computeOutput(dac->m_state);
 }
 float find_ref_dac_code(Fabric::Chip::Tile::Slice::Dac* dac,
                         int code, float max_meas){
@@ -344,8 +345,8 @@ float Fabric::Chip::Tile::Slice::Dac::fastMeasureHighValue(float& variance){
 
   int next_slice = (slice_to_int(parentSlice->sliceId) + 1) % 4;
   Dac * ref_dac = parentSlice->parentTile->slices[next_slice].dac;
-  dac_code_t codes_dac = m_codes;
-  dac_code_t codes_ref = ref_dac->m_codes;
+  dac_state_t codes_dac = this->m_state;
+  dac_state_t codes_ref = ref_dac->m_state;
   cutil::calibrate_t calib;
   cutil::initialize(calib);
   cutil::buffer_dac_conns(calib,this);
@@ -379,18 +380,18 @@ float Fabric::Chip::Tile::Slice::Dac::fastMeasureHighValue(float& variance){
   const float max_meas_val = 0.8;
   const float max_ref_dist = 0.8;
   //compute the floating point value from the dac code.
-  int distance = fabs(this->m_codes.const_code-128);
-  if(this->m_codes.const_code < 128)
-    ref_dac->m_codes.const_code = min(128 + distance,255);
+  int distance = fabs(this->m_state.const_code-128);
+  if(this->m_state.const_code < 128)
+    ref_dac->m_state.const_code = min(128 + distance,255);
   else
-    ref_dac->m_codes.const_code = max(128 - distance,0);
+    ref_dac->m_state.const_code = max(128 - distance,0);
 
   float meas = find_ref_dac_code(ref_dac,
-                                 ref_dac->m_codes.const_code,
+                                 ref_dac->m_state.const_code,
                                  max_ref_dist);
 
-  dac_model_t model = ref_dac->dac_model;
-  float ref = ref_dac->m_codes.const_code*model.alpha + model.beta;
+  dac_model_t model = ref_dac->m_dac_model;
+  float ref = ref_dac->m_state.const_code*model.alpha + model.beta;
   float out = meas - ref;
   //sprintf(FMTBUF,"ref=%f meas=%f out=%f", ref,meas,out);
   //print_info(FMTBUF);

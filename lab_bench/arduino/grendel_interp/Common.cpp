@@ -1,6 +1,5 @@
-#include "Circuit.h"
-#include "Common.h"
 #include "AnalogLib.h"
+#include "Common.h"
 #include "Comm.h"
 
 namespace common {
@@ -18,7 +17,7 @@ namespace common {
 
   }
   void disable_block(Fabric* fab, block_loc_t blk){
-    Fabric::Chip::Tile::Slice* slice;
+    Fabric::Chip::Tile::Slice* slice = NULL;
     slice = common::get_slice(fab,blk);
     switch(blk.block){
     case INTEG:
@@ -40,7 +39,7 @@ namespace common {
       error("cannot disable unknown block");
     }
 }
-  Fabric::Chip::Tile::Slice* get_slice(Fabric * fab, block_loc_t& loc){
+  Fabric::Chip::Tile::Slice* get_slice(Fabric * fab, block_loc_t loc){
     if(loc.chip < 0 || loc.chip > 1
          || loc.tile < 0 || loc.tile > 3
          || loc.slice < 0 || loc.slice > 3)
@@ -52,8 +51,8 @@ namespace common {
   }
 
   Fabric::Chip::Tile::Slice::Multiplier* get_mult(Fabric * fab,
-                                                  block_loc_t& loc){
-    Fabric::Chip::Tile::Slice::Multiplier * mult;
+                                                  block_loc_t loc){
+    Fabric::Chip::Tile::Slice::Multiplier * mult = NULL;
     Fabric::Chip::Tile::Slice * slice = get_slice(fab,loc);
     switch(loc.idx){
     case 0:
@@ -70,8 +69,8 @@ namespace common {
   }
 
   Fabric::Chip::Tile::Slice::Fanout* get_fanout(Fabric * fab,
-                                                block_loc_t& loc){
-    Fabric::Chip::Tile::Slice::Fanout * fanout;
+                                                block_loc_t loc){
+    Fabric::Chip::Tile::Slice::Fanout * fanout = NULL;
     Fabric::Chip::Tile::Slice * slice = get_slice(fab,loc);
     switch(loc.idx){
     case 0:

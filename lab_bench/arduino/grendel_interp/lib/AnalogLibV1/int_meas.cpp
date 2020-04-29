@@ -6,28 +6,27 @@
 
 profile_t Fabric::Chip::Tile::Slice::Integrator::measure(profile_spec_t spec){
 
-  integ_code_t codes_integ = m_codes;
-  m_codes = spec.codes.integ;
+  integ_state_t state_integ = this->m_state;
+  this->m_state= spec.state.integ;
   switch(spec.type){
   case INTEG_INITIAL_COND:
-    return measureInitialCond();
+    return measureInitialCond(spec);
   case INTEG_DERIVATIVE_STABLE:
-    return measureClosedLoopCircuit();
-  case INTEG_DERIVATIVE_TC:
-    return measureOpenLoopCircuit(OPENLOOP_TC);
+    return measureClosedLoopCircuit(spec);
+  case INTEG_DERIVATIVE_GAIN:
   case INTEG_DERIVATIVE_BIAS:
-    return measureOpenLoopCircuit(OPENLOOP_BIAS);
+    return measureOpenLoopCircuit(spec);
   default:
     error("integrator.measure : unknown mode");
   }
-  m_codes = codes_integ;
+  this->m_state = state_integ;
 }
 
-profile_t Fabric::Chip::Tile::Slice::Integrator::measureClosedLoopCircuit(){
+profile_t Fabric::Chip::Tile::Slice::Integrator::measureClosedLoopCircuit(profile_spec_t spec){
   Fabric::Chip::Tile::Slice::Fanout * fan = &this->parentSlice->fans[0];
 
-  fanout_code_t codes_fan = fan->m_codes;
-  integ_code_t codes_integ = m_codes;
+  fanout_state_t state_fan = fan->m_state;
+  integ_state_t state_integ = this->m_state;
 
   cutil::calibrate_t calib;
   cutil::initialize(calib);
@@ -69,16 +68,10 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measureClosedLoopCircuit(){
   tileout_to_chipout.setConn();
 
   float mean, variance;
-  float in1 = 0.0;
-  int mode = 1;
   util::meas_steady_chip_out(this,mean,variance);
 
-  profile_t result = prof::make_profile(out0Id,
-                                        mode,
-                                        target,
-                                        target,
-                                        in1,
-                                        mean-target,
+  profile_t result = prof::make_profile(spec,
+                                        mean, 
                                         variance);
 
   conn_out_to_fan.brkConn();
@@ -86,19 +79,19 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measureClosedLoopCircuit(){
   conn_fan1_to_tileout.brkConn();
   tileout_to_chipout.brkConn();
   cutil::restore_conns(calib);
-  fan->update(codes_fan);
-  update(codes_integ);
+  fan->update(state_fan);
+  update(state_integ);
   return result;
 }
 
 
 
-profile_t Fabric::Chip::Tile::Slice::Integrator::measureOpenLoopCircuit(open_loop_prop_t prop){
+profile_t Fabric::Chip::Tile::Slice::Integrator::measureOpenLoopCircuit(profile_spec_t spec){
   Dac * val_dac = parentSlice->dac;
 
   //save state
-  integ_code_t codes_integ = m_codes;
-  dac_code_t codes_val_dac = val_dac->m_codes;
+  integ_state_t state_integ = m_state;
+  dac_state_t state_val_dac = val_dac->m_state;
   cutil::calibrate_t calib;
   cutil::initialize(calib);
   cutil::buffer_integ_conns(calib,this);
@@ -108,9 +101,8 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measureOpenLoopCircuit(open_loo
                               ->parentChip->tiles[3].slices[2].chipOutput);
   cutil::break_conns(calib);
   float target_tc = Fabric::Chip::Tile::Slice
-    ::Integrator::computeTimeConstant(this->m_codes);
+    ::Integrator::computeTimeConstant(this->m_state);
   // configure value DAC
-  float dummy;
 
   float input = 0.0;
   if(target_tc > 1.5*NOMINAL_TIME_CONSTANT){
@@ -121,7 +113,7 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measureOpenLoopCircuit(open_loo
     this->setInitial(0.0);
     input = val_dac->fastMakeValue(0.20);
   }
-  float expected = val_dac->computeOutput(val_dac->m_codes);
+  float expected = val_dac->computeOutput(val_dac->m_state);
   sprintf(FMTBUF,"open-loop input=%f expected=%f",input,expected);
   print_info(FMTBUF);
 
@@ -155,47 +147,38 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measureOpenLoopCircuit(open_loo
                                                         nom_times,nom_values,
                                                         k_times,k_values);
 
-  float in1 = 0.0;
-  int mode;
   profile_t result;
-  switch(prop){
-  case OPENLOOP_TC:
-    mode = 2;
-    result = prof::make_profile(out0Id,
-                                mode,
-                                target_tc,
-                                input,
-                                in1,
-                                tc_stats.tc - target_tc,
-                                tc_stats.R2_k);
+  switch(spec.type){
+  case INTEG_DERIVATIVE_GAIN:
+    result = prof::make_profile(spec,
+                                tc_stats.tc,
+                                sqrt(tc_stats.R2_k));
     break;
-  case OPENLOOP_BIAS:
-    mode = 3;
-    result = prof::make_profile(out0Id,
-                                mode,
-                                0.0,
-                                0.0,
-                                in1,
+  case INTEG_DERIVATIVE_BIAS:
+    result = prof::make_profile(spec,
                                 tc_stats.eps,
                                 tc_stats.R2_eps);
+    break;
+  default:
+    error("unexpected profile-spec type");
     break;
   }
 
 
   conn_out_to_tile.brkConn();
   tileout_to_chipout.brkConn();
-  val_dac->update(codes_val_dac);
+  val_dac->update(state_val_dac);
   cutil::restore_conns(calib);
-  val_dac->update(codes_val_dac);
-  update(codes_integ);
+  val_dac->update(state_val_dac);
+  update(state_integ);
   return result;
 }
-profile_t Fabric::Chip::Tile::Slice::Integrator::measureInitialCond(){
+profile_t Fabric::Chip::Tile::Slice::Integrator::measureInitialCond(profile_spec_t spec){
   Dac * ref_dac = parentSlice->dac;
   //back up codes
 
-  integ_code_t codes_integ = m_codes;
-  dac_code_t codes_ref_dac = ref_dac->m_codes;
+  integ_state_t state_integ = this->m_state;
+  dac_state_t state_ref_dac = ref_dac->m_state;
 
   cutil::calibrate_t calib;
   cutil::initialize(calib);
@@ -220,7 +203,7 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measureInitialCond(){
 	tile_to_chip.setConn();
 
   //setInitial(input);
-  float target = this->computeInitCond(m_codes);
+  float target = this->computeInitCond(m_state);
   float mean,variance;
   bool measure_steady=false;
   calib.success &= cutil::measure_signal_robust(this,
@@ -229,25 +212,18 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measureInitialCond(){
                                                 measure_steady,
                                                 mean,
                                                 variance);
-  int mode = 0;
-  float in1 = 0.0;
-  float bias = (mean-target);
-  profile_t prof = prof::make_profile(out0Id,
-                                      mode,
-                                      target,
-                                      input,
-                                      in1,
-                                      bias,
+  profile_t prof = prof::make_profile(spec,
+                                      mean,
                                       variance);
   if(!calib.success){
-    prof.mode = 255;
+    prof.status = FAILED_TO_CALIBRATE;
   }
   ref_to_tile.brkConn();
   integ_to_tile.brkConn();
 	tile_to_chip.brkConn();
   cutil::restore_conns(calib);
-  ref_dac->update(codes_ref_dac);
-  update(codes_integ);
+  ref_dac->update(state_ref_dac);
+  update(state_integ);
   return prof;
 }
 

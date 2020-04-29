@@ -7,12 +7,12 @@
 
 
 profile_t Fabric::Chip::Tile::Slice::ChipAdc::measure(profile_spec_t spec){
-  update(m_codes);
+  update(this->m_state);
 
   Fabric::Chip::Tile::Slice::Dac * val_dac = parentSlice->dac;
   Fabric* fab = parentSlice->parentTile->parentChip->parentFabric;
-  adc_code_t codes_self= m_codes;
-  dac_code_t codes_dac = val_dac->m_codes;
+  adc_state_t codes_self= this->m_state;
+  dac_state_t codes_dac = val_dac->m_state;
 
   cutil::calibrate_t calib;
   cutil::initialize(calib);

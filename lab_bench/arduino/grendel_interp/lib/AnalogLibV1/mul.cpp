@@ -4,24 +4,24 @@
 #include "calib_util.h"
 #include <float.h>
 
-void Fabric::Chip::Tile::Slice::Multiplier::update(mult_code_t codes){
-  m_codes = codes;
+void Fabric::Chip::Tile::Slice::Multiplier::update(mult_state_t codes){
+  this->m_state = codes;
   updateFu();
 }
 
 
-float Fabric::Chip::Tile::Slice::Multiplier::computeOutput(mult_code_t& m_codes,
+float Fabric::Chip::Tile::Slice::Multiplier::computeOutput(mult_state_t& codes,
                                                            float in0,
                                                            float in1){
-  float gain = (m_codes.gain_code-128.0)/128.0;
-  float rng = util::range_to_coeff(m_codes.range[out0Id]);
-  rng *= 1.0/util::range_to_coeff(m_codes.range[in0Id]);
+  float gain = (codes.gain_code-128.0)/128.0;
+  float rng = util::range_to_coeff(codes.range[out0Id]);
+  rng *= 1.0/util::range_to_coeff(codes.range[in0Id]);
 
-  if(m_codes.vga){
+  if(codes.vga){
     return gain*rng*in0;
   }
   else{
-    rng *= 1.0/util::range_to_coeff(m_codes.range[in1Id]);
+    rng *= 1.0/util::range_to_coeff(codes.range[in1Id]);
     return rng*in0*in1;
   }
 }
@@ -30,7 +30,7 @@ float Fabric::Chip::Tile::Slice::Multiplier::computeOutput(mult_code_t& m_codes,
 void Fabric::Chip::Tile::Slice::Multiplier::setEnable (
 	bool enable
 ) {
-	m_codes.enable = enable;
+	this->m_state.enable = enable;
 	setParam0 ();
 	/*establish calibration codes*/
 	setParam1 ();
@@ -42,7 +42,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::setEnable (
 void Fabric::Chip::Tile::Slice::Multiplier::setVga (
 	bool vga // constant coefficient multiplier mode
 ) {
-	m_codes.vga = vga;
+	this->m_state.vga = vga;
 	setParam1 ();
 }
 
@@ -52,7 +52,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::setGainCode (
 	// Serial.println("setGainCode");
 	// Serial.println(gainCode);
 	setVga (true);
-	m_codes.gain_code = gainCode;
+	this->m_state.gain_code = gainCode;
 	setParam2 ();
 }
 
@@ -73,7 +73,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::setRange (ifc port,
   if(!(port == in0Id || port == in1Id || port == out0Id)){
     error("unsupported range");
   }
-  m_codes.range[port] = range;
+  this->m_state.range[port] = range;
 	setParam0 ();
 	setParam3 ();
 	setParam4 ();
@@ -81,18 +81,18 @@ void Fabric::Chip::Tile::Slice::Multiplier::setRange (ifc port,
 }
 
 void Fabric::Chip::Tile::Slice::Multiplier::defaults () {
-  m_codes.pmos = 3;
-  m_codes.nmos = 0;
-  m_codes.vga = false;
-  m_codes.gain_code = 128;
-  m_codes.gain_cal = 0;
-  m_codes.range[in0Id] = RANGE_MED;
-  m_codes.range[in1Id] = RANGE_MED;
-  m_codes.range[out0Id] = RANGE_MED;
-  m_codes.port_cal[in0Id] = 31;
-  m_codes.port_cal[in1Id] = 31;
-  m_codes.port_cal[out0Id] = 31;
-  m_codes.enable = false;
+  this->m_state.pmos = 3;
+  this->m_state.nmos = 0;
+  this->m_state.vga = false;
+  this->m_state.gain_code = 128;
+  this->m_state.gain_cal = 0;
+  this->m_state.range[in0Id] = RANGE_MED;
+  this->m_state.range[in1Id] = RANGE_MED;
+  this->m_state.range[out0Id] = RANGE_MED;
+  this->m_state.port_cal[in0Id] = 31;
+  this->m_state.port_cal[in1Id] = 31;
+  this->m_state.port_cal[out0Id] = 31;
+  this->m_state.enable = false;
   setAnaIrefNmos();
 	setAnaIrefPmos();
 }
@@ -125,33 +125,33 @@ mulRange range_to_mulRange(range_t rng){
 /*Set enable, input 1 range, input 2 range, output range*/
 void Fabric::Chip::Tile::Slice::Multiplier::setParam0 () const {
 	unsigned char cfgTile = 0;
-	cfgTile += m_codes.enable ? 1<<7 : 0;
-	cfgTile += (range_to_mulRange(m_codes.range[in0Id]))<<4;
-	cfgTile += (range_to_mulRange(m_codes.range[in1Id]))<<2;
-	cfgTile += (range_to_mulRange(m_codes.range[out0Id]))<<0;
+	cfgTile += this->m_state.enable ? 1<<7 : 0;
+	cfgTile += (range_to_mulRange(this->m_state.range[in0Id]))<<4;
+	cfgTile += (range_to_mulRange(this->m_state.range[in1Id]))<<2;
+	cfgTile += (range_to_mulRange(this->m_state.range[out0Id]))<<0;
 	setParamHelper (0, cfgTile);
 }
 
 /*Set calDac, enable variable gain amplifer mode*/
 void Fabric::Chip::Tile::Slice::Multiplier::setParam1 () const {
-  unsigned char negGainCalCode = m_codes.gain_cal;
+  unsigned char negGainCalCode = this->m_state.gain_cal;
 	if (negGainCalCode<0||63<negGainCalCode) error ("midNegGainCode out of bounds");
 	unsigned char cfgTile = 0;
 	cfgTile += negGainCalCode<<2;
-	cfgTile += m_codes.vga ? 1<<1 : 0;
+	cfgTile += this->m_state.vga ? 1<<1 : 0;
 	setParamHelper (1, cfgTile);
 }
 
 /*Set gain if VGA mode*/
 void Fabric::Chip::Tile::Slice::Multiplier::setParam2 () const {
-  unsigned char gainCode = m_codes.gain_code;
+  unsigned char gainCode = this->m_state.gain_code;
 	if (gainCode<0||255<gainCode) error ("gain out of bounds");
 	setParamHelper (2, gainCode);
 }
 
 /*Set calOutOs*/
 void Fabric::Chip::Tile::Slice::Multiplier::setParam3 () const {
-  unsigned char calOutOs = m_codes.port_cal[out0Id];
+  unsigned char calOutOs = this->m_state.port_cal[out0Id];
 	if (calOutOs<0||63<calOutOs) error ("calOutOs out of bounds");
 	unsigned char cfgTile = calOutOs<<2;
 	setParamHelper (3, cfgTile);
@@ -159,7 +159,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::setParam3 () const {
 
 /*Set calInOs1*/
 void Fabric::Chip::Tile::Slice::Multiplier::setParam4 () const {
-  unsigned char calInOs1 = m_codes.port_cal[in0Id];
+  unsigned char calInOs1 = this->m_state.port_cal[in0Id];
 	if (calInOs1<0||63<calInOs1) error ("calInOs1 out of bounds");
 	unsigned char cfgTile = calInOs1<<2;
 	setParamHelper (4, cfgTile);
@@ -167,7 +167,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::setParam4 () const {
 
 /*Set calInOs2*/
 void Fabric::Chip::Tile::Slice::Multiplier::setParam5 () const {
-  unsigned char calInOs2 = m_codes.port_cal[in1Id];
+  unsigned char calInOs2 = this->m_state.port_cal[in1Id];
 	if (calInOs2<0||63<calInOs2) error ("calInOs2 out of bounds");
 	unsigned char cfgTile = calInOs2<<2;
 	setParamHelper (5, cfgTile);
@@ -216,7 +216,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::setAnaIrefNmos () const {
 	unsigned char selRow;
 	unsigned char selCol;
 	unsigned char selLine;
-  util::test_iref(m_codes.nmos);
+  util::test_iref(this->m_state.nmos);
 	switch (unitId) {
 		case unitMulL: switch (parentSlice->sliceId) {
 			case slice0: selRow=1; selCol=2; selLine=1; break;
@@ -237,17 +237,17 @@ void Fabric::Chip::Tile::Slice::Multiplier::setAnaIrefNmos () const {
 	unsigned char cfgTile = endian(parentSlice->parentTile->parentChip->cfgBuf[parentSlice->parentTile->tileRowId][parentSlice->parentTile->tileColId][selRow][selCol][selLine]);
 	switch (unitId) {
 		case unitMulL: switch (parentSlice->sliceId) {
-			case slice0: cfgTile = (cfgTile & 0b00000111) + ((m_codes.nmos<<3) & 0b00111000); break;
-			case slice1: cfgTile = (cfgTile & 0b00111000) + (m_codes.nmos & 0b00000111); break;
-			case slice2: cfgTile = (cfgTile & 0b00000111) + ((m_codes.nmos<<3) & 0b00111000); break;
-			case slice3: cfgTile = (cfgTile & 0b00111000) + (m_codes.nmos & 0b00000111); break;
+			case slice0: cfgTile = (cfgTile & 0b00000111) + ((this->m_state.nmos<<3) & 0b00111000); break;
+			case slice1: cfgTile = (cfgTile & 0b00111000) + (this->m_state.nmos & 0b00000111); break;
+			case slice2: cfgTile = (cfgTile & 0b00000111) + ((this->m_state.nmos<<3) & 0b00111000); break;
+			case slice3: cfgTile = (cfgTile & 0b00111000) + (this->m_state.nmos & 0b00000111); break;
 			default: error ("MUL invalid slice"); break;
 		} break;
 		case unitMulR: switch (parentSlice->sliceId) {
-			case slice0: cfgTile = (cfgTile & 0b00111000) + (m_codes.nmos & 0b00000111); break;
-			case slice1: cfgTile = (cfgTile & 0b00111000) + (m_codes.nmos & 0b00000111); break;
-			case slice2: cfgTile = (cfgTile & 0b00111000) + (m_codes.nmos & 0b00000111); break;
-			case slice3: cfgTile = (cfgTile & 0b00111000) + (m_codes.nmos & 0b00000111); break;
+			case slice0: cfgTile = (cfgTile & 0b00111000) + (this->m_state.nmos & 0b00000111); break;
+			case slice1: cfgTile = (cfgTile & 0b00111000) + (this->m_state.nmos & 0b00000111); break;
+			case slice2: cfgTile = (cfgTile & 0b00111000) + (this->m_state.nmos & 0b00000111); break;
+			case slice3: cfgTile = (cfgTile & 0b00111000) + (this->m_state.nmos & 0b00000111); break;
 			default: error ("MUL invalid slice"); break;
 		} break;
 		default: error ("MUL invalid unitId"); break;
@@ -269,11 +269,11 @@ void Fabric::Chip::Tile::Slice::Multiplier::setAnaIrefNmos () const {
 
 void Fabric::Chip::Tile::Slice::Multiplier::setAnaIrefPmos () const {
 
-	unsigned char setting=7-m_codes.pmos; // because pmos setting has opposite effect on gain
+	unsigned char setting=7-this->m_state.pmos; // because pmos setting has opposite effect on gain
 	unsigned char selRow=0;
 	unsigned char selCol=4;
 	unsigned char selLine;
-  util::test_iref(m_codes.pmos);
+  util::test_iref(this->m_state.pmos);
 	switch (unitId) {
 		case unitMulL: switch (parentSlice->sliceId) {
 			case slice0: selLine=2; break;

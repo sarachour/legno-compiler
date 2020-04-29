@@ -16,11 +16,11 @@ namespace calibrate {
 
   void get_codes(Fabric * fab,
                  block_loc_t loc,
-                 block_code_t& buf);
+                 block_state_t& buf);
 
   void set_codes(Fabric * fab,
                  block_loc_t loc,
-                 block_code_t& buf);
+                 block_state_t& buf);
 
 }
 

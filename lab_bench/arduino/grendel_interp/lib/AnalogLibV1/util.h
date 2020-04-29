@@ -1,6 +1,8 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+#include "AnalogLib.h"
+
 typedef enum {
               MEAS_CHIP_OUTPUT,
               MEAS_CHIP_OUTPUT_DIST,

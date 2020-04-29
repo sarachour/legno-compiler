@@ -36,7 +36,7 @@ void write_struct_bytes(const char * bytes, unsigned int n){
 void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
   cmd_write_lut_t wrlutd;
   cmd_connect_t connd;
-  block_code_t state;
+  block_state_t state;
   profile_t result;
   uint8_t byteval;
   char buf[32];

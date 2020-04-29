@@ -13,9 +13,9 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measure(profile_spec_t spec) {
   cutil::calibrate_t calib;
   cutil::initialize(calib);
 
-  fanout_code_t codes_fan = m_codes;
-  dac_code_t codes_val_dac = val_dac->m_codes;
-  dac_code_t codes_ref_dac = ref_dac->m_codes;
+  fanout_state_t codes_fan = this->m_state;
+  dac_state_t codes_val_dac = val_dac->m_state;
+  dac_state_t codes_ref_dac = ref_dac->m_state;
 
   cutil::buffer_fanout_conns(calib,this);
   cutil::buffer_dac_conns(calib,ref_dac);
@@ -53,13 +53,13 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measure(profile_spec_t spec) {
   // apply profiling state
 
 
-  this->m_codes = spec.code.fanout;
-  float in_target = Dac::computeOutput(val_dac->m_codes);
+  this->m_state= spec.state.fanout;
+  float in_target = Dac::computeOutput(val_dac->m_state);
 
   val_dac->setEnable(true);
   val_dac->setInv(false);
   spec.inputs[in0Id] = val_dac->fastMakeValue(spec.inputs[in0Id]);
-  float out_target = Fabric::Chip::Tile::Slice::Fanout::computeOutput(this->m_codes,
+  float out_target = Fabric::Chip::Tile::Slice::Fanout::computeOutput(this->m_state,
                                                                 spec.output,
                                                                 spec.inputs[in0Id]);
   dac_to_fan.setConn();

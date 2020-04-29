@@ -1,12 +1,12 @@
 #include "AnalogLib.h"
 
-void Fabric::Chip::Tile::Slice::LookupTable::update(lut_code_t codes){
-  m_codes = codes;
-  setSource(m_codes.source);
+void Fabric::Chip::Tile::Slice::LookupTable::update(lut_state_t state){
+  this->m_state = state;
+  setSource(m_state.source);
 }
 
 void Fabric::Chip::Tile::Slice::LookupTable::defaults(){
-  m_codes.source = LSRC_ADC0;
+  this->m_state.source = LSRC_ADC0;
 }
 Fabric::Chip::Tile::Slice::LookupTable::LookupTable (Slice * parentSlice) :
   FunctionUnit(parentSlice, unitLut),
@@ -32,7 +32,7 @@ void Fabric::Chip::Tile::Slice::LookupTable::setSource (lut_source_t src) {
 		external ? extLut : ( adc0 ? adcL : adcR ) /*input signal selection*/
 	);
 	/*record*/
-  m_codes.source = src;
+  this->m_state.source = src;
 }
 
 /*Put LUT in writing mode. never invoke this directly.*/

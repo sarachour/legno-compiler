@@ -1,4 +1,3 @@
-
 #include "Arduino.h"
 
 #ifndef ANALOG_LIB1_API_H
@@ -33,55 +32,17 @@ void tally_dyn_mem(
 	// Serial.println(name);
 }
 
-static void print_log (const char * message) {
-  // trap for printing error
-  if(LEVEL >= LOG_LEVEL){
-    Serial.print("AC:>[msg] ");
-    Serial.println(message);
-    Serial.flush();
-  }
-}
-static void print_info (const char * message) {
-  // trap for printing error
-  if(LEVEL >= INFO_LEVEL){
-    Serial.print("AC:>[msg] ");
-    Serial.println(message);
-    Serial.flush();
-  }
-}
-static void print_debug (const char * message) {
-  // trap for printing error
-  if(LEVEL >= DEBUG_LEVEL){
-    Serial.print("AC:>[msg] ");
-    Serial.println(message);
-    Serial.flush();
-  }
-}
-
-static void print_level(const char * message, int level){
-  switch(level){
-  case LOG_LEVEL: print_log(message); break;
-  case DEBUG_LEVEL: print_debug(message); break;
-  case INFO_LEVEL: print_info(message); break;
-  }
-}
-static void error (
-                   const char * message
-                   ) {
-  // trap for printing error
-  Serial.print("AC:>[msg] ERROR: ");
-  Serial.println(message);
-  Serial.flush();
-  //close serial connection.
-  Serial.end();
-  while(true){
-    delay(1000);
-  }
-}
 
 #define SAMPLES 200
 #define FAST_SAMPLES 20
 // how much to delay before measurement and how many times to measure
+
+void print_log (const char * message);
+void print_info (const char * message);
+void print_debug (const char * message);
+void error (const char * message);
+void print_level(const char * message, int level);
+
 #endif
 
 #ifndef _PIN

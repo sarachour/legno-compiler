@@ -9,21 +9,21 @@
 
 profile_t Fabric::Chip::Tile::Slice::Dac::measure(profile_spec_t spec)
 {
-  if(!m_codes.enable){
+  if(!this->m_state.enable){
     profile_t dummy;
     print_log("DAC not enabled");
     return dummy;
   }
-  float scf = util::range_to_coeff(m_codes.range);
+  float scf = util::range_to_coeff(this->m_state.range);
   cutil::calibrate_t calib;
   cutil::initialize(calib);
 
   int next_slice = (slice_to_int(parentSlice->sliceId) + 1) % 4;
-  dac_code_t codes_dac = m_codes;
-  m_codes = spec.code.dac;
-  m_codes.source = DSRC_MEM;
+  dac_state_t codes_dac = this->m_state;
+  this->m_state = spec.state.dac;
+  this->m_state.source = DSRC_MEM;
   //setConstant(in);
-  update(m_codes);
+  update(this->m_state);
 
   cutil::buffer_dac_conns(calib,this);
   cutil::buffer_tileout_conns(calib,&parentSlice->tileOuts[3]);
@@ -38,7 +38,7 @@ profile_t Fabric::Chip::Tile::Slice::Dac::measure(profile_spec_t spec)
 
   dac_to_tile.setConn();
 	tile_to_chip.setConn();
-  this->m_codes = spec.code.dac;
+  this->m_state = spec.state.dac;
   float mean,variance;
   mean = this->fastMeasureValue(variance);
   sprintf(FMTBUF,"PARS mean=%f variance=%f",

@@ -44,7 +44,7 @@ class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::Functio
 			float constant // floating point representation of desired constant
 			// -10.0 to 10.0 are valid
 		);
-    void update(dac_code_t codes);
+    void update(dac_state_t codes);
 		void setInv (bool inverse ); // whether output is negated
     //measurement function
     profile_t measure(profile_spec_t);
@@ -56,12 +56,12 @@ class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::Functio
     void fastMakeDacModel();
     void defaults();
 
-    static float computeOutput(dac_code_t& codes);
-    static float computeInput(dac_code_t& codes,float output);
-    dac_code_t m_codes;
-    dac_code_t calib_codes;
-    dac_model_t dac_model;
-    bool calibrated;
+    static float computeOutput(dac_state_t& codes);
+    static float computeInput(dac_state_t& codes,float output);
+    dac_state_t m_state;
+    dac_state_t m_calib_state;
+    dac_model_t m_dac_model;
+    bool m_is_calibrated;
 	private:
     //fast calibration utility
     float calibrateMinError();

@@ -12,16 +12,16 @@ namespace oscgen {
     env.tile = &fu->parentSlice->tileOuts[3];
     env.chip = fu->parentSlice->parentTile->parentChip
       ->tiles[3].slices[2].chipOutput;
-    env.fan_state = env.fan->m_codes;
-    env.integ0_state = env.integ0->m_codes;
-    env.integ1_state = env.integ1->m_codes;
+    env.fan_state = env.fan->m_state;
+    env.integ0_state = env.integ0->m_state;
+    env.integ1_state = env.integ1->m_state;
     env.configured = false;
     return env;
   }
 
   void restore(osc_env_t& env){
-    env.integ0->m_codes = env.integ0_state;
-    env.integ1->m_codes = env.integ1_state;
+    env.integ0->m_state = env.integ0_state;
+    env.integ1->m_state = env.integ1_state;
   }
   void backup(cutil::calibrate_t& calib, osc_env_t& env){
     cutil::buffer_fanout_conns(calib,env.fan);
@@ -29,25 +29,25 @@ namespace oscgen {
     cutil::buffer_integ_conns(calib,env.integ1);
     cutil::buffer_tileout_conns(calib,env.tile);
     cutil::buffer_chipout_conns(calib,env.chip);
-    env.fan_state = env.fan->m_codes;
-    env.integ0_state = env.integ0->m_codes;
-    env.integ1_state = env.integ1->m_codes;
+    env.fan_state = env.fan->m_state;
+    env.integ0_state = env.integ0->m_state;
+    env.integ1_state = env.integ1->m_state;
   }
 
   void make_oscillator(osc_env_t& env){
     env.integ0->setRange(in0Id,RANGE_MED);
     env.integ0->setRange(out0Id,RANGE_MED);
     env.integ0->setInitial(0.0);
-    env.integ0->m_codes.nmos = 7;
-    env.integ0->m_codes.gain_cal = 63;
-    env.integ0->update(env.integ1->m_codes);
+    env.integ0->m_state.nmos = 7;
+    env.integ0->m_state.gain_cal = 63;
+    env.integ0->update(env.integ1->m_state);
 
     env.integ1->setRange(in0Id,RANGE_MED);
     env.integ1->setRange(out0Id,RANGE_MED);
     env.integ1->setInitial(0.5);
-    env.integ1->m_codes.nmos = 7;
-    env.integ1->m_codes.gain_cal = 63;
-    env.integ1->update(env.integ1->m_codes);
+    env.integ1->m_state.nmos = 7;
+    env.integ1->m_state.gain_cal = 63;
+    env.integ1->update(env.integ1->m_state);
 
     env.fan->setRange(RANGE_MED);
     env.fan->setInv(out0Id,true);

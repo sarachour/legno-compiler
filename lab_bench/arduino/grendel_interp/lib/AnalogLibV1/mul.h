@@ -18,12 +18,13 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
 		);
 
 		void setRange (ifc port, range_t range);
-    mult_code_t m_codes;
-    void update(mult_code_t codes);
+    void update(mult_state_t codes);
     void defaults();
-    static float computeOutput(mult_code_t& m_codes, float in0, float in1);
+    static float computeOutput(mult_state_t& m_codes, float in0, float in1);
     void calibrate (calib_objective_t obj);
     profile_t measure(profile_spec_t spec);
+
+    mult_state_t m_state;
 	private:
     profile_t measureVga(profile_spec_t spec);
     profile_t measureOscVga(profile_spec_t spec);

@@ -39,9 +39,10 @@ namespace calibrate {
     }
     return macro_obj;
   }
+
+
   profile_t measure(Fabric* fab,
-                    block_loc_t loc,
-                    profile_spec_t spec)
+                    profile_spec_t& spec)
   {
     Fabric::Chip::Tile::Slice::Fanout * fanout;
     Fabric::Chip::Tile::Slice::Multiplier * mult;
@@ -49,30 +50,30 @@ namespace calibrate {
     Fabric::Chip::Tile::Slice::Dac * dac;
     Fabric::Chip::Tile::Slice::Integrator * integ;
     //Fabric::Chip::Tile::Slice::LookupTable * lut;
-    switch(loc.block){
+    switch(spec.inst.block){
     case block_type_t::FANOUT:
-      fanout = common::get_fanout(fab,loc);
+      fanout = common::get_fanout(fab,spec.inst);
       return fanout->measure(spec);
       break;
 
     case block_type_t::MULT:
       // TODO: indicate if input or output.
-      mult = common::get_mult(fab,loc);
+      mult = common::get_mult(fab,spec.inst);
       return mult->measure(spec);
       break;
 
     case block_type_t::TILE_ADC:
-      adc = common::get_slice(fab,loc)->adc;
+      adc = common::get_slice(fab,spec.inst)->adc;
       return adc->measure(spec);
       break;
 
     case block_type_t::TILE_DAC:
-      dac = common::get_slice(fab,loc)->dac;
+      dac = common::get_slice(fab,spec.inst)->dac;
       return dac->measure(spec);
       break;
 
     case block_type_t::INTEG:
-      integ = common::get_slice(fab,loc)->integrator;
+      integ = common::get_slice(fab,spec.inst)->integrator;
       return integ->measure(spec);
       break;
 
@@ -133,7 +134,7 @@ namespace calibrate {
 
   void set_codes(Fabric* fab,
                  block_loc_t loc,
-                 block_code_t& state)
+                 block_state_t& state)
   {
     Fabric::Chip::Tile::Slice::Fanout * fanout;
     Fabric::Chip::Tile::Slice::Multiplier * mult;
@@ -176,7 +177,7 @@ namespace calibrate {
   }
   void get_codes(Fabric* fab,
                  block_loc_t loc,
-                 block_code_t& state)
+                 block_state_t& state)
   {
     Fabric::Chip::Tile::Slice::Fanout * fanout;
     Fabric::Chip::Tile::Slice::Multiplier * mult;
@@ -189,28 +190,28 @@ namespace calibrate {
       {
       case block_type_t::FANOUT:
         fanout = common::get_fanout(fab,loc);
-        state.fanout = fanout->m_codes;
+        state.fanout = fanout->m_state;
         break;
       case block_type_t::MULT:
         // TODO: indicate if input or output.
         mult = common::get_mult(fab,loc);
-        state.mult = mult->m_codes;
+        state.mult = mult->m_state;
         break;
       case block_type_t::TILE_ADC:
         adc = common::get_slice(fab,loc)->adc;
-        state.adc = adc->m_codes;
+        state.adc = adc->m_state;
         break;
       case block_type_t::LUT:
         lut = common::get_slice(fab,loc)->lut;
-        state.lut = lut->m_codes;
+        state.lut = lut->m_state;
         break;
       case block_type_t::TILE_DAC:
         dac = common::get_slice(fab,loc)->dac;
-        state.dac = dac->m_codes;
+        state.dac = dac->m_state;
         break;
       case block_type_t::INTEG:
         integ = common::get_slice(fab,loc)->integrator;
-        state.integ = integ->m_codes;
+        state.integ = integ->m_state;
         break;
       default:
         comm::error("get_offset_code: unexpected block");
