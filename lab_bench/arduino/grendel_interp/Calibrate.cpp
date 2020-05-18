@@ -132,7 +132,7 @@ namespace calibrate {
     }
   }
 
-  void set_codes(Fabric* fab,
+  void set_state(Fabric* fab,
                  block_loc_t loc,
                  block_state_t& state)
   {
@@ -172,10 +172,10 @@ namespace calibrate {
         integ->update(state.integ);
         break;
       default:
-        comm::error("set_codes: unimplemented block");
+        comm::error("set_state: unimplemented block");
       }
   }
-  void get_codes(Fabric* fab,
+  void get_state(Fabric* fab,
                  block_loc_t loc,
                  block_state_t& state)
   {
@@ -214,7 +214,7 @@ namespace calibrate {
         state.integ = integ->m_state;
         break;
       default:
-        comm::error("get_offset_code: unexpected block");
+        comm::error("get_state: unexpected block");
       }
   }
 }

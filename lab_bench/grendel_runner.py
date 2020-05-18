@@ -22,7 +22,6 @@ class GrendelRunner:
   def execute(self,cmd):
     self.due.write_bytes(cmd)
     self.due.write_newline()
-    pass
 
   def send_data(self,data,chunksize=4):
     pass

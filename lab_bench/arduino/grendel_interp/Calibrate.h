@@ -14,11 +14,11 @@ namespace calibrate {
                  calib_objective_t obj);
 
 
-  void get_codes(Fabric * fab,
+  void get_state(Fabric * fab,
                  block_loc_t loc,
                  block_state_t& buf);
 
-  void set_codes(Fabric * fab,
+  void set_state(Fabric * fab,
                  block_loc_t loc,
                  block_state_t& buf);
 

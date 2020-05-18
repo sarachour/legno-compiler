@@ -55,7 +55,7 @@ void response(const char * msg,int args){
 void error(const char * msg){
   while(1){
      header();
-     Serial.print("[msg] ERROR");
+     Serial.print("[msg] ERROR : ");
      Serial.println(msg);
      Serial.flush();
      delay(100);

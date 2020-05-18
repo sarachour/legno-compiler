@@ -5,6 +5,7 @@
 
 extern size_t dynamic_memory;
 
+#define EMULATE
 
 
 #define MAX_NMOS 8

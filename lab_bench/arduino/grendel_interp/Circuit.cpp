@@ -96,7 +96,7 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
                          cmd.data.calib.inst,
                          cmd.data.calib.calib_obj);
     print_log("getting codes...");
-    calibrate::get_codes(fab,
+    calibrate::get_state(fab,
                          cmd.data.calib.inst,
                          state);
     print_log("done");
@@ -105,14 +105,14 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
     break;
 
   case cmd_type_t::GET_STATE:
-    calibrate::get_codes(fab,
+    calibrate::get_state(fab,
                          cmd.data.get_state.inst,
                          state);
     comm::response("returning codes",1);
     write_struct_bytes((const char *) &state, sizeof(state));
     break;
   case cmd_type_t::SET_STATE:
-    calibrate::set_codes(fab,
+    calibrate::set_state(fab,
                          cmd.data.set_state.inst,
                          cmd.data.set_state.state);
     comm::response("set codes",0);

@@ -18,21 +18,15 @@ into a set_state command.
 '''
 
 
+ctx = llstructs.BuildContext()
 # produce state object from array of codes
-def build_state_t(blk,loc,cfg):
-  data = blk.codes.concretize(cfg,loc)
-  return llstructs.validate(llstructs.state_t(),
-                            {blk.name: data} \
-  )
 
 def build_set_state(blk,loc,cfg):
-  state_t = build_state_t(blk,loc,cfg)
-  loc_t = llstructs.build_block_loc(blk,loc)
-  cmd_data = { 'inst':loc_t, 'state':state_t}
-  cmd_type = llenums.CircCmdType.SET_STATE
-  data = llstructs.build_circ_cmd(cmd_type,cmd_data)
-  byts = llstructs.circ_cmd_t().build(data)
-  return byts
+  state_t = {blk.name:blk.codes.concretize(cfg,loc)}
+  loc_t = llstructs.make_block_loc(ctx,blk,loc)
+  state_data = {'inst':loc_t, 'state':state_t}
+  cmd_data = llstructs.make_circ_cmd(ctx,llenums.CircCmdType.SET_STATE,state_data)
+  return ctx.build(cmd_data,debug=True)
 
 
 cfg = adplib.ADP()
@@ -41,21 +35,33 @@ cfg.add_instance(hwlib2.hcdc.fanout.fan,loc)
 blkcfg = cfg.configs.get('fanout',loc)
 blkcfg.modes = [['+','+','-','m']]
 state_t = build_set_state(hwlib2.hcdc.fanout.fan,loc,cfg)
+print("-> built set_state command")
 
-print("=== bytes ===")
-print(state_t)
-
-loc_t = llstructs.build_block_loc(hwlib2.hcdc.fanout.fan,loc)
-data = llstructs.build_circ_cmd(llenums.CircCmdType.DISABLE, {'inst':loc_t})
-disable_t = llstructs.circ_cmd_t().build(data)
+loc_t = llstructs.make_block_loc(ctx,hwlib2.hcdc.fanout.fan,loc)
+data = llstructs.make_circ_cmd(ctx,llenums.CircCmdType.DISABLE, {'inst':loc_t})
+disable_t = ctx.build(data,debug=True)
+print("-> built disable_t command")
 
 runtime = GrendelRunner()
+print("<initialize>")
 runtime.initialize()
+
+print("<execute state>")
+print(state_t)
 runtime.execute(state_t)
+print("<result>")
 runtime.result()
+
+print("<execute state>")
 runtime.execute(state_t)
+print("<result>")
 runtime.result()
+
+print("<execute disable>")
 runtime.execute(disable_t)
+print("<result>")
 runtime.result()
+
+
 runtime.close()
 

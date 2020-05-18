@@ -1,5 +1,11 @@
 from enum import Enum
 
+class CmdType(Enum):
+    NULL_CMD = "no_cmd"
+    CIRC_CMD = "circ_cmd"
+    EXPERIMENT_CMD = "exper_cmd"
+    FLUSH_CMD = "flush_cmd"
+
 class CircCmdType(Enum):
     DISABLE = 'disable';
     CONNECT = 'connect';
@@ -11,6 +17,7 @@ class CircCmdType(Enum):
     GET_STATE = "get_state";
     DEFAULTS = "defaults";
     PROFILE = "profile";
+    NULLCMD = "no_circ_cmd"
 
 class ExpCmdType(Enum):
     RESET = 'reset';

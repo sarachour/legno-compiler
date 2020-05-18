@@ -1,6 +1,14 @@
 import construct as cstruct
 import hwlib2.hcdc.llenums as llenums
 
+class BuildContext:
+
+    def __init__(self):
+        self.struct = None
+
+    def build(self,data,debug=False):
+        return validate(self.struct, data,debug=debug)
+
 def lut_source_t():
     kwargs = {
         llenums.LUTSourceType.ADC0.value:0,
@@ -181,7 +189,6 @@ def circ_cmd_type():
     return cstruct.Enum(cstruct.Int8ul,
                         **kwargs)
 
-
 # return types
 def state_t():
     return cstruct.Union(None,
@@ -232,7 +239,7 @@ def cmd_write_lut_t():
     )
 
 
-def cmd_disable_t():
+def cmd_block_loc_t():
     return cstruct.Struct(
         "inst" / block_loc_t()
     )
@@ -241,51 +248,106 @@ def cmd_disable_t():
 def cmd_calib_t():
     return cstruct.Struct(
         "calib_obj" / cstruct.Int8ul,
-        cstruct.Padding(1),
         "inst" / block_loc_t()
     )
 
 
 def circ_cmd_data():
-    return cstruct.Union(None,
-                         write_lut=cmd_write_lut_t(),
-                         connect=cmd_connection_t(),
-                         set_state=cmd_set_state_t(),
-                         calibrate=cmd_calib_t(),
-                         disable=cmd_disable_t(),
-                         profile=cmd_profile_t()
-    )
+    kwargs = {
+        llenums.CircCmdType.SET_STATE.value: cmd_set_state_t(),
+        llenums.CircCmdType.DISABLE.value: cmd_block_loc_t(),
+        llenums.CircCmdType.CONNECT.value: cmd_connection_t(),
+        llenums.CircCmdType.BREAK.value: cmd_connection_t(),
+        llenums.CircCmdType.CALIBRATE.value: cmd_calib_t(),
+        llenums.CircCmdType.GET_STATUS.value: cmd_block_loc_t(),
+        llenums.CircCmdType.WRITE_LUT.value: cmd_write_lut_t(),
+        llenums.CircCmdType.GET_STATE.value: cmd_block_loc_t(),
+        llenums.CircCmdType.DEFAULTS.value: cmd_block_loc_t(),
+        llenums.CircCmdType.PROFILE.value: cmd_profile_t(),
+
+    }
+    return cstruct.Union(None, **kwargs)
 
 def circ_cmd_t():
-        return cstruct.Struct(
-            "type" / circ_cmd_type(),
-            cstruct.Padding(1),
-            "data" / circ_cmd_data()
-        )
+    return cstruct.Struct(
+        "circ_cmd_type" / circ_cmd_type(),
+        cstruct.Padding(3),
+        "circ_cmd_data" / circ_cmd_data()
+    )
 
-def validate(struct,data):
-    struct.build(data)
-    return data
+def cmd_data():
+    kwargs = {
+        llenums.CmdType.NULL_CMD.value: cstruct.Int8ul,
+        llenums.CmdType.CIRC_CMD.value:circ_cmd_t(),
+        llenums.CmdType.EXPERIMENT_CMD.value:exp_cmd_t(),
+        llenums.CmdType.FLUSH_CMD.value:flush_cmd_t()
+    }
+    return cstruct.Union(None, **kwargs)
 
-def build_block_loc(blk,loc):
+def cmd_type():
+    kwargs = {
+        llenums.CmdType.NULL_CMD.name:0,
+        llenums.CmdType.CIRC_CMD.name:1,
+        llenums.CmdType.EXPERIMENT_CMD.name:2,
+        llenums.CmdType.FLUSH_CMD.name:3
+    }
+    return cstruct.Enum(cstruct.Int8ul,
+                        **kwargs)
+def flush_cmd_t():
+    return cstruct.Int8ul
+
+
+def exp_cmd_t():
+    return cstruct.Int8ul
+
+
+def cmd_t():
+    return cstruct.Struct(
+        "cmd_type" / cmd_type(),
+        cstruct.Padding(3),
+        "cmd_data" / cmd_data()
+    )
+
+def validate(struct,data,debug=True):
+    if debug:
+        cstruct.Debugger(struct).build(data)
+
+    return struct.build(data)
+
+def make_block_loc(ctx,blk,loc):
+  assert(isinstance(ctx,BuildContext))
   assert(len(loc) == 4)
   addr = loc.address
-  return validate(block_loc_t(), {
+  loc = {
     'block':llenums.BlockType(blk.name).name,
     'chip':addr[0],
     'tile':addr[1],
     'slice':addr[2],
     'idx':addr[3]
-  })
+  }
+  ctx.struct = block_loc_t()
+  return loc
 
-def build_port_loc(blk,loc,port):
+def make_port_loc(ctx,blk,loc,port):
+  assert(isinstance(ctx,BuildContext))
   assert(len(loc) == 4)
-  return validate(port_loc_t(), { \
-    'inst':build_block_loc(blk,loc), \
-    'port':PortType(port).name})
+  loc = { \
+          'inst':build_block_loc(blk,loc), \
+          'port':PortType(port).name}
 
-def build_circ_cmd(cmdtype,cmddata):
-    return validate(circ_cmd_t(), {
-        'type': cmdtype.name,
-        'data': {cmdtype.value:cmddata}
-    })
+  ctx.struct = port_loc_t()
+  return loc
+
+def make_circ_cmd(ctx,cmdtype,cmddata):
+    assert(isinstance(ctx,BuildContext))
+    assert(isinstance(cmdtype,llenums.CircCmdType))
+    ctx.struct = cmd_t()
+    return {
+        "cmd_type": llenums.CmdType.CIRC_CMD.name,
+        "cmd_data":{
+            "circ_cmd": {
+                'circ_cmd_type': cmdtype.name,
+                'circ_cmd_data': {cmdtype.value:cmddata}
+            }
+        }
+    }
