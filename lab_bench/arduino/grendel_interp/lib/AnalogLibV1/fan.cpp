@@ -4,7 +4,8 @@
 
 
 float Fabric::Chip::Tile::Slice::Fanout::computeOutput(fanout_state_t& codes,
-                                                     ifc out_id, float in){
+                                                       ifc out_id,  \
+                                                       float in){
   float sign;
   switch(out_id){
   case out0Id:

@@ -14,5 +14,6 @@ namespace prof {
   profile_t make_profile(profile_spec_t& spec,
                          float mean,
                          float std);
+  float * get_input(profile_spec_t& spec, port_type_t port);
 }
 #endif

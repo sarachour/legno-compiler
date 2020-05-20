@@ -16,6 +16,9 @@ namespace prof {
     return result;
   }
 
+  float * get_input(profile_spec_t& spec, port_type_t port){
+    return &spec.inputs[port];
+  }
 
 
 }

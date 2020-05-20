@@ -52,16 +52,17 @@ def bool_t():
 
 def block_type_t():
     kwargs = {
-        llenums.BlockType.DAC.name:0,
-        llenums.BlockType.CHIP_INPUT.name:1,
-        llenums.BlockType.CHIP_OUTPUT.name:2,
-        llenums.BlockType.TILE_INPUT.name:3,
-        llenums.BlockType.TILE_OUTPUT.name:4,
-        llenums.BlockType.MULT.name:5,
-        llenums.BlockType.INTEG.name:6,
-        llenums.BlockType.FANOUT.name:7,
-        llenums.BlockType.LUT.name:8,
-        llenums.BlockType.ADC.name:9
+        llenums.BlockType.NOBLOCK.name:0,
+        llenums.BlockType.DAC.name:1,
+        llenums.BlockType.CHIP_INPUT.name:2,
+        llenums.BlockType.CHIP_OUTPUT.name:3,
+        llenums.BlockType.TILE_INPUT.name:4,
+        llenums.BlockType.TILE_OUTPUT.name:5,
+        llenums.BlockType.MULT.name:6,
+        llenums.BlockType.INTEG.name:7,
+        llenums.BlockType.FANOUT.name:8,
+        llenums.BlockType.LUT.name:9,
+        llenums.BlockType.ADC.name:10
     }
     return cstruct.Enum(cstruct.Int8ul,**kwargs)
 
@@ -71,7 +72,8 @@ def port_type_t():
         llenums.PortType.IN1.name:1,
         llenums.PortType.OUT0.name:2,
         llenums.PortType.OUT1.name:3,
-        llenums.PortType.OUT2.name:4
+        llenums.PortType.OUT2.name:4,
+        llenums.PortType.NOPORT.name:5
     }
     return cstruct.Enum(cstruct.Int8ul,**kwargs)
 
@@ -200,8 +202,20 @@ def state_t():
                          "adc" / adc_state_t()
     )
 
+def profile_type_t():
+    kwargs = {
+        llenums.ProfileOpType.INPUT_OUTPUT.name: 0,
+        llenums.ProfileOpType.INTEG_INITIAL_COND.name: 1,
+        llenums.ProfileOpType.INTEG_DERIVATIVE_STABLE.name: 2,
+        llenums.ProfileOpType.INTEG_DERIVATIVE_BIAS.name: 3,
+        llenums.ProfileOpType.INTEG_DERIVATIVE_GAIN.name: 4,
+    }
+    return cstruct.Enum(cstruct.Int8ul,
+                        **kwargs)
+
+
 # returned profiling information
-def profile_t():
+def profile_result_t():
     return cstruct.Struct(
         "spec" / circ_prof_t(),
         "mean" / cstruct.Float32l,
@@ -222,14 +236,18 @@ def cmd_connection_t():
         "dest" / port_loc_t()
     )
 
-def cmd_profile_t():
+def profile_spec_t():
     return cstruct.Struct(
-        "method" / cstruct.Int8ul,
-        cstruct.Padding(1),
         "inst" / block_loc_t(),
-        "in_ports" / cstruct.Array(2,cstruct.Int8ul),
-        "in_vals" / cstruct.Array(2,cstruct.Float32l)
+        "in_vals" / cstruct.Array(2,cstruct.Float32l),
+        cstruct.Padding(1),
+        "method" / profile_type_t(),
+        "output" / port_type_t(),
+        "state" / state_t()
     )
+
+def cmd_profile_t():
+    return profile_spec_t()
 
 def cmd_write_lut_t():
     return cstruct.Struct(

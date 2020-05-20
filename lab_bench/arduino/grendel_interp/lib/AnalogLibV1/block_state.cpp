@@ -73,7 +73,23 @@ const char * dac_source_to_string(dac_source_t src){
 }
 
 
-const char * block_type_to_string(uint8_t type){
+const char * port_type_to_string(port_type_t type){
+  switch(type){
+  case port_type_t::in0Id:
+    return "in0";
+  case port_type_t::in1Id:
+    return "in1";
+  case port_type_t::out0Id:
+    return "out0";
+  case port_type_t::out1Id:
+    return "out1";
+  case port_type_t::out2Id:
+    return "out2";
+  default:
+    return "???";
+  }
+}
+const char * block_type_to_string(block_type_t type){
   switch(type){
   case block_type::TILE_DAC:
     return "dac";

@@ -24,11 +24,11 @@ dac.outputs['z'].relation.bind([HLDACSourceType.DYNAMIC,'_'], \
 dac.outputs['z'].relation.bind([HLDACSourceType.CONST,'_'], \
                                parser.parse_expr('c'))
 
-dac.codes.add(BlockCode('source', BlockCodeType.CONNECTION, \
+dac.state.add(BlockState('source', BlockStateType.CONNECTION, \
                         values=enums.DACSourceType))
-dac.codes['source'].impl.source('lut',['@','@',0,0],'x', \
+dac.state['source'].impl.source('lut',['@','@',0,0],'x', \
                                 enums.DACSourceType.LUT0)
-dac.codes['source'].impl.source('lut',['@','@',2,0],'x', \
+dac.state['source'].impl.source('lut',['@','@',2,0],'x', \
                                 enums.DACSourceType.LUT1)
-dac.codes['source'].impl.set_default(enums.DACSourceType.MEM)
+dac.state['source'].impl.set_default(enums.DACSourceType.MEM)
 

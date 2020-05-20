@@ -80,7 +80,7 @@ namespace calibrate {
     case block_type_t::LUT:
       break;
     default:
-      comm::error("get_offset_code: unexpected block");
+      comm::error("measure: unexpected block");
     }
     profile_t dummy_result;
     return dummy_result;

@@ -47,95 +47,96 @@ fan.outputs['z0'].deltas.bind(['-','_','_','_'],spec)
 
 # Low level behavior
 
-fan.codes.add(BlockCode('range',  \
-                        code_type= BlockCodeType.MODE, \
+fan.state.add(BlockState('range',  \
+                        state_type= BlockStateType.MODE, \
                         values=enums.SignType,
 ))
-bcarr = BlockCodeArray('inv', \
+bcarr = BlockStateArray('inv', \
                        indices=enums.PortType, \
                        values=enums.SignType, \
-                       length=len(enums.PortType),\
+                       length=len(enums.PortType.ports()),\
                        default=enums.SignType.POS)
 
-fan.codes.add(BlockCode('inv0',  \
-                        code_type= BlockCodeType.MODE, \
+fan.state.add(BlockState('inv0',  \
+                        state_type= BlockStateType.MODE, \
                         values=enums.SignType, \
                         array=bcarr, \
                         index=enums.PortType.OUT0))
 
-fan.codes.add(BlockCode('inv1', \
-                        code_type= BlockCodeType.MODE, \
+fan.state.add(BlockState('inv1', \
+                        state_type= BlockStateType.MODE, \
                         values=enums.SignType, \
                         array=bcarr,
                         index=enums.PortType.OUT1))
 
-fan.codes.add(BlockCode('inv2', \
-                        code_type= BlockCodeType.MODE, \
+fan.state.add(BlockState('inv2', \
+                        state_type= BlockStateType.MODE, \
                         values=enums.SignType, \
                         array=bcarr, \
                         index=enums.PortType.OUT2))
 
-fan.codes['inv0'] \
+fan.state['inv0'] \
    .impl.bind(['+','_','_','_'], enums.SignType.POS)
-fan.codes['inv0'] \
+fan.state['inv0'] \
    .impl.bind(['-','_','_','_'], enums.SignType.NEG)
-fan.codes['inv1'] \
+fan.state['inv1'] \
    .impl.bind(['_','+','_','_'], enums.SignType.POS)
-fan.codes['inv1'] \
+fan.state['inv1'] \
    .impl.bind(['_','-','_','_'], enums.SignType.NEG)
-fan.codes['inv2'] \
+fan.state['inv2'] \
    .impl.bind(['_','_','+','_'], enums.SignType.POS)
-fan.codes['inv2'] \
+fan.state['inv2'] \
    .impl.bind(['_','_','-','_'], enums.SignType.NEG)
-fan.codes['range'] \
+fan.state['range'] \
   .impl.bind(['_','_','_','m'], enums.RangeType.MED)
-fan.codes['range'] \
+fan.state['range'] \
   .impl.bind(['_','_','_','h'], enums.RangeType.HIGH)
 
-fan.codes.add(BlockCode('third', \
-                        code_type=BlockCodeType.CONNECTION, \
+fan.state.add(BlockState('third', \
+                        state_type=BlockStateType.CONNECTION, \
                         values=enums.BoolType))
-fan.codes['third'].impl.sink('z2','_',['_','_','_','_','_'], \
+fan.state['third'].impl.sink('z2','_',['_','_','_','_','_'], \
                              enums.BoolType.TRUE)
-fan.codes['third'].impl.set_default(enums.BoolType.FALSE)
+fan.state['third'].impl.set_default(enums.BoolType.FALSE)
 
-fan.codes.add(BlockCode('enable',
+fan.state.add(BlockState('enable',
                         values=enums.SignType, \
-                        code_type=BlockCodeType.CONSTANT))
-fan.codes['enable'].impl.bind(enums.BoolType.TRUE)
+                        state_type=BlockStateType.CONSTANT))
+fan.state['enable'].impl.bind(enums.BoolType.TRUE)
 
-fan.codes.add(BlockCode('pmos',
+fan.state.add(BlockState('pmos',
                         values=range(0,8), \
-                        code_type=BlockCodeType.CALIBRATE))
-fan.codes['pmos'].impl.set_default(3)
-fan.codes.add(BlockCode('nmos',
+                        state_type=BlockStateType.CALIBRATE))
+fan.state['pmos'].impl.set_default(3)
+fan.state.add(BlockState('nmos',
                         values=range(0,8), \
-                        code_type=BlockCodeType.CALIBRATE))
-fan.codes['nmos'].impl.set_default(3)
+                        state_type=BlockStateType.CALIBRATE))
+fan.state['nmos'].impl.set_default(3)
 
-calarr = BlockCodeArray('port_cal', \
-                       indices=enums.PortType, \
-                       values=range(0,32), \
-                       length=len(enums.PortType),\
-                        default=16)
+calarr = BlockStateArray('port_cal', \
+                         indices=enums.PortType, \
+                         values=range(0,32), \
+                         length=len(enums.PortType.ports()),\
+                         default=16)
 
 
-fan.codes.add(BlockCode('bias0',
+fan.state.add(BlockState('bias0',
                         values=range(0,32), \
                         index=enums.PortType.OUT0, \
                         array=calarr, \
-                        code_type=BlockCodeType.CALIBRATE))
-fan.codes['bias0'].impl.set_default(16)
-fan.codes.add(BlockCode('bias1',
+                        state_type=BlockStateType.CALIBRATE))
+
+fan.state['bias0'].impl.set_default(16)
+fan.state.add(BlockState('bias1',
                         values=range(0,32), \
                         index=enums.PortType.OUT1, \
                         array=calarr, \
-                        code_type=BlockCodeType.CALIBRATE))
-fan.codes['bias1'].impl.set_default(16)
-fan.codes.add(BlockCode('bias2',
+                        state_type=BlockStateType.CALIBRATE))
+fan.state['bias1'].impl.set_default(16)
+fan.state.add(BlockState('bias2',
                         values=range(0,32), \
                         index=enums.PortType.OUT2, \
                         array=calarr, \
-                        code_type=BlockCodeType.CALIBRATE))
-fan.codes['bias2'].impl.set_default(16)
+                        state_type=BlockStateType.CALIBRATE))
+fan.state['bias2'].impl.set_default(16)
 

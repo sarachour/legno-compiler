@@ -85,7 +85,7 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
   case cmd_type_t::PROFILE:
     print_log("profiling...");
     result = calibrate::measure(fab,
-                                cmd.data.prof.spec);
+                                cmd.data.prof);
     comm::response("completed!",1);
     write_struct_bytes((const char *) &result, sizeof(result));
     break;

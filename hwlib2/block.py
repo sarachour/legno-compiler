@@ -33,7 +33,7 @@ class BlockSignalType(Enum):
   ANALOG = 'analog'
   DIGITAL = 'digital'
 
-class BlockCodeType(Enum):
+class BlockStateType(Enum):
   CALIBRATE = "calib"
   CONNECTION = "conn"
   MODE = "mode"
@@ -136,28 +136,28 @@ class BlockFieldCollection:
     for v in self._collection.values():
       yield v
 
-class BlockCodeCollection(BlockFieldCollection):
+class BlockStateCollection(BlockFieldCollection):
 
     def __init__(self,block):
-      BlockFieldCollection.__init__(self,block,BlockCode)
+      BlockFieldCollection.__init__(self,block,BlockState)
 
     # turn this configuration into a low level spec
     def concretize(self,cfg,loc):
       data = {}
       arrays = []
-      for code in self:
-        value = code.impl.apply(cfg,self._block.name,loc)
-        if code.array is None:
-          assert(not code.variable in data)
-          data[code.variable] = value
+      for state in self:
+        value = state.impl.apply(cfg,self._block.name,loc)
+        if state.array is None:
+          assert(not state.variable in data)
+          data[state.variable] = value
         else:
-          if not code.variable in data:
-            data[code.variable] = [code.array.default] \
-                                  *code.array.length
-            arrays.append(code.variable)
+          if not state.variable in data:
+            data[state.variable] = [state.array.default] \
+                                  *state.array.length
+            arrays.append(state.variable)
 
-          assert(not code.index in data[code.variable])
-          data[code.variable][code.index.to_code()] = value
+          assert(not state.index in data[state.variable])
+          data[state.variable][state.index.to_code()] = value
 
       return data
 
@@ -182,12 +182,12 @@ class ModeDependentProperty:
         self._fields[mode] = field
 
 class BCConstImpl:
-  def __init__(self,code):
-      self.code = code
+  def __init__(self,state):
+      self.state = state
       self.value = None
 
   def bind(self,value):
-      self.code.valid(value)
+      self.state.valid(value)
       self.value = value
 
   def apply(self,adp,block_name,loc):
@@ -195,22 +195,22 @@ class BCConstImpl:
       return self.value
 
 class BCModeImpl:
-  def __init__(self,code):
-      self.code = code
+  def __init__(self,state):
+      self.state = state
       self._bindings = []
       self._default = None
 
   def set_default(self,default):
-      self.code.valid(value)
+      self.state.valid(value)
       self._default = default
 
   @property
   def default(self):
-      self.code.valid(self._default)
+      self.state.valid(self._default)
       return self._default
 
   def bind(self,pattern,value):
-      self.code.valid(value)
+      self.state.valid(value)
       self._bindings.append((pattern,value))
 
   def apply(self,adp,block_name,loc):
@@ -225,7 +225,7 @@ class BCModeImpl:
                                       "block config is incomplete")
 
     mode = cfg.mode
-    modeset = self.code.block.modes
+    modeset = self.state.block.modes
     values = []
     for pat,value in self._bindings:
         if modeset.match(pat,mode):
@@ -235,23 +235,23 @@ class BCModeImpl:
     return values[0]
 
 class BCDataImpl:
-  def __init__(self,code):
-      self.code = code
+  def __init__(self,state):
+      self.state = state
       pass
 
 class BCCalibImpl:
-  def __init__(self,code):
-      self.code = code
+  def __init__(self,state):
+      self.state = state
       self._default = None
       pass
 
   def set_default(self,default):
-      assert(self.code.valid(default))
+      assert(self.state.valid(default))
       self._default = default
 
   @property
   def default(self):
-      assert(self.code.valid(self._default))
+      assert(self.state.valid(self._default))
       return self._default
 
   def apply(self,adp,block_name,loc):
@@ -259,21 +259,21 @@ class BCCalibImpl:
       return self.default
 
 class BCConnImpl:
-  def __init__(self,code):
-      self.code = code
+  def __init__(self,state):
+      self.state = state
       self._sources= {}
       self._sinks= {}
       self._default = None
 
   def sink(self,source_port,block,sink,value):
-      self.code.valid(value)
+      self.state.valid(value)
       if not source_port in self._sinks:
           self._sinks[source_port] = []
 
       self._sinks[source_port].append((block,sink,value))
 
   def source(self,block,source,sink_port,value):
-      self.code.valid(value)
+      self.state.valid(value)
       if not sink_port in self._sources:
           self._sources[sink_port] = []
 
@@ -282,11 +282,11 @@ class BCConnImpl:
 
   @property
   def default(self):
-      assert(self.code.valid(self._default))
+      assert(self.state.valid(self._default))
       return self._default
 
   def set_default(self,value):
-      assert(self.code.valid(value))
+      assert(self.state.valid(value))
       self._default = value
 
   def apply(self,adp,block_name,loc):
@@ -300,7 +300,7 @@ class BCConnImpl:
       '''
       return self._default
 
-class BlockCodeArray:
+class BlockStateArray:
 
   def __init__(self,name,indices,values,length,default=None):
       self.name = name
@@ -310,29 +310,29 @@ class BlockCodeArray:
       assert(default in values)
       self.default = default
 
-class BlockCode(BlockField):
+class BlockState(BlockField):
 
-  def __init__(self,name,code_type,values, \
+  def __init__(self,name,state_type,values, \
                array=None, \
                index=None):
     BlockField.__init__(self,name)
-    assert(isinstance(code_type, BlockCodeType))
-    self.type = code_type
+    assert(isinstance(state_type, BlockStateType))
+    self.type = state_type
     self.index = index
     self.array = array
     assert( (index is None and array is None) or \
             (not index is None and not array is None))
     self.values = values
     self.variable = name if array is None else array.name
-    if code_type == BlockCodeType.CONNECTION:
+    if state_type == BlockStateType.CONNECTION:
         self.impl = BCConnImpl(self)
-    elif code_type == BlockCodeType.CALIBRATE:
+    elif state_type == BlockStateType.CALIBRATE:
         self.impl = BCCalibImpl(self)
-    elif code_type == BlockCodeType.CONSTANT:
+    elif state_type == BlockStateType.CONSTANT:
         self.impl = BCConstImpl(self)
-    elif code_type == BlockCodeType.MODE:
+    elif state_type == BlockStateType.MODE:
         self.impl = BCModeImpl(self)
-    elif code_type == BlockCodeType.DATA:
+    elif state_type == BlockStateType.DATA:
         self.impl = BCDataImpl(self)
     else:
         raise NotImplementedError
@@ -445,7 +445,7 @@ class Block:
     self.inputs = BlockFieldCollection(self,BlockInput)
     self.outputs = BlockFieldCollection(self,BlockOutput)
     self.data = BlockFieldCollection(self,BlockData)
-    self.codes = BlockCodeCollection(self)
+    self.state = BlockStateCollection(self)
     self.modes = BlockModeset(mode_spec)
 
     self._name = name
@@ -459,7 +459,7 @@ class Block:
     yield self.inputs
     yield self.outputs
     yield self.data
-    yield self.codes
+    yield self.state
 
   def field_names(self):
     names = []

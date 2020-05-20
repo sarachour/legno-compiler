@@ -51,7 +51,7 @@ namespace circ {
 
     case cmd_type_t::PROFILE:
       Serial.print("profile ");
-      sprintf_block_inst(cmd.data.prof.spec.inst,FMTBUF);
+      sprintf_block_inst(cmd.data.prof.inst,FMTBUF);
       Serial.print(FMTBUF);
       break;
 

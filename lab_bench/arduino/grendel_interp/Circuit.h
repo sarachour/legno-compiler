@@ -49,9 +49,7 @@ namespace circ {
     block_loc_t inst;
   } cmd_calib_t;
 
-  typedef struct {
-    profile_spec_t spec;
-  } cmd_profile_t;
+  #define cmd_profile_t profile_spec_t
 
   typedef struct {
     block_loc_t inst;

@@ -129,34 +129,27 @@ typedef union {
 
 typedef enum block_type {
   //0
+  NO_BLOCK,
+  //1
   TILE_DAC,
-  // 1-4
+  // 2-5
   CHIP_INPUT,
   CHIP_OUTPUT,
   TILE_INPUT,
   TILE_OUTPUT,
-  //5
-  MULT,
   //6
-  INTEG,
+  MULT,
   //7
+  INTEG,
+  //8
   FANOUT,
-  //8-9
+  //9-10
   LUT,
   TILE_ADC
 } block_type_t;
 
-/*
-typedef enum port_type {
-  IN0,
-  IN1,
-  OUT0,
-  OUT1,
-  OUT2
-} port_type_t;
-*/
 
-#define port_type_t ifc;
+#define port_type_t ifc
 
 typedef struct block_loc {
   block_type_t block;
@@ -184,8 +177,8 @@ typedef struct {
   block_loc_t inst;
   float inputs[2];
   profile_type_t type;
+  port_type_t output;
   block_state_t state;
-  ifc output;
 } profile_spec_t;
 
 typedef enum {
@@ -208,10 +201,11 @@ typedef union {
 */
 
 
-
+ifc port_type_to_ifc(port_type_t port);
 const char * lut_source_to_string(lut_source_t src);
 const char * dac_source_to_string(dac_source_t src);
-const char * block_type_to_string(uint8_t type);
+const char * block_type_to_string(block_type_t type);
+const char * port_type_to_string(port_type_t type);
 int sprintf_block_inst(block_loc_t& inst, char * buf);
 int sprintf_block_port(port_loc_t& loc,char * buf);
 int sprintf_block_state(block_type_t blk, block_state_t state, char * BUF);

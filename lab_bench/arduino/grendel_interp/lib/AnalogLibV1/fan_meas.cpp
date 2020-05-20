@@ -16,6 +16,7 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measure(profile_spec_t spec) {
   fanout_state_t codes_fan = this->m_state;
   dac_state_t codes_val_dac = val_dac->m_state;
   dac_state_t codes_ref_dac = ref_dac->m_state;
+  float * input_value = prof::get_input(spec,port_type_t::in0Id);
 
   cutil::buffer_fanout_conns(calib,this);
   cutil::buffer_dac_conns(calib,ref_dac);
@@ -36,18 +37,20 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measure(profile_spec_t spec) {
                                         parentSlice->tileOuts[3].in0 );
 
   switch(spec.output){
-  case out0Id:
+  case port_type_t::out0Id:
     Connection (out0, this->parentSlice->tileOuts[3].in0).setConn();
     break;
-  case out1Id:
+  case port_type_t::out1Id:
     Connection(out1, this->parentSlice->tileOuts[3].in0).setConn();
     break;
-  case out2Id:
+  case port_type_t::out2Id:
     setThird(true);
     Connection(out2, this->parentSlice->tileOuts[3].in0).setConn();
     break;
   default:
-    error("unknown mode");
+    sprintf(FMTBUF,"unknown output <%s>", port_type_to_string(spec.output));
+    error(FMTBUF);
+
   }
 
   // apply profiling state
@@ -58,10 +61,10 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measure(profile_spec_t spec) {
 
   val_dac->setEnable(true);
   val_dac->setInv(false);
-  spec.inputs[in0Id] = val_dac->fastMakeValue(spec.inputs[in0Id]);
+  *input_value = val_dac->fastMakeValue(*input_value);
   float out_target = Fabric::Chip::Tile::Slice::Fanout::computeOutput(this->m_state,
-                                                                spec.output,
-                                                                spec.inputs[in0Id]);
+                                                                     spec.output,
+                                                                      *input_value);
   dac_to_fan.setConn();
 	tile_to_chip.setConn();
   ref_to_tile.setConn();
@@ -87,16 +90,20 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measure(profile_spec_t spec) {
   tile_to_chip.brkConn();
   ref_to_tile.brkConn();
   switch(spec.output){
-  case out0Id:
+  case port_type_t::out0Id:
     Connection (out0, this->parentSlice->tileOuts[3].in0).brkConn();
     break;
-  case out1Id:
-    Connection(out2, this->parentSlice->tileOuts[3].in0).brkConn();
+  case port_type_t::out1Id:
+    Connection(out1, this->parentSlice->tileOuts[3].in0).brkConn();
     break;
-  case out2Id:
+  case port_type_t::out2Id:
     setThird(false);
     Connection(out2, this->parentSlice->tileOuts[3].in0).brkConn();
     break;
+  default:
+    sprintf(FMTBUF,"unknown output <%s>", port_type_to_string(spec.output));
+    error(FMTBUF);
+
   }
 	setEnable (false);
   cutil::restore_conns(calib);

@@ -1,5 +1,12 @@
 from enum import Enum
 
+class ProfileOpType(Enum):
+    INPUT_OUTPUT = "input_output"
+    INTEG_INITIAL_COND = "integ_ic"
+    INTEG_DERIVATIVE_STABLE = "integ_stability"
+    INTEG_DERIVATIVE_BIAS = "integ_bias"
+    INTEG_DERIVATIVE_GAIN = "integ_gain"
+
 class CmdType(Enum):
     NULL_CMD = "no_cmd"
     CIRC_CMD = "circ_cmd"
@@ -28,6 +35,7 @@ class ExpCmdType(Enum):
 
 
 class BlockType(str,Enum):
+    NOBLOCK = "noblk"
     DAC = 'dac';
     ADC = 'adc';
     CHIP_INPUT = 'chip_input';
@@ -42,12 +50,13 @@ class BlockType(str,Enum):
 
     def code(self):
         mapping = {
-            BlockType.DAC: 0,
-            BlockType.MULT: 5,
-            BlockType.INTEG: 6,
-            BlockType.FANOUT: 7,
-            BlockType.LUT: 8,
-            BlockType.ADC: 9
+            BlockType.NOBLOCK: 0,
+            BlockType.DAC: 1,
+            BlockType.MULT: 6,
+            BlockType.INTEG: 7,
+            BlockType.FANOUT: 8,
+            BlockType.LUT: 9,
+            BlockType.ADC: 10
         }
         return mapping[self]
 
@@ -224,6 +233,7 @@ class PortType(str,Enum):
     OUT0 = "out0"
     OUT1 = "out1"
     OUT2 = "out2"
+    NOPORT = "noport"
 
     @staticmethod
     def default():
@@ -235,7 +245,8 @@ class PortType(str,Enum):
             PortType.IN1: 1,
             PortType.OUT0: 2,
             PortType.OUT1: 3,
-            PortType.OUT2: 4
+            PortType.OUT2: 4,
+            PortType.NOPORT: 5
         }
         return codes[self]
 
@@ -249,6 +260,20 @@ class PortType(str,Enum):
             4: PortType.OUT2
         }
         return codes[i]
+
+    @staticmethod
+    def output_ports():
+        return [PortType.OUT0,
+                PortType.OUT1,
+                PortType.OUT2]
+
+    @staticmethod
+    def ports():
+        return [PortType.IN0,
+                PortType.IN1,
+                PortType.OUT0,
+                PortType.OUT1,
+                PortType.OUT2]
 
 class SignType(str,Enum):
     POS = '+'
