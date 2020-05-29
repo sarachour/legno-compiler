@@ -3,6 +3,8 @@ ARCHITECTURE = sam
 ARDUINO_LIBS = DueTimer AnalogLibV1
 #CXXFLAGS=-Werror
 #CPPFLAGS=-Werror
+CXXFLAGS=-DEMULATE_HARDWARE -DHARDWARE_SEED=12345
+CPPFLAGS=${CXXFLAGS}
 ARDUINO_LIB_PATH=${PWD}/lib
 
 include /usr/local/opt/arduino-mk/Sam.mk

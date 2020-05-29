@@ -10,6 +10,7 @@ import hwlib2.hcdc.llstructs as llstructs
 import hwlib2.hcdc.llenums as llenums
 
 from lab_bench.grendel_runner import GrendelRunner
+import lab_bench.grendel_util as grendel_util
 from enum import Enum
 
 '''
@@ -50,6 +51,32 @@ def build_set_state(blk,loc,cfg):
                                      state_data)
   return ctx.build(cmd_data,debug=True)
 
+def unpack_response(resp):
+  if isinstance(resp,grendel_util.HeaderArduinoResponse):
+    if resp.num_args == 1:
+      return unpack_response(resp.data(0))
+    elif resp.num_args == 0:
+      return resp.msg
+    else:
+      raise Exception("only can handle responses with one or zero data segments")
+
+  elif isinstance(resp,grendel_util.DataArduinoResponse):
+    assert(isinstance(resp.value,grendel_util.PayloadArduinoResponse))
+    return unpack_response(resp.value)
+
+  elif isinstance(resp,grendel_util.PayloadArduinoResponse):
+    payload_type = llstructs.parse(llstructs.response_type_t(), \
+                                   bytes([resp.payload_type]))
+    payload_result = None
+    if payload_type == llenums.ResponseType.BLOCK_STATE.value:
+      payload_result = llstructs.parse(llstructs.state_t(), \
+                                       resp.values)
+    elif payload_type == llenums.ResponseType.PROFILE_RESULT.value:
+      payload_result = llstructs.parse(llstructs.profile_result_t(), \
+                                       resp.array)
+
+    return payload_result
+
 
 # build an analog device program with one fanout block.
 cfg = adplib.ADP()
@@ -87,24 +114,24 @@ runtime.initialize()
 print("<execute profile>")
 runtime.execute(profile_t)
 print("<result>")
-runtime.result()
+resp = unpack_response(runtime.result())
+print(resp)
 
 
 print("<execute state>")
 runtime.execute(state_t)
 print("<result>")
-runtime.result()
+print(runtime.result())
 
 print("<execute state>")
 runtime.execute(state_t)
 print("<result>")
-runtime.result()
+print(runtime.result())
 
 print("<execute disable>")
 runtime.execute(disable_t)
 print("<result>")
-runtime.result()
+print(runtime.result())
 
 
 runtime.close()
-

@@ -25,3 +25,6 @@ class GrendelRunner:
 
   def send_data(self,data,chunksize=4):
     pass
+
+  def dispatch(self):
+    raise Exception("OverrideMe: fill in with execution and result processing")

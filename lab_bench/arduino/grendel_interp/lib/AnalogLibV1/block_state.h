@@ -187,19 +187,11 @@ typedef enum {
 } profile_status_t;
 
 typedef struct {
-  profile_spec_t spec;
-  profile_status_t status;
   float mean;
   float stdev;
+  profile_status_t status;
+  profile_spec_t spec;
 } profile_t;
-
-/*
-typedef union {
-  profile_t result;
-  unsigned char charbuf[sizeof(profile_t)];
-} serializable_profile_t;
-*/
-
 
 ifc port_type_to_ifc(port_type_t port);
 const char * lut_source_to_string(lut_source_t src);

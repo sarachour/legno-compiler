@@ -139,6 +139,10 @@ class HeaderArduinoResponse(GenericArduinoResponse):
         return False
     return True
 
+  @property
+  def num_args(self):
+    return self._n
+
   def set_data(self, idx, arg):
     assert (idx < self._n)
     self._args[idx] = arg
@@ -174,12 +178,7 @@ class DataArduinoResponse(GenericArduinoResponse):
     return self._value
 
   def set_value(self, v):
-    if not v is None:
-      if not self.is_array():
-        self._value = self._datatype(v)
-      else:
-        self._value = list(map(lambda el: \
-                               self._datatype(el), v))
+    self._value = v
 
   def is_array(self):
     return self._size > 1
@@ -203,22 +202,23 @@ class DataArduinoResponse(GenericArduinoResponse):
       raise Exception("unimpl: %s" % str(args))
 
   def __repr__(self):
-    return "data-resp(%s)" % str(self.type.value)
+    return "data-resp(%s)" % str(self.value)
 
 
 class PayloadArduinoResponse(GenericArduinoResponse):
-  def __init__(self, n):
+  def __init__(self, typ, n):
     GenericArduinoResponse.__init__(self, ArduinoResponseType.PAYLOAD)
     self._array = None
+    self._payload_type = typ
     self._n = n
+
+  @property
+  def payload_type(self):
+    return self._payload_type
 
   @property
   def array(self):
     return self._array
-
-  @property
-  def n(self):
-    return self._n
 
   def set_array(self, data):
     assert (len(data) == self._n)
@@ -227,11 +227,18 @@ class PayloadArduinoResponse(GenericArduinoResponse):
   @staticmethod
   def parse(args):
     values = args[0].strip().split()
-    resp = PayloadArduinoResponse(len(values))
-    buf = [0.0] * len(values)
-    for idx, val in enumerate(values):
-      buf[idx] = float(val)
-    resp.set_array(buf)
+    typ = int(values[0])
+    n = int(values[1])
+    inbuf = values[2:]
+    if not (len(values[2:]) == n):
+      raise Exception("byte # mismatch: expected=%d, num=%d" % \
+                      (int(n),len(values[2:])))
+
+    resp = PayloadArduinoResponse(typ,n)
+    buf = [0]*n
+    for idx, val in enumerate(inbuf):
+      buf[idx] = int(val)
+    resp.set_array(bytes(buf))
     return resp
 
   def __repr__(self):
@@ -295,16 +302,16 @@ def get_response(ard):
           this_data = resp
           state = ArduinoResponseState.WAITFOR_PAYLOAD
         else:
-          this_resp.set_data(data_idx, resp.value)
+          this_resp.set_data(data_idx, resp)
           data_idx += 1
 
         if this_resp.done():
           return this_resp
 
       elif resp.type == ArduinoResponseType.PAYLOAD:
-        assert (state == ArduinoResponseState.WAITFOR_PAYLOAD)
-        this_data.set_value(resp.array)
-        this_resp.set_data(data_idx, this_data.value)
+        assert(state == ArduinoResponseState.WAITFOR_PAYLOAD)
+        this_data.set_value(resp)
+        this_resp.set_data(data_idx, this_data)
         data_idx += 1
         this_data = None
         state = ArduinoResponseState.WAITFOR_DATA

@@ -17,7 +17,11 @@ class Fabric::Chip::Tile::Slice::Fanout : public Fabric::Chip::Tile::Slice::Func
 		void setThird (
 			bool third // whether third output is on
 		);
-    static float computeOutput(fanout_state_t& codes,ifc index,float in);
+    static void computeInterval(fanout_state_t& state,
+                                port_type_t port, \
+                                float& min, \
+                                float& max);
+    static float computeOutput(fanout_state_t& state,ifc index,float in);
 		void calibrate (calib_objective_t obj);
     void defaults();
     void update(fanout_state_t codes){
@@ -25,7 +29,6 @@ class Fabric::Chip::Tile::Slice::Fanout : public Fabric::Chip::Tile::Slice::Func
       updateFu();
     }
 		profile_t measure(profile_spec_t spec);
-    void measureZero(float& bias0, float& bias1, float& bias2);
     fanout_state_t m_state;
 	private:
 		class FanoutOut;
@@ -36,6 +39,8 @@ class Fabric::Chip::Tile::Slice::Fanout : public Fabric::Chip::Tile::Slice::Func
 			delete out1;
 			delete out2;
 		};
+    profile_t measureConstVal(profile_spec_t spec);
+    void measureZero(float& bias0, float& bias1, float& bias2);
     float calibrateMinError(Fabric::Chip::Tile::Slice::Dac * val_dac,
                             Fabric::Chip::Tile::Slice::Dac * ref_dac,
                             ifc out_id);

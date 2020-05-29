@@ -1,5 +1,14 @@
 from enum import Enum
 
+class ResponseType(Enum):
+    PROFILE_RESULT = "resp_profile_result"
+    BLOCK_STATE = "resp_block_state"
+
+
+class ProfileStatus(Enum):
+    SUCCESS = "success"
+    FAILED_TO_CALIBRATE = "success"
+
 class ProfileOpType(Enum):
     INPUT_OUTPUT = "input_output"
     INTEG_INITIAL_COND = "integ_ic"

@@ -81,6 +81,11 @@ namespace circ {
     cmd_data_t data;
   } cmd_t;
 
+  typedef enum {
+    PROFILE_RESULT,
+    BLOCK_STATE,
+  } response_type_t;
+
   //Fabric* setup_board();
   //void init_calibrations();
   void timeout(Fabric * fab, unsigned int timeout);

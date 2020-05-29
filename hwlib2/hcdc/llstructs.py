@@ -7,7 +7,7 @@ class BuildContext:
         self.struct = None
 
     def build(self,data,debug=False):
-        return validate(self.struct, data,debug=debug)
+        return build(self.struct, data,debug=debug)
 
 def lut_source_t():
     kwargs = {
@@ -169,7 +169,6 @@ def integ_state_t():
         "ic_code" / cstruct.Int8ul,
         # 14 bytes in
         "port_cal" / cstruct.Array(3,cstruct.Int8ul),
-        cstruct.Padding(2)
 
     )
 
@@ -202,6 +201,15 @@ def state_t():
                          "adc" / adc_state_t()
     )
 
+def profile_status_t():
+    kwargs = {
+        llenums.ProfileStatus.SUCCESS.name: 0,
+        llenums.ProfileStatus.FAILED_TO_CALIBRATE.name: 1
+    }
+    return cstruct.Enum(cstruct.Int8ul,
+                        **kwargs)
+
+
 def profile_type_t():
     kwargs = {
         llenums.ProfileOpType.INPUT_OUTPUT.name: 0,
@@ -217,10 +225,11 @@ def profile_type_t():
 # returned profiling information
 def profile_result_t():
     return cstruct.Struct(
-        "spec" / circ_prof_t(),
         "mean" / cstruct.Float32l,
         "stdev" / cstruct.Float32l,
-        "error" / cstruct.Float32l
+        "status" / profile_status_t(),
+        cstruct.Padding(3),
+        "spec" / profile_spec_t()
     )
 
 # high-level commmands
@@ -239,8 +248,8 @@ def cmd_connection_t():
 def profile_spec_t():
     return cstruct.Struct(
         "inst" / block_loc_t(),
+        cstruct.Padding(3),
         "in_vals" / cstruct.Array(2,cstruct.Float32l),
-        cstruct.Padding(1),
         "method" / profile_type_t(),
         "output" / port_type_t(),
         "state" / state_t()
@@ -326,11 +335,26 @@ def cmd_t():
         "cmd_data" / cmd_data()
     )
 
-def validate(struct,data,debug=True):
+def response_type_t():
+    kwargs = {
+        llenums.ResponseType.PROFILE_RESULT.value: 0,
+        llenums.ResponseType.BLOCK_STATE.value: 1
+    }
+    return cstruct.Enum(cstruct.Int8ul,
+                        **kwargs)
+
+
+def build(struct,data,debug=True):
     if debug:
         cstruct.Debugger(struct).build(data)
 
     return struct.build(data)
+
+def parse(struct,data,debug=True):
+    if debug:
+        cstruct.Debugger(struct).parse(data)
+
+    return struct.parse(data)
 
 def make_block_loc(ctx,blk,loc):
   assert(isinstance(ctx,BuildContext))
@@ -355,6 +379,7 @@ def make_port_loc(ctx,blk,loc,port):
 
   ctx.struct = port_loc_t()
   return loc
+
 
 def make_circ_cmd(ctx,cmdtype,cmddata):
     assert(isinstance(ctx,BuildContext))

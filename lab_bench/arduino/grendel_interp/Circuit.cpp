@@ -20,14 +20,18 @@ Fabric* setup_board(){
   return fabric;
 }
 
-void write_struct_bytes(const char * bytes, unsigned int n){
-  sprintf(FMTBUF,"%d",n+1);
+  void write_struct_bytes(response_type_t resp,
+                          const char * bytes,
+                          unsigned int n){
+  sprintf(FMTBUF,"%d",n+2);
   comm::data(FMTBUF,"I");
   comm::payload();
-  Serial.print(n);
+  Serial.print(resp,DEC);
+  Serial.print(" ");
+  Serial.print(n,DEC);
   for(unsigned int i = 0; i < n; i+=1){
     Serial.print(" ");
-    Serial.print(bytes[i]);
+    Serial.print(bytes[i],DEC);
   }
   Serial.println("");
 }
@@ -86,8 +90,9 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
     print_log("profiling...");
     result = calibrate::measure(fab,
                                 cmd.data.prof);
-    comm::response("completed!",1);
-    write_struct_bytes((const char *) &result, sizeof(result));
+    comm::response("returning profile",1);
+    write_struct_bytes(response_type_t::PROFILE_RESULT,
+                       (const char *) &result, sizeof(result));
     break;
 
   case cmd_type_t::CALIBRATE:
@@ -101,7 +106,8 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
                          state);
     print_log("done");
     comm::response("calibration terminated",1);
-    write_struct_bytes((const char *) &state, sizeof(state));
+    write_struct_bytes(response_type_t::BLOCK_STATE,
+                       (const char *) &state, sizeof(state));
     break;
 
   case cmd_type_t::GET_STATE:
@@ -109,7 +115,8 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
                          cmd.data.get_state.inst,
                          state);
     comm::response("returning codes",1);
-    write_struct_bytes((const char *) &state, sizeof(state));
+    write_struct_bytes(response_type_t::BLOCK_STATE,
+                       (const char *) &state, sizeof(state));
     break;
   case cmd_type_t::SET_STATE:
     calibrate::set_state(fab,

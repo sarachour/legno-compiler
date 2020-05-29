@@ -1,9 +1,45 @@
 #include "AnalogLib.h"
 #include "assert.h"
 #include "calib_util.h"
+#include "emulator.h"
 
+emulator::physical_model_t draw_random_model(profile_spec_t spec){
+  emulator::physical_model_t model;
+  emulator::ideal(model);
+  Fabric::Chip::Tile::Slice::Fanout::computeInterval(spec.state.fanout,
+                                                      in0Id,
+                                                      model.in0.min,
+                                                      model.in0.max);
+  emulator::bound(model.in1,-1,1);
+  return model;
+ 
 
+}
 profile_t Fabric::Chip::Tile::Slice::Fanout::measure(profile_spec_t spec) {
+#ifdef EMULATE_HARDWARE
+  sprintf(FMTBUF,"measured value: in=(%f,%f)\n", spec.inputs[0],spec.inputs[1]);
+  print_info(FMTBUF);
+
+  float std;
+  float * input = prof::get_input(spec,port_type_t::in0Id);
+  float output = Fabric::Chip::Tile::Slice::Fanout::computeOutput(spec.state.fanout,
+                                                                  spec.output,
+                                                                  *input);
+
+  emulator::physical_model_t model = draw_random_model(spec);
+  float result = emulator::draw(model,*input,0.0,output,std);
+  sprintf(FMTBUF,"output=%f result=%f\n", output,result);
+  print_info(FMTBUF);
+  profile_t prof = prof::make_profile(spec, result,
+                                      std);
+  return prof;
+
+#else
+  return this->measureConstVal(spec);
+#endif
+}
+
+profile_t Fabric::Chip::Tile::Slice::Fanout::measureConstVal(profile_spec_t spec) {
 
   int next_slice = (slice_to_int(parentSlice->sliceId) + 1) % 4;
   Dac * ref_dac = parentSlice->parentTile->slices[next_slice].dac;
@@ -26,7 +62,6 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measure(profile_spec_t spec) {
                               parentSlice->parentTile->parentChip
                               ->tiles[3].slices[2].chipOutput);
   cutil::break_conns(calib);
- 
 
 
   Connection dac_to_fan = Connection ( val_dac->out0, in0 );
@@ -57,7 +92,7 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measure(profile_spec_t spec) {
 
 
   this->m_state= spec.state.fanout;
-  float in_target = Dac::computeOutput(val_dac->m_state);
+  //float in_target = Dac::computeOutput(val_dac->m_state);
 
   val_dac->setEnable(true);
   val_dac->setInv(false);
@@ -69,7 +104,7 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measure(profile_spec_t spec) {
 	tile_to_chip.setConn();
   ref_to_tile.setConn();
 
-  float mean,variance,dummy;
+  float mean,variance;
   bool measure_steady_state = false;
   calib.success &= cutil::measure_signal_robust(this,
                                                 ref_dac,

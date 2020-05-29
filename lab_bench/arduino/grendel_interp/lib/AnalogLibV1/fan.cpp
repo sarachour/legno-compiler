@@ -2,6 +2,20 @@
 #include "assert.h"
 #include "calib_util.h"
 
+void Fabric::Chip::Tile::Slice::Fanout::computeInterval(fanout_state_t& state,
+                          port_type_t port, float& min, float& max){
+  float ampl = 2.0;
+  if(state.range == RANGE_HIGH){
+    ampl = 20.0;
+  }
+  if(port == in0Id || port == out0Id || port == out1Id || port == out2Id){
+    min = -ampl;
+    max = ampl;
+  }
+  else {
+    error("fanout was supplied unknown nport");
+  }
+}
 
 float Fabric::Chip::Tile::Slice::Fanout::computeOutput(fanout_state_t& codes,
                                                        ifc out_id,  \
