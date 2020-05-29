@@ -1,14 +1,6 @@
 import construct as cstruct
 import hwlib2.hcdc.llenums as llenums
 
-class BuildContext:
-
-    def __init__(self):
-        self.struct = None
-
-    def build(self,data,debug=False):
-        return build(self.struct, data,debug=debug)
-
 def lut_source_t():
     kwargs = {
         llenums.LUTSourceType.ADC0.value:0,
@@ -355,42 +347,3 @@ def parse(struct,data,debug=True):
         cstruct.Debugger(struct).parse(data)
 
     return struct.parse(data)
-
-def make_block_loc(ctx,blk,loc):
-  assert(isinstance(ctx,BuildContext))
-  assert(len(loc) == 4)
-  addr = loc.address
-  loc = {
-    'block':llenums.BlockType(blk.name).name,
-    'chip':addr[0],
-    'tile':addr[1],
-    'slice':addr[2],
-    'idx':addr[3]
-  }
-  ctx.struct = block_loc_t()
-  return loc
-
-def make_port_loc(ctx,blk,loc,port):
-  assert(isinstance(ctx,BuildContext))
-  assert(len(loc) == 4)
-  loc = { \
-          'inst':build_block_loc(blk,loc), \
-          'port':PortType(port).name}
-
-  ctx.struct = port_loc_t()
-  return loc
-
-
-def make_circ_cmd(ctx,cmdtype,cmddata):
-    assert(isinstance(ctx,BuildContext))
-    assert(isinstance(cmdtype,llenums.CircCmdType))
-    ctx.struct = cmd_t()
-    return {
-        "cmd_type": llenums.CmdType.CIRC_CMD.name,
-        "cmd_data":{
-            "circ_cmd": {
-                'circ_cmd_type': cmdtype.name,
-                'circ_cmd_data': {cmdtype.value:cmddata}
-            }
-        }
-    }
