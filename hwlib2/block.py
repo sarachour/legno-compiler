@@ -141,6 +141,14 @@ class BlockStateCollection(BlockFieldCollection):
     def __init__(self,block):
       BlockFieldCollection.__init__(self,block,BlockState)
 
+
+    def lift(self,cfg,loc,resp):
+      blkcfg = cfg.configs.get(self._block.name,loc)
+      blkcfg.modes = list(self._block.modes)
+      for state in self:
+        print(state)
+        state.impl.unapply(cfg,self._block.name,loc,resp)
+
     # turn this configuration into a low level spec
     def concretize(self,cfg,loc):
       data = {}
@@ -172,8 +180,6 @@ class ModeDependentProperty:
 
   def declare(self,mode):
     self._fields[mode] = None
-
- 
 
   def bind(self,mode_pattern,field):
     assert(isinstance(field,self._type))
@@ -213,6 +219,15 @@ class BCModeImpl:
       self.state.valid(value)
       self._bindings.append((pattern,value))
 
+  def unapply(self,adp,block_name,loc,data):
+    cfg = adp.configs.get(block_name,loc)
+    valid_modes = cfg.modes
+    for pat,value in self._bindings:
+        print(self.state.name)
+        print(data)
+        if value == data[self.state.name]:
+            print(self.state.name,pat,value)
+        
   def apply(self,adp,block_name,loc):
     cfg = adp.configs.get(block_name,loc)
     if cfg is None:

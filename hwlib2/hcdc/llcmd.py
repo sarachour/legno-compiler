@@ -1,9 +1,26 @@
+import hwlib2.device as devlib
+import hwlib2.adp as adplib
 import hwlib2.hcdc.llstructs as llstructs
+import hwlib2.hcdc.hcdcv2 as hcdclib
 import hwlib2.hcdc.llenums as llenums
 import lab_bench.grendel_util as grendel_util
 
 
-def make_block_loc(blk,loc):
+def from_block_loc_t(dict_):
+    dev = hcdclib.get_device()
+    chip = dict_['chip']
+    tile = dict_['tile']
+    slice_ = dict_['slice']
+    idx = dict_['idx']
+    block_type = llenums.BlockType.by_name(str(dict_['block']))
+    blk = dev.get_block(block_type.value)
+    addr = [int(dict_['chip']), \
+            int(dict_['tile']), \
+            int(dict_['slice']), \
+            int(dict_['idx'])]
+    return blk,devlib.Location(addr)
+
+def make_block_loc_t(blk,loc):
   assert(len(loc) == 4)
   addr = loc.address
   loc = {
@@ -67,7 +84,7 @@ def _unpack_response(resp):
 
 def profile(runtime,blk,loc,cfg,output_port,in0=0.0,in1=0.0):
     state_t = {blk.name:blk.state.concretize(cfg,loc)}
-    loc_t,loc_d = make_block_loc(blk,loc)
+    loc_t,loc_d = make_block_loc_t(blk,loc)
     values = [0.0]*2
     values[llenums.PortType.IN0.to_code()] = in0
     values[llenums.PortType.IN1.to_code()] = in1
@@ -83,11 +100,19 @@ def profile(runtime,blk,loc,cfg,output_port,in0=0.0,in1=0.0):
 
     runtime.execute(cmd)
     resp = _unpack_response(runtime.result())
+    # this should be a struct
+    new_cfg = adplib.ADP()
+    blk,loc = from_block_loc_t(resp['spec']['inst'])
+    new_cfg.add_instance(blk,loc)
+    state = resp['spec']['state'][blk.name]
+    print(state)
+    blk.state.lift(new_cfg,loc,dict(state))
+
     return resp
 
 def set_state(runtime,blk,loc,cfg):
     state_t = {blk.name:blk.state.concretize(cfg,loc)}
-    loc_t,loc_d = make_block_loc(blk,loc)
+    loc_t,loc_d = make_block_loc_t(blk,loc)
     state_data = {'inst':loc_d, 'state':state_t}
     cmd_t,cmd_data = make_circ_cmd(llenums.CircCmdType.SET_STATE, \
                                        state_data)
@@ -96,7 +121,7 @@ def set_state(runtime,blk,loc,cfg):
     return _unpack_response(runtime.result())
 
 def disable(runtime,blk,loc):
-    loc_t,loc_d = make_block_loc(blk,loc)
+    loc_t,loc_d = make_block_loc_t(blk,loc)
     cmd_t,cmd_d = make_circ_cmd(llenums.CircCmdType.DISABLE,  \
                                           {'inst':loc_d})
     cmd = cmd_t.build(cmd_d,debug=True)

@@ -57,6 +57,13 @@ class BlockType(str,Enum):
     LUT = "lut";
     NONE = "<none>";
 
+    @staticmethod
+    def by_name(name):
+      if name in BlockType._member_map_:
+          return BlockType._member_map_[name]
+
+      raise Exception("unknown block type: %s" % name)
+
     def code(self):
         mapping = {
             BlockType.NOBLOCK: 0,

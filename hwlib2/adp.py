@@ -81,7 +81,6 @@ class PortDataConfig(ConfigStmt):
 
 class BlockConfig:
 
-
   def __init__(self,inst):
     assert(isinstance(inst,BlockInst))
     self.inst = inst
