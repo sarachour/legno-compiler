@@ -1,9 +1,9 @@
 from enum import Enum
+from hwlib2.block import ArrayAdapter
 
 class ResponseType(Enum):
     PROFILE_RESULT = "resp_profile_result"
     BLOCK_STATE = "resp_block_state"
-
 
 class ProfileStatus(Enum):
     SUCCESS = "success"
@@ -243,6 +243,18 @@ class DACSourceType(str,Enum):
         else:
             raise Exception("not handled: %s" % self)
 
+class PortArrayAdapter(ArrayAdapter):
+    def array(self):
+        return [
+            PortType.IN0,
+            PortType.IN1,
+            PortType.OUT0,
+            PortType.OUT1,
+            PortType.OUT2,
+            PortType.NOPORT
+        ]
+
+
 class PortType(str,Enum):
     IN0 = "in0"
     IN1 = "in1"
@@ -251,45 +263,23 @@ class PortType(str,Enum):
     OUT2 = "out2"
     NOPORT = "noport"
 
-    @staticmethod
-    def default():
-        return PortType.IN0
 
-    def to_code(self):
-        codes = {
-            PortType.IN0: 0,
-            PortType.IN1: 1,
-            PortType.OUT0: 2,
-            PortType.OUT1: 3,
-            PortType.OUT2: 4,
-            PortType.NOPORT: 5
-        }
-        return codes[self]
-
-    @staticmethod
-    def from_code(i):
-        codes = {
-            0: PortType.IN0,
-            1: PortType.IN1,
-            2: PortType.OUT0,
-            3: PortType.OUT1,
-            4: PortType.OUT2
-        }
-        return codes[i]
+    def array_adapter(self):
+        return PortArrayAdapter(self)
 
     @staticmethod
     def output_ports():
-        return [PortType.OUT0,
-                PortType.OUT1,
-                PortType.OUT2]
+      return [PortType.OUT0,
+              PortType.OUT1,
+              PortType.OUT2]
 
     @staticmethod
     def ports():
-        return [PortType.IN0,
-                PortType.IN1,
-                PortType.OUT0,
-                PortType.OUT1,
-                PortType.OUT2]
+      return [PortType.IN0,
+              PortType.IN1,
+              PortType.OUT0,
+              PortType.OUT1,
+              PortType.OUT2]
 
 class SignType(str,Enum):
     POS = '+'

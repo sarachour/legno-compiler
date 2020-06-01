@@ -140,3 +140,4 @@ fan.state.add(BlockState('bias2',
                         state_type=BlockStateType.CALIBRATE))
 fan.state['bias2'].impl.set_default(16)
 
+assert(len(list(fan.modes)) > 0)

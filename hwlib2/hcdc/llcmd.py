@@ -86,8 +86,8 @@ def profile(runtime,blk,loc,cfg,output_port,in0=0.0,in1=0.0):
     state_t = {blk.name:blk.state.concretize(cfg,loc)}
     loc_t,loc_d = make_block_loc_t(blk,loc)
     values = [0.0]*2
-    values[llenums.PortType.IN0.to_code()] = in0
-    values[llenums.PortType.IN1.to_code()] = in1
+    values[llenums.PortType.IN0.array_adapter().code()] = in0
+    values[llenums.PortType.IN1.array_adapter().code()] = in1
     profile_data = {"method": llenums.ProfileOpType.INPUT_OUTPUT.name, \
                     "inst": loc_d,
                     "in_vals": values, \
@@ -101,14 +101,14 @@ def profile(runtime,blk,loc,cfg,output_port,in0=0.0,in1=0.0):
     runtime.execute(cmd)
     resp = _unpack_response(runtime.result())
     # this should be a struct
-    new_cfg = adplib.ADP()
+    new_adp= adplib.ADP()
     blk,loc = from_block_loc_t(resp['spec']['inst'])
-    new_cfg.add_instance(blk,loc)
+    new_adp.add_instance(blk,loc)
     state = resp['spec']['state'][blk.name]
-    print(state)
-    blk.state.lift(new_cfg,loc,dict(state))
+    blk.state.lift(new_adp,loc,dict(state))
 
-    return resp
+    blkcfg = new_adp.configs.get(blk.name,loc)
+    return blkcfg
 
 def set_state(runtime,blk,loc,cfg):
     state_t = {blk.name:blk.state.concretize(cfg,loc)}

@@ -2,6 +2,30 @@ from enum import Enum
 import ops.interval as interval
 import ops.generic_op as oplib
 import hwlib2.exceptions as exceptions
+import hwlib2.adp as adplib
+
+class ArrayAdapter:
+  def __init__(self,enum_val):
+      self.enum_val = enum_val
+
+  def array(self):
+    raise Exception("overrideme")
+
+  @staticmethod
+  def from_code(idx):
+    for idx2,v in enumerate(self.array(None)):
+      if idx == idx2:
+        return v
+
+    raise Exception("unknown index <%s>" % idx)
+
+  def code(self):
+    vals = self.array()
+    for e in self.enum_val.__class__:
+      if not e in vals:
+        raise Exception("all enum values must be in adapter")
+
+    return vals.index(self.enum_val)
 
 class QuantizeType(Enum):
     LINEAR = "linear"
@@ -55,28 +79,54 @@ def interpret_enum(field,_enum_type):
 
 class BlockMode:
 
-  def __init__(self,values,spec):
-    self._values = values
-    self._spec = spec
-
-class BlockModeset:
-
-  def __init__(self,type_spec):
-    self._type = type_spec
-    self._modes = []
-
-  def typecheck(self,mode):
-    for field,_type in zip(mode,self._type):
+  def typecheck(self):
+    for field,_type in zip(self._values,self._spec):
       if not isinstance(field,_type) and \
         (interpret_enum(field,_type) is None):
-        print(field,_type)
         return False
     return True
 
-  def match(self,pattern,mode):
-    assert(len(pattern) == len(mode))
-    assert(len(self._type) == len(mode))
-    for pat,mode,typ in zip(pattern,mode,self._type):
+
+  def __init__(self,values,spec):
+    self._values = values
+    self._spec = spec
+    self._is_array = False
+    if isinstance(values,tuple) or \
+       isinstance(values,list):
+        self._is_array = True
+
+    self.typecheck()
+
+  @property
+  def key(self):
+    if self._is_array:
+        return ",".join(map(lambda x: str(x),self._values))
+    else:
+        return self._values
+
+  def __len__(self):
+    if self._is_array:
+        return len(self._values)
+    else:
+        return 1
+
+  def equals(self,other_mode):
+    if self._is_array != other_mode._is_array:
+        return False
+
+    if self._is_array:
+      if len(self._values) != len(other_mode._values):
+        return False
+      for v1,v2 in zip(self._values,other_mode._values):
+        if v1 != v2:
+          return False
+      return True
+    else:
+      return v1 == v2
+
+  def match(self,pattern):
+    assert(len(pattern) == len(self))
+    for pat,mode,typ in zip(pattern,self._values,self._spec):
       pat_m = interpret_enum(mode,typ)
       if pat == '_':
         pat_e = None
@@ -86,22 +136,37 @@ class BlockModeset:
           return False
     return True
 
+  def __repr__(self):
+    return "(%s)" % self.key
+
+class BlockModeset:
+
+  def __init__(self,type_spec):
+    self._type = type_spec
+    self._modes = {}
+
   def matches(self,pattern):
-      for mode in self:
-        if self.match(pattern,mode):
-          yield mode
+    for mode in self:
+      if mode.match(pattern):
+        yield mode
 
   def add(self,mode):
-      assert(not mode in self._modes)
-      msg_assert(self.typecheck(mode), \
-                 '%s not of type %s' % (mode,self._type))
+    mode_d = BlockMode(mode,self._type)
+    assert(not mode_d.key in self._modes)
+    self._modes[mode_d.key] = mode_d
 
   def add_all(self,modes):
     for mode in modes:
       self.add(mode)
 
+  def get(self,mode):
+    bm = BlockMode(mode,self._type)
+    for mode in self:
+        if mode.equals(bm):
+            return mode
+
   def __iter__(self):
-    for mode in self._modes:
+    for mode in self._modes.values():
       yield mode
 
 class BlockField:
@@ -142,12 +207,11 @@ class BlockStateCollection(BlockFieldCollection):
       BlockFieldCollection.__init__(self,block,BlockState)
 
 
-    def lift(self,cfg,loc,resp):
+    def lift(self,cfg,loc,data):
       blkcfg = cfg.configs.get(self._block.name,loc)
       blkcfg.modes = list(self._block.modes)
       for state in self:
-        print(state)
-        state.impl.unapply(cfg,self._block.name,loc,resp)
+        state.lift(cfg,self._block,loc,data)
 
     # turn this configuration into a low level spec
     def concretize(self,cfg,loc):
@@ -160,12 +224,12 @@ class BlockStateCollection(BlockFieldCollection):
           data[state.variable] = value
         else:
           if not state.variable in data:
-            data[state.variable] = [state.array.default] \
-                                  *state.array.length
+            data[state.variable] = state.array.new_array()
             arrays.append(state.variable)
 
-          assert(not state.index in data[state.variable])
-          data[state.variable][state.index.to_code()] = value
+          idx = state.array.get_index(state.index)
+          state.array.typecheck_value(value)
+          data[state.variable][idx] = value
 
       return data
 
@@ -177,15 +241,15 @@ class ModeDependentProperty:
     self._fields = {}
     self._type = typ
     self._modes = modeset
+    for mode in self._modes:
+        self._fields[mode.key] = None
 
-  def declare(self,mode):
-    self._fields[mode] = None
 
   def bind(self,mode_pattern,field):
     assert(isinstance(field,self._type))
     for mode in self._modes.matches(mode_pattern):
-        assert(self._fields[mode] is None)
-        self._fields[mode] = field
+        assert(self._fields[mode.key] is None)
+        self._fields[mode.key] = field
 
 class BCConstImpl:
   def __init__(self,state):
@@ -199,6 +263,10 @@ class BCConstImpl:
   def apply(self,adp,block_name,loc):
       assert(not self.value is None)
       return self.value
+
+  def lift(self,adp,block,loc,data):
+      self.state.valid(data)
+      return
 
 class BCModeImpl:
   def __init__(self,state):
@@ -219,15 +287,26 @@ class BCModeImpl:
       self.state.valid(value)
       self._bindings.append((pattern,value))
 
-  def unapply(self,adp,block_name,loc,data):
-    cfg = adp.configs.get(block_name,loc)
-    valid_modes = cfg.modes
+  def lift(self,adp,block,loc,data_value):
+    cfg = adp.configs.get(block.name,loc)
+    modes = None
+    avail_modes = cfg.modes if not cfg.modes is None \
+                  else block.modes
+
     for pat,value in self._bindings:
-        print(self.state.name)
-        print(data)
-        if value == data[self.state.name]:
-            print(self.state.name,pat,value)
-        
+        casted_value = value.__class__(data_value)
+        # this is the correct value
+        if casted_value == value:
+            assert(modes is None)
+            modes = []
+            for mode in avail_modes:
+                if mode.match(pat):
+                    modes.append(mode)
+
+    assert(not modes is None)
+    assert(len(modes) > 0)
+    cfg.modes = modes
+
   def apply(self,adp,block_name,loc):
     cfg = adp.configs.get(block_name,loc)
     if cfg is None:
@@ -239,11 +318,10 @@ class BCModeImpl:
                                       block_name,loc, \
                                       "block config is incomplete")
 
-    mode = cfg.mode
-    modeset = self.state.block.modes
+    mode = self.state.block.modes.get(cfg.mode)
     values = []
     for pat,value in self._bindings:
-        if modeset.match(pat,mode):
+        if mode.match(pat):
             values.append(value)
 
     assert(len(values) == 1)
@@ -270,8 +348,13 @@ class BCCalibImpl:
       return self._default
 
   def apply(self,adp,block_name,loc):
-      print("[BCCalibImpl.apply] not implemented")
+      print("[BCCalibImpl.apply] TODO: not implemented")
       return self.default
+
+  def lift(self,adp,block,loc,data):
+    blkcfg = adp.configs.get(block.name,loc)
+    blkcfg.get(self.state.name).value = data
+
 
 class BCConnImpl:
   def __init__(self,state):
@@ -305,25 +388,42 @@ class BCConnImpl:
       self._default = value
 
   def apply(self,adp,block_name,loc):
-      '''
-      sink_conns = adp.conns.incoming(block_name,loc)
-      for src_loc,sink_loc in sink_conns:
-          pass
-      source_conns = adp.conns.outgoing(block_name,loc)
-      for src_loc,sink_loc in sink_conns:
-          pass
-      '''
-      return self._default
+    '''
+    sink_conns = adp.conns.incoming(block_name,loc)
+    for src_loc,sink_loc in sink_conns:
+        pass
+    source_conns = adp.conns.outgoing(block_name,loc)
+    for src_loc,sink_loc in sink_conns:
+        pass
+    '''
+    print("TODO: actually apply connection impl")
+    return self._default
+
+  def lift(self,adp,block,loc,data):
+    cfg = adp.configs.get(block.name,loc)
+    print("TODO: actually apply connection impl")
+    return self._default
 
 class BlockStateArray:
 
   def __init__(self,name,indices,values,length,default=None):
       self.name = name
       self.indices = indices
-      self.values = values
+
       self.length = length
+      self.values = values
       assert(default in values)
       self.default = default
+
+  def get_index(self,index):
+      enum_v = interpret_enum(index,self.indices)
+      return enum_v.array_adapter().code()
+
+  def new_array(self):
+      return [self.default]*self.length
+
+  def typecheck_value(self,v):
+      return v in list(self.values)
 
 class BlockState(BlockField):
 
@@ -360,6 +460,17 @@ class BlockState(BlockField):
         if value == v:
           return True
       return False
+
+  # add the 
+  def lift(self,adp,block,loc,data):
+    if not self.array is None:
+        arr_idx = self.index.array_adapter().code()
+        arr_name = self.array.name
+        value = data[arr_name][arr_idx]
+    else:
+        value = data[self.name]
+
+    self.impl.lift(adp,block,loc,value)
 
   def __str__(self):
     name = self.type.value

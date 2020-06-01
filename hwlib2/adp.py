@@ -61,6 +61,10 @@ class ConstDataConfig(ConfigStmt):
     self.value = value
     self.scf = 1.0
 
+  def __repr__(self):
+    return "data %s val=%f scf=%f" \
+      % (self.name,self.value,self.scf)
+
 class ExprDataConfig(ConfigStmt):
 
   def __init__(self,field,args,expr):
@@ -73,11 +77,26 @@ class ExprDataConfig(ConfigStmt):
       self.scfs[key] = 1.0
       self.injs[key] = 1.0
 
+
+
 class PortDataConfig(ConfigStmt):
 
   def __init__(self,name):
     ConfigStmt.__init__(self,name)
     self.scf = 1.0
+
+  def __repr__(self):
+    return "port %s scf=%f" % (self.name,self.scf)
+
+class StateConfig(ConfigStmt):
+
+  def __init__(self,name,value):
+    ConfigStmt.__init__(self,name)
+    self.name = name
+    self.value = value
+
+  def __repr__(self):
+    return "code %s val=%s" % (self.name,self.value)
 
 class BlockConfig:
 
@@ -85,7 +104,7 @@ class BlockConfig:
     assert(isinstance(inst,BlockInst))
     self.inst = inst
     self.stmts = {}
-    self.modes = []
+    self.modes = None
 
   @property
   def mode(self):
@@ -98,6 +117,11 @@ class BlockConfig:
   def add(self,stmt):
     assert(not stmt.name in self.stmts)
     self.stmts[stmt.name] = stmt
+
+  def get(self,name):
+    if not name in self.stmts:
+      raise Exception("unknown identifier <%s> for block config <%s>" % (name,self.inst))
+    return self.stmts[name]
 
   def __getitem__(self,key):
     assert(key in self.stmts)
@@ -117,8 +141,19 @@ class BlockConfig:
       else:
         cfg.add(ExprDataConfig(data.name, \
                                data.args))
+    for state in block.state:
+      if isinstance(state.impl,blocklib.BCCalibImpl):
+        cfg.add(StateConfig(state.name, state.impl.default))
     return cfg
 
+  def __str__(self):
+    st = "block %s:\n" % (self.inst)
+    indent = "  "
+    st += "%s%s\n" % (indent,self.modes)
+    for stmt in self.stmts.values():
+      st += "%s%s\n" % (indent,stmt)
+
+    return st
 class ADP:
 
   def __init__(self):
