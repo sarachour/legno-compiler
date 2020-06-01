@@ -1,4 +1,5 @@
 import hwlib2.hcdc.llenums as enums
+import ops.interval as interval
 from hwlib2.block import *
 import ops.opparse as parser
 
@@ -23,26 +24,35 @@ fan.modes.add_all([
   ['-','-','-','h']
 ])
 
-fan.inputs.add(BlockInput('x',BlockSignalType.ANALOG))
-fan.outputs.add(BlockOutput('z0',BlockSignalType.ANALOG))
-fan.outputs.add(BlockOutput('z1',BlockSignalType.ANALOG))
-fan.outputs.add(BlockOutput('z2',BlockSignalType.ANALOG))
+p_in = fan.inputs.add(BlockInput('x',BlockSignalType.ANALOG, \
+                          ll_identifier=enums.PortType.IN0))
+p_out0 = fan.outputs.add(BlockOutput('z0',BlockSignalType.ANALOG, \
+                            ll_identifier=enums.PortType.OUT0))
+p_out1 = fan.outputs.add(BlockOutput('z1',BlockSignalType.ANALOG, \
+                            ll_identifier=enums.PortType.OUT1))
+p_out2 = fan.outputs.add(BlockOutput('z2',BlockSignalType.ANALOG, \
+                            ll_identifier=enums.PortType.OUT2))
+for port in [p_in,p_out0,p_out1,p_out2]:
+  port.interval.bind(['_','_','_','m'],  \
+                     interval.Interval(-2,2))
+  port.interval.bind(['_','_','_','h'],  \
+                     interval.Interval(-20,20))
 
-# High level behavior
-fan.outputs['z0'].relation.bind(['+','_','_','_'], \
-                                parser.parse_expr('x'))
-spec = DeltaSpec(parser.parse_expr('a*x+b'))
-spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
-spec.param('b',DeltaParamType.GENERAL,ideal=0.0)
-fan.outputs['z0'].deltas.bind(['+','_','_','_'],spec)
+for idx,port in enumerate([p_out0,p_out1,p_out2]):
+  pat = ['_','_','_','_']
+  pat[idx] = '+'
+  fan.outputs[port.name].relation.bind(pat, parser.parse_expr('x'))
+  spec = DeltaSpec(parser.parse_expr('a*x+b'))
+  spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
+  spec.param('b',DeltaParamType.GENERAL,ideal=0.0)
+  fan.outputs[port.name].deltas.bind(pat,spec)
 
-fan.outputs['z0'].relation.bind(['-','_','_','_'],\
-                                parser.parse_expr('-x'))
-spec = DeltaSpec(parser.parse_expr('-a*x+b'))
-spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
-spec.param('b',DeltaParamType.GENERAL,ideal=0.0)
-fan.outputs['z0'].deltas.bind(['-','_','_','_'],spec)
-
+  pat[idx] = '-'
+  fan.outputs[port.name].relation.bind(pat, parser.parse_expr('-x'))
+  spec = DeltaSpec(parser.parse_expr('-a*x+b'))
+  spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
+  spec.param('b',DeltaParamType.GENERAL,ideal=0.0)
+  fan.outputs[port.name].deltas.bind(pat,spec)
 
 
 # Low level behavior

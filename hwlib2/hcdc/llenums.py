@@ -8,12 +8,44 @@ class ProfileStatus(Enum):
     SUCCESS = "success"
     FAILED_TO_CALIBRATE = "success"
 
+    @staticmethod
+    def array():
+        return [
+            ProfileStatus.SUCCESS,
+            ProfileStatus.FAILED_TO_CALIBRATE
+        ]
+
+    def code(self):
+        return self.array().index(self)
+
+    @staticmethod
+    def from_code(idx):
+        return ProfileStatus.array()[idx]
+
 class ProfileOpType(Enum):
     INPUT_OUTPUT = "input_output"
     INTEG_INITIAL_COND = "integ_ic"
     INTEG_DERIVATIVE_STABLE = "integ_stability"
     INTEG_DERIVATIVE_BIAS = "integ_bias"
     INTEG_DERIVATIVE_GAIN = "integ_gain"
+
+    @staticmethod
+    def array():
+        return [
+            ProfileOpType.INPUT_OUTPUT,
+            ProfileOpType.INTEG_INITIAL_COND,
+            ProfileOpType.INTEG_DERIVATIVE_STABLE,
+            ProfileOpType.INTEG_DERIVATIVE_BIAS,
+            ProfileOpType.INTEG_DERIVATIVE_GAIN
+        ]
+
+    def code(self):
+        return self.array().index(self)
+
+    @staticmethod
+    def from_code(idx):
+        return ProfileOpType.array()[idx]
+
 
 class CmdType(Enum):
     NULL_CMD = "no_cmd"

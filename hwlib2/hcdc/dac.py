@@ -15,9 +15,9 @@ dac.modes.add_all([
   [HLDACSourceType.CONST,enums.RangeType.HIGH],
 
 ])
-dac.inputs.add(BlockInput('x', BlockSignalType.DIGITAL))
+dac.inputs.add(BlockInput('x', BlockSignalType.DIGITAL,ll_identifier=enums.PortType.NOPORT))
 dac.data.add(BlockData('c', BlockDataType.CONST))
-dac.outputs.add(BlockOutput('z', BlockSignalType.ANALOG))
+dac.outputs.add(BlockOutput('z', BlockSignalType.ANALOG,ll_identifier=enums.PortType.OUT0))
 
 dac.outputs['z'].relation.bind([HLDACSourceType.DYNAMIC,'_'], \
                                parser.parse_expr('x'))

@@ -5,6 +5,9 @@ class Location:
   def __init__(self,address):
     self.address = address
 
+  def to_json(self):
+    return self.address
+
   def __str__(self):
     tup = ",".join(map(lambda i: str(i), self.address))
     return "loc(%s)" % (tup)

@@ -6,8 +6,10 @@ lut = Block('lut',BlockType.COPY, \
             [str])
 
 lut.modes.add_all([['*']])
-lut.inputs.add(BlockInput('x', BlockSignalType.DIGITAL))
-lut.outputs.add(BlockOutput('z', BlockSignalType.DIGITAL))
+lut.inputs.add(BlockInput('x', BlockSignalType.DIGITAL, \
+                          ll_identifier=enums.PortType.NOPORT))
+lut.outputs.add(BlockOutput('z', BlockSignalType.DIGITAL, \
+                            ll_identifier=enums.PortType.NOPORT))
 
 lut.data.add(BlockData('f', BlockDataType.EXPR,inputs=1))
 lut.outputs['z'].relation.bind(['_'], \

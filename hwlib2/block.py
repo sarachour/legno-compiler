@@ -74,6 +74,11 @@ class BlockMode:
 
     self.typecheck()
 
+  def to_json(self):
+    return {
+        'values': self._values
+    }
+
   @property
   def key(self):
     if self._is_array:
@@ -170,6 +175,7 @@ class BlockFieldCollection:
     assert(not fld.name in self._block.field_names())
     self._collection[fld.name] = fld
     fld.initialize(self._block)
+    return fld
 
   def __getitem__(self,key):
     return self._collection[key]
@@ -214,19 +220,37 @@ class BlockStateCollection(BlockFieldCollection):
 
 class ModeDependentProperty:
 
-  def __init__(self,modeset,typ):
+  def __init__(self,name,modeset,typ):
     self._fields = {}
     self._type = typ
+    self.name = name
     self._modes = modeset
     for mode in self._modes:
         self._fields[mode.key] = None
 
+
+  @property
+  def value_type(self):
+    return self._type
 
   def bind(self,mode_pattern,field):
     assert(isinstance(field,self._type))
     for mode in self._modes.matches(mode_pattern):
         assert(self._fields[mode.key] is None)
         self._fields[mode.key] = field
+
+  def __getitem__(self,mode):
+    assert(isinstance(mode,BlockMode))
+    return self._fields[mode.key]
+
+  def __repr__(self):
+    st = ""
+    for k,v in self._fields.items():
+      if v is None:
+        continue
+      st += "%s->%s; " % (k,v)
+
+    return st
 
 class BCConstImpl:
   def __init__(self,state):
@@ -463,22 +487,37 @@ class BlockState(BlockField):
 
 class BlockInput(BlockField):
 
-  def __init__(self,name,sig_type):
+  def __init__(self,name,sig_type,ll_identifier):
       BlockField.__init__(self,name)
       assert(isinstance(sig_type, BlockSignalType))
       self.type = sig_type
+      self.ll_identifier = ll_identifier
 
   def initialize(self,block):
       self.block = block
-      self.interval = ModeDependentProperty(block.modes,interval.Interval)
-      self.freq_limit = ModeDependentProperty(block.modes,float)
-      self.quantize = ModeDependentProperty(block.modes,list)
+      self.interval = ModeDependentProperty("interval",block.modes,interval.Interval)
+      self.freq_limit = ModeDependentProperty("max_frequency",block.modes,float)
+      self.quantize = ModeDependentProperty("quantization",block.modes,list)
 
   @property
   def properties(self):
       yield self.interval
       yield self.freq_limit
       yield self.quantize
+
+  def __repr__(self):
+      indent = "  "
+      st = "block-input %s : %s (%s) {\n" \
+           % (self.name,self.type,self.ll_identifier.value);
+      for prop in [self.interval,self.freq_limit,self.quantize]:
+        text = str(prop)
+        if text != "":
+          st += "%s%s\n" % (indent,prop.name)
+          st += "%s%s\n" % (indent+indent,text.replace(';','\n'+indent+indent))
+
+      st += "}\n"
+      return st
+
 
 class DeltaSpec:
 
@@ -495,20 +534,21 @@ class DeltaSpec:
 
 class BlockOutput(BlockField):
 
-  def __init__(self,name,sig_type):
+  def __init__(self,name,sig_type,ll_identifier):
     BlockField.__init__(self,name)
     assert(isinstance(sig_type, BlockSignalType))
     self.type = sig_type
+    self.ll_identifier = ll_identifier
 
 
   def initialize(self,block):
     self.block = block
-    self.interval = ModeDependentProperty(block.modes,interval.Interval)
-    self.freq_limit = ModeDependentProperty(block.modes,float)
-    self.relation = ModeDependentProperty(block.modes,oplib.Op)
-    self.deltas = ModeDependentProperty(block.modes,DeltaSpec)
+    self.interval = ModeDependentProperty("interval",block.modes,interval.Interval)
+    self.freq_limit = ModeDependentProperty("max_frequency",block.modes,float)
+    self.relation = ModeDependentProperty("relation",block.modes,oplib.Op)
+    self.deltas = ModeDependentProperty("delta_model",block.modes,DeltaSpec)
     if self.type == BlockSignalType.DIGITAL:
-      self.quantize = ModeDependentProperty(block.modes,list)
+      self.quantize = ModeDependentProperty("quantization",block.modes,list)
 
   @property
   def properties(self):
@@ -533,12 +573,14 @@ class BlockData(BlockField):
   def initialize(self,block):
     self.block = block
     if self.type == BlockDataType.CONST:
-      self.quantize = ModeDependentProperty(block.modes, \
+      self.quantize = ModeDependentProperty("quantization", \
+                                            block.modes, \
                                             Quantize)
     else:
       assert(isinstance(self.n_inputs,int))
 
-    self.interval = ModeDependentProperty(block.modes, \
+    self.interval = ModeDependentProperty("interval", \
+                                          block.modes, \
                                           interval.Interval)
 
 

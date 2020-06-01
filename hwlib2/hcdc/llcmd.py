@@ -7,6 +7,11 @@ import hwlib2.physdb as physdb
 
 import lab_bench.grendel_util as grendel_util
 
+def get_by_ll_identifier(collection,ident):
+    for port in collection:
+        if port.ll_identifier == ident:
+            return port
+
 
 def from_block_loc_t(dict_):
     dev = hcdclib.get_device()
@@ -86,7 +91,7 @@ def _unpack_response(resp):
 
 def profile(runtime,blk,loc,cfg,output_port,in0=0.0,in1=0.0):
     state_t = {blk.name:blk.state.concretize(cfg,loc)}
-    # build command
+    # build profiling command
     loc_t,loc_d = make_block_loc_t(blk,loc)
     values = [0.0]*2
     values[llenums.PortType.IN0.code()] = in0
@@ -101,7 +106,7 @@ def profile(runtime,blk,loc,cfg,output_port,in0=0.0,in1=0.0):
                              profile_data)
     cmd = cmd_t.build(cmd_data,debug=True)
 
-    # execute command
+    # execute profiling command
     runtime.execute(cmd)
     resp = _unpack_response(runtime.result())
 
@@ -112,27 +117,35 @@ def profile(runtime,blk,loc,cfg,output_port,in0=0.0,in1=0.0):
     state = resp['spec']['state'][blk.name]
     blk.state.lift(new_adp,loc,dict(state))
 
-    # retrieve parametesr for new result
-    new_in0 = resp['spec']['in_vals'][llenums.PortType.IN0.code()]
-    new_in1 = resp['spec']['in_vals'][llenums.PortType.IN1.code()]
-    new_out = llenums.PortType.from_code(int(resp['spec']['output']))
-    new_method = resp['spec']['method']
+    # retrieve parameters for new result
+    inputs = {}
+    port = get_by_ll_identifier(blk.inputs,llenums.PortType.IN0)
+    if not port is None:
+        inputs[port.name] = resp['spec']['in_vals'][llenums.PortType.IN0.code()]
+
+    port = get_by_ll_identifier(blk.inputs,llenums.PortType.IN1)
+    if not port is None:
+        inputs[port.name]= resp['spec']['in_vals'][llenums.PortType.IN1.code()]
+
+    new_out = get_by_ll_identifier(blk.outputs,  \
+                                llenums.PortType.from_code(int(resp['spec']['output'])))
+
+    new_method = llenums.ProfileOpType.from_code(int(resp['spec']['method']))
     out_mean = resp['mean']
     out_std = resp['stdev']
-    out_status = resp['status']
+    out_status = llenums.ProfileStatus.from_code(int(resp['status']))
 
     # insert into database
     print("TODO: fix status. It's unknown")
-    assert(isinstance(new_out,llenums.PortType))
     blkcfg = new_adp.configs.get(blk.name,loc)
     db = physdb.PhysicalDatabase(runtime.board_name)
-    db.get(blk,loc,new_out,blkcfg) \
-      .add_datapoint(in0=new_in0, \
-                     in1=new_in1, \
-                     out_port=new_out, \
-                     method = new_method, \
-                     mean=out_mean, \
-                     std=out_std)
+    row = physdb.PhysCfgBlock(db,blk,loc,new_out,blkcfg)
+    row.update()
+    row.add_datapoint(blkcfg, \
+                      inputs, \
+                      method=new_method, \
+                      mean=out_mean, \
+                      std=out_std)
 
     return blkcfg
 

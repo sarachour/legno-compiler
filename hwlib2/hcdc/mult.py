@@ -21,9 +21,9 @@ mult.modes.add_all([
   ['h','m','h']
 ])
 
-mult.inputs.add(BlockInput('x',BlockSignalType.ANALOG))
-mult.inputs.add(BlockInput('y',BlockSignalType.ANALOG))
-mult.outputs.add(BlockOutput('z',BlockSignalType.ANALOG))
+mult.inputs.add(BlockInput('x',BlockSignalType.ANALOG,ll_identifier=enums.PortType.IN0))
+mult.inputs.add(BlockInput('y',BlockSignalType.ANALOG,ll_identifier=enums.PortType.IN1))
+mult.outputs.add(BlockOutput('z',BlockSignalType.ANALOG,ll_identifier=enums.PortType.OUT0))
 mult.data.add(BlockData('c',BlockDataType.CONST))
 mult.data['c'] \
     .interval.bind(['_','_','_'],interval.Interval(-1,1))
