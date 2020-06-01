@@ -1,5 +1,4 @@
 from enum import Enum
-from hwlib2.block import ArrayAdapter
 
 class ResponseType(Enum):
     PROFILE_RESULT = "resp_profile_result"
@@ -243,43 +242,52 @@ class DACSourceType(str,Enum):
         else:
             raise Exception("not handled: %s" % self)
 
-class PortArrayAdapter(ArrayAdapter):
-    def array(self):
-        return [
-            PortType.IN0,
+class PortType(str,Enum):
+  IN0 = "in0"
+  IN1 = "in1"
+  OUT0 = "out0"
+  OUT1 = "out1"
+  OUT2 = "out2"
+  NOPORT = "noport"
+
+  @staticmethod
+  def array():
+    return [
+        PortType.IN0,
+        PortType.IN1,
+        PortType.OUT0,
+        PortType.OUT1,
+        PortType.OUT2,
+        PortType.NOPORT
+    ]
+
+  def code(self):
+    vals = self.array()
+    for e in self.__class__:
+      if not e in vals:
+        raise Exception("all enum values must be in adapter")
+    return vals.index(self)
+
+  def from_code(idx):
+    for idx2,v in enumerate(PortType.array()):
+      if idx == idx2:
+        return v
+
+    raise Exception("unknown index <%s>" % idx)
+
+  @staticmethod
+  def output_ports():
+    return [PortType.OUT0,
+            PortType.OUT1,
+            PortType.OUT2]
+
+  @staticmethod
+  def ports():
+    return [PortType.IN0,
             PortType.IN1,
             PortType.OUT0,
             PortType.OUT1,
-            PortType.OUT2,
-            PortType.NOPORT
-        ]
-
-
-class PortType(str,Enum):
-    IN0 = "in0"
-    IN1 = "in1"
-    OUT0 = "out0"
-    OUT1 = "out1"
-    OUT2 = "out2"
-    NOPORT = "noport"
-
-
-    def array_adapter(self):
-        return PortArrayAdapter(self)
-
-    @staticmethod
-    def output_ports():
-      return [PortType.OUT0,
-              PortType.OUT1,
-              PortType.OUT2]
-
-    @staticmethod
-    def ports():
-      return [PortType.IN0,
-              PortType.IN1,
-              PortType.OUT0,
-              PortType.OUT1,
-              PortType.OUT2]
+            PortType.OUT2]
 
 class SignType(str,Enum):
     POS = '+'

@@ -5,10 +5,11 @@ class GrendelRunner:
 
 
   def __init__(self, \
+               board_name="board6", \
                file_desc=None, \
                native=False):
     self.due = ArduinoDue(file_desc,native=native)
-
+    self.board_name = board_name
 
   def initialize(self):
     self.due.open()

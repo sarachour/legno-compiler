@@ -4,29 +4,6 @@ import ops.generic_op as oplib
 import hwlib2.exceptions as exceptions
 import hwlib2.adp as adplib
 
-class ArrayAdapter:
-  def __init__(self,enum_val):
-      self.enum_val = enum_val
-
-  def array(self):
-    raise Exception("overrideme")
-
-  @staticmethod
-  def from_code(idx):
-    for idx2,v in enumerate(self.array(None)):
-      if idx == idx2:
-        return v
-
-    raise Exception("unknown index <%s>" % idx)
-
-  def code(self):
-    vals = self.array()
-    for e in self.enum_val.__class__:
-      if not e in vals:
-        raise Exception("all enum values must be in adapter")
-
-    return vals.index(self.enum_val)
-
 class QuantizeType(Enum):
     LINEAR = "linear"
 
@@ -417,7 +394,7 @@ class BlockStateArray:
 
   def get_index(self,index):
       enum_v = interpret_enum(index,self.indices)
-      return enum_v.array_adapter().code()
+      return enum_v.code()
 
   def new_array(self):
       return [self.default]*self.length
@@ -464,7 +441,7 @@ class BlockState(BlockField):
   # add the 
   def lift(self,adp,block,loc,data):
     if not self.array is None:
-        arr_idx = self.index.array_adapter().code()
+        arr_idx = self.index.code()
         arr_name = self.array.name
         value = data[arr_name][arr_idx]
     else:
