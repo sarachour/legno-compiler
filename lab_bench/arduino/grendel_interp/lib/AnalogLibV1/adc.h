@@ -37,6 +37,8 @@ class Fabric::Chip::Tile::Slice::ChipAdc : public Fabric::Chip::Tile::Slice::Fun
 			range_t range // 20 uA mode
 		);
     static float computeOutput(adc_state_t& config, float input);
+    static void computeInterval(adc_state_t& config, port_type_t port,
+                                 float& min, float& max);
 		unsigned char getData () const;
 		unsigned char getStatusCode() const;
 		bool getException() const;
@@ -44,6 +46,7 @@ class Fabric::Chip::Tile::Slice::ChipAdc : public Fabric::Chip::Tile::Slice::Fun
 		void calibrate (calib_objective_t obj);
 
 		profile_t measure(profile_spec_t spec);
+		profile_t measureConstVal(profile_spec_t spec);
     void defaults();
 		void setAnaIrefNmos () const override;
 

@@ -87,6 +87,9 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
     break;
 
   case cmd_type_t::PROFILE:
+    calibrate::set_state(fab,
+                         cmd.data.prof.inst,
+                         cmd.data.prof.state);
     print_log("profiling...");
     result = calibrate::measure(fab,
                                 cmd.data.prof);

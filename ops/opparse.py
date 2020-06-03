@@ -35,7 +35,6 @@ def report(clause,msg):
     raise Exception("when parsing : %s" % (msg))
 
 def function_to_dslang_ast(dsprog,name,arguments,ignore_missing_func=False):
-  print(arguments)
   n = len(arguments)
   if not dsprog is None and dsprog.has_lambda(name):
     freevars,impl = dsprog.lambda_spec(name);

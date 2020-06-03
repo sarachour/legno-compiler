@@ -3,11 +3,27 @@
 #include "fu.h"
 #include "calib_util.h"
 
+void Fabric::Chip::Tile::Slice::ChipAdc::computeInterval(adc_state_t& state,
+                                                         port_type_t port, float& min, float& max){
+  float ampl = 2.0;
+  switch(port){
+  case in0Id:
+    ampl = state.range == RANGE_HIGH ? 20.0 : 2.0;
+    break;
+  case out0Id:
+    ampl = 1.0;
+    break;
+  default:
+    error("multiplier was supplied unknown port");
+  }
+  min = -ampl;
+  max = ampl;
+}
 float Fabric::Chip::Tile::Slice::ChipAdc::computeOutput (adc_state_t& config,
                                                          float input){
   float rng = util::range_to_coeff(config.range);
-  float dec = input/rng;
-  return (dec*128 + 128.0);
+  float dec = input/rng*0.5;
+  return dec;
 }
 
 

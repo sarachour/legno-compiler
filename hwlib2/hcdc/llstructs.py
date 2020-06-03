@@ -111,6 +111,7 @@ def dac_state_t():
         "inv" / sign_t(),
         "range" / range_t(),
         "source" / dac_source_t(),
+        "dynamic" / bool_t(),
         "pmos" / cstruct.Int8ul,
         "nmos" / cstruct.Int8ul,
         "gain_cal" / cstruct.Int8ul,
@@ -127,7 +128,6 @@ def mult_state_t():
         "port_cal" / cstruct.Array(3,cstruct.Int8ul),
         "gain_cal" / cstruct.Int8ul,
         "gain_code" / cstruct.Int8ul,
-        cstruct.Padding(1)
     )
 
 def fanout_state_t():

@@ -607,7 +607,7 @@ class BlockOutput(BlockField):
     self.relation = ModeDependentProperty("relation",block.modes,oplib.Op)
     self.deltas = ModeDependentProperty("delta_model",block.modes,DeltaSpec)
     if self.type == BlockSignalType.DIGITAL:
-      self.quantize = ModeDependentProperty("quantization",block.modes,list)
+      self.quantize = ModeDependentProperty("quantization",block.modes,Quantize)
 
   @property
   def properties(self):

@@ -5,12 +5,26 @@
 #include "slice.h"
 #include "dac.h"
 
+void Fabric::Chip::Tile::Slice::Dac::computeInterval(dac_state_t& state,
+                                                     port_type_t port, float& min, float& max){
+  float ampl = 2.0;
+  switch(port){
+  case out0Id:
+    ampl = state.range == RANGE_HIGH ? 20.0 : 2.0;
+    break;
+  default:
+    error("dac was supplied unknown port");
+  }
+  min = -ampl;
+  max = ampl;
+}
 
 float Fabric::Chip::Tile::Slice::Dac::computeInput(dac_state_t& codes, float output){
   float sign = util::sign_to_coeff(codes.inv);
   float rng = util::range_to_coeff(codes.range);
   return output/(sign*rng);
 }
+
 float Fabric::Chip::Tile::Slice::Dac::computeOutput(dac_state_t& codes){
   float sign = util::sign_to_coeff(codes.inv);
   float rng = util::range_to_coeff(codes.range);

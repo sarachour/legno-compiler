@@ -59,8 +59,9 @@ for idx,port in enumerate([p_out0,p_out1,p_out2]):
 
 fan.state.add(BlockState('range',  \
                         state_type= BlockStateType.MODE, \
-                        values=enums.SignType,
+                        values=enums.RangeType,
 ))
+
 bcarr = BlockStateArray('inv', \
                        indices=enums.PortType, \
                        values=enums.SignType, \

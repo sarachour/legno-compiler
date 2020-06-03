@@ -2,11 +2,44 @@
 #include "assert.h"
 #include "fu.h"
 #include "calib_util.h"
+#include "emulator.h"
 
 
-
+emulator::physical_model_t adc_draw_random_model(profile_spec_t spec){
+  emulator::physical_model_t model; 
+  emulator::ideal(model);
+  Fabric::Chip::Tile::Slice::ChipAdc::computeInterval(spec.state.adc,
+                                                      in0Id,
+                                                      model.in0.min,
+                                                      model.in0.max);
+  emulator::bound(model.in1,-1,1);
+  return model;
+}
 
 profile_t Fabric::Chip::Tile::Slice::ChipAdc::measure(profile_spec_t spec){
+#ifdef EMULATE_HARDWARE
+  float std;
+  sprintf(FMTBUF,"measured value: in=(%f,%f)\n",  \
+          spec.inputs[0], \
+          spec.inputs[1]);
+  print_info(FMTBUF);
+
+  float * input = prof::get_input(spec,port_type_t::in0Id);
+  float output = Fabric::Chip::Tile::Slice::ChipAdc::computeOutput(spec.state.adc,*input);
+
+  emulator::physical_model_t model = adc_draw_random_model(spec);
+  float result = emulator::draw(model,*input,0.0,output,std);
+  sprintf(FMTBUF,"output=%f result=%f\n", output,result);
+  print_info(FMTBUF);
+  profile_t prof = prof::make_profile(spec, result,
+                                      std);
+  return prof;
+#else
+  return this->measureConstVal(spec);
+#endif
+
+}
+profile_t Fabric::Chip::Tile::Slice::ChipAdc::measureConstVal(profile_spec_t spec){
   update(this->m_state);
 
   Fabric::Chip::Tile::Slice::Dac * val_dac = parentSlice->dac;

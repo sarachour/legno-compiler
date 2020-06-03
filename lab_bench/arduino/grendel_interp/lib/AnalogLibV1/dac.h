@@ -48,6 +48,7 @@ class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::Functio
 		void setInv (bool inverse ); // whether output is negated
     //measurement function
     profile_t measure(profile_spec_t);
+    profile_t measureConstVal(profile_spec_t spec);
     //calibration function
     void calibrate(calib_objective_t obj);
     // fast measurement and make functions
@@ -56,6 +57,10 @@ class Fabric::Chip::Tile::Slice::Dac : public Fabric::Chip::Tile::Slice::Functio
     void fastMakeDacModel();
     void defaults();
 
+    static void computeInterval(dac_state_t& state,
+                                port_type_t port, \
+                                float& min, \
+                                float& max);
     static float computeOutput(dac_state_t& codes);
     static float computeInput(dac_state_t& codes,float output);
     dac_state_t m_state;

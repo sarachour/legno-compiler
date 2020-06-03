@@ -23,10 +23,30 @@ mult.modes.add_all([
 
 mult.inputs.add(BlockInput('x',BlockSignalType.ANALOG, \
                            ll_identifier=enums.PortType.IN0))
+mult.inputs['x'] \
+    .interval.bind(['_','m','_'],interval.Interval(-2,2))
+mult.inputs['x'] \
+    .interval.bind(['_','h','_'],interval.Interval(-2,2))
+
 mult.inputs.add(BlockInput('y',BlockSignalType.ANALOG, \
                            ll_identifier=enums.PortType.IN1))
+mult.inputs['y'] \
+    .interval.bind(['m','_','_'],interval.Interval(-2,2))
+mult.inputs['y'] \
+    .interval.bind(['x','_','_'],interval.Interval(-2,2))
+mult.inputs['y'] \
+    .interval.bind(['h','_','_'],interval.Interval(-20,20))
+
+
 mult.outputs.add(BlockOutput('z',BlockSignalType.ANALOG, \
                              ll_identifier=enums.PortType.OUT0))
+mult.outputs['z'] \
+    .interval.bind(['_','_','m'],interval.Interval(-2,2))
+mult.outputs['z'] \
+    .interval.bind(['_','_','h'],interval.Interval(-20,20))
+
+
+
 mult.data.add(BlockData('c',BlockDataType.CONST))
 mult.data['c'] \
     .interval.bind(['_','_','_'],interval.Interval(-1,1))

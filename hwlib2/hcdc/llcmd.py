@@ -106,6 +106,7 @@ def profile(runtime,blk,loc,cfg,output_port,in0=0.0,in1=0.0):
                              profile_data)
     cmd = cmd_t.build(cmd_data,debug=True)
 
+    print(cmd_data)
     # execute profiling command
     runtime.execute(cmd)
     resp = _unpack_response(runtime.result())

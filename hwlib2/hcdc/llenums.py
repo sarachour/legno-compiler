@@ -364,12 +364,11 @@ class SignType(str,Enum):
 
     def code(self):
         if self == SignType.POS:
-            return False
+            # true
+            return 1
         elif self == SignType.NEG:
-            return True
+            return 0
 
-    def __repr__(self):
-        return self.abbrev()
 
 
 class LUTSourceType(str,Enum):

@@ -82,6 +82,7 @@ typedef struct {
   bool inv;
   range_t range;
   dac_source_t source;
+  bool dynamic;
   uint8_t pmos;
   uint8_t nmos;
   uint8_t gain_cal;

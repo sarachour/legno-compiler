@@ -4,10 +4,38 @@
 #include "calib_util.h"
 #include "slice.h"
 #include "dac.h"
+#include "emulator.h"
 
+emulator::physical_model_t dac_draw_random_model(profile_spec_t spec){
+  emulator::physical_model_t model;
+  emulator::ideal(model);
+  emulator::bound(model.in0,-1,1);
+  emulator::bound(model.in1,-1,1);
+  return model;
+ 
 
+}
 
-profile_t Fabric::Chip::Tile::Slice::Dac::measure(profile_spec_t spec)
+profile_t Fabric::Chip::Tile::Slice::Dac::measure(profile_spec_t spec){
+#ifdef EMULATE_HARDWARE
+  float std;
+  float * input = prof::get_input(spec,port_type_t::in0Id);
+  float output = Fabric::Chip::Tile::Slice::Dac::computeOutput(spec.state.dac);
+
+  emulator::physical_model_t model = dac_draw_random_model(spec);
+  float result = emulator::draw(model,0.0,0.0,output,std);
+  sprintf(FMTBUF,"output=%f result=%f\n", output,result);
+  print_info(FMTBUF);
+  profile_t prof = prof::make_profile(spec, result,
+                                      std);
+  return prof;
+
+#else
+  return this->measureConstVal(spec);
+#endif
+}
+
+profile_t Fabric::Chip::Tile::Slice::Dac::measureConstVal(profile_spec_t spec)
 {
   if(!this->m_state.enable){
     profile_t dummy;

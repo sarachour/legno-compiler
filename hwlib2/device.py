@@ -36,4 +36,6 @@ class Device:
     self._blocks[blk.name] = blk
 
   def get_block(self,name):
+    if not name in self._blocks:
+      raise Exception("no block found with name <%s>" % name)
     return self._blocks[name]
