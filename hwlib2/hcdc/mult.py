@@ -36,7 +36,24 @@ mult.data['c'] \
 mult.outputs['z'].relation \
                  .bind(['x','m','m'],parser.parse_expr('c*x'))
 mult.outputs['z'].relation \
+                 .bind(['x','m','h'],parser.parse_expr('10.0*c*x'))
+mult.outputs['z'].relation \
                  .bind(['x','h','m'],parser.parse_expr('0.1*c*x'))
+mult.outputs['z'].relation \
+                 .bind(['x','h','h'],parser.parse_expr('c*x'))
+mult.outputs['z'].relation \
+                 .bind(['m','m','m'],parser.parse_expr('0.5*x*y'))
+mult.outputs['z'].relation \
+                 .bind(['h','m','h'],parser.parse_expr('0.5*x*y'))
+mult.outputs['z'].relation \
+                 .bind(['m','h','h'],parser.parse_expr('0.5*x*y'))
+mult.outputs['z'].relation \
+                 .bind(['m','m','h'],parser.parse_expr('5.0*x*y'))
+mult.outputs['z'].relation \
+                 .bind(['h','m','m'],parser.parse_expr('0.05*x*y'))
+mult.outputs['z'].relation \
+                 .bind(['m','h','m'],parser.parse_expr('0.05*x*y'))
+
 
 
 spec = DeltaSpec(parser.parse_expr('(a*c+b)*x + d'))
@@ -87,10 +104,10 @@ mult.state['range_in0'] \
    .impl.bind(['_','h','_'], enums.RangeType.HIGH)
 
 mult.state.add(BlockState('range_in1',  \
-                        state_type= BlockStateType.MODE, \
-                         values=enums.RangeType, \
-                         array=bcarr, \
-                         index=enums.PortType.IN1))
+                          state_type= BlockStateType.MODE, \
+                          values=enums.RangeType, \
+                          array=bcarr, \
+                          index=enums.PortType.IN1))
 
 mult.state['range_in1'] \
    .impl.bind(['m','_','_'], enums.RangeType.MED)

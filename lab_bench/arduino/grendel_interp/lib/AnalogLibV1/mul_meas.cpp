@@ -3,9 +3,46 @@
 #include "calib_util.h"
 #include "profile.h"
 #include "oscgen.h"
+#include "emulator.h"
 #include <float.h>
 
+emulator::physical_model_t mult_draw_random_model(profile_spec_t spec){
+  emulator::physical_model_t model;
+  emulator::ideal(model);
+  Fabric::Chip::Tile::Slice::Multiplier::computeInterval(spec.state.mult,
+                                                     in0Id,
+                                                     model.in0.min,
+                                                     model.in0.max);
+  Fabric::Chip::Tile::Slice::Multiplier::computeInterval(spec.state.mult,
+                                                         in1Id,
+                                                         model.in1.min,
+                                                         model.in1.max);
+
+  return model;
+}
+
 profile_t Fabric::Chip::Tile::Slice::Multiplier::measure(profile_spec_t spec) {
+#ifdef EMULATE_HARDWARE
+  sprintf(FMTBUF,"measured value: in=(%f,%f)\n",  \
+          spec.inputs[0], \
+          spec.inputs[1]);
+  print_info(FMTBUF);
+
+  float std;
+  float * input = prof::get_input(spec,port_type_t::in0Id);
+  float output = Fabric::Chip::Tile::Slice::Multiplier::computeOutput(spec.state.mult,
+                                                                  spec.output,
+                                                                  *input);
+
+  emulator::physical_model_t model = mult_draw_random_model(spec);
+  float result = emulator::draw(model,input[0],input[1],output,std);
+  sprintf(FMTBUF,"output=%f result=%f\n", output,result);
+  print_info(FMTBUF);
+  profile_t prof = prof::make_profile(spec, result,
+                                      std);
+  return prof;
+
+#else
   mult_state_t backup = m_state;
   this->m_state = spec.state.mult;
   profile_t result = result;
@@ -17,6 +54,7 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measure(profile_spec_t spec) {
   }
   this->m_state = backup;
   return result;
+#endif
 }
 
 profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(profile_spec_t spec) {

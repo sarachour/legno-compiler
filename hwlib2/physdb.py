@@ -108,7 +108,7 @@ class PhysDataset:
         self.inputs[input_port.name] = []
 
     for stmt in self.phys.cfg.stmts:
-      if stmt.t == adplib.ConfigStmtType.DATA:
+      if stmt.t == adplib.ConfigStmtType.CONSTANT:
         self.data[stmt.name] = []
 
     assigned = list(self.inputs.keys()) + list(self.data.keys())
@@ -122,17 +122,17 @@ class PhysDataset:
       var_assigns[in_port] = in_val
 
     for data_port,data_val in dynamic_codes.items():
-      var_assigns[out_port] = data_val
+      var_assigns[data_port] = data_val
 
     value = self.relation[method].compute(var_assigns)
     self.output.append(value)
     self.meas_mean.append(mean)
     self.meas_stdev.append(std)
     self.method.append(method.value)
-    for input_name,value in inputs.items():
-      self.inputs[input_name].append(value)
-    for data_name,value in dynamic_codes.items():
-      self.data[data_name].append(value)
+    for input_name in self.inputs.keys():
+      self.inputs[input_name].append(inputs[input_name])
+    for data_name in self.data.keys():
+      self.data[data_name].append(dynamic_codes[data_name])
 
   @staticmethod
   def from_json(physblk,data):
@@ -203,7 +203,7 @@ class PhysCfgBlock:
   def get_dynamic_cfg(cfg):
     kvs = {}
     for stmt in cfg.stmts:
-      if stmt.t == adplib.ConfigStmtType.DATA:
+      if stmt.t == adplib.ConfigStmtType.CONSTANT:
         assert(not stmt.name in kvs)
         kvs[stmt.name] = stmt.value
     return kvs

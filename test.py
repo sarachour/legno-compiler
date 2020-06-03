@@ -57,4 +57,24 @@ def test_vga():
   print(result)
   runtime.close()
 
-test_vga()
+def test_mult():
+  loc = devlib.Location([0,3,2,0])
+  blk = hwlib2.hcdc.mult.mult
+
+  cfg = adplib.ADP()
+  cfg.add_instance(blk,loc)
+  blkcfg = cfg.configs.get(blk.name,loc)
+  blkcfg.modes = [['m','m','h']]
+
+  runtime = GrendelRunner()
+  runtime.initialize()
+
+  result = llcmd.profile(runtime,blk,loc,cfg, \
+                         output_port=llenums.PortType.OUT0, \
+                         in0=1.2,
+                         in1=1.5)
+  print(result)
+  runtime.close()
+
+
+test_mult()

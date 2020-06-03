@@ -22,6 +22,10 @@ class Quantize:
         else:
             raise NotImplementedError
 
+    def get_value(self,interval,code):
+        vals = self.get_values(interval)
+        return vals[code]
+
     def get_code(self,interval,value):
         vals = self.get_values(interval)
         eps = list(map(lambda v: abs(v-value), vals))
@@ -308,7 +312,7 @@ class BCModeImpl:
 
   def lift(self,adp,block,loc,data_value):
     cfg = adp.configs.get(block.name,loc)
-    modes = None
+    modes = []
     avail_modes = cfg.modes if not cfg.modes is None \
                   else block.modes
 
@@ -316,14 +320,16 @@ class BCModeImpl:
         casted_value = value.__class__(data_value)
         # this is the correct value
         if casted_value == value:
-            assert(modes is None)
-            modes = []
             for mode in avail_modes:
                 if mode.match(pat):
                     modes.append(mode)
 
     assert(not modes is None)
-    assert(len(modes) > 0)
+    if not (len(modes) > 0):
+        print("starting_modes: %s" % avail_modes)
+        raise Exception("could not find modes for %s=%s" % (self.state.name, \
+                                                            data_value))
+
     cfg.modes = modes
 
   def apply(self,adp,block_name,loc):
@@ -376,7 +382,15 @@ class BCDataImpl:
       return code
 
   def lift(self,adp,block,loc,data):
-      raise NotImplementedError
+      blkcfg = adp.configs.get(block.name,loc)
+      assert(blkcfg.complete())
+      data_field = self.state.block.data[self.variable]
+      interval = data_field.interval[blkcfg.mode]
+      value = block.data[self.variable] \
+                       .quantize[blkcfg.mode] \
+                       .get_value(interval,data)
+      blkcfg.get(self.variable).value = value
+      blkcfg.get(self.variable).scf = 1.0
 
 class BCCalibImpl:
   def __init__(self,state):

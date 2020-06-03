@@ -20,6 +20,10 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
 		void setRange (ifc port, range_t range);
     void update(mult_state_t codes);
     void defaults();
+    static void computeInterval(mult_state_t& state,
+                                port_type_t port, \
+                                float& min, \
+                                float& max);
     static float computeOutput(mult_state_t& m_codes, float in0, float in1);
     void calibrate (calib_objective_t obj);
     profile_t measure(profile_spec_t spec);

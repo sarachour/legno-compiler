@@ -3,7 +3,7 @@
 #include "calib_util.h"
 #include "emulator.h"
 
-emulator::physical_model_t draw_random_model(profile_spec_t spec){
+emulator::physical_model_t fan_draw_random_model(profile_spec_t spec){
   emulator::physical_model_t model;
   emulator::ideal(model);
   Fabric::Chip::Tile::Slice::Fanout::computeInterval(spec.state.fanout,
@@ -26,7 +26,7 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measure(profile_spec_t spec) {
                                                                   spec.output,
                                                                   *input);
 
-  emulator::physical_model_t model = draw_random_model(spec);
+  emulator::physical_model_t model = fan_draw_random_model(spec);
   float result = emulator::draw(model,*input,0.0,output,std);
   sprintf(FMTBUF,"output=%f result=%f\n", output,result);
   print_info(FMTBUF);

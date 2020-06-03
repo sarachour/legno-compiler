@@ -4,6 +4,26 @@
 #include "calib_util.h"
 #include <float.h>
 
+void Fabric::Chip::Tile::Slice::Multiplier::computeInterval(mult_state_t& state,
+                                                        port_type_t port, float& min, float& max){
+  float ampl = 2.0;
+  switch(port){
+  case in0Id:
+    ampl = state.range[in0Id] == RANGE_HIGH ? 20.0 : 2.0;
+    break;
+  case in1Id:
+    ampl = state.range[in1Id] == RANGE_HIGH ? 20.0 : 2.0;
+    break;
+  case out0Id:
+    ampl = state.range[out0Id] == RANGE_HIGH ? 20.0 : 2.0;
+    break;
+  default:
+    error("multiplier was supplied unknown port");
+  }
+  min = -ampl;
+  max = ampl;
+}
+
 void Fabric::Chip::Tile::Slice::Multiplier::update(mult_state_t codes){
   this->m_state = codes;
   updateFu();
