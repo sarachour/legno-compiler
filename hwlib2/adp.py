@@ -63,7 +63,6 @@ class BlockInstanceCollection:
 
 
 class ConfigStmtType(Enum):
-  DATA = "data"
   STATE = "state"
   CONSTANT = "const"
   PORT = "port"
@@ -201,8 +200,8 @@ class BlockConfig:
     for out in block.outputs:
       cfg.add(PortDataConfig(out.name))
     for data in block.data:
-      if data.type == BlockDataType.CONST:
-        cfg.add(ConstDataConfig(data.name))
+      if data.type == blocklib.BlockDataType.CONST:
+        cfg.add(ConstDataConfig(data.name,0.0))
       else:
         cfg.add(ExprDataConfig(data.name, \
                                data.args))
@@ -219,6 +218,8 @@ class BlockConfig:
       st += "%s%s\n" % (indent,stmt)
 
     return st
+
+
 class ADP:
 
   def __init__(self):

@@ -4,9 +4,8 @@ import hwlib2.block as blocklib
 import hwlib2.adp as adplib
 import hwlib2.hcdc.llenums as llenums
 import ops.generic_op as ops
-
+import base64
 import json
-
 CREATE_TABLE = '''
 CREATE TABLE IF NOT EXISTS physical (
 block text,
@@ -21,6 +20,14 @@ primary key (block,loc,static_config)
 '''
 def encode_dict(data):
   text = json.dumps(data)
+  bytes_ = base64.b64encode(text.encode('utf-8')) \
+                 .decode('utf-8')
+  return bytes_
+
+def decode_dict(data):
+  text = base64.b64decode(data) \
+               .decode('utf-8')
+  return json.loads(text)
 
 def dict_to_identifier(dict_):
   sorted_keys = sorted(dict_.keys())
@@ -69,11 +76,11 @@ class PhysicalDatabase:
   def select(self,where_clause):
     where_clause_frag = self._where_clause(where_clause)
 
+    keys = ['block','loc','output','static_config','config','dataset','model']
     SELECT = "SELECT * from physical %s" % where_clause_frag
     result = self.curs.execute(SELECT)
     for row in self.curs.fetchall():
-      print(row)
-      yield row
+      yield dict(zip(keys,row))
 
 class PhysDataset:
 
@@ -127,6 +134,22 @@ class PhysDataset:
     for data_name,value in dynamic_codes.items():
       self.data[data_name].append(value)
 
+  @staticmethod
+  def from_json(physblk,data):
+    ds = PhysDataset(physblk)
+    for input_name in ds.inputs.keys():
+      ds.inputs[input_name] = data['inputs'][input_name]
+
+    ds.output = data['output']
+    ds.meas_mean = data['meas']['mean']
+    ds.meas_stdev = data['meas']['stdev']
+    ds.method = data['meas']['method']
+    for data_name,values in ds.data.items():
+      for value in values:
+        ds.data[data_name] \
+          .append(ConfigStmt.from_json(value))
+    return ds
+
   def to_json(self):
     return {
       'inputs': self.inputs,
@@ -134,7 +157,7 @@ class PhysDataset:
       'output': self.output,
       'meas': {
         'mean': self.meas_mean,
-        'meas_stdev': self.meas_stdev,
+        'stdev': self.meas_stdev,
         'method': self.method
       }
     }
@@ -161,6 +184,7 @@ class PhysCfgBlock:
     self.db = db
     self.model = PhysDeltaModel(self)
     self.dataset = PhysDataset(self)
+    self.load()
 
   # combinatorial block config (modes) and calibration codes
   @staticmethod
@@ -211,6 +235,17 @@ class PhysCfgBlock:
       self.db.insert(fields)
     elif len(matches) == 1:
       self.db.update(where_clause,fields)
+
+  def load(self):
+    where_clause = {
+      'block': self.block.name,
+      'loc': str(self.loc),
+      'static_config': self.static_cfg,
+    }
+    matches = list(self.db.select(where_clause))
+    if len(matches) == 1:
+      json_dataset = decode_dict(matches[0]['dataset'])
+      self.dataset = PhysDataset.from_json(self,json_dataset)
 
   def add_datapoint(self,cfg,inputs,method,mean,std):
     assert(self.static_cfg == PhysCfgBlock.get_static_cfg(cfg))

@@ -21,9 +21,12 @@ mult.modes.add_all([
   ['h','m','h']
 ])
 
-mult.inputs.add(BlockInput('x',BlockSignalType.ANALOG,ll_identifier=enums.PortType.IN0))
-mult.inputs.add(BlockInput('y',BlockSignalType.ANALOG,ll_identifier=enums.PortType.IN1))
-mult.outputs.add(BlockOutput('z',BlockSignalType.ANALOG,ll_identifier=enums.PortType.OUT0))
+mult.inputs.add(BlockInput('x',BlockSignalType.ANALOG, \
+                           ll_identifier=enums.PortType.IN0))
+mult.inputs.add(BlockInput('y',BlockSignalType.ANALOG, \
+                           ll_identifier=enums.PortType.IN1))
+mult.outputs.add(BlockOutput('z',BlockSignalType.ANALOG, \
+                             ll_identifier=enums.PortType.OUT0))
 mult.data.add(BlockData('c',BlockDataType.CONST))
 mult.data['c'] \
     .interval.bind(['_','_','_'],interval.Interval(-1,1))
@@ -48,3 +51,117 @@ spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('b',DeltaParamType.GENERAL,ideal=0.0)
 mult.outputs['z'].deltas.bind(['m','_','_'],spec)
 mult.outputs['z'].deltas.bind(['h','_','_'],spec)
+
+# bind codes, range
+mult.state.add(BlockState('enable',
+                        values=enums.SignType, \
+                        state_type=BlockStateType.CONSTANT))
+mult.state['enable'].impl.bind(enums.BoolType.TRUE)
+
+# vga
+mult.state.add(BlockState('vga',  \
+                        state_type= BlockStateType.MODE, \
+                        values=enums.BoolType))
+mult.state['vga'] \
+   .impl.bind(['x','_','_'], enums.BoolType.TRUE)
+mult.state['vga'] \
+   .impl.bind(['m','_','_'], enums.BoolType.FALSE)
+mult.state['vga'] \
+   .impl.bind(['h','_','_'], enums.BoolType.FALSE)
+
+bcarr = BlockStateArray('range', \
+                        indices=enums.PortType, \
+                        values=enums.RangeType, \
+                        length=3,\
+                        default=enums.RangeType.MED)
+
+mult.state.add(BlockState('range_in0',  \
+                        state_type= BlockStateType.MODE, \
+                         values=enums.RangeType, \
+                         array=bcarr, \
+                         index=enums.PortType.IN0))
+
+mult.state['range_in0'] \
+   .impl.bind(['_','m','_'], enums.RangeType.MED)
+mult.state['range_in0'] \
+   .impl.bind(['_','h','_'], enums.RangeType.HIGH)
+
+mult.state.add(BlockState('range_in1',  \
+                        state_type= BlockStateType.MODE, \
+                         values=enums.RangeType, \
+                         array=bcarr, \
+                         index=enums.PortType.IN1))
+
+mult.state['range_in1'] \
+   .impl.bind(['m','_','_'], enums.RangeType.MED)
+mult.state['range_in1'] \
+   .impl.bind(['h','_','_'], enums.RangeType.HIGH)
+mult.state['range_in1'] \
+   .impl.bind(['x','_','_'], enums.RangeType.MED)
+
+
+mult.state.add(BlockState('range_out',  \
+                          state_type= BlockStateType.MODE, \
+                          values=enums.RangeType, \
+                          array=bcarr, \
+                          index=enums.PortType.OUT0))
+
+mult.state['range_out'] \
+   .impl.bind(['_','_','m'], enums.RangeType.MED)
+mult.state['range_out'] \
+   .impl.bind(['_','_','h'], enums.RangeType.HIGH)
+
+
+
+
+mult.state.add(BlockState('gain_code',
+                          values=range(0,256), \
+                          state_type=BlockStateType.DATA))
+mult.state['gain_code'].impl.set_variable('c')
+mult.state['gain_code'].impl.set_default(128)
+
+
+
+mult.state.add(BlockState('pmos',
+                        values=range(0,8), \
+                        state_type=BlockStateType.CALIBRATE))
+mult.state['pmos'].impl.set_default(3)
+
+mult.state.add(BlockState('nmos',
+                        values=range(0,8), \
+                        state_type=BlockStateType.CALIBRATE))
+mult.state['nmos'].impl.set_default(3)
+
+# gain_code
+
+mult.state.add(BlockState('gain_cal',
+                        values=range(0,32), \
+                        state_type=BlockStateType.CALIBRATE))
+mult.state['gain_cal'].impl.set_default(16)
+
+calarr = BlockStateArray('port_cal', \
+                         indices=enums.PortType, \
+                         values=range(0,32), \
+                         length=3,\
+                         default=16)
+
+mult.state.add(BlockState('bias_in0',
+                        values=range(0,32), \
+                        index=enums.PortType.IN0, \
+                        array=calarr, \
+                        state_type=BlockStateType.CALIBRATE))
+mult.state['bias_in0'].impl.set_default(16)
+
+mult.state.add(BlockState('bias_in1',
+                        values=range(0,32), \
+                        index=enums.PortType.IN1, \
+                        array=calarr, \
+                        state_type=BlockStateType.CALIBRATE))
+mult.state['bias_in1'].impl.set_default(16)
+
+mult.state.add(BlockState('bias_out',
+                        values=range(0,32), \
+                        index=enums.PortType.OUT0, \
+                        array=calarr, \
+                        state_type=BlockStateType.CALIBRATE))
+mult.state['bias_out'].impl.set_default(16)

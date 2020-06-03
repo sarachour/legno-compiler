@@ -3,6 +3,7 @@ import ops.interval as interval
 import ops.generic_op as oplib
 import hwlib2.exceptions as exceptions
 import hwlib2.adp as adplib
+import numpy as np
 
 class QuantizeType(Enum):
     LINEAR = "linear"
@@ -14,6 +15,18 @@ class Quantize:
         assert(isinstance(interp_type,QuantizeType))
         self.n = n
         self.type = interp_type
+
+    def get_values(self,interval):
+        if self.type == QuantizeType.LINEAR:
+            return list(np.linspace(interval.lower,interval.upper,self.n))
+        else:
+            raise NotImplementedError
+
+    def get_code(self,interval,value):
+        vals = self.get_values(interval)
+        eps = list(map(lambda v: abs(v-value), vals))
+        idx = np.argmin(eps)
+        return idx
 
 class BlockType(Enum):
     COMPUTE = "compute"
@@ -146,6 +159,11 @@ class BlockModeset:
     for mode in self:
         if mode.equals(bm):
             return mode
+
+    raise Exception("no mode exists")
+
+  def __getitem__(self,m):
+      return self.get(m)
 
   def __iter__(self):
     for mode in self._modes.values():
@@ -325,13 +343,40 @@ class BCModeImpl:
         if mode.match(pat):
             values.append(value)
 
-    assert(len(values) == 1)
+    if not (len(values) == 1):
+        raise Exception("<%s> requires one unique value, found %s" \
+                        % (self.state.name,values))
     return values[0]
 
 class BCDataImpl:
   def __init__(self,state):
       self.state = state
-      pass
+      self.variable = None
+      self.default = None
+
+  def set_default(self,d):
+      self.default = d
+
+  def set_variable(self,v):
+      self.variable =v
+
+  def apply(self,adp,block_name,loc):
+      assert(not self.variable is None)
+      assert(not self.default is None)
+      blkcfg = adp.configs.get(block_name,loc)
+      stmt = blkcfg[self.variable]
+      assert(stmt.t == adplib.ConfigStmtType.CONSTANT)
+      value = stmt.value*stmt.scf
+      data_field = self.state.block.data[self.variable]
+      mode = self.state.block.modes[blkcfg.mode]
+      interval = data_field.interval[mode]
+      code = self.state.block.data[self.variable] \
+                       .quantize[mode] \
+                       .get_code(interval,value)
+      return code
+
+  def lift(self,adp,block,loc,data):
+      raise NotImplementedError
 
 class BCCalibImpl:
   def __init__(self,state):

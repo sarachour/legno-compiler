@@ -19,26 +19,42 @@ The following functions turn a configured block
 into a set_state command.
 '''
 
-loc = devlib.Location([0,3,2,0])
-blk = hwlib2.hcdc.fanout.fan
+def test_fanout():
+  loc = devlib.Location([0,3,2,0])
+  blk = hwlib2.hcdc.fanout.fan
 
-cfg = adplib.ADP()
-cfg.add_instance(blk,loc)
-blkcfg = cfg.configs.get(blk.name,loc)
-blkcfg.modes = [['+','+','-','m']]
+  cfg = adplib.ADP()
+  cfg.add_instance(blk,loc)
+  blkcfg = cfg.configs.get(blk.name,loc)
+  blkcfg.modes = [['+','+','-','m']]
 
-runtime = GrendelRunner()
-runtime.initialize()
+  runtime = GrendelRunner()
+  runtime.initialize()
 
-#llcmd.set_state(runtime,blk,loc,cfg)
+  #llcmd.set_state(runtime,blk,loc,cfg)
 
-result = llcmd.profile(runtime,blk,loc,cfg, \
-                       output_port=llenums.PortType.OUT2, \
-                       in0=1.2)
-print(result)
+  result = llcmd.profile(runtime,blk,loc,cfg, \
+                        output_port=llenums.PortType.OUT2, \
+                        in0=1.2)
+  print(result)
+  runtime.close()
 
+def test_vga():
+  loc = devlib.Location([0,3,2,0])
+  blk = hwlib2.hcdc.mult.mult
 
-#llcmd.set_state(runtime,blk,loc,cfg)
-#llcmd.disable(runtime,blk,loc)
+  cfg = adplib.ADP()
+  cfg.add_instance(blk,loc)
+  blkcfg = cfg.configs.get(blk.name,loc)
+  blkcfg.modes = [['x','m','h']]
 
-runtime.close()
+  runtime = GrendelRunner()
+  runtime.initialize()
+
+  result = llcmd.profile(runtime,blk,loc,cfg, \
+                        output_port=llenums.PortType.OUT0, \
+                        in0=1.2)
+  print(result)
+  runtime.close()
+
+test_vga()
