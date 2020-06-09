@@ -129,8 +129,10 @@ def test_integ():
   runtime.initialize()
 
   result = llcmd.profile(runtime,blk,loc,cfg, \
+                         method=llenums.ProfileOpType.INTEG_INITIAL_COND.name,
                          output_port=llenums.PortType.OUT0, \
                          in0=1.0)
+
   runtime.close()
 
 

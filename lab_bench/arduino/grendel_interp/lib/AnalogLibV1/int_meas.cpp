@@ -7,6 +7,7 @@
 profile_t Fabric::Chip::Tile::Slice::Integrator::measure(profile_spec_t spec){
 
   integ_state_t state_integ = this->m_state;
+  profile_t dummy;
   this->m_state= spec.state.integ;
   switch(spec.type){
   case INTEG_INITIAL_COND:
@@ -16,10 +17,14 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measure(profile_spec_t spec){
   case INTEG_DERIVATIVE_GAIN:
   case INTEG_DERIVATIVE_BIAS:
     return measureOpenLoopCircuit(spec);
+  case INPUT_OUTPUT:
+    error("integrator.measure : input-output measurements not supported");
   default:
-    error("integrator.measure : unknown mode");
+    sprintf(FMTBUF, "integrator.measure : unknown mode %d", spec.type);
+    error(FMTBUF);
   }
   this->m_state = state_integ;
+  return dummy;
 }
 
 profile_t Fabric::Chip::Tile::Slice::Integrator::measureClosedLoopCircuit(profile_spec_t spec){

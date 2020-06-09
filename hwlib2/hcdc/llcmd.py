@@ -89,14 +89,16 @@ def _unpack_response(resp):
     return payload_result
 
 
-def profile(runtime,blk,loc,cfg,output_port,in0=0.0,in1=0.0):
+def profile(runtime,blk,loc,cfg,output_port, \
+            method=llenums.ProfileOpType.INPUT_OUTPUT, \
+            in0=0.0,in1=0.0):
     state_t = {blk.name:blk.state.concretize(cfg,loc)}
     # build profiling command
     loc_t,loc_d = make_block_loc_t(blk,loc)
     values = [0.0]*2
     values[llenums.PortType.IN0.code()] = in0
     values[llenums.PortType.IN1.code()] = in1
-    profile_data = {"method": llenums.ProfileOpType.INPUT_OUTPUT.name, \
+    profile_data = {"method": method, \
                     "inst": loc_d,
                     "in_vals": values, \
                     "state":state_t,
@@ -104,7 +106,6 @@ def profile(runtime,blk,loc,cfg,output_port,in0=0.0,in1=0.0):
 
     cmd_t, cmd_data = make_circ_cmd(llenums.CircCmdType.PROFILE,
                              profile_data)
-    print(cmd_data)
     cmd = cmd_t.build(cmd_data,debug=True)
 
     # execute profiling command
