@@ -104,9 +104,9 @@ def profile(runtime,blk,loc,cfg,output_port,in0=0.0,in1=0.0):
 
     cmd_t, cmd_data = make_circ_cmd(llenums.CircCmdType.PROFILE,
                              profile_data)
+    print(cmd_data)
     cmd = cmd_t.build(cmd_data,debug=True)
 
-    print(cmd_data)
     # execute profiling command
     runtime.execute(cmd)
     resp = _unpack_response(runtime.result())

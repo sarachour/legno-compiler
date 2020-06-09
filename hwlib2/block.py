@@ -2,7 +2,6 @@ from enum import Enum
 import ops.interval as interval
 import ops.generic_op as oplib
 import hwlib2.exceptions as exceptions
-import hwlib2.adp as adplib
 import numpy as np
 
 class QuantizeType(Enum):
@@ -284,7 +283,8 @@ class BCConstImpl:
       self.value = value
 
   def apply(self,adp,block_name,loc):
-      assert(not self.value is None)
+      if(self.value is None):
+          raise Exception("unknown value for state <%s>" % self.state.name)
       return self.value
 
   def lift(self,adp,block,loc,data):
@@ -371,7 +371,6 @@ class BCDataImpl:
       assert(not self.default is None)
       blkcfg = adp.configs.get(block_name,loc)
       stmt = blkcfg[self.variable]
-      assert(stmt.t == adplib.ConfigStmtType.CONSTANT)
       value = stmt.value*stmt.scf
       data_field = self.state.block.data[self.variable]
       mode = self.state.block.modes[blkcfg.mode]
@@ -404,7 +403,9 @@ class BCCalibImpl:
 
   @property
   def default(self):
-      assert(self.state.valid(self._default))
+      if not (self.state.valid(self._default)):
+          raise Exception("default value <%s> not valid for <%s>"  \
+                          % (self._default,self.state.name))
       return self._default
 
   def apply(self,adp,block_name,loc):
@@ -476,8 +477,16 @@ class BlockStateArray:
       self.default = default
 
   def get_index(self,index):
-      enum_v = interpret_enum(index,self.indices)
-      return enum_v.code()
+      if isinstance(index,int):
+          if not (index in self.indices):
+              raise Exception("%s not in %s for <%s>" % (index,self.indices,self.name))
+          return index
+      else:
+          enum_v = interpret_enum(index,self.indices)
+          if not enum_v is None:
+              return enum_v.code()
+          else:
+              raise Exception("cannot cast to index: <%s>" % enum_v)
 
   def new_array(self):
       return [self.default]*self.length
