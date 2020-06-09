@@ -48,7 +48,8 @@ def test_vga():
   cfg.add_instance(blk,loc)
   blkcfg = cfg.configs.get(blk.name,loc)
   blkcfg.modes = [['x','m','h']]
-  blkcfg.data['c'] = 0.5
+  blkcfg['c'].value = 0.5
+  blkcfg['c'].scf = 1.0
 
   runtime = GrendelRunner()
   runtime.initialize()
@@ -129,13 +130,16 @@ def test_integ():
   runtime.initialize()
 
   result = llcmd.profile(runtime,blk,loc,cfg, \
-                         method=llenums.ProfileOpType.INTEG_INITIAL_COND.name,
+                         method=llenums.ProfileOpType.INTEG_INITIAL_COND,
                          output_port=llenums.PortType.OUT0, \
                          in0=1.0)
 
   runtime.close()
 
 
-#test_dac()
-#test_adc()
+test_fanout()
+test_vga()
+test_mult()
+test_dac()
+test_adc()
 test_integ()

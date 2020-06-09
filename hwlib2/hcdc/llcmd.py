@@ -98,7 +98,7 @@ def profile(runtime,blk,loc,cfg,output_port, \
     values = [0.0]*2
     values[llenums.PortType.IN0.code()] = in0
     values[llenums.PortType.IN1.code()] = in1
-    profile_data = {"method": method, \
+    profile_data = {"method": method.name, \
                     "inst": loc_d,
                     "in_vals": values, \
                     "state":state_t,
