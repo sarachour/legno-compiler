@@ -1,4 +1,4 @@
-
+import hwlib.block as blocklib
 
 class Location:
 
@@ -32,6 +32,7 @@ class Device:
     self._blocks = {}
 
   def add_block(self,blk):
+    assert(isinstance(blk,blocklib.Block))
     assert(not blk.name in self._blocks)
     self._blocks[blk.name] = blk
 
@@ -39,3 +40,7 @@ class Device:
     if not name in self._blocks:
       raise Exception("no block found with name <%s>" % name)
     return self._blocks[name]
+
+  @property
+  def blocks(self):
+    return self._blocks.values()

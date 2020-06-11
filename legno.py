@@ -4,8 +4,8 @@ import numpy as np
 import util.paths as paths
 
 
-from compiler import  simulator
-from hwlib.adp import AnalogDeviceProg
+#from compiler import  simulator
+from hwlib.adp import ADP
 
 import argparse
 
@@ -29,11 +29,11 @@ lgraph_subp.add_argument('--simulate', action="store_true",
                        help="ignore resource constraints while compiling.")
 lgraph_subp.add_argument('--xforms', type=int,default=3,
                        help='number of abs circuits to generate.')
-lgraph_subp.add_argument('--abs-circuits', type=int,default=100,
+lgraph_subp.add_argument('--vadp-fragments', type=int,default=100,
                        help='number of abs circuits to generate.')
-lgraph_subp.add_argument('--conc-circuits', type=int,default=3,
+lgraph_subp.add_argument('--vadps', type=int,default=3,
                        help='number of conc circuits to generate.')
-lgraph_subp.add_argument('--max-circuits', type=int,default=5,
+lgraph_subp.add_argument('--adps', type=int,default=5,
                        help='maximum number of circuits to generate.')
 
 

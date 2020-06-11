@@ -138,6 +138,9 @@ class BoolType(str,Enum):
             return 0
 
 
+class NoModeType(str,Enum):
+    NOMODE = "*"
+
 class RangeType(str,Enum):
     MED = "m"
     HIGH = 'h'

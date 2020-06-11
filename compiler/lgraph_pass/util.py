@@ -1,6 +1,6 @@
 import itertools
-import hwlib.props as prop
-import hwlib.abs as acirc
+#import hwlib.props as prop
+#import hwlib.abs as acirc
 import random
 import math
 
@@ -120,7 +120,7 @@ def has_duplicates(lst):
     return False
 
 def enumerate_tree(block,n,max_blocks=None,
-                   permute_input=False,prop=prop.CURRENT):
+                   permute_input=False,prop=None):
     nels = len(block.by_signal(prop,block.inputs)) if permute_input \
        else len(block.by_signal(prop,block.outputs))
 

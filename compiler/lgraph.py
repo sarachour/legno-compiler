@@ -3,16 +3,19 @@ import itertools
 import random
 import math
 import logging
-import compiler.lgraph_pass.route as lgraph_route
-from compiler.lgraph_pass.rules import get_rules
-import compiler.lgraph_pass.to_abs_op as lgraphlib_aop
-import compiler.lgraph_pass.to_abs_circ as lgraphlib_acirc
-import compiler.lgraph_pass.make_fanouts as lgraphlib_mkfan
-import compiler.lgraph_pass.util as lgraphlib_util
-import hwlib.abs as acirc
-import hwlib.props as prop
-from hwlib.config import Labels
-import ops.aop as aop
+#import compiler.lgraph_pass.route as lgraph_route
+#from compiler.lgraph_pass.rules import get_rules
+#import compiler.lgraph_pass.to_abs_op as lgraphlib_aop
+#import compiler.lgraph_pass.to_abs_circ as lgraphlib_acirc
+#import compiler.lgraph_pass.make_fanouts as lgraphlib_mkfan
+#import compiler.lgraph_pass.util as lgraphlib_util
+#import hwlib.abs as acirc
+#import hwlib.props as prop
+#from hwlib.config import Labels
+#import ops.aop as aop
+
+import hwlib.block as blocklib
+import compiler.lgraph_pass.tableau as tablib
 
 #logging.basicConfig(level=logging.DEBUG)
 logging.basicConfig(level=logging.INFO)
@@ -212,4 +215,24 @@ def compile(board,prob,depth=3, \
                     yield index_str,conc_circ
                     conc_idx += 1
                     break
+
+
+def compile(board,prob,depth=3, \
+            vadp_fragments=100, \
+            vadps=1, \
+            adps=1):
+
+    fragments = dict(map(lambda v: (v,[]), prob.variables()))
+    compute_blocks = list(filter(lambda blk: \
+                              blk.type == blocklib.BlockType.COMPUTE, \
+                              board.blocks))
+
+    laws = [
+        ('kirchoff', 'x1+x2'),
+        ('negate', '-x')
+    ]
+    for variable in prob.variables():
+        expr = prob.binding(variable)
+        for vadp in tablib.search(compute_blocks,laws,variable,expr):
+            print(vadp)
 

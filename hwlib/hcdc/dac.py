@@ -1,5 +1,5 @@
-import hwlib2.hcdc.llenums as enums
-from hwlib2.block import *
+import hwlib.hcdc.llenums as enums
+from hwlib.block import *
 import ops.opparse as parser
 
 class HLDACSourceType(Enum):

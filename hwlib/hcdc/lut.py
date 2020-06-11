@@ -1,36 +1,26 @@
-from hwlib.block import Block
-import hwlib.props as props
-import hwlib.units as units
-import hwlib.hcdc.util as util
-import hwlib.hcdc.globals as glb
-import hwlib.hcdc.enums as enums
-import ops.op as ops
+import hwlib2.hcdc.llenums as enums
+from hwlib2.block import *
+import ops.opparse as parser
 
-def mkdig(port):
-    dig= util.make_dig_props(enums.RangeType.MED,\
-                                        glb.CTX.get(glb.GLProp.DIGITAL_INTERVAL,
-                                                "lut","*","*",None),
-                                        glb.CTX.get(glb.GLProp.DIGITAL_QUANTIZE,
-                                                "lut","*","*",None)
-    )
-    dig.set_continuous(0,glb.CTX.get(glb.GLProp.MAX_FREQ, \
-                                        "lut","*","*",None))
-    dig.set_coverage(glb.CTX.get(glb.GLProp.DIGITAL_COVERAGE,
-                                                "lut","*","*",port))
-    return dig
+lut = Block('lut',BlockType.COPY, \
+            [str])
 
-block = Block("lut") \
-           .add_inputs(props.DIGITAL,["in"]) \
-           .add_outputs(props.DIGITAL,["out"]) \
-           .set_comp_modes(["*"], \
-                           glb.HCDCSubset.all_subsets()) \
-           .set_scale_modes("*",["*"], \
-                            glb.HCDCSubset.all_subsets()) \
+lut.modes.add_all([['*']])
+lut.inputs.add(BlockInput('x', BlockSignalType.DIGITAL, \
+                          ll_identifier=enums.PortType.NOPORT))
+lut.outputs.add(BlockOutput('z', BlockSignalType.DIGITAL, \
+                            ll_identifier=enums.PortType.NOPORT))
+
+lut.data.add(BlockData('f', BlockDataType.EXPR,inputs=1))
+lut.outputs['z'].relation.bind(['_'], \
+                               parser.parse_expr('f(x)'))
+
+lut.state.add(BlockState('source', BlockStateType.CONNECTION, \
+                        values=enums.LUTSourceType))
+lut.state['source'].impl.source('adc',['@','@',0,0],'x', \
+                           enums.LUTSourceType.ADC0)
+lut.state['source'].impl.source('adc',['@','@',2,0],'x', \
+                           enums.LUTSourceType.ADC1)
+lut.state['source'].impl.set_default(enums.LUTSourceType.EXTERN)
 
 
-
-block.set_props("*","*",["in"],  mkdig("in"))
-block.set_props("*","*",["out"],  mkdig("out"))
-
-block.set_op("*","out",ops.Func(["in"],None)) \
-.check()
