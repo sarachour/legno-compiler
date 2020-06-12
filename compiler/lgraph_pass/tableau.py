@@ -3,21 +3,30 @@ import compiler.lgraph_pass.unify as unifylib
 import ops.base_op as oplib
 import numpy as np
 
-class GoalVar:
+class TableauVar:
 
   def __init__(self):
     pass
 
-class DSVar(GoalVar):
+class DSVar(TableauVar):
   def __init__(self,var):
     self.var = var
 
   def __repr__(self):
     return self.var
 
-class PortVar(GoalVar):
+class LawVar(TableauVar):
+  def __init__(self,law,idx,var):
+    self.law =law
+    self.ident = idx
+    self.variable =var
+
+  def __repr__(self):
+    return "%s[%s].%s" % (self.law,self.ident,self.variable)
+
+
+class PortVar(TableauVar):
   def __init__(self,block,idx,port):
-    assert(block.inputs.has(port.name))
     self.block = block
     self.ident = idx
     self.port = port
@@ -28,7 +37,7 @@ class PortVar(GoalVar):
 class Goal:
 
   def __init__(self,var,typ,expr):
-    assert(isinstance(var,GoalVar))
+    assert(isinstance(var,TableauVar))
     self.variable = var
     self.type = typ
     self.expr = expr
@@ -86,6 +95,67 @@ class PortRelation:
                                         self.port.name, \
                                         self.port.type,self.expr)
 
+class VADPStmt:
+
+  def __init__(self):
+    pass
+
+class VADPConn(VADPStmt):
+
+  def __init__(self,src,snk):
+    VADPStmt.__init__(self)
+    assert(isinstance(src,PortVar) or isinstance(src,LawVar))
+    assert(isinstance(snk,PortVar) or isinstance(snk,LawVar))
+    self.source = src
+    self.sink = snk
+
+  def __repr__(self):
+    return "conn(%s,%s)" % (self.source,self.sink)
+
+class VADPSource(VADPStmt):
+
+  def __init__(self,port,expr):
+    VADPStmt.__init__(self)
+    assert(isinstance(port,PortVar))
+    self.dsexpr = expr
+    self.port = port
+
+  def __repr__(self):
+    return "source(%s,%s)" % (self.port,self.dsexpr)
+
+class VADPSink(VADPStmt):
+
+  def __init__(self,port,name):
+    VADPStmt.__init__(self)
+    assert(isinstance(port,PortVar))
+    assert(isinstance(name,str))
+    self.dsvar = name
+    self.port = port
+
+  def __repr__(self):
+    return "sink(%s,%s)" % (self.port,self.dsvar)
+
+
+
+class VADPConfig(VADPStmt):
+
+  def __init__(self,block,ident,mode):
+    VADPStmt.__init__(self)
+    self.block = block
+    self.ident = ident
+    self.mode = mode
+    self.assigns = {}
+
+  def bind(self,var,value):
+    assert(isinstance(var,str))
+    assert(not var in self.assigns)
+    self.assigns[var] = value
+
+  def __repr__(self):
+    return "config(%s,%d)[%s]%s" % (self.block.name, \
+                                    self.ident,\
+                                    self.mode, \
+                                    self.assigns)
 
 class LawRelation:
 
@@ -107,6 +177,9 @@ class Tableau:
   def complexity(self):
     return max(map(lambda g: g.complexity(), self.goals))
 
+  def add_stmt(self,vadp_st):
+    assert(isinstance(vadp_st,VADPStmt))
+    self.vadp.append(vadp_st)
   def copy(self):
     tab = Tableau()
     tab.goals = list(self.goals)
@@ -154,7 +227,8 @@ class Tableau:
 def make_initial_tableau(blocks,laws,variable,expr):
   tab = Tableau()
   tab.add_goal(Goal(DSVar(variable),blocklib.BlockSignalType.ANALOG,expr))
-
+  print(tab)
+  input()
   for block in blocks:
     for output in block.outputs:
       for expr,modes in output.relation.get_by_property():
@@ -168,20 +242,27 @@ def derive_tableau_from_port_rel(tableau,goal,rel,unif):
   new_tableau = tableau.copy()
   new_tableau.remove_goal(goal)
 
+  out_port = PortVar(rel.block,rel.ident,rel.port)
   if isinstance(goal.variable,DSVar):
-    print("TODO: vadp should add sink node")
+    new_tableau.add_stmt(VADPSink(out_port,goal.variable.var))
   elif isinstance(goal.variable,PortVar):
-    print("TODO: vadp should add connection")
+    in_port = PortVar(goal.variable.block, \
+                          goal.variable.ident, \
+                          goal.variable.port)
+    new_tableau.add_stmt(VADPConn(out_port,in_port))
   else:
     print("TODO: vadp should find/replace laws.")
 
+  vadp_cfg = VADPConfig(rel.block,rel.ident,rel.modes)
   # translate assignments to goals
   for vop,e in unif.assignments:
     v = vop.name
     # binding input port assignment
     if rel.block.inputs.has(v):
       if e.op == oplib.OpType.VAR:
-        print("TODO: vadp should add source node")
+        new_tableau.add_stmt(VADPSource(PortVar(rel.block, \
+                                                rel.ident, \
+                                                rel.port), e))
       else:
         sig_type = rel.block.inputs[v].type
         new_tableau.add_goal(Goal(PortVar(rel.block, \
@@ -189,9 +270,11 @@ def derive_tableau_from_port_rel(tableau,goal,rel,unif):
                                           rel.block.inputs[v]), \
                                   sig_type,e))
     elif rel.block.data.has(v):
-      print("TODO VADP data %s = %s" % (v,e))
+      vadp_cfg.bind(v,e)
     else:
       raise Exception("dne")
+
+  new_tableau.add_stmt(vadp_cfg)
 
   for curr_rel in new_tableau.relations:
       if isinstance(curr_rel,PortRelation) and \
@@ -240,6 +323,7 @@ def search(blocks,laws,variable,expr,depth=5):
     goal = tableau.goals[0]
     for new_tableau in derive_tableaus(tableau,goal):
       if new_tableau.success():
+        print(new_tableau.vadp)
         input("found solution")
         yield new_tableau.vadp
       else:
