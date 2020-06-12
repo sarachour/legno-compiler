@@ -185,6 +185,10 @@ class DSProg:
         variables,expr = self._lambdas[lambda_name]
         return variables,expr
 
+    def lambda_specs(self):
+        for name,(variables,expr) in self._lambdas.items():
+            yield name,variables,expr
+
     def has_lambda(self,name):
         return name in self._lambdas
 

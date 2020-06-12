@@ -236,3 +236,5 @@ def compile(board,prob,depth=3, \
         for vadp in tablib.search(compute_blocks,laws,variable,expr):
             print(vadp)
 
+
+    raise NotImplementedError

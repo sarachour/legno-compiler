@@ -1,9 +1,9 @@
-import hwlib2.hcdc.llenums as enums
-from hwlib2.block import *
+import hwlib.hcdc.llenums as enums
+from hwlib.block import *
 import ops.opparse as parser
 
-lut = Block('lut',BlockType.COPY, \
-            [str])
+lut = Block('lut',BlockType.COMPUTE, \
+            [enums.NoModeType])
 
 lut.modes.add_all([['*']])
 lut.inputs.add(BlockInput('x', BlockSignalType.DIGITAL, \
@@ -11,9 +11,13 @@ lut.inputs.add(BlockInput('x', BlockSignalType.DIGITAL, \
 lut.outputs.add(BlockOutput('z', BlockSignalType.DIGITAL, \
                             ll_identifier=enums.PortType.NOPORT))
 
-lut.data.add(BlockData('f', BlockDataType.EXPR,inputs=1))
+lut.data.add(BlockData('e', BlockDataType.EXPR,inputs=1))
+
+func_impl = parser.parse_expr('e')
 lut.outputs['z'].relation.bind(['_'], \
-                               parser.parse_expr('f(x)'))
+                               parser.parse_expr('f(x)',{
+                                 'f':(['x'],func_impl)
+                               }))
 
 lut.state.add(BlockState('source', BlockStateType.CONNECTION, \
                         values=enums.LUTSourceType))

@@ -35,10 +35,10 @@ def report(clause,msg):
     raise Exception("when parsing : %s" % (msg))
 
 
-def function_to_dslang_ast(dsprog,name,arguments,handle_enumerator,ignore_missing_func=False):
+def function_to_ast(name,arguments,lambda_impl,handle_enumerator,ignore_missing_func=False):
   n = len(arguments)
-  if not dsprog is None and dsprog.has_lambda(name):
-    freevars,impl = dsprog.lambda_spec(name);
+  if name in lambda_impl:
+    freevars,impl = lambda_impl[name];
     report(len(freevars) == n, \
            "expected <%d> args, got <%d>" % (len(freevars),n))
     return op.Call(arguments, \
@@ -78,9 +78,10 @@ def function_to_dslang_ast(dsprog,name,arguments,handle_enumerator,ignore_missin
     args = list(map(lambda i: "x%d" % i, range(n)))
     return op.Call(arguments, op.Func(args,None))
 
-def lark_to_dslang_ast(dsprog,node,handle_enumerator):
+def lark_to_ast(node,lambda_impls,handle_enumerator):
   def recurse(ch):
-    return lark_to_dslang_ast(dsprog,ch,handle_enumerator)
+    return lark_to_ast(ch,lambda_impls, \
+                       handle_enumerator)
 
   n = len(node.children)
   if node.data == "neg":
@@ -98,8 +99,9 @@ def lark_to_dslang_ast(dsprog,node,handle_enumerator):
     arguments = recurse(node.children[1])
     if not isinstance(arguments,list):
       arguments = [arguments]
-    return function_to_dslang_ast(dsprog,func_name.value,arguments, \
-                                  handle_enumerator=handle_enumerator);
+    return function_to_ast(func_name.value,arguments, \
+                           lambda_impls,
+                           handle_enumerator=handle_enumerator);
 
   if node.data == "number":
     number = node.children[0]
@@ -168,13 +170,17 @@ class HandleEnumerator():
     return v
 
 def parse(dsprog,strrepr):
-  INDEX = 0
+  lambda_impls = {}
+  for func_name,args,expr in dsprog.lambda_specs():
+    lambda_impls[func_name] = (args,expr)
+
   lark_ast = PARSER.parse(strrepr)
-  obj = lark_to_dslang_ast(dsprog,lark_ast,HandleEnumerator())
+  obj = lark_to_ast(lark_ast,lambda_impls, \
+                    HandleEnumerator())
   return obj
 
-def parse_expr(strrepr):
-  INDEX = 0
+def parse_expr(strrepr,lambda_impls={}):
   lark_ast = PARSER.parse(strrepr)
-  obj = lark_to_dslang_ast(None,lark_ast,HandleEnumerator())
+  obj = lark_to_ast(lark_ast, lambda_impls, \
+                    HandleEnumerator())
   return obj

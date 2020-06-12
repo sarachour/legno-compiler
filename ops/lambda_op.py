@@ -108,6 +108,11 @@ class Func(Op):
     def func_args(self):
         return self._vars
 
+    def vars(self):
+        bound = self._vars
+        return list(filter(lambda v: not v in bound, \
+                           self._expr.vars()))
+
     def to_json(self):
         obj = Op.to_json(self)
         obj['expr'] = self._expr.to_json()

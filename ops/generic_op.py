@@ -373,11 +373,12 @@ class Call(GenericOp):
 
     @property
     def values(self):
-        for v in self._params:
-            yield v
+        return self._params
 
     def concretize(self):
-        return self._expr
+        expr = self._func.apply(self._params)
+        return expr
+
 
     def infer_interval(self,ivals):
         return self.concretize().infer_interval(ivals)
