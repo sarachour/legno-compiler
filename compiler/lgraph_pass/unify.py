@@ -160,6 +160,15 @@ def canonicalize_call(expr):
   else:
     return None
 
+def canonicalize_sum(expr):
+  args_const,args_expr= separate(oplib.OpType.CONST,
+                                get_assoc(oplib.OpType.ADD,expr))
+  const_val = 0.0
+  for arg in args_const:
+    const_val += arg.value
+
+  return const_val,args_expr
+
 def canonicalize_mult(expr):
   args_const,args_expr= separate(oplib.OpType.CONST,
                                 get_assoc(oplib.OpType.MULT,expr))
@@ -169,6 +178,15 @@ def canonicalize_mult(expr):
 
   return const_val,args_expr
 
+def mkadd(args):
+  if len(args) >= 2:
+    return genoplib.Add(args[0],mkadd(args[1:]))
+  elif len(args) == 1:
+    return args[0]
+  else:
+    raise Exception("not implemented")
+
+
 def mkmult(args):
   if len(args) >= 2:
     return genoplib.Mult(args[0],mkmult(args[1:]))
@@ -176,6 +194,24 @@ def mkmult(args):
     return args[0]
   else:
     raise Exception("not implemented")
+
+def unify_sum(pat_expr,targ_expr,cstrs):
+  targ_offset,targ_args = canonicalize_sum(targ_expr)
+  pat_offset,pat_args = canonicalize_sum(pat_expr)
+
+  offset = targ_offset-pat_offset
+  if offset != 0.0:
+    targ_args.append(genoplib.Const(ratio))
+
+  table = UnifyTable(pat_args,targ_args,associative=True)
+  for pat_arg,targ_args,unifs in table.iterate():
+    targ_expr = mkadd(targ_args)
+    for unif in (unify(pat_arg,targ_expr,cstrs)):
+      unifs.append(unif)
+
+  for unif in table.solutions():
+    yield unif
+
 
 def unify_mult(pat_expr,targ_expr,cstrs):
   targ_coeff,targ_args = canonicalize_mult(targ_expr)
@@ -254,6 +290,10 @@ def unify(pat_expr,targ_expr,cstrs):
     for unif in table.solutions():
       yield unif
 
+
+  elif pat_expr.op == oplib.OpType.ADD:
+    for unif in unify_sum(pat_expr,targ_expr,cstrs):
+      yield unif
 
   elif pat_expr.op == oplib.OpType.MULT:
     for unif in unify_mult(pat_expr,targ_expr,cstrs):

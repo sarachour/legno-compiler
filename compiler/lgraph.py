@@ -1,5 +1,6 @@
 import itertools
 
+import ops.opparse as parser
 import random
 import math
 import logging
@@ -16,6 +17,7 @@ import logging
 
 import hwlib.block as blocklib
 import compiler.lgraph_pass.tableau as tablib
+import compiler.lgraph_pass.rule as rulelib
 
 #logging.basicConfig(level=logging.DEBUG)
 logging.basicConfig(level=logging.INFO)
@@ -217,6 +219,7 @@ def compile(board,prob,depth=3, \
                     break
 
 
+
 def compile(board,prob,depth=3, \
             vadp_fragments=100, \
             vadps=1, \
@@ -228,8 +231,17 @@ def compile(board,prob,depth=3, \
                               board.blocks))
 
     laws = [
-        ('kirchoff', 'x1+x2'),
-        ('negate', '-x')
+        {
+            'name':'kirchoff',
+            'expr': parser.parse_expr('a+b'),
+            'type': blocklib.BlockSignalType.ANALOG,
+            'vars': {
+                'a':blocklib.BlockSignalType.ANALOG, \
+                'b':blocklib.BlockSignalType.ANALOG
+            },
+            'apply': rulelib.apply_kirchoff,
+            'simplify': rulelib.simplify_kirchoff
+        }
     ]
     for variable in prob.variables():
         expr = prob.binding(variable)
