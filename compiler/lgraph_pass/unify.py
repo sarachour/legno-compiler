@@ -45,6 +45,8 @@ class UnifyConstraint(Enum):
   CONSTANT = "const"
   FUNCTION = "func"
   NONE = "none"
+  SAMEVAR = "samevar"
+  VARIABLE = "var"
 
 class UnifyTable:
 
@@ -201,7 +203,7 @@ def unify_sum(pat_expr,targ_expr,cstrs):
 
   offset = targ_offset-pat_offset
   if offset != 0.0:
-    targ_args.append(genoplib.Const(ratio))
+    targ_args.append(genoplib.Const(offset))
 
   table = UnifyTable(pat_args,targ_args,associative=True)
   for pat_arg,targ_args,unifs in table.iterate():
@@ -257,6 +259,17 @@ def unify(pat_expr,targ_expr,cstrs):
       unif.add(pat_expr,targ_expr)
       yield unif
 
+    elif var_cstr == UnifyConstraint.VARIABLE and \
+         targ_expr.op == oplib.OpType.VAR:
+      unif = Unification()
+      unif.add(pat_expr,targ_expr)
+      yield unif
+
+    elif var_cstr == UnifyConstraint.SAMEVAR and \
+         targ_expr.op == oplib.OpType.VAR and \
+         targ_expr.name == pat_expr.name:
+      unif = Unification()
+      yield unif
 
     return
 

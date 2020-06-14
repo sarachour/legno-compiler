@@ -22,12 +22,28 @@ class LawVar(TableauVar):
     self.ident = idx
     self.var = var
 
+  def same_usage(self,other):
+    assert(isinstance(other,LawVar))
+    return other.ident == self.ident and \
+      other.law == self.law
+
   def __repr__(self):
     return "%s[%s].%s" % (self.law,self.ident,self.var)
 
 
+class GenericVar(TableauVar):
+
+  def __init__(self,var):
+    self.var = var
+
+
+  def __repr__(self):
+    return "var(%d)" % (self.ident)
+
+
 class PortVar(TableauVar):
   def __init__(self,block,idx,port):
+    assert(not isinstance(port,str))
     self.block = block
     self.ident = idx
     self.port = port
@@ -42,9 +58,6 @@ class Goal:
     self.variable = var
     self.type = typ
     self.expr = expr
-
-  def complexity(self):
-    return self.expr.nodes()
 
   def equals(self,g2):
     return str(self) == str(g2)
@@ -71,9 +84,16 @@ class PortRelation:
          self.block.data[var].type == blocklib.BlockDataType.EXPR:
         self.cstrs[var] = unifylib.UnifyConstraint.FUNCTION
 
+  def equals(self,g2):
+    return str(self) == str(g2)
+
   def copy(self):
-    rel = PortRelation(self.block,self.ident,self.modes, \
-                       self.port,self.expr)
+    rel = PortRelation(self.block, \
+                       self.ident, \
+                       self.modes, \
+                       self.port, \
+                       self.expr)
+    rel.cstrs = dict(self.cstrs)
     return rel
 
   def same_block(self,rel):
@@ -113,6 +133,17 @@ class VADPConn(VADPStmt):
   def __repr__(self):
     return "conn(%s,%s)" % (self.source,self.sink)
 
+class VADPSink(VADPStmt):
+
+  def __init__(self,port,expr):
+    VADPStmt.__init__(self)
+    assert(isinstance(port,PortVar))
+    self.dsexpr = expr
+    self.port = port
+
+  def __repr__(self):
+    return "sink(%s,%s)" % (self.port,self.dsexpr)
+
 class VADPSource(VADPStmt):
 
   def __init__(self,port,expr):
@@ -124,18 +155,6 @@ class VADPSource(VADPStmt):
   def __repr__(self):
     return "source(%s,%s)" % (self.port,self.dsexpr)
 
-class VADPSink(VADPStmt):
-
-  def __init__(self,port,name):
-    VADPStmt.__init__(self)
-    assert(isinstance(port,PortVar))
-    assert(isinstance(name,str))
-    self.dsvar = name
-    self.port = port
-
-  def __repr__(self):
-    return "sink(%s,%s)" % (self.port,self.dsvar)
-
 
 
 class VADPConfig(VADPStmt):
@@ -146,6 +165,11 @@ class VADPConfig(VADPStmt):
     self.ident = ident
     self.mode = mode
     self.assigns = {}
+
+  def same_block(self,other):
+    assert(isinstance(other,VADPConfig))
+    return self.block == other.block and \
+      self.ident == other.ident
 
   def bind(self,var,value):
     assert(isinstance(var,str))
@@ -160,7 +184,7 @@ class VADPConfig(VADPStmt):
 
 class PhysicsLawRelation:
 
-  def __init__(self,law,idx,typ,expr,apply,simplify):
+  def __init__(self,law,idx,typ,expr,apply,simplify,cstr_fn):
     self.law = law
     self.ident = idx
     self.variables = expr.vars()
@@ -168,12 +192,25 @@ class PhysicsLawRelation:
     self.type = typ
     self._apply_fn = apply
     self._simplify_fn = simplify
+    self._cstr_fn = cstr_fn
     self.var_types = dict(map(lambda v: (v,None), self.variables))
+
+  def equals(self,g2):
+    return str(self) == str(g2)
 
   def same_usage(self,other):
     assert(isinstance(other,PhysicsLawRelation))
     return self.law == other.law and \
       self.ident == other.ident
+
+
+  def constraints(self,variables):
+    return self._cstr_fn(variables)
+
+  def simplify(self,vadp):
+    vadp = self._simplify_fn(vadp,self)
+    return vadp
+
 
   def apply(self,goal):
     for stmt in self._apply_fn(goal,self):
@@ -185,7 +222,8 @@ class PhysicsLawRelation:
                              self.type, \
                              self.expr, \
                              self._apply_fn, \
-                             self._simplify_fn)
+                             self._simplify_fn, \
+                             self._cstr_fn)
     for v,t in self.var_types.items():
       rel.decl_var(v,t)
 
@@ -218,8 +256,6 @@ class Tableau:
     self.relations = []
     self.vadp = []
 
-  def complexity(self):
-    return max(map(lambda g: g.complexity(), self.goals))
 
   def add_stmt(self,vadp_st):
     assert(isinstance(vadp_st,VADPStmt))
@@ -235,6 +271,15 @@ class Tableau:
 
   def success(self):
     return len(self.goals) == 0
+
+  def remove_relation(self,relation):
+    assert(isinstance(relation,PortRelation) or \
+           isinstance(relation,LawRelation))
+    g = list(filter(lambda g: not relation.equals(g), \
+                    self.relations))
+    assert(len(g) >= len(self.relations)-1)
+    self.relations = g
+
 
   def remove_goal(self,goal):
     assert(isinstance(goal,Goal))

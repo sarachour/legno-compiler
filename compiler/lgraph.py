@@ -16,6 +16,7 @@ import logging
 #import ops.aop as aop
 
 import hwlib.block as blocklib
+import compiler.lgraph_pass.assemble as asmlib
 import compiler.lgraph_pass.tableau as tablib
 import compiler.lgraph_pass.rule as rulelib
 
@@ -219,6 +220,33 @@ def compile(board,prob,depth=3, \
                     break
 
 
+def get_laws():
+    return [
+        {
+            'name':'kirchoff',
+            'expr': parser.parse_expr('a+b'),
+            'type': blocklib.BlockSignalType.ANALOG,
+            'vars': {
+                'a':blocklib.BlockSignalType.ANALOG, \
+                'b':blocklib.BlockSignalType.ANALOG
+            },
+            'cstrs': rulelib.cstrs_kirchoff,
+            'apply': rulelib.apply_kirchoff,
+            'simplify': rulelib.simplify_kirchoff
+        },
+        {
+            'name':'flip_sign',
+            'expr':parser.parse_expr('-a'),
+            'type': blocklib.BlockSignalType.ANALOG,
+            'vars': {
+                'a':blocklib.BlockSignalType.ANALOG
+            },
+            'cstrs': rulelib.cstrs_flip,
+            'apply': rulelib.apply_flip,
+            'simplify': rulelib.simplify_flip
+        }
+    ]
+
 
 def compile(board,prob,depth=3, \
             vadp_fragments=100, \
@@ -230,23 +258,26 @@ def compile(board,prob,depth=3, \
                               blk.type == blocklib.BlockType.COMPUTE, \
                               board.blocks))
 
-    laws = [
-        {
-            'name':'kirchoff',
-            'expr': parser.parse_expr('a+b'),
-            'type': blocklib.BlockSignalType.ANALOG,
-            'vars': {
-                'a':blocklib.BlockSignalType.ANALOG, \
-                'b':blocklib.BlockSignalType.ANALOG
-            },
-            'apply': rulelib.apply_kirchoff,
-            'simplify': rulelib.simplify_kirchoff
-        }
-    ]
+    laws = get_laws()
+    fragments = {}
     for variable in prob.variables():
+        fragments[variable] = []
         expr = prob.binding(variable)
+        print(expr)
         for vadp in tablib.search(compute_blocks,laws,variable,expr):
-            print(vadp)
+            if len(fragments[variable]) >= vadp_fragments:
+                break
 
+            fragments[variable].append(vadp)
 
+    copy_blocks = list(filter(lambda blk: \
+                              blk.type == blocklib.BlockType.COPY, \
+                              board.blocks))
+
+    circuit = {}
+    for variable in prob.variables():
+        circuit[variable] = fragments[variable][0]
+
+    for circ in asmlib.assemble(copy_blocks,circuit):
+        print(circ)
     raise NotImplementedError

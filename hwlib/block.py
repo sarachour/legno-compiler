@@ -211,6 +211,9 @@ class BlockFieldCollection:
     for v in self._collection.values():
       yield v
 
+  def __len__(self):
+      return len(self._collection.keys())
+
 class BlockStateCollection(BlockFieldCollection):
 
     def __init__(self,block):

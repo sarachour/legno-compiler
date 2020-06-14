@@ -154,7 +154,10 @@ class Var(Op):
       return interval.IntervalCollection(intervals[self._name])
 
     def substitute(self,assigns):
-        return assigns[self._name]
+        if not self._name in assigns:
+            return self
+        else:
+            return assigns[self._name]
 
     def compute(self,bindings={}):
         if not self._name in bindings:
