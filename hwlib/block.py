@@ -622,13 +622,28 @@ class DeltaSpec:
     def __init__(self,rel):
         assert(isinstance(rel,oplib.Op))
         self.relation = rel
-        self.params = {}
+        self._params = {}
         self.ideal_values = {}
 
+    @property
+    def params(self):
+        return list(self._params.keys())
+
     def param(self,param_name,param_type,ideal):
-        assert(not param_name in self.params)
-        self.params[param_name] = param_type
+        assert(not param_name in self._params)
+        self._params[param_name] = param_type
         self.ideal_values[param_name] = ideal
+
+
+    def __repr__(self):
+        st = "delta {\n"
+        indent = "  "
+        for par_name,typ_ in self._params.items():
+            val = self.ideal_values[par_name]
+            st += "%spar %s: %s = %s\n" % (indent,par_name,typ_,val)
+        st += "%srel %s\n" % (indent,self.relation)
+        st += "}\n"
+        return st
 
 class BlockOutput(BlockField):
 

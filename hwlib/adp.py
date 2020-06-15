@@ -84,6 +84,14 @@ class ConfigStmt:
   def to_json(self):
     raise NotImplementedError
 
+  @staticmethod
+  def from_json(obj):
+    typ = ConfigStmtType(obj['type'])
+    if typ == ConfigStmtType.CONSTANT:
+      return ConstDataConfig.from_json(obj)
+    else:
+      raise Exception("unhandled from_json: %s" % typ)
+
   def __repr__(self):
     return "%s %s %s" % (self.name,self.t.value,self.pretty_print())
 

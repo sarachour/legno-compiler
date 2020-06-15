@@ -93,6 +93,7 @@ class PhysDataset:
     self._port_map = {}
     self.relation = {}
     self.data = {}
+    self.inputs = {}
     self.output = []
     self.meas_mean = []
     self.meas_stdev = []
@@ -100,16 +101,12 @@ class PhysDataset:
     self.meas_status = []
 
     self.output_port = self.phys.output
-    if isinstance(self.phys.cfg.mode,blocklib.BlockMode):
-      self.mode = self.phys.cfg.mode
-    else:
-      self.mode = self.phys.block.modes[self.phys.cfg.mode]
+    self.mode = self.phys.cfg.mode
 
     self.relation[llenums.ProfileOpType.INPUT_OUTPUT]  \
       = self.output_port.relation[self.mode]
 
     variables = self.relation[llenums.ProfileOpType.INPUT_OUTPUT].vars()
-    self.inputs = {}
     for input_port in self.phys.block.inputs:
       if input_port.name in variables:
         self.inputs[input_port.name] = []
@@ -155,6 +152,9 @@ class PhysDataset:
     for input_name in ds.inputs.keys():
       ds.inputs[input_name] = data['inputs'][input_name]
 
+    for data_name in ds.data.keys():
+      ds.data[data_name] = data['data'][data_name]
+
     ds.output = data['output']
     ds.meas_mean = data['meas']['mean']
     ds.meas_stdev = data['meas']['stdev']
@@ -163,10 +163,6 @@ class PhysDataset:
     ds.meas_method = list(map(lambda val: physblk.method_type(val), \
                               data['meas']['method']))
 
-    for data_name,values in ds.data.items():
-      for value in values:
-        ds.data[data_name] \
-          .append(ConfigStmt.from_json(value))
 
     return ds
 
