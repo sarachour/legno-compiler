@@ -195,7 +195,7 @@ def select_tableau(frontier,complexity):
                                    range(0,len(frontier)))))
   return tableau,tableau_depth,other_tableaus
 
-def simplify_tableau(tableau):
+def simplify_tableau(tableau,simplify_laws=False):
   new_tableau = tableau.copy()
 
   for goal in tableau.goals:
@@ -205,12 +205,31 @@ def simplify_tableau(tableau):
       new_tableau.add_stmt(VADPSink(goal.variable, \
                                     goal.expr))
 
-  for rel in new_tableau.relations:
-    if isinstance(rel,PhysicsLawRelation):
-      new_vadp = rel.simplify(new_tableau.vadp)
-      rel.vadp = new_vadp
+  if simplify_laws:
+    for rel in new_tableau.relations:
+      if isinstance(rel,PhysicsLawRelation):
+        new_vadp = rel.simplify(new_tableau.vadp)
+        new_tableau.vadp = new_vadp
 
   return new_tableau
+
+def is_concrete_vadp(vadp):
+  for stmt in vadp:
+    if isinstance(stmt,VADPSink) or \
+       isinstance(stmt,VADPSource):
+      if not isinstance(stmt.port,PortVar):
+        return False
+
+    elif isinstance(stmt,VADPConn):
+      if not isinstance(stmt.source,PortVar) or \
+         not isinstance(stmt.sink,PortVar):
+        return False
+    elif isinstance(stmt,VADPConfig):
+      pass
+    else:
+      raise Exception("unhandled: %s" % stmt)
+
+  return True
 
 def search(blocks,laws,variable,expr,depth=20):
   tableau = make_initial_tableau(blocks,laws, \
@@ -229,6 +248,9 @@ def search(blocks,laws,variable,expr,depth=20):
     for new_tableau in derive_tableaus(tableau,goal):
       simpl_tableau = simplify_tableau(new_tableau)
       if simpl_tableau.success():
+        simpl_tableau = simplify_tableau(new_tableau, \
+                                         simplify_laws=True)
+        assert(is_concrete_vadp(simpl_tableau.vadp))
         yield simpl_tableau.vadp
         solutions += 1
       else:

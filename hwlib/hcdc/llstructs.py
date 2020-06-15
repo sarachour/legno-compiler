@@ -1,5 +1,5 @@
 import construct as cstruct
-import hwlib2.hcdc.llenums as llenums
+import hwlib.hcdc.llenums as llenums
 
 def lut_source_t():
     kwargs = {

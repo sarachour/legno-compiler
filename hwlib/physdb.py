@@ -1,8 +1,8 @@
 import sqlite3
-import hwlib2.device as devlib
-import hwlib2.block as blocklib
-import hwlib2.adp as adplib
-import hwlib2.hcdc.llenums as llenums
+import hwlib.device as devlib
+import hwlib.block as blocklib
+import hwlib.adp as adplib
+import hwlib.hcdc.llenums as llenums
 import ops.generic_op as ops
 import base64
 import json

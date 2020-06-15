@@ -11,25 +11,35 @@ class UnificationTable:
       self.block = block
       self.port = port
       self.modes = modes
-      self.expr = expr
-      self.target = target_expr
+      self.port_expr = expr
+      self.target_expr = target_expr
       self.in_expr = in_expr
+
+    def __repr__(self):
+      s = "%s.%s" % (self.block.name,self.port.name)
+      s += " #modes=%d" % len(self.modes)
+      s += ": port=%s, targ=%s, inp=%s" % (self.port_expr, \
+                                           self.target_expr, \
+                                           self.in_expr)
+      return s
 
   def __init__(self):
     self.sources = []
+    self.source_ports = []
     self.sinks = []
+    self.sink_ports = []
     self.by_sink = {}
     self.by_source = {}
 
 
   def add(self,e):
-    if not e.target in self.by_sink:
-      self.by_sink[e.target] = []
+    if not e.target_expr in self.by_sink:
+      self.by_sink[e.target_expr] = []
 
-    if not e.target in self.by_source:
+    if not e.in_expr in self.by_source:
       self.by_source[e.in_expr] = []
 
-    self.by_sink[e.target].append(e)
+    self.by_sink[e.target_expr].append(e)
     self.by_source[e.in_expr].append(e)
 
 def valid_unification(table,unif):
@@ -57,9 +67,11 @@ def make_unification_table(blocks,fragments):
     for stmt in fragments[variable]:
       if isinstance(stmt,VADPSink):
         table.sinks.append(stmt.dsexpr)
+        table.sink_ports.append(stmt.port)
 
       elif isinstance(stmt,VADPSource):
         table.sources.append(stmt.dsexpr)
+        table.source_ports.append(stmt.port)
 
   for block in blocks:
     for output in block.outputs:
@@ -67,7 +79,7 @@ def make_unification_table(blocks,fragments):
         cstrs = dict(map(lambda v: (v,unifylib.UnifyConstraint.NONE), \
                     expr.vars()))
 
-        for target in table.sinks + table.sources:
+        for target in set(table.sinks + table.sources):
           for unif in unifylib.unify(expr,target,cstrs):
             if valid_unification(table,unif):
               entry = UnificationTable.Entry(block,output,modes, \
@@ -78,11 +90,32 @@ def make_unification_table(blocks,fragments):
 
     return table
 
-def assemble(blocks,fragments,depth=20):
-  table = make_unification_table(blocks,fragments)
+def build_copiers(table,insts,source):
+  def get_identifier(instmap,blk):
+    if not blk.name in instmap:
+      instmap[blk.name] = 0
+    else:
+      instmap[blk.name] += 1
+    return instmap[blk.name]
 
+  new_table = table
+  for i,target_sink in enumerate(table.sinks):
+    for entry in table.by_source[source]:
+      if entry.target_expr in table.sinks:
+        continue
+
+      ident = get_identifier(insts,entry.block)
+      cfg = VADPConfig(entry.block,ident,entry.modes)
+      print(entry)
+  input()
+
+def assemble(blocks,fragments,depth=3):
+  table = make_unification_table(blocks,fragments)
+  all_stmts = []
+
+  # each source is unique.
   for var,frag in fragments.items():
-    source = list(filter(lambda e: var in e.vars(),table.sources))[0]
-    print("(%s) %s: " % (var,source))
-    print(frag)
+    sources = list(filter(lambda e: var in e.vars(),table.sources))
+    assert(len(sources) == 1)
+    build_copiers(table,{},sources[0])
   raise NotImplementedError

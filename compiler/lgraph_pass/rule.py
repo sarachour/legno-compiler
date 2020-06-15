@@ -14,7 +14,7 @@ def apply_flip(goal,rule):
     yield tablib.VADPSink(goal.variable,goal.expr)
 
   elif isinstance(goal.variable, tablib.DSVar):
-    generic_var = GenericVar(goal.variable)
+    generic_var = GenericVar(goal.variable,rule.ident)
     yield tablib.VADPSink(generic_var,goal.expr)
     yield tablib.VADPSource(generic_var,genoplib.Var(goal.variable))
 
@@ -61,6 +61,9 @@ def simplify_kirchoff(vadp_stmts,rule):
        stmt.sink.same_usage(target_var):
       sources.append(stmt.source)
       replaced_stmts.append(stmt)
+
+  if len(sources) == 0:
+    return vadp_stmts
 
   new_vadp = []
   for source in sources:

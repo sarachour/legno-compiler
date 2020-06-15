@@ -33,20 +33,24 @@ class LawVar(TableauVar):
 
 class GenericVar(TableauVar):
 
-  def __init__(self,var):
+  def __init__(self,var,index):
     self.var = var
-
+    self.ident = index
 
   def __repr__(self):
     return "var(%d)" % (self.ident)
 
 
 class PortVar(TableauVar):
+
   def __init__(self,block,idx,port):
     assert(not isinstance(port,str))
     self.block = block
     self.ident = idx
     self.port = port
+
+  def copy(self):
+    return PortVar(self.block,self.ident,self.port)
 
   def __repr__(self):
     return "%s[%s].%s" % (self.block.name,self.ident,self.port.name)
@@ -130,6 +134,9 @@ class VADPConn(VADPStmt):
     self.source = src
     self.sink = snk
 
+  def copy(self):
+    return VADPConn(self.source.copy(),self.sink.copy())
+
   def __repr__(self):
     return "conn(%s,%s)" % (self.source,self.sink)
 
@@ -141,6 +148,9 @@ class VADPSink(VADPStmt):
     self.dsexpr = expr
     self.port = port
 
+  def copy(self):
+    return VADPSink(self.port.copy(),self.dsexpr)
+
   def __repr__(self):
     return "sink(%s,%s)" % (self.port,self.dsexpr)
 
@@ -151,6 +161,9 @@ class VADPSource(VADPStmt):
     assert(isinstance(port,PortVar))
     self.dsexpr = expr
     self.port = port
+
+  def copy(self):
+    return VADPSource(self.port.copy(),self.dsexpr)
 
   def __repr__(self):
     return "source(%s,%s)" % (self.port,self.dsexpr)
@@ -165,6 +178,12 @@ class VADPConfig(VADPStmt):
     self.ident = ident
     self.mode = mode
     self.assigns = {}
+
+  def copy(self):
+    cfg = VADPConfig(self.block,self.ident,self.mode)
+    for v,e in self.assigns.items():
+      cfg.bind(v,e)
+    return cfg
 
   def same_block(self,other):
     assert(isinstance(other,VADPConfig))

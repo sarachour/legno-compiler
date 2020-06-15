@@ -1,9 +1,9 @@
-import hwlib2.device as devlib
-import hwlib2.adp as adplib
-import hwlib2.hcdc.llstructs as llstructs
-import hwlib2.hcdc.hcdcv2 as hcdclib
-import hwlib2.hcdc.llenums as llenums
-import hwlib2.physdb as physdb
+import hwlib.device as devlib
+import hwlib.adp as adplib
+import hwlib.hcdc.llstructs as llstructs
+import hwlib.hcdc.hcdcv2 as hcdclib
+import hwlib.hcdc.llenums as llenums
+import hwlib.physdb as physdb
 
 import lab_bench.grendel_util as grendel_util
 

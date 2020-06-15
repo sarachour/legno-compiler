@@ -117,7 +117,7 @@ def compile_sample_fragments_and_add_fanouts(board,frag_node_map, \
 
         yield subcs
 
-def compile_combine_fragments(subcircuit_optmap):
+def remap_vadp_identifiers(subcircuit_optmap):
         variables = []
         subcirc_options = []
         subcirc_sources = {}
@@ -248,6 +248,44 @@ def get_laws():
     ]
 
 
+def remap_vadp_identifiers(insts,fragment):
+  mappings = {}
+  def get_identifier(block,inst):
+    if not (block.name,inst) in mappings:
+      if not block.name in insts:
+        insts[block.name] = 0
+
+      mappings[(block.name,inst)] = insts[block.name]
+      insts[block.name] += 1
+
+    return mappings[(block.name,inst)]
+
+  for stmt in fragment:
+    if isinstance(stmt,tablib.VADPSource) or \
+       isinstance(stmt,tablib.VADPSink):
+      new_stmt = stmt.copy()
+      new_stmt.port.ident = get_identifier(stmt.port.block, \
+                                      stmt.port.ident)
+      yield new_stmt
+
+    elif isinstance(stmt,tablib.VADPConn):
+        new_stmt = stmt.copy()
+        new_stmt.source.ident = get_identifier(stmt.source.block, \
+                                               stmt.source.ident)
+        new_stmt.sink.ident = get_identifier(stmt.sink.block, \
+                                             stmt.sink.ident)
+
+        yield new_stmt
+
+    elif isinstance(stmt,tablib.VADPConfig):
+        new_stmt = stmt.copy()
+        new_stmt.ident = get_identifier(stmt.block, \
+                                   stmt.ident)
+        yield new_stmt
+
+    else:
+        raise Exception("not handled: %s" % stmt)
+
 def compile(board,prob,depth=3, \
             vadp_fragments=100, \
             vadps=1, \
@@ -263,7 +301,6 @@ def compile(board,prob,depth=3, \
     for variable in prob.variables():
         fragments[variable] = []
         expr = prob.binding(variable)
-        print(expr)
         for vadp in tablib.search(compute_blocks,laws,variable,expr):
             if len(fragments[variable]) >= vadp_fragments:
                 break
@@ -275,8 +312,10 @@ def compile(board,prob,depth=3, \
                               board.blocks))
 
     circuit = {}
+    block_counts = {}
     for variable in prob.variables():
-        circuit[variable] = fragments[variable][0]
+        circuit[variable] = list(remap_vadp_identifiers(block_counts, \
+                                                        fragments[variable][0]))
 
     for circ in asmlib.assemble(copy_blocks,circuit):
         print(circ)
