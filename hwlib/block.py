@@ -168,6 +168,9 @@ class BlockModeset:
 
     raise Exception("no mode exists")
 
+  def __len__(self):
+      return len(self._modes.keys())
+
   def __getitem__(self,m):
       return self.get(m)
 
@@ -364,10 +367,9 @@ class BCModeImpl:
                                       block_name,loc, \
                                       "block config is incomplete")
 
-    mode = self.state.block.modes.get(cfg.mode)
     values = []
     for pat,value in self._bindings:
-        if mode.match(pat):
+        if cfg.mode.match(pat):
             values.append(value)
 
     if not (len(values) == 1):
@@ -394,10 +396,9 @@ class BCDataImpl:
       stmt = blkcfg[self.variable]
       value = stmt.value*stmt.scf
       data_field = self.state.block.data[self.variable]
-      mode = self.state.block.modes[blkcfg.mode]
-      interval = data_field.interval[mode]
+      interval = data_field.interval[blkcfg.mode]
       code = self.state.block.data[self.variable] \
-                       .quantize[mode] \
+                       .quantize[blkcfg.mode] \
                        .get_code(interval,value)
       return code
 
@@ -430,8 +431,16 @@ class BCCalibImpl:
       return self._default
 
   def apply(self,adp,block_name,loc):
-      print("[BCCalibImpl.apply] TODO: not implemented")
-      return self.default
+    blkcfg = adp.configs.get(block_name,loc)
+    if blkcfg.has(self.state.name):
+        stmt = blkcfg[self.state.name]
+        value = stmt.value
+        assert(self.state.valid(value))
+    else:
+        value = self.default
+
+
+    return value
 
   def lift(self,adp,block,loc,data):
     blkcfg = adp.configs.get(block.name,loc)
@@ -527,7 +536,7 @@ class BlockState(BlockField):
     self.array = array
     assert( (index is None and array is None) or \
             (not index is None and not array is None))
-    self.values = values
+    self.values = list(values)
     self.variable = name if array is None else array.name
     if state_type == BlockStateType.CONNECTION:
         self.impl = BCConnImpl(self)

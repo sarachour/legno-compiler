@@ -42,7 +42,7 @@ float Fabric::Chip::Tile::Slice::Multiplier::computeOutput(mult_state_t& codes,
   }
   else{
     rng *= 1.0/util::range_to_coeff(codes.range[in1Id]);
-    return rng*in0*in1;
+    return 0.5*rng*in0*in1;
   }
 }
 

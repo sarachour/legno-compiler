@@ -88,16 +88,21 @@ def _unpack_response(resp):
 
     return payload_result
 
+def phys_block(db,blk,loc,out,cfg):
+    return physdb.PhysCfgBlock(db,blk,loc,out,cfg, \
+                              method_type=llenums.ProfileOpType, \
+                              status_type=llenums.ProfileStatus)
 
-def profile(runtime,blk,loc,cfg,output_port, \
-            method=llenums.ProfileOpType.INPUT_OUTPUT, \
-            in0=0.0,in1=0.0):
-    state_t = {blk.name:blk.state.concretize(cfg,loc)}
+def profile(runtime,blk,loc,adp,output_port, \
+            inputs, \
+            method=llenums.ProfileOpType.INPUT_OUTPUT):
+    state_t = {blk.name:blk.state.concretize(adp,loc)}
     # build profiling command
     loc_t,loc_d = make_block_loc_t(blk,loc)
     values = [0.0]*2
-    values[llenums.PortType.IN0.code()] = in0
-    values[llenums.PortType.IN1.code()] = in1
+    for input_ident,input_val in inputs.items():
+        values[input_ident.code()] = input_val
+
     profile_data = {"method": method.name, \
                     "inst": loc_d,
                     "in_vals": values, \
@@ -130,7 +135,8 @@ def profile(runtime,blk,loc,cfg,output_port, \
         inputs[port.name]= resp['spec']['in_vals'][llenums.PortType.IN1.code()]
 
     new_out = get_by_ll_identifier(blk.outputs,  \
-                                llenums.PortType.from_code(int(resp['spec']['output'])))
+                                llenums.PortType \
+                                   .from_code(int(resp['spec']['output'])))
 
     new_method = llenums.ProfileOpType.from_code(int(resp['spec']['method']))
     out_mean = resp['mean']
@@ -138,13 +144,13 @@ def profile(runtime,blk,loc,cfg,output_port, \
     out_status = llenums.ProfileStatus.from_code(int(resp['status']))
 
     # insert into database
-    print("TODO: fix status. It's unknown")
     blkcfg = new_adp.configs.get(blk.name,loc)
     db = physdb.PhysicalDatabase(runtime.board_name)
-    row = physdb.PhysCfgBlock(db,blk,loc,new_out,blkcfg)
+    row = phys_block(db,blk,loc,new_out,blkcfg)
     row.update()
     row.add_datapoint(blkcfg, \
                       inputs, \
+                      status=out_status, \
                       method=new_method, \
                       mean=out_mean, \
                       std=out_std)

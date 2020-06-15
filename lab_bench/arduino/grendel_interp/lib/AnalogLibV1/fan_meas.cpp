@@ -12,23 +12,23 @@ emulator::physical_model_t fan_draw_random_model(profile_spec_t spec){
                                                       model.in0.max);
   emulator::bound(model.in1,-1,1);
   return model;
- 
-
 }
+
 profile_t Fabric::Chip::Tile::Slice::Fanout::measure(profile_spec_t spec) {
 #ifdef EMULATE_HARDWARE
-  sprintf(FMTBUF,"measured value: in=(%f,%f)\n", spec.inputs[0],spec.inputs[1]);
+  sprintf(FMTBUF,"inputs=(%f,%f)\n", spec.inputs[0],spec.inputs[1]);
   print_info(FMTBUF);
 
   float std;
   float * input = prof::get_input(spec,port_type_t::in0Id);
   float output = Fabric::Chip::Tile::Slice::Fanout::computeOutput(spec.state.fanout,
                                                                   spec.output,
-                                                                  *input);
+                                                                  input[0]);
 
   emulator::physical_model_t model = fan_draw_random_model(spec);
   float result = emulator::draw(model,*input,0.0,output,std);
-  sprintf(FMTBUF,"output=%f result=%f\n", output,result);
+
+  sprintf(FMTBUF,"input=%f output=%f result=%f\n",input[0],output,result);
   print_info(FMTBUF);
   profile_t prof = prof::make_profile(spec, result,
                                       std);

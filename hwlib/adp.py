@@ -40,12 +40,16 @@ class BlockInstanceCollection:
       for inst,cfg in self._collection[block]:
         yield data
 
-  def get(self,blockname,loc):
+  def has(self,blockname,loc):
+    assert(isinstance(blockname,str))
     if not blockname in self._collection:
-      return None
+      return False
     if not loc in self._collection[blockname]:
-      return None
+      return False
+    return True
 
+  def get(self,blockname,loc):
+    assert(self.has(blockname,loc))
     return self._collection[blockname][loc]
 
   def add(self,data):
@@ -155,7 +159,29 @@ class BlockConfig:
     assert(isinstance(inst,BlockInst))
     self.inst = inst
     self._stmts = {}
-    self.modes = None
+    self._modes = None
+
+  @property
+  def modes(self):
+    return self._modes
+
+  @modes.setter
+  def modes(self,ms):
+    if len(ms) == 0:
+      self._modes = None
+
+    self._modes = []
+    for m in ms:
+      assert(isinstance(m,blocklib.BlockMode))
+      self._modes.append(m)
+
+  def set_config(self,other):
+    assert(isinstance(other,BlockConfig))
+    assert(other.inst.block == self.inst.block)
+    self.modes = other.modes
+    self._stmts = {}
+    for stmt in other.stmts:
+      self.add(stmt)
 
   def to_json(self):
     return {
@@ -186,6 +212,9 @@ class BlockConfig:
     if not name in self._stmts:
       raise Exception("unknown identifier <%s> for block config <%s>" % (name,self.inst))
     return self._stmts[name]
+
+  def has(self,name):
+    return name in self._stmts
 
   def __getitem__(self,key):
     assert(key in self._stmts)

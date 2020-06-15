@@ -6,7 +6,7 @@ class ResponseType(Enum):
 
 class ProfileStatus(Enum):
     SUCCESS = "success"
-    FAILED_TO_CALIBRATE = "success"
+    FAILED_TO_CALIBRATE = "failed_to_calibrate"
 
     @staticmethod
     def array():

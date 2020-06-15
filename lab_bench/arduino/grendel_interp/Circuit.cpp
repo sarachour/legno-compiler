@@ -87,6 +87,8 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
     break;
 
   case cmd_type_t::PROFILE:
+    sprintf_profile_spec(cmd.data.prof, FMTBUF);
+    print_info(FMTBUF);
     calibrate::set_state(fab,
                          cmd.data.prof.inst,
                          cmd.data.prof.state);

@@ -23,19 +23,21 @@ emulator::physical_model_t mult_draw_random_model(profile_spec_t spec){
 
 profile_t Fabric::Chip::Tile::Slice::Multiplier::measure(profile_spec_t spec) {
 #ifdef EMULATE_HARDWARE
-  sprintf(FMTBUF,"measured value: in=(%f,%f)\n",  \
+  float gain_val = (spec.state.mult.gain_code - 128.0)/128.0;
+  float std;
+  float * input0 = prof::get_input(spec,port_type_t::in0Id);
+  float * input1 = prof::get_input(spec,port_type_t::in1Id);
+  float output = Fabric::Chip::Tile::Slice::Multiplier::computeOutput(spec.state.mult,
+                                                                      *input0,
+                                                                      *input1);
+  sprintf(FMTBUF,"inputs in=(%f,%f) gain=%f out=%f\n",  \
           spec.inputs[0], \
-          spec.inputs[1]);
+          spec.inputs[1], \
+          gain_val, output);
   print_info(FMTBUF);
 
-  float std;
-  float * input = prof::get_input(spec,port_type_t::in0Id);
-  float output = Fabric::Chip::Tile::Slice::Multiplier::computeOutput(spec.state.mult,
-                                                                  spec.output,
-                                                                  *input);
-
   emulator::physical_model_t model = mult_draw_random_model(spec);
-  float result = emulator::draw(model,input[0],input[1],output,std);
+  float result = emulator::draw(model,*input0,*input1,output,std);
   sprintf(FMTBUF,"output=%f result=%f\n", output,result);
   print_info(FMTBUF);
   profile_t prof = prof::make_profile(spec, result,

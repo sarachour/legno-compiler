@@ -116,11 +116,11 @@ fan.state.add(BlockState('enable',
 fan.state['enable'].impl.bind(enums.BoolType.TRUE)
 
 fan.state.add(BlockState('pmos',
-                        values=range(0,8), \
+                        values=range(0,7), \
                         state_type=BlockStateType.CALIBRATE))
 fan.state['pmos'].impl.set_default(3)
 fan.state.add(BlockState('nmos',
-                        values=range(0,8), \
+                        values=range(0,7), \
                         state_type=BlockStateType.CALIBRATE))
 fan.state['nmos'].impl.set_default(3)
 

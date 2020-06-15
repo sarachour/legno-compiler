@@ -58,7 +58,7 @@ class PhysicalDatabase:
   def _where_clause(self,where_clause):
     reqs = []
     for k,v in where_clause.items():
-      reqs.append("%s='%s'" % (k,v.replace("'","\\'")))
+      reqs.append("%s='%s'" % (k,v.replace("'","''")))
 
     if len(reqs) > 0:
       return "WHERE "+(" AND ".join(reqs))
@@ -78,6 +78,7 @@ class PhysicalDatabase:
 
     keys = ['block','loc','output','static_config','config','dataset','model']
     SELECT = "SELECT * from physical %s" % where_clause_frag
+    print(SELECT)
     result = self.curs.execute(SELECT)
     for row in self.curs.fetchall():
       yield dict(zip(keys,row))
@@ -95,11 +96,17 @@ class PhysDataset:
     self.output = []
     self.meas_mean = []
     self.meas_stdev = []
-    self.method = []
+    self.meas_method = []
+    self.meas_status = []
 
-    self.output_port = self.phys.block.outputs[self.phys.output.name]
+    self.output_port = self.phys.output
+    if isinstance(self.phys.cfg.mode,blocklib.BlockMode):
+      self.mode = self.phys.cfg.mode
+    else:
+      self.mode = self.phys.block.modes[self.phys.cfg.mode]
+
     self.relation[llenums.ProfileOpType.INPUT_OUTPUT]  \
-      = self.output_port.relation[self.phys.cfg.mode]
+      = self.output_port.relation[self.mode]
 
     variables = self.relation[llenums.ProfileOpType.INPUT_OUTPUT].vars()
     self.inputs = {}
@@ -116,7 +123,7 @@ class PhysDataset:
       if not v in assigned:
         raise Exception("unknown variable: %s" % v)
 
-  def add(self,method,inputs,dynamic_codes,mean,std):
+  def add(self,method,inputs,dynamic_codes,status,mean,std):
     var_assigns = {}
     for in_port,in_val in inputs.items():
       var_assigns[in_port] = in_val
@@ -125,14 +132,22 @@ class PhysDataset:
       var_assigns[data_port] = data_val
 
     value = self.relation[method].compute(var_assigns)
-    self.output.append(value)
     self.meas_mean.append(mean)
     self.meas_stdev.append(std)
-    self.method.append(method.value)
+    assert(isinstance(status,self.phys.status_type))
+    self.meas_status.append(status)
+    assert(isinstance(method,self.phys.method_type))
+    self.meas_method.append(method)
+    self.output.append(value)
+
     for input_name in self.inputs.keys():
       self.inputs[input_name].append(inputs[input_name])
     for data_name in self.data.keys():
       self.data[data_name].append(dynamic_codes[data_name])
+
+  @property
+  def size(self):
+    return len(self.output)
 
   @staticmethod
   def from_json(physblk,data):
@@ -143,11 +158,16 @@ class PhysDataset:
     ds.output = data['output']
     ds.meas_mean = data['meas']['mean']
     ds.meas_stdev = data['meas']['stdev']
-    ds.method = data['meas']['method']
+    ds.meas_status = list(map(lambda val: physblk.status_type(val), \
+                              data['meas']['status']))
+    ds.meas_method = list(map(lambda val: physblk.method_type(val), \
+                              data['meas']['method']))
+
     for data_name,values in ds.data.items():
       for value in values:
         ds.data[data_name] \
           .append(ConfigStmt.from_json(value))
+
     return ds
 
   def to_json(self):
@@ -158,7 +178,8 @@ class PhysDataset:
       'meas': {
         'mean': self.meas_mean,
         'stdev': self.meas_stdev,
-        'method': self.method
+        'method': list(map(lambda v: v.value, self.meas_method)),
+        'status': list(map(lambda v: v.value, self.meas_status))
       }
     }
 
@@ -172,7 +193,8 @@ class PhysDeltaModel:
 
 class PhysCfgBlock:
 
-  def __init__(self,db,blk,loc,out_port,blkcfg):
+  def __init__(self,db,blk,loc,out_port,blkcfg, \
+               status_type,method_type):
     assert(isinstance(blkcfg,adplib.BlockConfig))
     assert(isinstance(blk,blocklib.Block))
     assert(isinstance(loc,devlib.Location))
@@ -183,6 +205,9 @@ class PhysCfgBlock:
     self.cfg = blkcfg
     self.db = db
     self.model = PhysDeltaModel(self)
+
+    self.status_type = status_type
+    self.method_type = method_type
     self.dataset = PhysDataset(self)
     self.load()
 
@@ -247,7 +272,10 @@ class PhysCfgBlock:
       json_dataset = decode_dict(matches[0]['dataset'])
       self.dataset = PhysDataset.from_json(self,json_dataset)
 
-  def add_datapoint(self,cfg,inputs,method,mean,std):
+  def add_datapoint(self,cfg,inputs,method,status,mean,std):
     assert(self.static_cfg == PhysCfgBlock.get_static_cfg(cfg))
-    self.dataset.add(method,inputs,PhysCfgBlock.get_dynamic_cfg(cfg),mean,std)
+    self.dataset.add(method,inputs, \
+                     PhysCfgBlock.get_dynamic_cfg(cfg), \
+                     status, \
+                     mean,std)
     self.update()
