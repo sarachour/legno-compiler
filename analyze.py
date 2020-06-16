@@ -8,6 +8,7 @@ import hwlib.hcdc.hcdcv2 as hcdclib
 
 import ops.generic_op as genoplib
 import ops.lambda_op as lambdoplib
+import itertools
 
 def get_subarray(arr,inds):
   return list(map(lambda i: arr[i], inds))
@@ -65,12 +66,11 @@ def fit_delta_model(model,inputs,meas_output):
 
   raise NotImplementedError
 
-def analyze(db,block,inst,out,cfg):
+def analyze_physical_output(physical_block):
   def valid_data_point(dataset,method,idx):
     return dataset.meas_status[idx] == llenums.ProfileStatus.SUCCESS \
       and dataset.meas_method[idx] == method
 
-  phys_block = llcmd.phys_block(db,block,inst,out,cfg)
   dataset = phys_block.dataset
   indices = list(filter(lambda idx: valid_data_point(dataset, \
                                                   llenums.ProfileOpType.INPUT_OUTPUT, \
@@ -97,6 +97,23 @@ def analyze(db,block,inst,out,cfg):
 
   params = fit_delta_model(delta_model,variables,meas)
 
+def analyze_block_instance(db,block,inst,out,cfg):
+  states = {}
+  for state in block.state:
+    if isinstance(state.impl, blocklib.BCCalibImpl):
+      states[state.name] = state.values
+
+  state_fields = list(states.keys())
+  state_values = list(map(lambda s: states[s], state_fields))
+  for comb in itertools.product(*state_values):
+    for state_field, state_val in zip(state_fields,comb):
+      cfg.get(state_field).value = state_val
+
+    phys_block = llcmd.phys_block(db,block,inst,out,cfg)
+    if phys_block.dataset.size == 0:
+      continue
+    print(comb)
+
 dev = hcdclib.get_device()
 #block = dev.get_block('fanout')
 block = dev.get_block('mult')
@@ -105,15 +122,13 @@ cfg = adplib.BlockConfig.make(block,inst)
 #cfg.modes = [['+','+','-','m']]
 cfg.modes = [block.modes.get(['x','h','m'])]
 # program hidden codes
-cfg.get('pmos').value = 0
-cfg.get('nmos').value = 0
-cfg.get('gain_cal').value = 0
-cfg.get('bias_in0').value = 0
-cfg.get('bias_in1').value = 0
-cfg.get('bias_out').value = 0
-
 out = block.outputs["z"]
 
-db = physdb.PhysicalDatabase('board6')
-analyze(db,block,inst,out,cfg)
 
+db = physdb.PhysicalDatabase('board6')
+for blk in physdb.get_all_calibrated_blocks(db,dev,block,inst,cfg):
+  print(blk)
+
+print("===== BEST ====")
+for blk in physdb.get_best_calibrated_block(db,dev,block,inst,cfg):
+  print(blk.hidden_cfg)

@@ -12,10 +12,12 @@ block text,
 loc text,
 output text,
 static_config text,
+hidden_config text,
 config text,
 dataset text,
 model text,
-primary key (block,loc,static_config)
+cost real,
+primary key (block,loc,output,static_config,hidden_config)
 );
 '''
 def encode_dict(data):
@@ -46,11 +48,13 @@ class PhysicalDatabase:
     self.conn = sqlite3.connect(self.filename)
     self.curs = self.conn.cursor()
     self.curs.execute(CREATE_TABLE)
+    self.keys = ['block','loc','output','static_config','hidden_config', \
+            'config','dataset','model','cost']
     self.conn.commit()
 
   def insert(self,fields):
-    INSERT = '''INSERT INTO physical (block,loc,static_config,config,dataset,model)
-                VALUES ('{block}','{loc}','{static_config}','{config}','{dataset}','{model}');'''
+    INSERT = '''INSERT INTO physical (block,loc,output,static_config,hidden_config,config,dataset,model,cost)
+                VALUES ('{block}','{loc}','{output}','{static_config}','{hidden_config}','{config}','{dataset}','{model}',{cost});'''
     cmd = INSERT.format(**fields)
     self.curs.execute(cmd)
     self.conn.commit()
@@ -68,20 +72,27 @@ class PhysicalDatabase:
   def update(self,where_clause,fields):
     where_clause_frag = self._where_clause(where_clause)
     assert(len(where_clause_frag) > 0)
-    UPDATE = "UPDATE physical SET dataset='{dataset}', model='{model}' "
+    UPDATE = "UPDATE physical SET dataset='{dataset}',model='{model}',cost={cost} "
     cmd = UPDATE.format(**fields) + where_clause_frag
     self.curs.execute(cmd)
     self.conn.commit()
 
-  def select(self,where_clause):
+  def _select(self,action_clause,where_clause):
     where_clause_frag = self._where_clause(where_clause)
 
-    keys = ['block','loc','output','static_config','config','dataset','model']
-    SELECT = "SELECT * from physical %s" % where_clause_frag
-    print(SELECT)
+    SELECT = "SELECT %s FROM physical %s" % (action_clause, \
+                                             where_clause_frag)
+
     result = self.curs.execute(SELECT)
     for row in self.curs.fetchall():
-      yield dict(zip(keys,row))
+      yield dict(zip(self.keys,row))
+
+
+  def select(self,where_clause):
+    return self._select("*",where_clause)
+
+
+
 
 class PhysDataset:
 
@@ -180,9 +191,11 @@ class PhysDataset:
     }
 
 class PhysDeltaModel:
-
+  MAX_COST = 9999
   def __init__(self,physblk):
     self.phys = physblk
+    self.cost = PhysDeltaModel.MAX_COST
+
 
   def to_json(self):
     return None
@@ -194,6 +207,7 @@ class PhysCfgBlock:
     assert(isinstance(blkcfg,adplib.BlockConfig))
     assert(isinstance(blk,blocklib.Block))
     assert(isinstance(loc,devlib.Location))
+    assert(isinstance(out_port,blocklib.BlockOutput))
     assert(blkcfg.complete())
     self.block = blk
     self.loc = loc
@@ -209,12 +223,28 @@ class PhysCfgBlock:
 
   # combinatorial block config (modes) and calibration codes
   @staticmethod
-  def get_static_cfg(cfg):
+  def get_hidden_cfg(block,cfg):
+    mode = cfg.mode
+    kvs = {}
+    for stmt in cfg.stmts:
+      if stmt.t == adplib.ConfigStmtType.STATE and \
+         isinstance(block.state[stmt.name].impl, \
+                        blocklib.BCCalibImpl):
+        assert(not stmt.name in kvs)
+        kvs[stmt.name] = stmt.t.value+" "+stmt.pretty_print()
+
+    return dict_to_identifier(kvs)
+
+
+  @staticmethod
+  def get_static_cfg(block,cfg):
     mode = cfg.mode
     kvs = {}
     kvs['mode'] = mode
     for stmt in cfg.stmts:
-      if stmt.t == adplib.ConfigStmtType.STATE:
+      if stmt.t == adplib.ConfigStmtType.STATE and \
+         not isinstance(block.state[stmt.name].impl, \
+                        blocklib.BCCalibImpl):
         assert(not stmt.name in kvs)
         kvs[stmt.name] = stmt.t.value+" "+stmt.pretty_print()
 
@@ -230,8 +260,13 @@ class PhysCfgBlock:
     return kvs
 
   @property
+  def hidden_cfg(self):
+    return PhysCfgBlock.get_hidden_cfg(self.block,self.cfg)
+
+
+  @property
   def static_cfg(self):
-    return PhysCfgBlock.get_static_cfg(self.cfg)
+    return PhysCfgBlock.get_static_cfg(self.block,self.cfg)
 
   # dynamic values (data)
   def dynamic_cfg(self):
@@ -241,15 +276,20 @@ class PhysCfgBlock:
     fields = {
       'block': self.block.name,
       'loc': str(self.loc),
+      'output': self.output.name,
       'static_config': self.static_cfg,
+      'hidden_config': self.hidden_cfg,
       'config': encode_dict(self.cfg.to_json()),
       'dataset':encode_dict(self.dataset.to_json()),
-      'model': encode_dict(self.model.to_json())
+      'model': encode_dict(self.model.to_json()),
+      'cost':self.model.cost
     }
     where_clause = {
       'block': self.block.name,
       'loc': str(self.loc),
+      'output': self.output.name,
       'static_config': self.static_cfg,
+      'hidden_config': self.hidden_cfg,
     }
     matches = list(self.db.select(where_clause))
     if len(matches) == 0:
@@ -261,7 +301,9 @@ class PhysCfgBlock:
     where_clause = {
       'block': self.block.name,
       'loc': str(self.loc),
+      'output':self.output.name,
       'static_config': self.static_cfg,
+      'hidden_config': self.hidden_cfg
     }
     matches = list(self.db.select(where_clause))
     if len(matches) == 1:
@@ -269,9 +311,73 @@ class PhysCfgBlock:
       self.dataset = PhysDataset.from_json(self,json_dataset)
 
   def add_datapoint(self,cfg,inputs,method,status,mean,std):
-    assert(self.static_cfg == PhysCfgBlock.get_static_cfg(cfg))
+    # test that this is the same block usage
+    assert(self.static_cfg  \
+           == PhysCfgBlock.get_static_cfg(self.block,cfg))
+    assert(self.cfg.inst == cfg.inst)
+    assert(self.hidden_cfg  \
+           == PhysCfgBlock.get_hidden_cfg(self.block,cfg))
+
+    # add point
     self.dataset.add(method,inputs, \
                      PhysCfgBlock.get_dynamic_cfg(cfg), \
                      status, \
                      mean,std)
     self.update()
+
+  @staticmethod
+  def from_json(db,dev,obj):
+    assert(isinstance(db,PhysicalDatabase))
+    assert(isinstance(dev,devlib.Device))
+    blk = dev.get_block(obj['block'])
+    loc = devlib.Location(obj['loc'])
+    output = blk.outputs[obj['output']]
+    cfg_obj = decode_dict(obj['config'])
+    cfg = adplib.BlockConfig.from_json(dev,cfg_obj)
+    phys = PhysCfgBlock(db,blk,loc,output,cfg, \
+                        dev.profile_status_type, \
+                        dev.profile_op_type)
+    json_dataset = decode_dict(obj['dataset'])
+    phys.dataset = PhysDataset.from_json(phys,json_dataset)
+    return phys
+
+
+
+
+
+def get_best_calibrated_block(db,dev,blk,inst,cfg):
+  static_cfg = PhysCfgBlock.get_static_cfg(blk,cfg)
+  where_clause = {'block':blk.name, \
+                  'loc':str(inst), \
+                  'static_config':static_cfg}
+
+  by_hidden_cfg = {}
+  hidden_cfg_costs = {}
+  # compute costs
+  for row in db.select(where_clause):
+    phys = PhysCfgBlock.from_json(db,dev,row)
+    if not phys.hidden_cfg in by_hidden_cfg:
+      by_hidden_cfg[phys.hidden_cfg] = []
+
+    by_hidden_cfg[phys.hidden_cfg].append(phys)
+
+  best_hidden_cfg = None
+  best_cost = None
+  for hidden_cfg,physblocks in by_hidden_cfg.items():
+    cost = max(map(lambda blk: blk.model.cost, physblocks))
+    if best_hidden_cfg is None or best_cost > cost:
+      best_hidden_cfg = hidden_cfg
+      best_cost = cost
+
+  assert(not best_hidden_cfg is None)
+  for physblk in by_hidden_cfg[best_hidden_cfg]:
+    yield physblk
+
+def get_all_calibrated_blocks(db,dev,blk,inst,cfg):
+  static_cfg = PhysCfgBlock.get_static_cfg(blk,cfg)
+  where_clause = {'block':blk.name, \
+                  'loc':str(inst), \
+                  'static_config':static_cfg}
+
+  for row in db.select(where_clause):
+    yield PhysCfgBlock.from_json(db,dev,row)

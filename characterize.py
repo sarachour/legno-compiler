@@ -6,6 +6,7 @@ import hwlib.hcdc.llenums as llenums
 import hwlib.hcdc.llcmd as llcmd
 import hwlib.hcdc.hcdcv2 as hcdclib
 import itertools
+import ops.op as oplib
 
 from lab_bench.grendel_runner import GrendelRunner
 import lab_bench.grendel_util as grendel_util
@@ -24,6 +25,13 @@ def select_from_interval(ival,n):
 def select_from_quantized_interval(ival,quant,n):
   values = quant.get_values(ival)
   return select_from_array(values,n)
+
+def is_integration_op(expr):
+  if expr.op == oplib.OpType.INTEG:
+    return True
+  else:
+    return any(map(lambda arg: is_integration_op(arg), \
+                   expr.args))
 
 def profile(runtime,blk,inst,hidden,templ_config,m=5):
   new_adp= adplib.ADP()
@@ -54,7 +62,7 @@ def profile(runtime,blk,inst,hidden,templ_config,m=5):
                                                   data.quantize[config.mode], \
                                                   m)
 
-  # sweep over input space
+  # profile over input space
   dynamic_fields = list(dynamic.keys())
   dynamic_values = list(map(lambda k :dynamic[k], dynamic_fields))
   for comb in itertools.product(*dynamic_values):
@@ -69,10 +77,19 @@ def profile(runtime,blk,inst,hidden,templ_config,m=5):
         input_vals[st.ll_identifier] = value
 
     for output,output_ident in outputs.items():
-      print(input_vals)
-      llcmd.profile(runtime,blk,inst,new_adp,output_ident, \
-                    method=llenums.ProfileOpType.INPUT_OUTPUT, \
-                    inputs=input_vals)
+      if is_integration_op(block.outputs[output].relation[config.mode]):
+        methods = [llenums.ProfileOpType.INTEG_INITIAL_COND, \
+                   llenums.ProfileOpType.INTEG_DERIVATIVE_STABLE, \
+                   llenums.ProfileOpType.INTEG_DERIVATIVE_BIAS, \
+                   llenums.ProfileOpType.INTEG_DERIVATIVE_GAIN]
+        input()
+      else:
+        methods = [llenums.ProfileOpType.INPUT_OUTPUT]
+
+      for method in methods:
+        llcmd.profile(runtime,blk,inst,new_adp,output_ident, \
+                      method=method, \
+                      inputs=input_vals)
 
 def characterize(blk,inst,cfg,n=5,m=10):
   hidden = {}
@@ -93,8 +110,19 @@ def characterize(blk,inst,cfg,n=5,m=10):
     profile(runtime,blk,inst,hidden_assigns,cfg,m=m)
 
 
+print("TODO: handle integration properly")
+print("TODO: handle split between hidden and static config")
+'''
 dev = hcdclib.get_device()
+block = dev.get_block('integ')
+inst = devlib.Location([0,3,2,0])
+cfg = adplib.BlockConfig.make(block,inst)
+cfg.modes = [block.modes.get(['m','m','+'])]
+characterize(block,inst,cfg)
+'''
+
 #block = dev.get_block('fanout')
+dev = hcdclib.get_device()
 block = dev.get_block('mult')
 inst = devlib.Location([0,3,2,0])
 cfg = adplib.BlockConfig.make(block,inst)

@@ -10,6 +10,11 @@ class BlockInst:
     self.block = name
     self.loc = loc
 
+  @staticmethod
+  def from_json(obj):
+    loc = devlib.Location.from_json(obj['loc'])
+    return BlockInst(obj['block'],loc)
+
   def to_json(self):
     return {
       'block': self.block,
@@ -89,6 +94,10 @@ class ConfigStmt:
     typ = ConfigStmtType(obj['type'])
     if typ == ConfigStmtType.CONSTANT:
       return ConstDataConfig.from_json(obj)
+    elif typ == ConfigStmtType.PORT:
+      return PortConfig.from_json(obj)
+    elif typ == ConfigStmtType.STATE:
+      return StateConfig.from_json(obj)
     else:
       raise Exception("unhandled from_json: %s" % typ)
 
@@ -105,6 +114,12 @@ class ConstDataConfig(ConfigStmt):
   def pretty_print(self):
     return "val=%f scf=%f" \
       % (self.value,self.scf)
+
+  @staticmethod
+  def from_json(obj):
+    cfg = ConstDataConfig(obj['name'],obj['value'])
+    cfg.scf = obj['scf']
+    return cfg
 
   def to_json(self):
     return {
@@ -128,7 +143,7 @@ class ExprDataConfig(ConfigStmt):
 
 
 
-class PortDataConfig(ConfigStmt):
+class PortConfig(ConfigStmt):
 
   def __init__(self,name):
     ConfigStmt.__init__(self,ConfigStmtType.PORT,name)
@@ -143,6 +158,13 @@ class PortDataConfig(ConfigStmt):
       'type': self.t.value,
       'scf': self.scf
     }
+
+  @staticmethod
+  def from_json(obj):
+    cfg = PortConfig(obj['name'])
+    cfg.scf = obj['scf']
+    return cfg
+
 
 class StateConfig(ConfigStmt):
 
@@ -160,6 +182,12 @@ class StateConfig(ConfigStmt):
       'type': self.t.value,
       'value': self.value
     }
+
+  @staticmethod
+  def from_json(obj):
+    cfg = StateConfig(obj['name'],obj['value'])
+    return cfg
+
 
 class BlockConfig:
 
@@ -190,6 +218,18 @@ class BlockConfig:
     self._stmts = {}
     for stmt in other.stmts:
       self.add(stmt)
+
+  @staticmethod
+  def from_json(dev,obj):
+    inst = BlockInst.from_json(obj['inst'])
+    blk = dev.get_block(inst.block)
+    cfg = BlockConfig(inst)
+    cfg.modes = list(map(lambda m : blk.modes.get(m['values']), \
+                         obj['modes']))
+    for stmt_obj in obj['stmts'].values():
+      st = ConfigStmt.from_json(stmt_obj)
+      cfg.add(st)
+    return cfg
 
   def to_json(self):
     return {
@@ -233,9 +273,9 @@ class BlockConfig:
     cfg = BlockConfig(BlockInst(block.name,loc))
     cfg.modes = block.modes
     for inp in block.inputs:
-      cfg.add(PortDataConfig(inp.name))
+      cfg.add(PortConfig(inp.name))
     for out in block.outputs:
-      cfg.add(PortDataConfig(out.name))
+      cfg.add(PortConfig(out.name))
     for data in block.data:
       if data.type == blocklib.BlockDataType.CONST:
         cfg.add(ConstDataConfig(data.name,0.0))

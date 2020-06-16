@@ -87,15 +87,17 @@ def _unpack_response(resp):
                                        resp.array)
 
     return payload_result
-
+'''
 def phys_block(db,blk,loc,out,cfg):
     return physdb.PhysCfgBlock(db,blk,loc,out,cfg, \
                               method_type=llenums.ProfileOpType, \
                               status_type=llenums.ProfileStatus)
+'''
 
 def profile(runtime,blk,loc,adp,output_port, \
             inputs, \
             method=llenums.ProfileOpType.INPUT_OUTPUT):
+    dev = hcdclib.get_device()
     state_t = {blk.name:blk.state.concretize(adp,loc)}
     # build profiling command
     loc_t,loc_d = make_block_loc_t(blk,loc)
@@ -146,7 +148,9 @@ def profile(runtime,blk,loc,adp,output_port, \
     # insert into database
     blkcfg = new_adp.configs.get(blk.name,loc)
     db = physdb.PhysicalDatabase(runtime.board_name)
-    row = phys_block(db,blk,loc,new_out,blkcfg)
+    row = physdb.PhysCfgBlock(db,blk,loc,new_out,blkcfg, \
+                              dev.profile_status_type, \
+                              dev.profile_op_type)
     row.update()
     row.add_datapoint(blkcfg, \
                       inputs, \

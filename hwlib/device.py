@@ -8,6 +8,10 @@ class Location:
   def to_json(self):
     return self.address
 
+  @staticmethod
+  def from_json(addr):
+    return Location(addr)
+
   def __str__(self):
     tup = ",".join(map(lambda i: str(i), self.address))
     return "loc(%s)" % (tup)

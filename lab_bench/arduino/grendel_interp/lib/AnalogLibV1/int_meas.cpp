@@ -2,10 +2,50 @@
 #include <float.h>
 #include "calib_util.h"
 #include "fu.h"
+#include "emulator.h"
+
+emulator::physical_model_t integ_draw_random_model(profile_spec_t spec){
+  emulator::physical_model_t model;
+  emulator::ideal(model);
+  Fabric::Chip::Tile::Slice::Multiplier::computeInterval(spec.state.mult,
+                                                         in0Id,
+                                                         model.in0.min,
+                                                         model.in0.max);
+
+  return model;
+}
+
 
 
 profile_t Fabric::Chip::Tile::Slice::Integrator::measure(profile_spec_t spec){
 
+#ifdef EMULATE_HARDWARE
+  emulator::physical_model_t model = integ_draw_random_model(spec);
+  float * input0 = prof::get_input(spec,port_type_t::in0Id);
+  float output = 0.0;
+  switch(spec.type){
+  case INTEG_INITIAL_COND:
+    output = Fabric::Chip::Tile::Slice::Integrator::computeInitCond(spec.state.integ);
+    break;
+  case INTEG_DERIVATIVE_STABLE:
+    output = 0.0;
+    break;
+  case INTEG_DERIVATIVE_GAIN:
+    output = Fabric::Chip::Tile::Slice::Integrator::computeTimeConstant(spec.state.integ);
+  case INTEG_DERIVATIVE_BIAS:
+    output = 0.0;
+  default:
+    error("not expected");
+  }
+  float std;
+  float result = emulator::draw(model,*input0,0.0,output,std);
+  sprintf(FMTBUF,"output=%f result=%f\n", output,result);
+  print_info(FMTBUF);
+  profile_t prof = prof::make_profile(spec, result,
+                                      std);
+  return prof;
+
+#else
   integ_state_t state_integ = this->m_state;
   profile_t dummy;
   this->m_state= spec.state.integ;
@@ -25,6 +65,7 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measure(profile_spec_t spec){
   }
   this->m_state = state_integ;
   return dummy;
+#endif
 }
 
 profile_t Fabric::Chip::Tile::Slice::Integrator::measureClosedLoopCircuit(profile_spec_t spec){
