@@ -4,6 +4,7 @@ import hwlib.adp as adplib
 import hwlib.physdb as physdb
 import hwlib.hcdc.llenums as llenums
 
+import phys_model.phys_util as phys_util
 import ops.generic_op as genoplib
 import ops.lambda_op as lambdoplib
 import itertools
@@ -78,8 +79,8 @@ def analyze_physical_output(phys_output):
                                                   idx), range(0,dataset.size)))
 
   meas = phys_util.get_subarray(dataset.meas_mean,indices)
-  meas_stdev = get_subarray(dataset.meas_stdev,indices)
-  ref = get_subarray(dataset.output, indices)
+  meas_stdev = phys_util.get_subarray(dataset.meas_stdev,indices)
+  ref = phys_util.get_subarray(dataset.output, indices)
   variables = {}
   for data_field,values in dataset.data.items():
     variables[data_field] = values

@@ -27,11 +27,15 @@ class BruteForcePlanner(ProfilePlanner):
 
   def __init__(self,block,loc,cfg,n,m):
     ProfilePlanner.__init__(self,block,loc,cfg)
+    self.n = n
+    self.m = m
+
+  def new_hidden(self):
     hidden = {}
     for state in filter(lambda st: isinstance(st.impl, \
                                               blocklib.BCCalibImpl), \
                         self.block.state):
-      hidden[state] = phys_util.select_from_array(state.values,n)
+      hidden[state] = phys_util.select_from_array(state.values,self.n)
 
 
     self._hidden_fields = list(hidden.keys())
@@ -39,7 +43,6 @@ class BruteForcePlanner(ProfilePlanner):
                              self._hidden_fields))
     self.hidden_iterator = itertools.product(*hidden_values)
     self.dynamic_iterator = None
-    self.m = m
 
   def next_hidden(self):
     try:
@@ -77,3 +80,27 @@ class BruteForcePlanner(ProfilePlanner):
     except StopIteration:
       self.dynamic_iterator = None
       return None
+
+
+class NeighborhoodPlanner(BruteForcePlanner):
+
+  def __init__(self,block,loc,cfg,n,m):
+    BruteForcePlanner.__init__(self,block,loc,cfg,n,m)
+
+  def new_hidden(self):
+    hidden = {}
+    for state in filter(lambda st: isinstance(st.impl, \
+                                              blocklib.BCCalibImpl), \
+                        self.block.state):
+      valid = list(map(lambda delta: self.config[state.name].value + delta, \
+                       range(-self.n,self.n+1)))
+
+      hidden[state] = list(filter(lambda val: val in valid,state.values))
+
+
+    self._hidden_fields = list(hidden.keys())
+    hidden_values = list(map(lambda k :hidden[k], \
+                             self._hidden_fields))
+    self.hidden_iterator = itertools.product(*hidden_values)
+    self.dynamic_iterator = None
+

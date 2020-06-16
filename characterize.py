@@ -32,8 +32,10 @@ block = dev.get_block('mult')
 inst = devlib.Location([0,3,2,0])
 cfg = adplib.BlockConfig.make(block,inst)
 #cfg.modes = [['+','+','-','m']]
-cfg.modes = [block.modes.get(['x','h','m'])]
+cfg.modes = [block.modes.get(['x','m','m'])]
 
-planner = planlib.BruteForcePlanner(block,inst,cfg,3,10)
-proflib.profile_uncalibrated_block(dev,planner)
+runtime = GrendelRunner()
+#planner = planlib.BruteForcePlanner(block,inst,cfg,3,10)
+planner = planlib.NeighborhoodPlanner(block,inst,cfg,3,10)
+proflib.profile_uncalibrated_block(runtime,dev,planner)
 

@@ -64,10 +64,10 @@ def profile_calibrated_block(dev,runtime,planner,hidden):
 
     dynamic = planner.next_dynamic()
 
-def profile_uncalibrated_block(dev,planner):
-  runtime = GrendelRunner()
+def profile_uncalibrated_block(runtime,dev,planner):
   runtime.initialize()
 
+  planner.new_hidden()
   hidden_state = planner.next_hidden()
   while not hidden_state is None:
     profile_calibrated_block(dev,runtime,planner,hidden_state)
