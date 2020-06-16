@@ -6,6 +6,8 @@ import hwlib.hcdc.llenums as llenums
 import ops.generic_op as ops
 import base64
 import json
+import numpy as np
+
 CREATE_TABLE = '''
 CREATE TABLE IF NOT EXISTS physical (
 block text,
@@ -194,11 +196,59 @@ class PhysDeltaModel:
   MAX_COST = 9999
   def __init__(self,physblk):
     self.phys = physblk
+    self.delta_model = self.phys.output \
+                                .deltas[self.phys.cfg.mode]
+    self.params = {}
     self.cost = PhysDeltaModel.MAX_COST
 
+  @property
+  def complete(self):
+    for par in self.delta_model.params:
+      if not par in self.params:
+        return False
+    return True
+
+  def bind(self,par,value):
+    assert(not par in self.params)
+    assert(par in self.delta_model.params)
+    self.params[par] = value
+
+  def error(self,inputs,meas_outputs):
+    pred_outputs = self.predict(inputs)
+    cost = 0
+    n = 0
+    for pred,meas in zip(pred_outputs,meas_outputs):
+      cost += pow(pred-meas,2)
+      n += 1
+
+    return np.sqrt(cost/n)
+
+  def predict(self,inputs):
+    input_fields = list(inputs.keys())
+    input_value_set = list(inputs.values())
+    n = len(input_value_set[0])
+    outputs = []
+    for values in zip(*input_value_set):
+      inp_map = dict(list(zip(input_fields,values)) + \
+                     list(self.params.items()))
+      output = self.delta_model.relation.compute(inp_map)
+      outputs.append(output)
+
+    return outputs
+
+  @staticmethod
+  def from_json(physcfg,obj):
+    model = PhysDeltaModel(physcfg)
+    for par,value in obj['params'].items():
+      model.bind(par,value)
+    model.cost = obj['cost']
+    return model
 
   def to_json(self):
-    return None
+    return {
+      'params': self.params,
+      'cost': self.cost
+    }
 
 class PhysCfgBlock:
 
@@ -309,6 +359,12 @@ class PhysCfgBlock:
     if len(matches) == 1:
       json_dataset = decode_dict(matches[0]['dataset'])
       self.dataset = PhysDataset.from_json(self,json_dataset)
+      json_model = decode_dict(matches[0]['model'])
+      self.model = PhysDeltaModel.from_json(self,json_model)
+    elif len(matches) == 0:
+      return
+    else:
+      raise Exception("can only have one match")
 
   def add_datapoint(self,cfg,inputs,method,status,mean,std):
     # test that this is the same block usage
@@ -365,6 +421,7 @@ def get_best_calibrated_block(db,dev,blk,inst,cfg):
   best_cost = None
   for hidden_cfg,physblocks in by_hidden_cfg.items():
     cost = max(map(lambda blk: blk.model.cost, physblocks))
+    print(cost)
     if best_hidden_cfg is None or best_cost > cost:
       best_hidden_cfg = hidden_cfg
       best_cost = cost

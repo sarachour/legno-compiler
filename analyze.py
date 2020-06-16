@@ -33,9 +33,12 @@ assigns = dict(zip(lbls,popt))
 perr = np.sqrt(np.diag(pcov))
 '''
 
-def fit_delta_model(model,inputs,meas_output):
+def fit_delta_model(phys,inputs,meas_output):
   n_inputs = len(inputs.keys())
+  if phys.model.complete:
+    return
 
+  model = phys.model.delta_model
   # for building expression
   repl = {}
   dataset = [None]*n_inputs
@@ -61,17 +64,20 @@ def fit_delta_model(model,inputs,meas_output):
   parameter_stdevs = loc['perr']
   for idx,par in enumerate(parameters):
     val = parameter_values[idx]
-    stdev = parameter_stdevs[idx]
-    print("%s = %s stdev:%s" % (par,val,stdev))
+    phys.model.bind(par,val)
 
-  raise NotImplementedError
+  sumsq = phys.model.error(inputs,meas_output)
+  phys.model.cost = sumsq
+  print("cost: %s" % phys.model.cost)
+  phys.update()
 
-def analyze_physical_output(physical_block):
+def analyze_physical_output(phys_output):
   def valid_data_point(dataset,method,idx):
     return dataset.meas_status[idx] == llenums.ProfileStatus.SUCCESS \
       and dataset.meas_method[idx] == method
 
-  dataset = phys_block.dataset
+  delta_model = phys_output.model.delta_model
+  dataset = phys_output.dataset
   indices = list(filter(lambda idx: valid_data_point(dataset, \
                                                   llenums.ProfileOpType.INPUT_OUTPUT, \
                                                   idx), range(0,dataset.size)))
@@ -86,33 +92,7 @@ def analyze_physical_output(physical_block):
   for input_field,values in dataset.inputs.items():
     variables[input_field] = values
 
-  # test to see that delta model is fully specified
-  delta_model = phys_block.output.deltas[cfg.mode]
-  free_variables = delta_model.params
-  bound_variables = list(variables.keys())
-  for v in delta_model.relation.vars():
-    if not v in free_variables and  \
-       not v in bound_variables:
-      raise Exception("no data for bound variable: %s" % v)
-
-  params = fit_delta_model(delta_model,variables,meas)
-
-def analyze_block_instance(db,block,inst,out,cfg):
-  states = {}
-  for state in block.state:
-    if isinstance(state.impl, blocklib.BCCalibImpl):
-      states[state.name] = state.values
-
-  state_fields = list(states.keys())
-  state_values = list(map(lambda s: states[s], state_fields))
-  for comb in itertools.product(*state_values):
-    for state_field, state_val in zip(state_fields,comb):
-      cfg.get(state_field).value = state_val
-
-    phys_block = llcmd.phys_block(db,block,inst,out,cfg)
-    if phys_block.dataset.size == 0:
-      continue
-    print(comb)
+  params = fit_delta_model(phys_output,variables,meas)
 
 dev = hcdclib.get_device()
 #block = dev.get_block('fanout')
@@ -120,14 +100,14 @@ block = dev.get_block('mult')
 inst = devlib.Location([0,3,2,0])
 cfg = adplib.BlockConfig.make(block,inst)
 #cfg.modes = [['+','+','-','m']]
-cfg.modes = [block.modes.get(['x','h','m'])]
+cfg.modes = [block.modes.get(['x','m','m'])]
 # program hidden codes
 out = block.outputs["z"]
 
 
 db = physdb.PhysicalDatabase('board6')
 for blk in physdb.get_all_calibrated_blocks(db,dev,block,inst,cfg):
-  print(blk)
+  analyze_physical_output(blk)
 
 print("===== BEST ====")
 for blk in physdb.get_best_calibrated_block(db,dev,block,inst,cfg):
