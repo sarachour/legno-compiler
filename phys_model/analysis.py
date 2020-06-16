@@ -3,15 +3,10 @@ import hwlib.block as blocklib
 import hwlib.adp as adplib
 import hwlib.physdb as physdb
 import hwlib.hcdc.llenums as llenums
-import hwlib.hcdc.llcmd as llcmd
-import hwlib.hcdc.hcdcv2 as hcdclib
 
 import ops.generic_op as genoplib
 import ops.lambda_op as lambdoplib
 import itertools
-
-def get_subarray(arr,inds):
-  return list(map(lambda i: arr[i], inds))
 
 PROG = '''
 from scipy.optimize import curve_fit
@@ -82,7 +77,7 @@ def analyze_physical_output(phys_output):
                                                   llenums.ProfileOpType.INPUT_OUTPUT, \
                                                   idx), range(0,dataset.size)))
 
-  meas = get_subarray(dataset.meas_mean,indices)
+  meas = phys_util.get_subarray(dataset.meas_mean,indices)
   meas_stdev = get_subarray(dataset.meas_stdev,indices)
   ref = get_subarray(dataset.output, indices)
   variables = {}
@@ -94,21 +89,3 @@ def analyze_physical_output(phys_output):
 
   params = fit_delta_model(phys_output,variables,meas)
 
-dev = hcdclib.get_device()
-#block = dev.get_block('fanout')
-block = dev.get_block('mult')
-inst = devlib.Location([0,3,2,0])
-cfg = adplib.BlockConfig.make(block,inst)
-#cfg.modes = [['+','+','-','m']]
-cfg.modes = [block.modes.get(['x','m','m'])]
-# program hidden codes
-out = block.outputs["z"]
-
-
-db = physdb.PhysicalDatabase('board6')
-for blk in physdb.get_all_calibrated_blocks(db,dev,block,inst,cfg):
-  analyze_physical_output(blk)
-
-print("===== BEST CALIBRATION CODE ====")
-for blk in physdb.get_best_calibrated_block(db,dev,block,inst,cfg):
-  print(blk.hidden_cfg)
