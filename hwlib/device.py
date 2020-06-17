@@ -3,6 +3,8 @@ import hwlib.block as blocklib
 class Location:
 
   def __init__(self,address):
+    assert(all(map(lambda item: isinstance(item,int), \
+                   address)))
     self.address = address
 
   def to_json(self):
@@ -10,6 +12,13 @@ class Location:
 
   @staticmethod
   def from_json(addr):
+    return Location(addr)
+
+  @staticmethod
+  def from_string(string):
+    argstr = string.split("loc(")[1].split(")")[0]
+    addr = list(map(lambda arg: int(arg), \
+                    argstr.split(",")))
     return Location(addr)
 
   def __str__(self):
