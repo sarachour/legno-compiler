@@ -14,9 +14,18 @@ cfg.modes = [block.modes.get(['x','m','m'])]
 
 
 db = physdb.PhysicalDatabase('board6')
-for blk in physdb.get_all_calibrated_blocks(db,dev,block,inst,cfg):
+for blk in physdb.get_all_calibrated_blocks(db, \
+                                            dev, \
+                                            block, \
+                                            inst, \
+                                            cfg):
+  print(blk)
   fitlib.analyze_physical_output(blk)
 
 print("===== BEST CALIBRATION CODE ====")
-for blk in physdb.get_best_calibrated_block(db,dev,block,inst,cfg):
+for blk in physdb.get_best_calibrated_block(db, \
+                                            dev, \
+                                            block, \
+                                            inst, \
+                                            cfg):
   print(blk.hidden_cfg)

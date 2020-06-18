@@ -253,15 +253,22 @@ class PhysDeltaModel:
 
     return np.sqrt(cost/n)
 
-  def predict(self,inputs):
+  def predict(self,inputs,correctable_only=False):
     input_fields = list(inputs.keys())
     input_value_set = list(inputs.values())
     n = len(input_value_set[0])
     outputs = []
+    params = dict(self.params)
+
+    if correctable_only:
+      rel = self.delta_model.get_correctable_model(params)
+    else:
+      rel = self.delta_model.get_model(params)
+
     for values in zip(*input_value_set):
       inp_map = dict(list(zip(input_fields,values)) + \
-                     list(self.params.items()))
-      output = self.delta_model.relation.compute(inp_map)
+                     list(params.items()))
+      output = rel.compute(inp_map)
       outputs.append(output)
 
     return outputs
@@ -344,12 +351,14 @@ class PhysCfgBlock:
 
   @property
   def hidden_cfg(self):
-    return PhysCfgBlock.get_hidden_cfg(self.block,self.cfg)
+    return PhysCfgBlock.get_hidden_cfg(self.block, \
+                                       self.cfg)
 
 
   @property
   def static_cfg(self):
-    return PhysCfgBlock.get_static_cfg(self.block,self.cfg)
+    return PhysCfgBlock.get_static_cfg(self.block, \
+                                       self.cfg)
 
   # dynamic values (data)
   def dynamic_cfg(self):
@@ -377,6 +386,10 @@ class PhysCfgBlock:
     for dat in self.block.data:
       ival = dat.interval[self.cfg.mode]
       bounds[dat.name] = [ival.lower,ival.upper]
+
+    for out in self.block.outputs:
+      ival = out.interval[self.cfg.mode]
+      bounds[out.name] = [ival.lower,ival.upper]
 
     return bounds
 

@@ -625,6 +625,20 @@ class DeltaSpec:
         self._params = {}
         self.ideal_values = {}
 
+    def get_model(self,params):
+        repls = dict(map(lambda tup: (tup[0],oplib.Const(tup[1])), \
+                         params.items()))
+        return self.relation.substitute(repls)
+
+    def get_correctable_model(self,params):
+        pdict = dict(params)
+        for par in params.keys():
+            if self._params[par]  \
+               != DeltaParamType.CORRECTABLE:
+                pdict[par] = self.ideal_values[par]
+
+        return self.get_model(pdict)
+
     @property
     def params(self):
         return list(self._params.keys())
@@ -634,6 +648,10 @@ class DeltaSpec:
         self._params[param_name] = param_type
         self.ideal_values[param_name] = ideal
 
+    def __getitem__(self,par):
+        type_ = self._params[par]
+        val = self.ideal_values[par]
+        return type_,val
 
     def __repr__(self):
         st = "delta {\n"

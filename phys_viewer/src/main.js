@@ -23,15 +23,58 @@ function make_datapoint(datum,vx,x,vy,y,value){
     return d;
 
 }
-function change_heatmap_settings(){
-    
-}
+
 function get_sensitivity(datum){
-    return 0.5;
+    output_bounds = datum.bounds[datum.output];
+    max_range = Math.max(Math.abs(output_bounds[0]),
+              Math.abs(output_bounds[1]));
+
+    sensitivity_frac = parseInt($("#sensitivity").val())/100.0;
+    if(sensitivity_frac == 0){
+        sensitivity_frac = 0.01;
+    }
+    return max_range*sensitivity_frac;
+
 }
-function render_heatmap(hidden_state){
+
+function get_error_function(){
+    error_fn = $("#plot_func").val();
+    if(error_fn == "reference"){
+        return function(ref,pred,model,mean,std){
+            return Math.abs(mean-ref);
+        };
+    }
+    else if(error_fn == "prediction"){
+        return function(ref,pred,model,mean,std){
+            return Math.abs(mean-pred);
+        };
+    }
+    else if(error_fn == "model"){
+        return function(ref,pred,model,mean,std){
+            return Math.abs(mean-model);
+        };
+    }
+    else if(error_fn == "stdev"){
+        return function(ref,pred,model,mean,std){
+            return std;
+        };
+    }
+    else{
+        alert("unknown: "+ error_fn);
+    }
+}
+function render_model_info(){
     var static_state =GLOBALS.static_state;
-    GLOBALS.hidden_state = hidden_state;
+    var hidden_state = GLOBALS.hidden_state;
+    var datum = GLOBALS.data[static_state][hidden_state];
+    console.log(datum['info']);
+    $("#model").html(datum['info']['model']);
+    $("#correctable_model").html(datum['info']['correctable_model']);
+
+}
+function render_heatmap(){
+    var static_state =GLOBALS.static_state;
+    var hidden_state = GLOBALS.hidden_state;
     var datum = GLOBALS.data[static_state][hidden_state];
     input_keys = [null,null];
     idx = 0;
@@ -43,22 +86,26 @@ function render_heatmap(hidden_state){
     xfield = input_keys[0];
     yfield = input_keys[1];
 
+    error_func = get_error_function();
     heatmap_data = [];
     datum.data.meas_mean.forEach(function(meas_val,idx){
         var ref_val = datum.data.outputs[idx];
+        var meas_std = datum.data.meas_stdev[idx];
         var pred_val = datum.data.predict[idx];
+        var delta_val = datum.data.delta_model[idx];
         var x = datum.data.inputs[xfield][idx];
         var y = 0.0;
         if(yfield != null){
             y = datum.data.inputs[yfield][idx];
         }
-        var error = Math.abs(meas_val-ref_val);
+        var error = error_func(ref_val,
+                               pred_val,pred_val,
+                               meas_val,meas_std);
         heatmap_data.push(
             make_datapoint(datum,xfield,x,yfield,y,error)
         );
     });
-    console.log(heatmap_data);
-    GLOBALS.heatmap_data = heatmap_data
+    GLOBALS.heatmap_data = heatmap_data;
     GLOBALS.heatmap.setData({
         max: get_sensitivity(datum),
         data: heatmap_data
@@ -69,6 +116,9 @@ function render_heatmap(hidden_state){
         xField: xfield,
         yField: yfield
     });
+}
+function update_heatmap(){
+    render_heatmap(GLOBALS.hidden_state);
 }
 function update_static_state(static_state){
     GLOBALS.static_state = static_state;
@@ -100,9 +150,10 @@ function build_ux(data){
     });
     $("#hidden_state").on("change",function(obj){
         var hidden_state = obj.target.value;
-        render_heatmap(hidden_state);
+        GLOBALS.hidden_state = hidden_state;
+        render_heatmap();
+        render_model_info();
     });
-    console.log(static_selector.value);
     update_static_state(static_state);
 }
 
@@ -136,4 +187,10 @@ $(document).ready(function(){
         container: heatmap_container,
         backgroundColor:"black"
     });
+    $("#plot_func").on("change", function(){
+        update_heatmap()
+    });
+    $("#sensitivity").on("change", function(){
+        update_heatmap()
+    })
 })

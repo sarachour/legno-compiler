@@ -8,11 +8,21 @@
         <span>Upload File here:</span>
         <input id="data_upload" type="file"></input>
         <div id="block_state"></div>
+        <div>
+            full model:
+            <span id="model">delta </span>
+        </div>
+        <div>
+            correctable model:
+            <span id="correctable_model">delta </span>
+        </div>
         <div id="vis_state">
-            <span>baseline:</span>
-            <select id="error_type">
-                <option value="reference">reference</option>
-                <option value="prediction">prediction</option>
+            <span>plot:</span>
+            <select id="plot_func">
+                <option value="reference">measurement vs reference</option>
+                <option value="prediction">measurement vs model</option>
+                <option value="model">measurement vs correctable model</option>
+                <option value="stdev">standard deviation</option>
             </select>
             <span>sensitivity
                 <input type="range" id="sensitivity" name="sensitivity" min="0" max="100" step="5" />
@@ -30,7 +40,7 @@
                 </td>
             </tr>
             <tr>
-                <td id="xfield">
+                <td style="text-align:center" id="xfield">
                     x axis
                 </td>
             </tr>
