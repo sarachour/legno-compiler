@@ -29,10 +29,12 @@ assigns = dict(zip(lbls,popt))
 perr = np.sqrt(np.diag(pcov))
 '''
 
-def fit_delta_model(phys,inputs,meas_output):
+def fit_delta_model(phys,data):
+  inputs = data['inputs']
+  meas_output = data['meas_mean']
   n_inputs = len(inputs.keys())
-  if phys.model.complete:
-    return
+  #if phys.model.complete:
+  #  return False
 
   model = phys.model.delta_model
   # for building expression
@@ -58,13 +60,13 @@ def fit_delta_model(phys,inputs,meas_output):
   parameters = loc['lbls']
   parameter_values = loc['popt']
   parameter_stdevs = loc['perr']
+  phys.model.clear()
   for idx,par in enumerate(parameters):
     val = parameter_values[idx]
     phys.model.bind(par,val)
 
   sumsq = phys.model.error(inputs,meas_output)
   phys.model.cost = sumsq
-  print("cost: %s" % phys.model.cost)
   phys.update()
 
 def analyze_physical_output(phys_output):
@@ -81,12 +83,5 @@ def analyze_physical_output(phys_output):
   meas = phys_util.get_subarray(dataset.meas_mean,indices)
   meas_stdev = phys_util.get_subarray(dataset.meas_stdev,indices)
   ref = phys_util.get_subarray(dataset.output, indices)
-  variables = {}
-  for data_field,values in dataset.data.items():
-    variables[data_field] = values
-
-  for input_field,values in dataset.inputs.items():
-    variables[input_field] = values
-
-  params = fit_delta_model(phys_output,variables,meas)
-
+  fit_delta_model(phys_output,dataset.get_data(llenums.ProfileStatus.SUCCESS, \
+                                               llenums.ProfileOpType.INPUT_OUTPUT))

@@ -7,6 +7,7 @@ import ops.generic_op as ops
 import base64
 import json
 import numpy as np
+import phys_model.phys_util as phys_util
 
 CREATE_TABLE = '''
 CREATE TABLE IF NOT EXISTS physical (
@@ -133,6 +134,31 @@ class PhysDataset:
       if not v in assigned:
         raise Exception("unknown variable: %s" % v)
 
+  def get_data(self,status,method):
+    def valid_data_point(idx):
+      return self.meas_status[idx] == status \
+        and self.meas_method[idx] == method
+
+    indices = list(filter(lambda idx: valid_data_point(idx), \
+                          range(0,self.size)))
+    all_inputs = {}
+    for inp in self.inputs:
+      assert(not inp in all_inputs)
+      all_inputs[inp] = phys_util.get_subarray(self.inputs[inp], \
+                                               indices)
+
+    for data_field in self.data:
+      assert(not data_field in all_inputs)
+      all_inputs[data_field] = phys_util.get_subarray(self.data[data_field], \
+                                                      indices)
+
+    return {
+      "inputs":all_inputs,
+      "outputs":phys_util.get_subarray(self.output,indices),
+      "meas_mean":phys_util.get_subarray(self.meas_mean,indices),
+      "meas_stdev":phys_util.get_subarray(self.meas_stdev,indices)
+    }
+
   def add(self,method,inputs,dynamic_codes,status,mean,std):
     var_assigns = {}
     for in_port,in_val in inputs.items():
@@ -208,6 +234,10 @@ class PhysDeltaModel:
         return False
     return True
 
+  def clear(self):
+    self.params = {}
+    self.cost = PhysDeltaModel.MAX_COST
+
   def bind(self,par,value):
     assert(not par in self.params)
     assert(par in self.delta_model.params)
@@ -239,6 +269,9 @@ class PhysDeltaModel:
   @staticmethod
   def from_json(physcfg,obj):
     model = PhysDeltaModel(physcfg)
+    if obj is None:
+      return model
+
     for par,value in obj['params'].items():
       model.bind(par,value)
     model.cost = obj['cost']
@@ -322,18 +355,36 @@ class PhysCfgBlock:
   def dynamic_cfg(self):
     pass
 
-  def update(self):
-    fields = {
+  def to_json(self):
+    return {
       'block': self.block.name,
       'loc': str(self.loc),
       'output': self.output.name,
       'static_config': self.static_cfg,
       'hidden_config': self.hidden_cfg,
-      'config': encode_dict(self.cfg.to_json()),
-      'dataset':encode_dict(self.dataset.to_json()),
-      'model': encode_dict(self.model.to_json()),
+      'config': self.cfg.to_json(),
+      'dataset':self.dataset.to_json(),
+      'model': self.model.to_json(),
       'cost':self.model.cost
     }
+
+  def get_bounds(self):
+    bounds = {}
+    for inp in self.block.inputs:
+      ival = inp.interval[self.cfg.mode]
+      bounds[inp.name] = [ival.lower,ival.upper]
+
+    for dat in self.block.data:
+      ival = dat.interval[self.cfg.mode]
+      bounds[dat.name] = [ival.lower,ival.upper]
+
+    return bounds
+
+  def update(self):
+    fields = self.to_json()
+    fields['config'] = encode_dict(fields['config'])
+    fields['dataset'] = encode_dict(fields['dataset'])
+    fields['model'] = encode_dict(fields['model'])
     where_clause = {
       'block': self.block.name,
       'loc': str(self.loc),
@@ -386,7 +437,7 @@ class PhysCfgBlock:
     assert(isinstance(db,PhysicalDatabase))
     assert(isinstance(dev,devlib.Device))
     blk = dev.get_block(obj['block'])
-    loc = devlib.Location(obj['loc'])
+    loc = devlib.Location.from_string(obj['loc'])
     output = blk.outputs[obj['output']]
     cfg_obj = decode_dict(obj['config'])
     cfg = adplib.BlockConfig.from_json(dev,cfg_obj)
@@ -435,6 +486,13 @@ def get_all_calibrated_blocks(db,dev,blk,inst,cfg):
   where_clause = {'block':blk.name, \
                   'loc':str(inst), \
                   'static_config':static_cfg}
+
+  for row in db.select(where_clause):
+    yield PhysCfgBlock.from_json(db,dev,row)
+
+def get_all_configured_calibrated_blocks(db,dev,blk,inst):
+  where_clause = {'block':blk.name, \
+                  'loc':str(inst)}
 
   for row in db.select(where_clause):
     yield PhysCfgBlock.from_json(db,dev,row)
