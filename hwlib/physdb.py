@@ -269,6 +269,9 @@ class PhysDeltaModel:
   @staticmethod
   def from_json(physcfg,obj):
     model = PhysDeltaModel(physcfg)
+    if obj is None:
+      return model
+
     for par,value in obj['params'].items():
       model.bind(par,value)
     model.cost = obj['cost']
@@ -364,6 +367,18 @@ class PhysCfgBlock:
       'model': self.model.to_json(),
       'cost':self.model.cost
     }
+
+  def get_bounds(self):
+    bounds = {}
+    for inp in self.block.inputs:
+      ival = inp.interval[self.cfg.mode]
+      bounds[inp.name] = [ival.lower,ival.upper]
+
+    for dat in self.block.data:
+      ival = dat.interval[self.cfg.mode]
+      bounds[dat.name] = [ival.lower,ival.upper]
+
+    return bounds
 
   def update(self):
     fields = self.to_json()

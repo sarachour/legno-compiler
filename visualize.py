@@ -28,8 +28,8 @@ for blk in physdb.get_all_configured_calibrated_blocks(db, \
     del entry['dataset']
     entry['data'] = data
     entry['data']['predict'] = prediction
-
-  dataset[blk.static_cfg][blk.hidden_cfg] = blk.to_json()
+    entry['bounds'] = blk.get_bounds()
+    dataset[blk.static_cfg][blk.hidden_cfg] = entry
 
 with open('output.json','w') as fh:
   fh.write(json.dumps(dataset))
