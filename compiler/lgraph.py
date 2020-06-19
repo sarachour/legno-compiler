@@ -307,6 +307,9 @@ def compile(board,prob,depth=3, \
 
             fragments[variable].append(vadp)
 
+        print("%s: %d"  \
+              % (variable,len(fragments[variable])))
+
     copy_blocks = list(filter(lambda blk: \
                               blk.type == blocklib.BlockType.COPY, \
                               board.blocks))
@@ -314,8 +317,7 @@ def compile(board,prob,depth=3, \
     circuit = {}
     block_counts = {}
     for variable in prob.variables():
-        circuit[variable] = list(remap_vadp_identifiers(block_counts, \
-                                                        fragments[variable][0]))
+        circuit[variable] = fragments[variable][0]
 
     for circ in asmlib.assemble(copy_blocks,circuit):
         print(circ)

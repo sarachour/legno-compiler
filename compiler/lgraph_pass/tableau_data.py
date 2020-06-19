@@ -338,3 +338,49 @@ class Tableau:
 
     return st
 
+
+def remap_vadp_identifiers(insts,fragment):
+  mappings = {}
+  def get_identifier(block,inst):
+    if not (block.name,inst) in mappings:
+      if not block.name in insts:
+        insts[block.name] = 0
+
+      mappings[(block.name,inst)] = insts[block.name]
+      insts[block.name] += 1
+
+    return mappings[(block.name,inst)]
+
+  for stmt in fragment:
+    if isinstance(stmt,VADPSource) or \
+       isinstance(stmt,VADPSink):
+      new_stmt = stmt.copy()
+      new_stmt.port.ident = get_identifier(stmt.port.block, \
+                                      stmt.port.ident)
+      yield new_stmt
+
+    elif isinstance(stmt,VADPConn):
+        new_stmt = stmt.copy()
+        new_stmt.source.ident = get_identifier(stmt.source.block, \
+                                               stmt.source.ident)
+        new_stmt.sink.ident = get_identifier(stmt.sink.block, \
+                                             stmt.sink.ident)
+
+        yield new_stmt
+
+    elif isinstance(stmt,VADPConfig):
+        new_stmt = stmt.copy()
+        new_stmt.ident = get_identifier(stmt.block, \
+                                   stmt.ident)
+        yield new_stmt
+
+    else:
+        raise Exception("not handled: %s" % stmt)
+
+def remap_vadps(vadps,insts={}):
+  stmts = []
+  for vadp_prog in vadps:
+    for stmt in remap_vadp_identifiers(insts,vadp_prog):
+      stmts.append(stmt)
+
+  return stmts
