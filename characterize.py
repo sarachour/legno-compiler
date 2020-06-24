@@ -36,6 +36,7 @@ cfg.modes = [block.modes.get(['x','m','m'])]
 
 runtime = GrendelRunner()
 #planner = planlib.BruteForcePlanner(block,inst,cfg,3,10)
-planner = planlib.NeighborhoodPlanner(block,inst,cfg,3,10)
+#planner = planlib.NeighborhoodPlanner(block,inst,cfg,3,10)
+planner = planlib.SensitivityPlanner(block,inst,cfg,32,10)
 proflib.profile_uncalibrated_block(runtime,dev,planner)
 
