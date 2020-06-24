@@ -1,5 +1,5 @@
 import hwlib.adp as adplib
-import hwlib.config as configlib
+#import hwlib.config as configlib
 
 def random_locs(board,locs,conns,restrict):
   # test this annotation.

@@ -1,5 +1,5 @@
-import hwlib.hcdc.globals as glb
-import hwlib.units as units
+#import hwlib.hcdc.globals as glb
+#import hwlib.units as units
 import math
 
 def decl_external_input(prog,name,chan1=True):

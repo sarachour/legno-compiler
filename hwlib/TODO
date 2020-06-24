@@ -1,0 +1,15 @@
+### Simple goal
+
+1. Get fanout spec working. Create a configuration for the fanout block.
+
+2. Get the device spec working. Create an adp for the fanout block.
+
+### Goals
+
+1. Given a configured block, generate the grendel script from the configuration only.
+
+2. Use the 'use_block' command to configure the target block. The block parameters and location should be easy to derive from configuration.
+
+3. We should be able to make profiling, calibration, and model databases from spec.
+
+4. Automatically generate profile and use_block statements to calibrate block.

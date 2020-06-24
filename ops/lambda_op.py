@@ -5,7 +5,7 @@ import math
 
 def to_python(e):
     if e.op == OpType.VAR:
-        varname = "%s_" % e.name
+        varname = "%s" % e.name
         return [varname],varname
 
     elif e.op == OpType.CONST:
@@ -16,7 +16,6 @@ def to_python(e):
         vs2,a2 = to_python(e.arg2)
         v = list(set(vs1+vs2))
         return v,"(%s)+(%s)" % (a1,a2)
-
 
     elif e.op == OpType.POW:
         vs1,a1 = to_python(e.arg(0))
@@ -107,6 +106,11 @@ class Func(Op):
     @property
     def func_args(self):
         return self._vars
+
+    def vars(self):
+        bound = self._vars
+        return list(filter(lambda v: not v in bound, \
+                           self._expr.vars()))
 
     def to_json(self):
         obj = Op.to_json(self)

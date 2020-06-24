@@ -1,76 +1,154 @@
-import itertools
-import ops.op as ops
-import util.util as gutil
-import hwlib.units as units
-from hwlib.block import Block, BlockType
-import hwlib.props as props
-import hwlib.hcdc.util as util
-import hwlib.hcdc.globals as glb
-import hwlib.hcdc.enums as enums
+import hwlib.hcdc.llenums as enums
+from hwlib.block import *
+import ops.interval as interval
+import ops.opparse as parser
+
+fan = Block('fanout',BlockType.COPY, \
+            [enums.SignType,enums.SignType,enums.SignType,enums.RangeType])
+fan.modes.add_all([
+  ['+','+','+','m'],
+  ['+','+','-','m'],
+  ['+','-','+','m'],
+  ['-','+','+','m'],
+  ['+','-','-','m'],
+  ['-','+','-','m'],
+  ['-','-','+','m'],
+  ['-','-','-','m'],
+  ['+','+','+','h'],
+  ['+','+','-','h'],
+  ['+','-','+','h'],
+  ['-','+','+','h'],
+  ['+','-','-','h'],
+  ['-','+','-','h'],
+  ['-','-','+','h'],
+  ['-','-','-','h']
+])
+
+p_in = fan.inputs.add(BlockInput('x',BlockSignalType.ANALOG, \
+                          ll_identifier=enums.PortType.IN0))
+p_out0 = fan.outputs.add(BlockOutput('z0',BlockSignalType.ANALOG, \
+                            ll_identifier=enums.PortType.OUT0))
+p_out1 = fan.outputs.add(BlockOutput('z1',BlockSignalType.ANALOG, \
+                            ll_identifier=enums.PortType.OUT1))
+p_out2 = fan.outputs.add(BlockOutput('z2',BlockSignalType.ANALOG, \
+                            ll_identifier=enums.PortType.OUT2))
+for port in [p_in,p_out0,p_out1,p_out2]:
+  port.interval.bind(['_','_','_','m'],  \
+                     interval.Interval(-2,2))
+  port.interval.bind(['_','_','_','h'],  \
+                     interval.Interval(-20,20))
+
+for idx,port in enumerate([p_out0,p_out1,p_out2]):
+  pat = ['_','_','_','_']
+  pat[idx] = '+'
+  fan.outputs[port.name].relation.bind(pat, parser.parse_expr('x'))
+  spec = DeltaSpec(parser.parse_expr('a*x+b'))
+  spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
+  spec.param('b',DeltaParamType.GENERAL,ideal=0.0)
+  fan.outputs[port.name].deltas.bind(pat,spec)
+
+  pat[idx] = '-'
+  fan.outputs[port.name].relation.bind(pat, parser.parse_expr('-x'))
+  spec = DeltaSpec(parser.parse_expr('-a*x+b'))
+  spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
+  spec.param('b',DeltaParamType.GENERAL,ideal=0.0)
+  fan.outputs[port.name].deltas.bind(pat,spec)
 
 
-def get_comp_modes():
-    comp_options = [enums.SignType.options(),
-                    enums.SignType.options(),
-                    enums.SignType.options()]
+# Low level behavior
+
+fan.state.add(BlockState('range',  \
+                        state_type= BlockStateType.MODE, \
+                        values=enums.RangeType,
+))
+
+bcarr = BlockStateArray('inv', \
+                       indices=enums.PortType, \
+                       values=enums.SignType, \
+                       length=len(enums.PortType.ports()),\
+                       default=enums.SignType.POS)
+
+fan.state.add(BlockState('inv0',  \
+                        state_type= BlockStateType.MODE, \
+                        values=enums.SignType, \
+                        array=bcarr, \
+                        index=enums.PortType.OUT0))
+
+fan.state.add(BlockState('inv1', \
+                        state_type= BlockStateType.MODE, \
+                        values=enums.SignType, \
+                        array=bcarr,
+                        index=enums.PortType.OUT1))
+
+fan.state.add(BlockState('inv2', \
+                        state_type= BlockStateType.MODE, \
+                        values=enums.SignType, \
+                        array=bcarr, \
+                        index=enums.PortType.OUT2))
+
+fan.state['inv0'] \
+   .impl.bind(['+','_','_','_'], enums.SignType.POS)
+fan.state['inv0'] \
+   .impl.bind(['-','_','_','_'], enums.SignType.NEG)
+fan.state['inv1'] \
+   .impl.bind(['_','+','_','_'], enums.SignType.POS)
+fan.state['inv1'] \
+   .impl.bind(['_','-','_','_'], enums.SignType.NEG)
+fan.state['inv2'] \
+   .impl.bind(['_','_','+','_'], enums.SignType.POS)
+fan.state['inv2'] \
+   .impl.bind(['_','_','-','_'], enums.SignType.NEG)
+fan.state['range'] \
+  .impl.bind(['_','_','_','m'], enums.RangeType.MED)
+fan.state['range'] \
+  .impl.bind(['_','_','_','h'], enums.RangeType.HIGH)
+
+fan.state.add(BlockState('third', \
+                        state_type=BlockStateType.CONNECTION, \
+                        values=enums.BoolType))
+fan.state['third'].impl.sink('z2','_',['_','_','_','_','_'], \
+                             enums.BoolType.TRUE)
+fan.state['third'].impl.set_default(enums.BoolType.FALSE)
+
+fan.state.add(BlockState('enable',
+                        values=enums.SignType, \
+                        state_type=BlockStateType.CONSTANT))
+fan.state['enable'].impl.bind(enums.BoolType.TRUE)
+
+fan.state.add(BlockState('pmos',
+                        values=range(0,7), \
+                        state_type=BlockStateType.CALIBRATE))
+fan.state['pmos'].impl.set_default(3)
+fan.state.add(BlockState('nmos',
+                        values=range(0,7), \
+                        state_type=BlockStateType.CALIBRATE))
+fan.state['nmos'].impl.set_default(3)
+
+calarr = BlockStateArray('port_cal', \
+                         indices=enums.PortType, \
+                         values=range(0,32), \
+                         length=len(enums.PortType.ports()),\
+                         default=16)
 
 
-    modes = list(itertools.product(*comp_options))
-    return modes
+fan.state.add(BlockState('bias0',
+                        values=range(0,32), \
+                        index=enums.PortType.OUT0, \
+                        array=calarr, \
+                        state_type=BlockStateType.CALIBRATE))
 
-def get_scale_modes():
-    blacklist = [
-        enums.RangeType.LOW
-    ]
-    return list(util.apply_blacklist(enums.RangeType.options(), \
-                                     blacklist))
+fan.state['bias0'].impl.set_default(16)
+fan.state.add(BlockState('bias1',
+                        values=range(0,32), \
+                        index=enums.PortType.OUT1, \
+                        array=calarr, \
+                        state_type=BlockStateType.CALIBRATE))
+fan.state['bias1'].impl.set_default(16)
+fan.state.add(BlockState('bias2',
+                        values=range(0,32), \
+                        index=enums.PortType.OUT2, \
+                        array=calarr, \
+                        state_type=BlockStateType.CALIBRATE))
+fan.state['bias2'].impl.set_default(16)
 
-
-def is_standard(mode):
-    return mode == enums.RangeType.MED
-
-def scale_model(fanout):
-    comp_modes = get_comp_modes()
-    scale_modes = get_scale_modes()
-    for comp_mode in comp_modes:
-        std,nonstd = gutil.partition(is_standard,scale_modes)
-        fanout.set_scale_modes(comp_mode,std, \
-                               glb.HCDCSubset.all_subsets())
-        fanout.set_scale_modes(comp_mode,nonstd, \
-                               [glb.HCDCSubset.UNRESTRICTED, \
-                                glb.HCDCSubset.EXTENDED])
-
-        for rng in scale_modes:
-            # ERRATA: fanout doesn't scale
-            get_prop = lambda p : glb.CTX.get(p, fanout.name,
-                                    '*',mode,None)
-            ana_props = util.make_ana_props(rng,
-                                            get_prop(glb.GLProp.CURRENT_INTERVAL)
-            )
-            fanout\
-                .set_coeff(comp_mode,rng,"out0",1.0) \
-                .set_coeff(comp_mode,rng,"out1",1.0) \
-                .set_coeff(comp_mode,rng,"out2",1.0)
-            fanout\
-                .set_props(comp_mode,rng,["out0","out1","out2","in"],
-                           ana_props)
-
-    fanout.check()
-
-
-block = Block('fanout',type=BlockType.COPIER) \
-.set_comp_modes(get_comp_modes(), glb.HCDCSubset.all_subsets()) \
-.add_outputs(props.CURRENT,["out1","out2","out0"]) \
-.add_inputs(props.CURRENT,["in"])
-
-do_sign = lambda mode: ops.Var("in") \
-          if mode == enums.SignType.POS \
-          else ops.Mult(ops.Var("in"),ops.Const(-1))
-
-for mode in get_comp_modes():
-    sign0,sign1,sign2 = mode
-    block.set_op(mode,"out0",do_sign(sign0))
-    block.set_op(mode,"out1",do_sign(sign1))
-    block.set_op(mode,"out2",do_sign(sign2))
-
-scale_model(block)
+assert(len(list(fan.modes)) > 0)

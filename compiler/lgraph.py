@@ -1,18 +1,24 @@
 import itertools
 
+import ops.opparse as parser
 import random
 import math
 import logging
-import compiler.lgraph_pass.route as lgraph_route
-from compiler.lgraph_pass.rules import get_rules
-import compiler.lgraph_pass.to_abs_op as lgraphlib_aop
-import compiler.lgraph_pass.to_abs_circ as lgraphlib_acirc
-import compiler.lgraph_pass.make_fanouts as lgraphlib_mkfan
-import compiler.lgraph_pass.util as lgraphlib_util
-import hwlib.abs as acirc
-import hwlib.props as prop
-from hwlib.config import Labels
-import ops.aop as aop
+#import compiler.lgraph_pass.route as lgraph_route
+#from compiler.lgraph_pass.rules import get_rules
+#import compiler.lgraph_pass.to_abs_op as lgraphlib_aop
+#import compiler.lgraph_pass.to_abs_circ as lgraphlib_acirc
+#import compiler.lgraph_pass.make_fanouts as lgraphlib_mkfan
+#import compiler.lgraph_pass.util as lgraphlib_util
+#import hwlib.abs as acirc
+#import hwlib.props as prop
+#from hwlib.config import Labels
+#import ops.aop as aop
+
+import hwlib.block as blocklib
+import compiler.lgraph_pass.assemble as asmlib
+import compiler.lgraph_pass.tableau as tablib
+import compiler.lgraph_pass.rule as rulelib
 
 #logging.basicConfig(level=logging.DEBUG)
 logging.basicConfig(level=logging.INFO)
@@ -111,7 +117,7 @@ def compile_sample_fragments_and_add_fanouts(board,frag_node_map, \
 
         yield subcs
 
-def compile_combine_fragments(subcircuit_optmap):
+def remap_vadp_identifiers(subcircuit_optmap):
         variables = []
         subcirc_options = []
         subcirc_sources = {}
@@ -213,3 +219,107 @@ def compile(board,prob,depth=3, \
                     conc_idx += 1
                     break
 
+
+def get_laws():
+    return [
+        {
+            'name':'kirchoff',
+            'expr': parser.parse_expr('a+b'),
+            'type': blocklib.BlockSignalType.ANALOG,
+            'vars': {
+                'a':blocklib.BlockSignalType.ANALOG, \
+                'b':blocklib.BlockSignalType.ANALOG
+            },
+            'cstrs': rulelib.cstrs_kirchoff,
+            'apply': rulelib.apply_kirchoff,
+            'simplify': rulelib.simplify_kirchoff
+        },
+        {
+            'name':'flip_sign',
+            'expr':parser.parse_expr('-a'),
+            'type': blocklib.BlockSignalType.ANALOG,
+            'vars': {
+                'a':blocklib.BlockSignalType.ANALOG
+            },
+            'cstrs': rulelib.cstrs_flip,
+            'apply': rulelib.apply_flip,
+            'simplify': rulelib.simplify_flip
+        }
+    ]
+
+
+def remap_vadp_identifiers(insts,fragment):
+  mappings = {}
+  def get_identifier(block,inst):
+    if not (block.name,inst) in mappings:
+      if not block.name in insts:
+        insts[block.name] = 0
+
+      mappings[(block.name,inst)] = insts[block.name]
+      insts[block.name] += 1
+
+    return mappings[(block.name,inst)]
+
+  for stmt in fragment:
+    if isinstance(stmt,tablib.VADPSource) or \
+       isinstance(stmt,tablib.VADPSink):
+      new_stmt = stmt.copy()
+      new_stmt.port.ident = get_identifier(stmt.port.block, \
+                                      stmt.port.ident)
+      yield new_stmt
+
+    elif isinstance(stmt,tablib.VADPConn):
+        new_stmt = stmt.copy()
+        new_stmt.source.ident = get_identifier(stmt.source.block, \
+                                               stmt.source.ident)
+        new_stmt.sink.ident = get_identifier(stmt.sink.block, \
+                                             stmt.sink.ident)
+
+        yield new_stmt
+
+    elif isinstance(stmt,tablib.VADPConfig):
+        new_stmt = stmt.copy()
+        new_stmt.ident = get_identifier(stmt.block, \
+                                   stmt.ident)
+        yield new_stmt
+
+    else:
+        raise Exception("not handled: %s" % stmt)
+
+def compile(board,prob,depth=3, \
+            vadp_fragments=100, \
+            vadps=1, \
+            adps=1):
+
+    fragments = dict(map(lambda v: (v,[]), prob.variables()))
+    compute_blocks = list(filter(lambda blk: \
+                              blk.type == blocklib.BlockType.COMPUTE, \
+                              board.blocks))
+
+    laws = get_laws()
+    fragments = {}
+    for variable in prob.variables():
+        fragments[variable] = []
+        expr = prob.binding(variable)
+        for vadp in tablib.search(compute_blocks,laws,variable,expr):
+            if len(fragments[variable]) >= vadp_fragments:
+                break
+
+            fragments[variable].append(vadp)
+
+        print("%s: %d"  \
+              % (variable,len(fragments[variable])))
+
+    # insert copier blocks when necessary
+    copy_blocks = list(filter(lambda blk: \
+                              blk.type == blocklib.BlockType.COPY, \
+                              board.blocks))
+
+    circuit = {}
+    block_counts = {}
+    for variable in prob.variables():
+        circuit[variable] = fragments[variable][0]
+
+    for circ in asmlib.assemble(copy_blocks,circuit):
+        print(circ)
+    raise NotImplementedError

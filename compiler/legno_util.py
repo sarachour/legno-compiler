@@ -7,16 +7,14 @@ import numpy as np
 import itertools
 import util.util as util
 import util.paths as paths
-from hwlib.adp import AnalogDeviceProg
+from hwlib.adp import ADP
 from dslang.dsprog import DSProgDB
 
 def exec_lgraph(args):
     from compiler import lgraph
-    from hwlib.hcdc.hcdcv2_4 import make_board
-    from hwlib.hcdc.globals import HCDCSubset
+    import hwlib.hcdc.hcdcv2 as hcdclib
 
-    hdacv2_board = make_board(HCDCSubset(args.subset), \
-                              load_conns=True)
+    hdacv2_board = hcdclib.get_device(layout=True)
     path_handler = paths.PathHandler(args.subset,args.program)
     program = DSProgDB.get_prog(args.program)
     timer = util.Timer('lgraph',path_handler)
@@ -25,9 +23,9 @@ def exec_lgraph(args):
     for indices,adp in \
         lgraph.compile(hdacv2_board,
                        program,
-                       depth=args.xforms,
-                       max_abs_circs=args.abs_circuits,
-                       max_conc_circs=args.conc_circuits):
+                       vadp_fragments=args.vadp_fragments,
+                       vadps=args.vadps,
+                       adps=args.adps):
         timer.end()
 
         print("<<< writing circuit>>>")

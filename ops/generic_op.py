@@ -154,7 +154,10 @@ class Var(Op):
       return interval.IntervalCollection(intervals[self._name])
 
     def substitute(self,assigns):
-        return assigns[self._name]
+        if not self._name in assigns:
+            return self
+        else:
+            return assigns[self._name]
 
     def compute(self,bindings={}):
         if not self._name in bindings:
@@ -342,9 +345,11 @@ class Call(GenericOp):
     def __init__(self, params, expr):
         self._func = expr
         self._params = params
-        self._expr = self._func.apply(self._params)
-        GenericOp.__init__(self,OpType.CALL,params+[self._expr])
+        GenericOp.__init__(self,OpType.CALL,params+[self._func])
         assert(expr.op == OpType.FUNC)
+
+    #def evaluate(self):
+    #    self._expr = self._func.apply(self._params)
 
     def coefficient(self):
         return 1.0
@@ -371,11 +376,12 @@ class Call(GenericOp):
 
     @property
     def values(self):
-        for v in self._params:
-            yield v
+        return self._params
 
     def concretize(self):
-        return self._expr
+        expr = self._func.apply(self._params)
+        return expr
+
 
     def infer_interval(self,ivals):
         return self.concretize().infer_interval(ivals)

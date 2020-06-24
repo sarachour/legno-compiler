@@ -4,25 +4,54 @@
 #include "calib_util.h"
 #include "slice.h"
 #include "dac.h"
+#include "emulator.h"
 
+emulator::physical_model_t dac_draw_random_model(profile_spec_t spec){
+  emulator::physical_model_t model;
+  emulator::ideal(model);
+  emulator::bound(model.in0,-1,1);
+  emulator::bound(model.in1,-1,1);
+  return model;
+ 
 
+}
 
-profile_t Fabric::Chip::Tile::Slice::Dac::measure(float in)
+profile_t Fabric::Chip::Tile::Slice::Dac::measure(profile_spec_t spec){
+#ifdef EMULATE_HARDWARE
+  float std;
+  float * input = prof::get_input(spec,port_type_t::in0Id);
+  float output = Fabric::Chip::Tile::Slice::Dac::computeOutput(spec.state.dac);
+
+  emulator::physical_model_t model = dac_draw_random_model(spec);
+  float result = emulator::draw(model,0.0,0.0,output,std);
+  sprintf(FMTBUF,"output=%f result=%f\n", output,result);
+  print_info(FMTBUF);
+  profile_t prof = prof::make_profile(spec, result,
+                                      std);
+  return prof;
+
+#else
+  return this->measureConstVal(spec);
+#endif
+}
+
+profile_t Fabric::Chip::Tile::Slice::Dac::measureConstVal(profile_spec_t spec)
 {
-  if(!m_codes.enable){
+  if(!this->m_state.enable){
+    profile_t dummy;
     print_log("DAC not enabled");
-    return;
+    return dummy;
   }
-  float scf = util::range_to_coeff(m_codes.range);
+  float scf = util::range_to_coeff(this->m_state.range);
   cutil::calibrate_t calib;
   cutil::initialize(calib);
 
   int next_slice = (slice_to_int(parentSlice->sliceId) + 1) % 4;
-  dac_code_t codes_dac = m_codes;
-
-  m_codes.source = DSRC_MEM;
-  setConstant(in);
-  update(m_codes);
+  dac_state_t codes_dac = this->m_state;
+  this->m_state = spec.state.dac;
+  this->m_state.source = DSRC_MEM;
+  //setConstant(in);
+  update(this->m_state);
 
   cutil::buffer_dac_conns(calib,this);
   cutil::buffer_tileout_conns(calib,&parentSlice->tileOuts[3]);
@@ -37,24 +66,19 @@ profile_t Fabric::Chip::Tile::Slice::Dac::measure(float in)
 
   dac_to_tile.setConn();
 	tile_to_chip.setConn();
-  float target =Fabric::Chip::Tile::Slice::Dac::computeOutput(this->m_codes);
+  this->m_state = spec.state.dac;
   float mean,variance;
   mean = this->fastMeasureValue(variance);
-  sprintf(FMTBUF,"PARS target=%f mean=%f variance",
-          target,mean,variance);
+  sprintf(FMTBUF,"PARS mean=%f variance=%f",
+          mean,variance);
   print_info(FMTBUF);
-  float bias = (mean-target);
   const int mode = 0;
   const float in1 = 0.0;
-  profile_t result = prof::make_profile(out0Id,
-                                        mode,
-                                        target,
-                                        in,
-                                        in1,
-                                        bias,
-                                        variance);
+  profile_t result = prof::make_profile(spec,
+                                        mean,
+                                        sqrt(variance));
   if(!calib.success){
-    result.mode = 255;
+    result.status = profile_status_t::FAILED_TO_CALIBRATE;
   }
 	tile_to_chip.brkConn();
   dac_to_tile.brkConn();

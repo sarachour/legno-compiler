@@ -4,10 +4,10 @@ import networkx as nx
 import matplotlib.pyplot as plt
 
 import ops.ilpop as ilpop
-import hwlib.abs as acirc
+#import hwlib.abs as acirc
 import hwlib.block as blocklib
 import hwlib.adp as adplib
-import hwlib.config as configlib
+#import hwlib.config as configlib
 import compiler.lgraph_pass.route_ilp_util as route_ilp_util
 import compiler.lgraph_pass.route_partition_tree as partition_tree
 import compiler.lgraph_pass.route_find_slices as find_slices

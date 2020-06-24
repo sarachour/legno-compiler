@@ -74,14 +74,14 @@ namespace cutil {
     float ref_dac_val;
     float targ_dac_val;
 
-    dac_code_t codes_dac = ref_dac->m_codes;
+    dac_state_t codes_dac = ref_dac->m_state;
 
     // configure reference dac to maximize gain
     ref_dac->setRange(fabs(target) > 1.0 ? RANGE_HIGH : RANGE_MED);
 
     fast_calibrate_dac(ref_dac);
     targ_dac_val = Fabric::Chip::Tile::Slice::Dac
-      ::computeInput(ref_dac->m_codes,
+      ::computeInput(ref_dac->m_state,
                      -target);
 
     do {
@@ -95,7 +95,7 @@ namespace cutil {
       if(fabs(measurement) > thresh){
         delta += measurement < 0 ? -step : step;
         targ_dac_val = Fabric::Chip::Tile::Slice::Dac
-                               ::computeInput(ref_dac->m_codes,
+                               ::computeInput(ref_dac->m_state,
                                               -(target+delta));
       }
     } while(fabs(measurement) > thresh &&

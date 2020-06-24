@@ -1,175 +1,219 @@
-import ops.op as ops
+import hwlib.hcdc.llenums as enums
+from hwlib.block import *
+import ops.opparse as parser
+import ops.interval as interval
 
-from hwlib.block import Block
-import hwlib.props as props
-import hwlib.units as units
+mult = Block('mult',BlockType.COMPUTE, \
+            [enums.RangeType, \
+             enums.RangeType, \
+             enums.RangeType])
 
-import util.util as gutil
-import hwlib.hcdc.util as util
-import hwlib.hcdc.globals as glb
-import hwlib.hcdc.enums as enums
+mult.modes.add_all([
+  ['x','m','m'],
+  ['x','m','h'],
+  ['x','h','m'],
+  ['x','h','h'],
+  ['m','m','m'],
+  ['m','h','m'],
+  ['h','m','m'],
+  ['m','m','h'],
+  ['m','h','h'],
+  ['h','m','h']
+])
 
-import itertools
+mult.inputs.add(BlockInput('x',BlockSignalType.ANALOG, \
+                           ll_identifier=enums.PortType.IN0))
+mult.inputs['x'] \
+    .interval.bind(['_','m','_'],interval.Interval(-2,2))
+mult.inputs['x'] \
+    .interval.bind(['_','h','_'],interval.Interval(-2,2))
 
-# 10.0 >= coeff >= 0.1
-# 10.0 >= in0 >= 0.1
-# 10.0 >= in1 >= 0.1
-# 10.0 >= out >= 0.1
-# out = in0*in1*coeff
+mult.inputs.add(BlockInput('y',BlockSignalType.ANALOG, \
+                           ll_identifier=enums.PortType.IN1))
+mult.inputs['y'] \
+    .interval.bind(['m','_','_'],interval.Interval(-2,2))
+mult.inputs['y'] \
+    .interval.bind(['x','_','_'],interval.Interval(-2,2))
+mult.inputs['y'] \
+    .interval.bind(['h','_','_'],interval.Interval(-20,20))
 
-def get_modes():
-  opts_mult = [
-    list(enums.RangeType.options()),
-    list(enums.RangeType.options()),
-    list(enums.RangeType.options())
-  ]
 
-  opts_vga = [
-    list(enums.RangeType.options()),
-    list(enums.RangeType.options())
-  ]
-
-  blacklist_vga = []
-  ub = 10.0
-  lb = 0.1
-  for inp,out in itertools.product(*opts_vga):
-    scf = out.coeff()/inp.coeff()
-    if scf > ub or scf < lb or \
-       inp == enums.RangeType.LOW:
-      blacklist_vga.append((inp,out))
-
-  blacklist_mult = []
-  for inp0,inp1,out in itertools.product(*opts_mult):
-    scf = out.coeff()/(inp0.coeff()*inp1.coeff())
-    scf2 = inp0.coeff()/inp1.coeff()
-    if scf < lb or scf > ub or \
-       scf2 < lb or scf2 > ub or \
-       inp0 == enums.RangeType.LOW or \
-       inp1 == enums.RangeType.LOW:
-      blacklist_mult.append((inp0,inp1,out))
-
-  vga_modes = list(util.apply_blacklist(itertools.product(*opts_vga),
-                                   blacklist_vga))
-  mul_modes = list(util.apply_blacklist(itertools.product(*opts_mult),
-                                   blacklist_mult))
-  return vga_modes,mul_modes
-
-def is_standard_vga(mode):
-  i,o = mode
-  return i == enums.RangeType.MED and \
-    o == enums.RangeType.MED
+mult.outputs.add(BlockOutput('z',BlockSignalType.ANALOG, \
+                             ll_identifier=enums.PortType.OUT0))
+mult.outputs['z'] \
+    .interval.bind(['_','_','m'],interval.Interval(-2,2))
+mult.outputs['z'] \
+    .interval.bind(['_','_','h'],interval.Interval(-20,20))
 
 
 
-def is_standard_mul(mode):
-  i0,i1,o = mode
-  return i0 == enums.RangeType.MED and \
-    i1 == enums.RangeType.MED and \
-    o == enums.RangeType.MED
+mult.data.add(BlockData('c',BlockDataType.CONST))
+mult.data['c'] \
+    .interval.bind(['_','_','_'],interval.Interval(-1,1))
+mult.data['c'] \
+    .quantize.bind(['_','_','_'],Quantize(256,QuantizeType.LINEAR))
 
-
-def is_extended_vga(mode):
-  i,o = mode
-  #return (i == enums.RangeType.LOW or \
-  not_low = (i != enums.RangeType.LOW) and \
-          (o != enums.RangeType.LOW)
-  disabled = []
-  # produces bad config
-  #disabled.append((enums.RangeType.HIGH,enums.RangeType.HIGH))
-  #disabled.append((enums.RangeType.MED,enums.RangeType.HIGH))
-  for ci,co in disabled:
-    if i == ci and o == co:
-      return False
-
-  return not_low
-
-
-def is_extended_mul(mode):
-  i0,i1,o = mode
-  not_low = i0 != enums.RangeType.LOW and \
-                  i1 != enums.RangeType.LOW and \
-                        o != enums.RangeType.LOW
- 
-
-  return not_low
-  #return not_low
-
-
-def scale_model(mult):
-  vga_modes,mul_modes = get_modes()
-  std,nonstd = gutil.partition(is_standard_mul,mul_modes)
-  ext,_ = gutil.partition(is_extended_mul,mul_modes)
-  mult.set_scale_modes("mul",std,glb.HCDCSubset.all_subsets())
-  mult.set_scale_modes("mul",nonstd,[glb.HCDCSubset.UNRESTRICTED])
-  mult.add_subsets("mul",ext,[glb.HCDCSubset.EXTENDED])
-
-  std,nonstd = gutil.partition(is_standard_vga,vga_modes)
-  ext,_ = gutil.partition(is_extended_vga,vga_modes)
-  mult.set_scale_modes("vga",std,glb.HCDCSubset.all_subsets())
-  mult.set_scale_modes("vga",nonstd,[glb.HCDCSubset.UNRESTRICTED])
-  mult.add_subsets("vga",ext,[glb.HCDCSubset.EXTENDED])
-
-  for mode in mul_modes:
-      in0rng,in1rng,outrng = mode
-      get_prop = lambda p : glb.CTX.get(p, mult.name,
-                                    'mul',mode,None)
-      # ERRATA: virtual scale of 0.5
-      scf = 0.5*outrng.coeff()/(in0rng.coeff()*in1rng.coeff())
-      dig_props = util.make_dig_props(enums.RangeType.MED, \
-                                      get_prop(glb.GLProp.DIGITAL_INTERVAL),
-                                      get_prop(glb.GLProp.DIGITAL_QUANTIZE))
-      dig_props.set_constant()
-      dig_props.set_resolution(get_prop(glb.GLProp.DIGITAL_RESOLUTION))
-      mult.set_props("mul",mode,["in0"],
-                    util.make_ana_props(in0rng,
-                                        get_prop(glb.GLProp.CURRENT_INTERVAL)))
-      mult.set_props("mul",mode,["in1"],
-                    util.make_ana_props(in1rng,
-                                        get_prop(glb.GLProp.CURRENT_INTERVAL)))
-      mult.set_props("mul",mode,["coeff"], dig_props)
-      mult.set_props("mul",mode,["out"],
-                    util.make_ana_props(outrng,
-                                        get_prop(glb.GLProp.CURRENT_INTERVAL)))
-      mult.set_coeff("mul",mode,'out', scf)
-
-  for mode in vga_modes:
-      in0rng,outrng = mode
-      # ERRATA: virtual scale of 0.5, but coefficient is scaled by two
-      scf = outrng.coeff()/in0rng.coeff()
-      get_prop = lambda p : glb.CTX.get(p, mult.name,
-                                    'vga',mode,None)
-
-      dig_props = util.make_dig_props(enums.RangeType.MED,\
-                                      get_prop(glb.GLProp.DIGITAL_INTERVAL), \
-                                      get_prop(glb.GLProp.DIGITAL_QUANTIZE))
-      dig_props.set_constant()
-      dig_props.set_resolution(get_prop(glb.GLProp.DIGITAL_RESOLUTION))
-      mult.set_props("vga",mode,["in0"],
-                    util.make_ana_props(in0rng, \
-                                        get_prop(glb.GLProp.CURRENT_INTERVAL)
-                    ))
-      mult.set_props("vga",mode,["in1"],
-                    util.make_ana_props(enums.RangeType.MED, \
-                                        get_prop(glb.GLProp.CURRENT_INTERVAL)
-                    ))
-      mult.set_props("vga",mode,["coeff"], dig_props)
-      mult.set_props("vga",mode,["out"],
-                    util.make_ana_props(outrng, \
-                                        get_prop(glb.GLProp.CURRENT_INTERVAL)
-                    ))
-      mult.set_coeff("vga",mode,'out', scf)
+mult.outputs['z'].relation \
+                 .bind(['x','m','m'],parser.parse_expr('c*x'))
+mult.outputs['z'].relation \
+                 .bind(['x','m','h'],parser.parse_expr('10.0*c*x'))
+mult.outputs['z'].relation \
+                 .bind(['x','h','m'],parser.parse_expr('0.1*c*x'))
+mult.outputs['z'].relation \
+                 .bind(['x','h','h'],parser.parse_expr('c*x'))
+mult.outputs['z'].relation \
+                 .bind(['m','m','m'],parser.parse_expr('0.5*x*y'))
+mult.outputs['z'].relation \
+                 .bind(['h','m','h'],parser.parse_expr('0.5*x*y'))
+mult.outputs['z'].relation \
+                 .bind(['m','h','h'],parser.parse_expr('0.5*x*y'))
+mult.outputs['z'].relation \
+                 .bind(['m','m','h'],parser.parse_expr('5.0*x*y'))
+mult.outputs['z'].relation \
+                 .bind(['h','m','m'],parser.parse_expr('0.05*x*y'))
+mult.outputs['z'].relation \
+                 .bind(['m','h','m'],parser.parse_expr('0.05*x*y'))
 
 
 
-block = Block('multiplier') \
-.set_comp_modes(["mul","vga"], glb.HCDCSubset.all_subsets()) \
-.add_inputs(props.CURRENT,["in0","in1"]) \
-.add_inputs(props.DIGITAL,["coeff"]) \
-.add_outputs(props.CURRENT,["out"]) \
-.set_op("mul","out",ops.Mult(ops.Var("in0"),ops.Var("in1"))) \
-.set_op("vga","out",ops.Mult(ops.Var("coeff"),ops.Var("in0")))
+spec = DeltaSpec(parser.parse_expr('(a*c+b)*x + d'))
+spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
+spec.param('b',DeltaParamType.CORRECTABLE,ideal=0.0)
+spec.param('d',DeltaParamType.GENERAL,ideal=0.0)
+mult.outputs['z'].deltas.bind(['x','m','m'],spec)
+mult.outputs['z'].deltas.bind(['x','h','h'],spec)
 
-scale_model(block)
+spec = DeltaSpec(parser.parse_expr('0.1*(a*c+b)*x + d'))
+spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
+spec.param('b',DeltaParamType.CORRECTABLE,ideal=0.0)
+spec.param('d',DeltaParamType.GENERAL,ideal=0.0)
+mult.outputs['z'].deltas.bind(['x','h','m'],spec)
 
-block.check()
 
+spec = DeltaSpec(parser.parse_expr('10.0*(a*c+b)*x + d'))
+spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
+spec.param('b',DeltaParamType.CORRECTABLE,ideal=0.0)
+spec.param('d',DeltaParamType.GENERAL,ideal=0.0)
+mult.outputs['z'].deltas.bind(['x','m','h'],spec)
+
+
+spec = DeltaSpec(parser.parse_expr('0.5*a*x*y + b'))
+spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
+spec.param('b',DeltaParamType.GENERAL,ideal=0.0)
+mult.outputs['z'].deltas.bind(['m','m','m'],spec)
+mult.outputs['z'].deltas.bind(['h','m','h'],spec)
+mult.outputs['z'].deltas.bind(['m','h','h'],spec)
+
+# bind codes, range
+mult.state.add(BlockState('enable',
+                        values=enums.SignType, \
+                        state_type=BlockStateType.CONSTANT))
+mult.state['enable'].impl.bind(enums.BoolType.TRUE)
+
+# vga
+mult.state.add(BlockState('vga',  \
+                        state_type= BlockStateType.MODE, \
+                        values=enums.BoolType))
+mult.state['vga'] \
+   .impl.bind(['x','_','_'], enums.BoolType.TRUE)
+mult.state['vga'] \
+   .impl.bind(['m','_','_'], enums.BoolType.FALSE)
+mult.state['vga'] \
+   .impl.bind(['h','_','_'], enums.BoolType.FALSE)
+
+bcarr = BlockStateArray('range', \
+                        indices=enums.PortType, \
+                        values=enums.RangeType, \
+                        length=3,\
+                        default=enums.RangeType.MED)
+
+mult.state.add(BlockState('range_in0',  \
+                        state_type= BlockStateType.MODE, \
+                         values=enums.RangeType, \
+                         array=bcarr, \
+                         index=enums.PortType.IN0))
+
+mult.state['range_in0'] \
+   .impl.bind(['_','m','_'], enums.RangeType.MED)
+mult.state['range_in0'] \
+   .impl.bind(['_','h','_'], enums.RangeType.HIGH)
+
+mult.state.add(BlockState('range_in1',  \
+                          state_type= BlockStateType.MODE, \
+                          values=enums.RangeType, \
+                          array=bcarr, \
+                          index=enums.PortType.IN1))
+
+mult.state['range_in1'] \
+   .impl.bind(['m','_','_'], enums.RangeType.MED)
+mult.state['range_in1'] \
+   .impl.bind(['h','_','_'], enums.RangeType.HIGH)
+mult.state['range_in1'] \
+   .impl.bind(['x','_','_'], enums.RangeType.MED)
+
+
+mult.state.add(BlockState('range_out',  \
+                          state_type= BlockStateType.MODE, \
+                          values=enums.RangeType, \
+                          array=bcarr, \
+                          index=enums.PortType.OUT0))
+
+mult.state['range_out'] \
+   .impl.bind(['_','_','m'], enums.RangeType.MED)
+mult.state['range_out'] \
+   .impl.bind(['_','_','h'], enums.RangeType.HIGH)
+
+
+
+
+mult.state.add(BlockState('gain_code',
+                          values=range(0,256), \
+                          state_type=BlockStateType.DATA))
+mult.state['gain_code'].impl.set_variable('c')
+mult.state['gain_code'].impl.set_default(128)
+
+
+
+mult.state.add(BlockState('pmos',
+                        values=range(0,8), \
+                        state_type=BlockStateType.CALIBRATE))
+mult.state['pmos'].impl.set_default(3)
+
+mult.state.add(BlockState('nmos',
+                        values=range(0,8), \
+                        state_type=BlockStateType.CALIBRATE))
+mult.state['nmos'].impl.set_default(3)
+
+# gain_code
+
+mult.state.add(BlockState('gain_cal',
+                        values=range(0,32), \
+                        state_type=BlockStateType.CALIBRATE))
+mult.state['gain_cal'].impl.set_default(16)
+
+calarr = BlockStateArray('port_cal', \
+                         indices=enums.PortType, \
+                         values=range(0,32), \
+                         length=3,\
+                         default=16)
+
+mult.state.add(BlockState('bias_in0',
+                        values=range(0,32), \
+                        index=enums.PortType.IN0, \
+                        array=calarr, \
+                        state_type=BlockStateType.CALIBRATE))
+mult.state['bias_in0'].impl.set_default(16)
+
+mult.state.add(BlockState('bias_in1',
+                        values=range(0,32), \
+                        index=enums.PortType.IN1, \
+                        array=calarr, \
+                        state_type=BlockStateType.CALIBRATE))
+mult.state['bias_in1'].impl.set_default(16)
+
+mult.state.add(BlockState('bias_out',
+                        values=range(0,32), \
+                        index=enums.PortType.OUT0, \
+                        array=calarr, \
+                        state_type=BlockStateType.CALIBRATE))
+mult.state['bias_out'].impl.set_default(16)

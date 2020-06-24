@@ -7,7 +7,7 @@ void Fabric::Chip::Tile::Slice::Fanout::measureZero(float &out0bias,
                                                     float &out2bias){
   // backup and clobber state.
   cutil::calibrate_t calib;
-  fanout_code_t codes_fan = this->m_codes;
+  fanout_state_t codes_fan = this->m_state;
   cutil::initialize(calib);
   cutil::buffer_fanout_conns(calib,this);
   cutil::buffer_tileout_conns(calib,&parentSlice->tileOuts[3]);
@@ -67,9 +67,9 @@ void Fabric::Chip::Tile::Slice::Fanout::calibrate(calib_objective_t obj){
   int next_slice = (slice_to_int(parentSlice->sliceId) + 1) % 4;
   Dac * ref_dac = parentSlice->parentTile->slices[next_slice].dac;
   Dac * val_dac = parentSlice->dac;
-  fanout_code_t codes_fanout = m_codes;
-  dac_code_t codes_ref_dac = ref_dac->m_codes;
-  dac_code_t codes_val_dac = val_dac->m_codes;
+  fanout_state_t codes_fanout = this->m_state;
+  dac_state_t codes_ref_dac = ref_dac->m_state;
+  dac_state_t codes_val_dac = val_dac->m_state;
   cutil::buffer_fanout_conns(calib,this);
   cutil::buffer_dac_conns(calib,ref_dac);
   cutil::buffer_dac_conns(calib,val_dac);
@@ -101,17 +101,17 @@ void Fabric::Chip::Tile::Slice::Fanout::calibrate(calib_objective_t obj){
   tileout_to_chipout.setConn();
 
   // nmos code doesn't change much
-  this->m_codes.nmos = 0;
+  this->m_state.nmos = 0;
   // bind best bias code for out0
   cutil::calib_table_t calib_table = cutil::make_calib_table();
   // coarse grain global search: 3375 combos
   for(int bias_cal0=0; bias_cal0 < MAX_BIAS_CAL; bias_cal0+=4){
-    this->m_codes.port_cal[out0Id] = bias_cal0;
+    this->m_state.port_cal[out0Id] = bias_cal0;
     for(int bias_cal1=0; bias_cal1 < MAX_BIAS_CAL; bias_cal1+=4){
-      this->m_codes.port_cal[out1Id] = bias_cal1;
+      this->m_state.port_cal[out1Id] = bias_cal1;
       for(int bias_cal2=0; bias_cal2 < MAX_BIAS_CAL; bias_cal2+=4){
-        this->m_codes.port_cal[out2Id] = bias_cal2;
-        update(this->m_codes);
+        this->m_state.port_cal[out2Id] = bias_cal2;
+        update(this->m_state);
         conn_out0.setConn();
         float loss = getLoss(CALIB_FAST,val_dac,ref_dac,out0Id);
         conn_out0.brkConn();
@@ -125,7 +125,7 @@ void Fabric::Chip::Tile::Slice::Fanout::calibrate(calib_objective_t obj){
                                   bias_cal0,
                                   bias_cal1,
                                   bias_cal2,
-                                  this->m_codes.nmos
+                                  this->m_state.nmos
                                   );
       }
     }
@@ -148,19 +148,19 @@ void Fabric::Chip::Tile::Slice::Fanout::calibrate(calib_objective_t obj){
     int bias_cal0 = coarse_bias_cal0 + i;
     if(bias_cal0 < 0 || bias_cal0 >= MAX_BIAS_CAL)
       continue;
-    this->m_codes.port_cal[out0Id] = bias_cal0;
+    this->m_state.port_cal[out0Id] = bias_cal0;
 
     for(int j=-3; j < 4; j += 1){
       int bias_cal1 = coarse_bias_cal1 + j;
       if(bias_cal1 < 0 || bias_cal1 >= MAX_BIAS_CAL)
         continue;
-      this->m_codes.port_cal[out1Id] = bias_cal1;
+      this->m_state.port_cal[out1Id] = bias_cal1;
 
       for(int k=-3; k < 4; k += 1){
         int bias_cal2 = coarse_bias_cal2 + k;
         if(bias_cal2 < 0 || bias_cal2 >= MAX_BIAS_CAL)
           continue;
-        update(this->m_codes);
+        update(this->m_state);
         conn_out0.setConn();
         float loss = getLoss(CALIB_FAST,val_dac,ref_dac,out0Id);
         conn_out0.brkConn();
@@ -174,7 +174,7 @@ void Fabric::Chip::Tile::Slice::Fanout::calibrate(calib_objective_t obj){
                                   bias_cal0,
                                   bias_cal1,
                                   bias_cal2,
-                                  this->m_codes.nmos
+                                  this->m_state.nmos
                                   );
       }
     }
@@ -191,18 +191,15 @@ void Fabric::Chip::Tile::Slice::Fanout::calibrate(calib_objective_t obj){
   val_to_fanout.brkConn();
   tileout_to_chipout.brkConn();
   cutil::restore_conns(calib);
-  ref_dac->m_codes = codes_ref_dac;
-  val_dac->m_codes = codes_val_dac;
-  this->m_codes = codes_fanout;
+  ref_dac->m_state = codes_ref_dac;
+  val_dac->m_state = codes_val_dac;
+  this->m_state = codes_fanout;
   //set best hidden codes
-  int best_nmos=0;
-  int best_loss=0;
-  best_loss = calib_table.loss;
-  this->m_codes.port_cal[out0Id] = calib_table.state[0];
-  this->m_codes.port_cal[out1Id] = calib_table.state[1];
-  this->m_codes.port_cal[out2Id] = calib_table.state[2];
-  this->m_codes.nmos = calib_table.state[3];
-  update(this->m_codes);
+  this->m_state.port_cal[out0Id] = calib_table.state[0];
+  this->m_state.port_cal[out1Id] = calib_table.state[1];
+  this->m_state.port_cal[out2Id] = calib_table.state[2];
+  this->m_state.nmos = calib_table.state[3];
+  update(this->m_state);
   return;
 }
 
@@ -221,7 +218,7 @@ float Fabric::Chip::Tile::Slice::Fanout::calibrateMaxDeltaFit(Fabric::Chip::Tile
     bool measure_steady_state = false;
     val_dac->setConstant(TEST_POINTS[i]);
     float in_val = val_dac->fastMeasureValue(dummy);
-    float target =Fabric::Chip::Tile::Slice::Fanout::computeOutput(this->m_codes,
+    float target =Fabric::Chip::Tile::Slice::Fanout::computeOutput(this->m_state,
                                                                    out_id,
                                                                    in_val);
     bool succ = cutil::measure_signal_robust(this, ref_dac, target,
@@ -255,7 +252,7 @@ float Fabric::Chip::Tile::Slice::Fanout::calibrateMinError(Fabric::Chip::Tile::S
     bool measure_steady_state = false;
     val_dac->setConstant(TEST_POINTS[i]);
     float in_val = val_dac->fastMeasureValue(dummy);
-    float target =Fabric::Chip::Tile::Slice::Fanout::computeOutput(this->m_codes,
+    float target =Fabric::Chip::Tile::Slice::Fanout::computeOutput(this->m_state,
                                                                    out_id,
                                                                    in_val);
     bool succ = cutil::measure_signal_robust(this, ref_dac, target,

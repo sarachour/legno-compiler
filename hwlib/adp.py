@@ -1,251 +1,312 @@
-from hwlib.config import Config, Labels
-import json
-import os
-import hwlib.adp_graphlib as graphlib
+import hwlib.block as blocklib
+import hwlib.device as devlib
+from enum import Enum
 
-class AnalogDeviceProg:
+class BlockInst:
 
-    def __init__(self,board,filename=None):
-        self._board = board
-        self._tau = 1.0
-        self._configs= {}
-        self._conns = {}
-        self._filename = filename
-        #self._intervals = {}
-        #self._bandwidths = {}
-        self.meta = {}
+  def __init__(self,name,loc):
+    assert(isinstance(name,str))
+    assert(isinstance(loc,devlib.Location))
+    self.block = name
+    self.loc = loc
 
-    def copy(self):
-        circ = AnalogDeviceProg(self._board)
-        circ.set_tau(self.tau)
-        for block_name,loc,cfg in self.instances():
-            circ.use(block_name,loc,cfg.copy())
+  @staticmethod
+  def from_json(obj):
+    loc = devlib.Location.from_json(obj['loc'])
+    return BlockInst(obj['block'],loc)
 
-        for sb,sl,sp,db,dl,dp in self.conns():
-            circ.conn(sb,sl,sp,db,dl,dp)
+  def to_json(self):
+    return {
+      'block': self.block,
+      'loc': self.loc.to_json()
+    }
 
-        return circ
+  def __repr__(self):
+    return "%s.%s" % (self.block,self.loc)
 
-    def set_tau(self,value):
-        self._tau = value
+class BlockInstanceCollection:
 
-    @property
-    def filename(self):
-        return self._filename
+  def __init__(self,adp):
+    self._adp = adp
+    self._collection = {}
 
 
-    @property
-    def tau(self):
-        return self._tau
+  def configs(self,block=None):
+    assert(block is None or isinstance(block,str))
+    if block is None:
+      for blk,insts in self._collection.items():
+        for inst,cfg in insts.items():
+          yield data
 
-    @property
-    def board(self):
-        return self._board
+    else:
+      if not block in self._collection:
+        return
 
-    def instances_of_block(self,block_name):
-        if not block_name in self._configs:
-            return
+      for inst,cfg in self._collection[block]:
+        yield data
 
-        for loc,config in self._configs[block_name].items():
-            yield loc,config
+  def has(self,blockname,loc):
+    assert(isinstance(blockname,str))
+    if not blockname in self._collection:
+      return False
+    if not loc in self._collection[blockname]:
+      return False
+    return True
 
-    def instances(self):
-        for block_name in self._configs:
-            for loc,config in \
-                self._configs[block_name].items():
-                yield block_name,loc,config
+  def get(self,blockname,loc):
+    assert(self.has(blockname,loc))
+    return self._collection[blockname][loc]
 
+  def add(self,data):
+    assert(hasattr(data,'inst') and
+           isinstance(data.inst,BlockInst))
+    if not data.inst.block in self._collection:
+      self._collection[data.inst.block] = {}
 
-    def use(self,block,loc,config=None):
-        if not self._board is None and\
-           not self._board.is_block_at(block,loc):
-            for block in self._board.blocks_at(loc):
-                print(block.name)
-            raise Exception("no block <%s> at location <%s>." \
-                            % (block.name,loc))
+    assert(not str(data.inst.loc) \
+           in self._collection[data.inst.block])
+    self._collection[data.inst.block][data.inst.loc] = data
 
-        if not block in self._configs:
-            self._configs[block] = {}
-
-        assert(isinstance(loc,str))
-        if loc in self._configs[block]:
-            if not (config is None):
-                raise Exception("location with config already in system: <%s:%s>" % \
-                                (block,loc))
-            return
-
-        config = Config() if config is None else config
-        self._configs[block][loc] = config
-        addr = (block,loc)
-
-    def in_use(self,block_name,loc):
-        if not block_name in self._configs:
-            return False
-
-        if not loc in self._configs[block_name]:
-            return False
-
-        return True
-
-    def get_conns_by_src(self,tblk,tloc,tport):
-        assert(isinstance(tblk,str))
-        assert(isinstance(tloc,str))
-        assert(isinstance(tport,str))
-        if not (tblk,tloc,tport) in self._conns:
-            return []
-        else:
-            tup = self._conns[(tblk,tloc,tport)]
-            return [tup]
-
-    def get_conns_by_dest(self,tblk,tloc,tport):
-        assert(isinstance(tblk,str))
-        assert(isinstance(tloc,str))
-        assert(isinstance(tport,str))
-        for (sblock,sloc,sport), \
-            (dblock,dloc,dport) in self._conns.items():
-            if tblk != dblock or tloc != dloc or tport != dport:
-                continue
-
-            yield sblock,sloc,sport
+  def __getitem__(self,key):
+    return self._collection[key]
 
 
-    def has_physical_model(self):
-        for _,_,config in self.instances():
-            if not config.has_physical_model():
-                return False
+class ConfigStmtType(Enum):
+  STATE = "state"
+  CONSTANT = "const"
+  PORT = "port"
 
-        return True
+class ConfigStmt:
 
-    def conns_by_dest(self):
-        srcs = {}
-        for (sblock,sloc,sport), \
-            (dblock,dloc,dport) in self._conns.items():
-            if not (dblock,dloc,dport) in srcs:
-                srcs[(dblock,dloc,dport)] = []
+  def __init__(self,type_,name):
+    self.name = name
+    assert(isinstance(type_,ConfigStmtType))
+    self.t = type_
 
-            srcs[(dblock,dloc,dport)].append((sblock,sloc,sport))
+  def pretty_print(self):
+    raise NotImplementedError()
 
+  def to_json(self):
+    raise NotImplementedError
 
-        for (dblock,dloc,dport),src_list in srcs.items():
-            yield dblock,dloc,dport,src_list
+  @staticmethod
+  def from_json(obj):
+    typ = ConfigStmtType(obj['type'])
+    if typ == ConfigStmtType.CONSTANT:
+      return ConstDataConfig.from_json(obj)
+    elif typ == ConfigStmtType.PORT:
+      return PortConfig.from_json(obj)
+    elif typ == ConfigStmtType.STATE:
+      return StateConfig.from_json(obj)
+    else:
+      raise Exception("unhandled from_json: %s" % typ)
 
-    def conns(self):
-        for (sblock,sloc,sport), \
-            (dblock,dloc,dport) in self._conns.items():
-            yield sblock,sloc,sport,dblock,dloc,dport
+  def __repr__(self):
+    return "%s %s %s" % (self.name,self.t.value,self.pretty_print())
 
-    def has_conn(self,block1,loc1,port1,block2,loc2,port2):
-        return self._board.can_connect(block1,loc1,port1,
-                                       block1,loc2,port2)
+class ConstDataConfig(ConfigStmt):
 
+  def __init__(self,field,value):
+    ConfigStmt.__init__(self,ConfigStmtType.CONSTANT,field)
+    self.value = value
+    self.scf = 1.0
 
-    def find_routes(self,block1,loc1,port1,block2,loc2,port2):
-        for path in self._board.find_routes(block1,loc1,port1,
-                                            block2,loc2,port2):
-            yield path
+  def pretty_print(self):
+    return "val=%f scf=%f" \
+      % (self.value,self.scf)
 
+  @staticmethod
+  def from_json(obj):
+    cfg = ConstDataConfig(obj['name'],obj['value'])
+    cfg.scf = obj['scf']
+    return cfg
 
-    def conn(self,block1,loc1,port1,block2,loc2,port2,check_conn=False):
-        if not self.in_use(block1,loc1):
-            raise Exception("block <%s.%s> not in use" % (block1,loc1))
+  def to_json(self):
+    return {
+      'name':self.name,
+      'type': self.t.value,
+      'scf': self.scf,
+      'value': self.value
+    }
 
-        if not self.in_use(block2,loc2):
-            raise Exception("block <%s.%s> not in use" % (block1,loc1))
+class ExprDataConfig(ConfigStmt):
 
-
-        if check_conn and \
-           not self._board is None and \
-           not self._board.can_connect(block1,loc1,port1,
-                                       block2,loc2,port2):
-            raise Exception("cannot connect <%s.%s.%s> to <%s.%s.%s>" % \
-                            (block1,loc1,port1,block2,loc2,port2))
-
-
-        assert(not (block1,loc1,port1) in self._conns)
-
-        self._conns[(block1,loc1,port1)] = (block2,loc2,port2)
-
-
-    def config(self,block,loc):
-        return self._configs[block][loc]
-
-    def check(self):
-        return self
-
-    @staticmethod
-    def from_json(board,obj):
-        circ = AnalogDeviceProg(board)
-        circ.set_tau(obj['tau'])
-        for inst in obj['insts']:
-            assert(board is None or \
-                   inst['board'] == board.name)
-            config = Config.from_json(inst['config'])
-            block,loc = inst['block'],inst['loc']
-            circ.use(block,loc,config)
-
-        for conn in obj['conns']:
-            dest_obj = conn['dest']
-            src_obj = conn['source']
-
-            dblk = dest_obj['block']
-            dport = dest_obj['port']
-            dloc = dest_obj['loc']
-
-            sblk = src_obj['block']
-            sport = src_obj['port']
-            sloc = src_obj['loc']
-
-            circ.conn(sblk,sloc,sport, \
-                      dblk,dloc,dport)
-
-        return circ
-
-    @staticmethod
-    def read(board,filename):
-        with open(filename,'r') as fh:
-            obj = json.loads(fh.read())
-            adp = AnalogDeviceProg.from_json(board,obj)
-            adp._filename = filename
-            return adp
-
-    def to_json(self):
-        data_struct = {
-            'tau': self._tau,
-            'insts': [],
-            'conns':[],
-            'intervals':{},
-            'bandwidths':{}
-        }
-
-        for block,locs in self._configs.items():
-            for loc,cfg in locs.items():
-                inst = {'block':block,'loc':loc, \
-                        'board':self._board.name}
-                inst['config'] = cfg.to_json()
-                data_struct['insts'].append(inst)
-
-        for (src_block,src_loc,src_port), \
-            (dst_block,dst_loc,dst_port) in self._conns.items():
-            conn = {
-                'source':{'block':src_block,'loc':src_loc,'port':src_port},
-                'dest':{'block':dst_block,'loc':dst_loc,'port':dst_port}
-            }
-            data_struct['conns'].append(conn)
-
-        return data_struct
-
-    def write_circuit(self,filename):
-        data = self.to_json()
-        with open(filename,'w') as fh:
-            strdata = json.dumps(data,indent=4)
-            fh.write(strdata)
+  def __init__(self,field,args,expr):
+    ConfigStmt.__init__(self,ConfigStmtType.EXPR,field)
+    self.args = args
+    self.scfs = {}
+    self.injs = {}
+    self.expr = expr
+    for key in args + [field]:
+      self.scfs[key] = 1.0
+      self.injs[key] = 1.0
 
 
-    def write_graph(self,filename,
-                    color_method=None,
-                    write_png=False):
-        graphlib.write_graph(self,filename, \
-                             color_method, \
-                             write_png)
+
+class PortConfig(ConfigStmt):
+
+  def __init__(self,name):
+    ConfigStmt.__init__(self,ConfigStmtType.PORT,name)
+    self.scf = 1.0
+
+  def pretty_print(self):
+    return "scf=%f" % (self.scf)
+
+  def to_json(self):
+    return {
+      'name':self.name,
+      'type': self.t.value,
+      'scf': self.scf
+    }
+
+  @staticmethod
+  def from_json(obj):
+    cfg = PortConfig(obj['name'])
+    cfg.scf = obj['scf']
+    return cfg
 
 
+class StateConfig(ConfigStmt):
+
+  def __init__(self,name,value):
+    ConfigStmt.__init__(self,ConfigStmtType.STATE,name)
+    self.name = name
+    self.value = value
+
+  def pretty_print(self):
+    return "val=%s" % (self.value)
+
+  def to_json(self):
+    return {
+      'name':self.name,
+      'type': self.t.value,
+      'value': self.value
+    }
+
+  @staticmethod
+  def from_json(obj):
+    cfg = StateConfig(obj['name'],obj['value'])
+    return cfg
+
+
+class BlockConfig:
+
+  def __init__(self,inst):
+    assert(isinstance(inst,BlockInst))
+    self.inst = inst
+    self._stmts = {}
+    self._modes = None
+
+  @property
+  def modes(self):
+    return self._modes
+
+  @modes.setter
+  def modes(self,ms):
+    if len(ms) == 0:
+      self._modes = None
+
+    self._modes = []
+    for m in ms:
+      assert(isinstance(m,blocklib.BlockMode))
+      self._modes.append(m)
+
+  def set_config(self,other):
+    assert(isinstance(other,BlockConfig))
+    assert(other.inst.block == self.inst.block)
+    self.modes = other.modes
+    self._stmts = {}
+    for stmt in other.stmts:
+      self.add(stmt)
+
+  @staticmethod
+  def from_json(dev,obj):
+    inst = BlockInst.from_json(obj['inst'])
+    blk = dev.get_block(inst.block)
+    cfg = BlockConfig(inst)
+    cfg.modes = list(map(lambda m : blk.modes.get(m['values']), \
+                         obj['modes']))
+    for stmt_obj in obj['stmts'].values():
+      st = ConfigStmt.from_json(stmt_obj)
+      cfg.add(st)
+    return cfg
+
+  def to_json(self):
+    return {
+      'inst': self.inst.to_json(),
+      'modes': list(map(lambda m : m.to_json(),self.modes))  \
+      if not self.modes is None else None,
+      'stmts': dict(map(lambda el: (el[0],el[1].to_json()), self._stmts.items()))
+    }
+
+  @property
+  def mode(self):
+    assert(self.complete())
+    return self.modes[0]
+
+  @property
+  def stmts(self):
+    for stmt in self._stmts.values():
+      yield stmt
+
+  def complete(self):
+    return len(self.modes) == 1
+
+  def add(self,stmt):
+    assert(not stmt.name in self._stmts)
+    self._stmts[stmt.name] = stmt
+
+  def get(self,name):
+    if not name in self._stmts:
+      raise Exception("unknown identifier <%s> for block config <%s>" % (name,self.inst))
+    return self._stmts[name]
+
+  def has(self,name):
+    return name in self._stmts
+
+  def __getitem__(self,key):
+    assert(key in self._stmts)
+    return self._stmts[key]
+
+  @staticmethod
+  def make(block,loc):
+    cfg = BlockConfig(BlockInst(block.name,loc))
+    cfg.modes = block.modes
+    for inp in block.inputs:
+      cfg.add(PortConfig(inp.name))
+    for out in block.outputs:
+      cfg.add(PortConfig(out.name))
+    for data in block.data:
+      if data.type == blocklib.BlockDataType.CONST:
+        cfg.add(ConstDataConfig(data.name,0.0))
+      else:
+        cfg.add(ExprDataConfig(data.name, \
+                               data.args))
+    for state in block.state:
+      if isinstance(state.impl,blocklib.BCCalibImpl):
+        cfg.add(StateConfig(state.name, state.impl.default))
+    return cfg
+
+  def __str__(self):
+    st = "block %s:\n" % (self.inst)
+    indent = "  "
+    st += "%s%s\n" % (indent,self.modes)
+    for stmt in self.stmts:
+      st += "%s%s\n" % (indent,stmt)
+
+    return st
+
+
+class ADP:
+
+  def __init__(self):
+    self.configs = BlockInstanceCollection(self)
+    self.tau = 1.0
+
+  def add_instance(self,block,loc):
+    assert(isinstance(block,blocklib.Block))
+    self.configs.add(BlockConfig.make(block,loc))
+
+  def add_conn(self,srcblk,srcloc,srcport, \
+               dstblk,dstloc,dstport):
+    raise NotImplementedError

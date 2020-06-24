@@ -1,0 +1,50 @@
+<head>
+    <script src="lib/heatmap.min.js"></script>
+    <script src="lib/jquery-3.5.1.min.js"></script>
+    <script src="src/main.js"></script>
+</head>
+<body>
+    <div>
+        <span>Upload File here:</span>
+        <input id="data_upload" type="file"></input>
+        <div id="block_state"></div>
+        <div>
+            full model:
+            <span id="model">delta </span>
+        </div>
+        <div>
+            correctable model:
+            <span id="correctable_model">delta </span>
+        </div>
+        <div id="vis_state">
+            <span>plot:</span>
+            <select id="plot_func">
+                <option value="reference">measurement vs reference</option>
+                <option value="prediction">measurement vs model</option>
+                <option value="model">measurement vs correctable model</option>
+                <option value="stdev">standard deviation</option>
+            </select>
+            <span>sensitivity
+                <input type="range" id="sensitivity" name="sensitivity" min="0" max="100" step="5" />
+            </span>
+        </div>
+        <table>
+            <tr>
+                <td id="yfield">
+                    y axis
+                </td>
+                <td>
+                    <div id="profile_vis" style="width:840px;height:400px">
+
+                </div>
+                </td>
+            </tr>
+            <tr>
+                <td style="text-align:center" id="xfield">
+                    x axis
+                </td>
+            </tr>
+        </table>
+    </div>
+
+</body>

@@ -75,7 +75,6 @@ void reset_experiment(experiment_t * expr){
 
 
   void exec_command(experiment_t* expr, Fabric* fab, cmd_t& cmd, float * inbuf){
-    char buf[128];
     switch(cmd.type){
     case cmd_type_t::RESET:
       reset_experiment(expr);
