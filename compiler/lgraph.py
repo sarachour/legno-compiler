@@ -310,6 +310,7 @@ def compile(board,prob,depth=3, \
         print("%s: %d"  \
               % (variable,len(fragments[variable])))
 
+    # insert copier blocks when necessary
     copy_blocks = list(filter(lambda blk: \
                               blk.type == blocklib.BlockType.COPY, \
                               board.blocks))

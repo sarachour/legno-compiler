@@ -274,4 +274,3 @@ def assemble(blocks,fragments,depth=3,n_copiers=10):
     disconn_circuit = remap_vadps(list(fragments.values()) + list(combo))
     circ = assemble_circuit(disconn_circuit)
     yield circ
-
