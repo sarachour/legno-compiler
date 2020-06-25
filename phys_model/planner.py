@@ -133,6 +133,11 @@ class SensitivityPlanner(BruteForcePlanner):
         #print("experiment_val is ", experiment_val)
         #print("output_codes[-1] is ", output_codes[-1])
 
+
+    output_codes = [row for row in output_codes if row != dict(svd)]
+    output_codes.append(dict(svd))
+
+
     self._hidden_fields = list(hidden.keys())
     hidden_values = list(map(lambda k :hidden[k], self._hidden_fields))
 
