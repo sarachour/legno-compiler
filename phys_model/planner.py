@@ -186,8 +186,6 @@ class NeighborhoodPlanner(BruteForcePlanner):
     self.dynamic_iterator = None
 
 
-
-
 class CorrelationPlanner(BruteForcePlanner):
   def __init(self,block,loc,cfg,n,m):
     BruteForcePlanner.__init(self,block,loc,cfg,n,m)
@@ -223,6 +221,50 @@ class CorrelationPlanner(BruteForcePlanner):
       if current_row not in output_without_repeats:
         output_without_repeats.append(current_row)
 
+
+    self._hidden_fields = list(hidden.keys())
+    hidden_values = list(map(lambda k :hidden[k], self._hidden_fields))  
+
+    self.hidden_iterator = GenericHiddenCodeIterator(output_without_repeats)
+    self.dynamic_iterator = None
+
+class FullCorrelationPlanner(BruteForcePlanner):
+  def __init(self,block,loc,cfg,n,m):
+    BruteForcePlanner.__init(self,block,loc,cfg,n,m)
+
+  def new_hidden(self):
+
+    svd = {}
+    hidden = {}
+    correlation_pairs = []
+    output_with_repeats = []
+    output_without_repeats = []
+    
+
+    for state in filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), self.block.state):
+      hidden[state] = phys_util.select_from_array(state.values,self.n)
+      svd[state] = self.config[state.name].value
+
+    state_list = list(filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), self.block.state))
+
+    for element in itertools.combinations(state_list,2):
+      correlation_pairs.append(element)
+
+    for current_pair in correlation_pairs:
+      for experiment_index_A in range(self.n):
+        for experiment_index_B in range(self.n):
+          new_row = dict(svd)
+          new_row[current_pair[0]] = hidden[current_pair[0]][experiment_index_A]
+          new_row[current_pair[1]] = hidden[current_pair[1]][experiment_index_B]
+          output_with_repeats.append(new_row)
+
+
+    #remove duplicates
+    for current_row in output_with_repeats:
+      if current_row not in output_without_repeats:
+        output_without_repeats.append(current_row)
+
+    print(output_without_repeats)
 
     self._hidden_fields = list(hidden.keys())
     hidden_values = list(map(lambda k :hidden[k], self._hidden_fields))  
