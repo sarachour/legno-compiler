@@ -63,6 +63,21 @@ def fit_model(variables,expr,data):
     'param_error': parameter_stdevs
   }
 
+def predict_output(variable_assigns,expr,data):
+  inputs = data['inputs']
+  meas_output = data['meas_mean']
+  npts = len(meas_output)
+  pred = []
+  for idx in range(0,npts):
+    assigns = dict(map(lambda inp: (inp,inputs[inp][idx]), \
+                       inputs.keys()))
+    for param,val in variable_assigns.items():
+      assigns[param] = val
+    value = expr.compute(assigns)
+    pred.append(value)
+
+  return pred
+
 def fit_delta_model(phys,data):
   model = phys.model.delta_model
   result = fit_model(model.params,model.relation,data)

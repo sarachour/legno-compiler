@@ -345,6 +345,12 @@ class PhysCfgBlock:
 
     return dict_to_identifier(kvs)
 
+  def hidden_codes(self):
+    for stmt in self.cfg.stmts:
+      if stmt.t == adplib.ConfigStmtType.STATE and \
+         isinstance(self.block.state[stmt.name].impl, \
+                    blocklib.BCCalibImpl):
+        yield stmt.name,stmt.value
 
   @staticmethod
   def get_static_cfg(block,cfg):
@@ -584,8 +590,8 @@ def get_best_configured_physical_block(db,dev,blk,inst,cfg):
 
 def get_by_block_instance(db,dev,blk,inst,cfg=None):
   where_clause = {'block':blk.name, \
-                  'loc':str(inst), \
-                  'static_config':static_cfg}
+                  'loc':str(inst) \
+  }
 
   if not cfg is None:
     static_cfg = PhysCfgBlock.get_static_cfg(blk,cfg)

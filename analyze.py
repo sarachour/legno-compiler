@@ -5,30 +5,19 @@ import hwlib.hcdc.hcdcv2 as hcdclib
 import hwlib.device as devlib
 import hwlib.block as blocklib
 import hwlib.adp as adplib
+import ops.opparse as opparse
 import time
-
-def visualize_it(org):
-  for key in org.keys():
-    print("key: %s" % key)
-    for codes,physblk in org.foreach(key):
-      print(codes)
-      vizlib.deviation(physblk,'output.png',amplitude=0.5)
-      time.sleep(0.3)
-
-    input("continue?")
 
 dev = hcdclib.get_device()
 block = dev.get_block('mult')
-inst = devlib.Location([0,3,2,0])
+inst = devlib.Location([0,1,2,0])
 cfg = adplib.BlockConfig.make(block,inst)
 #cfg.modes = [['+','+','-','m']]
 cfg.modes = [block.modes.get(['x','m','m'])]
 
 db = physdb.PhysicalDatabase('board6')
-org = physdb.HiddenCodeOrganizer(['pmos','nmos'])
-
-for blk in physdb.get_all(db, dev):
+# build up dataset
+params = {}
+inputs = {}
+for blk in physdb.get_by_block_instance(db, dev,block,inst,cfg=cfg):
   fitlib.analyze_physical_output(blk)
-  org.add(blk)
-
-#visualize_it(org)

@@ -100,7 +100,8 @@ def deviation(blk,output_file, \
               operation=llenums.ProfileOpType.INPUT_OUTPUT, \
               baseline=ReferenceType.MODEL_PREDICTION, \
               num_bins=10,
-              amplitude=None):
+              amplitude=None,
+              relative=False):
   data = blk.dataset.get_data(llenums.ProfileStatus.SUCCESS, \
                               operation)
 
@@ -113,8 +114,9 @@ def deviation(blk,output_file, \
     raise Exception("unimplemented")
 
   errors = []
+  ampl = max(np.abs(ref)) if relative else 1.0
   for pred,meas in zip(ref, data['meas_mean']):
-    errors.append(meas-pred)
+    errors.append((meas-pred)/ampl)
 
   heatmap(blk,output_file,data['inputs'],errors,n=10, \
           amplitude=amplitude)
