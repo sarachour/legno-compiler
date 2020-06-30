@@ -1,4 +1,349 @@
+if (!Object.prototype.watch) {
+    Object.defineProperty(
+        Object.prototype,
+        "watch", {
+            enumerable: false,
+            configurable: true,
+            writable: false,
+            value: function (prop, handler) {
+                var old = this[prop];
+                var cur = old;
+                var getter = function () {
+                    return cur;
+                };
+                var setter = function (val) {
+                    old = cur;
+                    cur =
+                        handler.call(this,prop,old,val);
+                    return cur;
+                };
+                // can't watch constants
+                if (delete this[prop]) {
+                    Object.defineProperty(this,prop,{
+                        get: getter,
+                        set: setter,
+                        enumerable: true,
+                        configurable: true
+                    });
+                }
+            }
+        });
+}
 
+class APIManager {
+    constructor(addr,port){
+        this.addr = addr;
+        this.port = port;
+    }
+    url(endpt){
+        return endpt;
+    }
+    get_hidden_state(blk,inst,state,cbk){
+        $.get(
+            this.url("/hidden_states"),
+            {"block":blk,
+             "loc":inst,
+             "static_state":state},
+            function(data) {
+                cbk(data['hidden_state']);
+            }
+        );
+    }
+    get_static_state(blk,inst,cbk){
+        $.get(
+            this.url("/static_states"),
+            {"block":blk,
+             "loc":inst},
+            function(data) {
+                cbk(data['static_state']);
+            }
+        );
+    }
+    get_instances(blk,cbk){
+        $.get(
+            this.url("/instances"),
+            {"block":blk},
+            function(data) {
+                cbk(data['instances']);
+            }
+        );
+    }
+    get_blocks(cbk){
+        $.get(
+            this.url("/blocks"),
+            {},
+            function(data) {
+                cbk(data['blocks']);
+            }
+        );
+    }
+}
+class ModelView {
+    constructor(model){
+	      if(model == null){
+            console.log(this);
+	          console.log("model is null");
+	      }
+        this.model = model;
+    }
+    unbind(name){
+        this.model.unwatch(name);
+    }
+    bind(name){
+        this.model.watch(name, function(p,o,n){m.redraw();return n;});
+    }
+}
+
+
+class BlockConfigModel {
+    constructor(api){
+        this.api = api;
+        // currently selected
+        this.block= null;
+        this.instance = null;
+        this.static_state = null;
+        this.hidden_state = null;
+
+        this.blocks = [];
+        this.instances = [];
+        this.static_states = [];
+        this.hidden_states = [];
+
+        var that = this;
+        this.watch("block", function(p,o,new_val){
+            if(o != new_val){
+                that.instances = [];
+                that.instance = null;
+                that.get_instances(new_val);
+            }
+            return new_val;
+        });
+        this.watch("instance", function(p,o,new_val){
+            if(o != new_val){
+                that.static_states = [];
+                that.static_state = null;
+                that.get_static_states(new_val);
+            }
+            return new_val;
+        });
+        this.watch("static_state", function(p,o,new_val){
+            console.log("static state updated",o,new_val);
+            if(o != new_val){
+                that.hidden_states = [];
+                that.hidden_state = null;
+                that.get_hidden_states(new_val);
+            }
+            return new_val;
+        });
+
+    }
+
+    initialize(){
+        var that = this;
+        this.api.get_blocks(function(blocks){
+            that.blocks = blocks;
+        });
+    }
+
+    get_hidden_states(static_state){
+        console.log("updating hidden state");
+        if(static_state == null){
+            this.hidden_states = [];
+        }
+        else{
+            var that = this;
+            this.api.get_hidden_state(this.block,
+                                      this.instance,
+                                      static_state,
+                                      function(state){
+                                          console.log(state);
+                                          that.hidden_states = state;
+                                      });
+        }
+    }
+
+
+    get_static_states(instance){
+        if(instance == null){
+            this.static_states = [];
+        }
+        else{
+            var that = this;
+            this.api.get_static_state(this.block,
+                                      instance,
+                                      function(state){
+                                          that.static_states = state;
+                                      });
+        }
+    }
+
+    get_instances(block){
+        var that = this;
+        if(block == null){
+            this.instances = [];
+        }
+        else{
+            this.api.get_instances(block,
+                                function(insts){
+                                    that.instances = insts;
+                                });
+        }
+    }
+}
+
+
+class HiddenStateSelector extends ModelView {
+    constructor(viewport,model){
+        super(model);
+        this.viewport = viewport;
+        this.bind("hidden_states");
+    }
+    view(arg){
+        var that = this;
+        var update_hidden_state = function(args){
+            console.log("update hidden state");
+            if(args.target.value == 'null'){
+                that.model.hidden_state = null;
+            }
+            else{
+                that.model.hidden_state = args.target.value;
+            }
+        };
+        var elems = [m("option",
+                       {class:"no-select",
+                        value:"null"},
+                       "<select hidden code>")];
+        this.model.hidden_states.forEach(function(hidden_cfg){
+            elems.push(m("option", {class:'hidden-state',
+                                    value:hidden_cfg}, hidden_cfg));
+        });
+        return m("select", {class:"hidden-state-selector",
+                            onchange:update_hidden_state},
+                 elems);
+    }
+}
+class StaticStateSelector extends ModelView {
+    constructor(viewport,model){
+        super(model);
+        this.viewport = viewport;
+        this.bind("static_states");
+    }
+    view(arg){
+        var that = this;
+        var update_static_state = function(args){
+            if(args.target.value == 'null'){
+                that.model.static_state = null;
+            }
+            else{
+                that.model.static_state = args.target.value;
+            }
+        };
+        var elems = [];
+        if(this.model.static_states.length > 0){
+            this.model.static_states.forEach(function(static_cfg){
+                elems.push(m("option", {class:'static-state',
+                                        value:static_cfg}, static_cfg));
+            });
+        }
+        else{
+            elems.push([m("option",
+                          {class:"no-select",
+                           value:"null"},
+                          "<select loc>")]);
+        }
+        update_static_state({'target':elems[0]});
+        return m("select", {class:"static-state-selector",
+                            onchange:update_static_state},
+                 elems);
+    }
+}
+class InstanceSelector extends ModelView {
+    constructor(viewport,model){
+        super(model);
+        this.viewport = viewport;
+        this.bind("instances");
+    }
+    view(arg){
+        var that = this;
+        var update_static_state = function(args){
+            console.log("update instance");
+            if(args.target.value == 'null'){
+                that.model.instance = null;
+            }
+            else{
+                that.model.instance = args.target.value;
+            }
+        };
+        var elems = [m("option",
+                       {class:"no-select",
+                        value:"null"},
+                       "<select loc>")];
+        this.model.instances.forEach(function(loc){
+            elems.push(m("option", {class:'instance',
+                                    value:loc}, loc));
+        });
+        return m("select", {class:"instance-selector",
+                            onchange:update_static_state},
+                 elems);
+    }
+}
+class BlockSelector extends ModelView {
+    constructor(viewport,model){
+        super(model);
+        this.viewport = viewport;
+        this.bind("blocks");
+    }
+    view(arg){
+        var that = this;
+        var update_block = function(args){
+            console.log("update block");
+            if(args.target.value == 'null'){
+                that.model.block = null;
+            }
+            else{
+                that.model.block = args.target.value;
+            }
+        };
+        var elems = [m("option",
+                       {class:"block",
+                        value:"null"},
+                       "<select block>")];
+        this.model.blocks.forEach(function(blk){
+            elems.push(m("option", {class:"block",
+                                    value:blk}, blk));
+        });
+        return m("select", {class:"block-selector",
+                            onchange:update_block},
+                 elems);
+    }
+}
+
+class Viewport {
+    constructor(apis){
+        this.api = api;
+        this.model = new BlockConfigModel(api);
+        this.model.initialize();
+        this.block_selector = new BlockSelector(this,this.model);
+        this.loc_selector = new InstanceSelector(this,this.model);
+        this.static_state_selector = new StaticStateSelector(this,
+                                                             this.model);
+        this.hidden_state_selector = new HiddenStateSelector(this,
+                                                             this.model);
+
+    }
+    view(arg){
+        var that = arg.tag;
+        return m(".viewport",
+                 [
+                     that.block_selector.view(that.block_selector),
+                     that.loc_selector.view(that.loc_selector),
+                     that.static_state_selector.view(that.static_state_selector),
+                     that.hidden_state_selector.view(that.hidden_state_selector)
+                 ]);
+    }
+}
+
+/*
 GLOBALS = {
     data:null,
     static_state:null,
@@ -157,27 +502,18 @@ function build_ux(data){
     update_static_state(static_state);
 }
 
-function upload_file(filename){
-    var reader = new FileReader();
-    reader.onload = (function(thefile){
-        return function(e){
-            text = e.target.result;
-            obj = JSON.parse(text);
-            console.log(obj);
-            build_ux(obj);
-        };
-    })(filename);
-    reader.readAsText(filename);
+function populate_blocks(){
+    $.get(
+        "blocks/",
+        {''},
+        function(data) {
+            alert('page content: ' + data);
+        }
+    );
 }
 
 $(document).ready(function(){
-    $("#data_upload").on("change",function(){
-        var files = this.files;
-        var filename = files[0];
-        upload_file(filename);
-    });
-
-    heatmap_container = document 
+    heatmap_container = document
         .querySelector("#profile_vis");
     heatmap_container.style.width = "500px";
     heatmap_container.style.height = "500px";
@@ -187,10 +523,13 @@ $(document).ready(function(){
         container: heatmap_container,
         backgroundColor:"black"
     });
-    $("#plot_func").on("change", function(){
-        update_heatmap()
+
+    populate_blocks();
+    $("#plot_funcs").on("change", function(){
+        update_heatmap();
     });
     $("#sensitivity").on("change", function(){
-        update_heatmap()
-    })
+        update_heatmap();
+    });
 })
+*/
