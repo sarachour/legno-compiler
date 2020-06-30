@@ -35,7 +35,9 @@ for blk in physdb.get_all_configured_calibrated_blocks(db, \
     entry['data']['delta_model'] = pred_delta
     entry['info'] = {}
 
-    variables,strrepr = lambdoplib.to_python(blk.model.delta_model.get_model(blk.model.params))
+    variables,strrepr = lambdoplib.to_python(blk.model \
+                                             .delta_model \
+                                             .get_model(blk.model.params))
     entry['info']['model'] = strrepr
 
     variables,strrepr = lambdoplib.to_python(blk.model.delta_model.get_correctable_model(blk.model.params))

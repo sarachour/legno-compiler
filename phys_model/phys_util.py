@@ -1,6 +1,7 @@
 import math
 import numpy as np
 import ops.op as oplib
+import ops.interval as ivallib
 
 def select_from_array(arr,n):
   space = math.ceil(len(arr)/n)
@@ -23,3 +24,12 @@ def is_integration_op(expr):
 
 def get_subarray(arr,inds):
   return list(map(lambda i: arr[i], inds))
+
+def split_interval(ival,segments):
+  assert(isinstance(ival,ivallib.Interval))
+  spread = ival.spread/(segments)
+  lb = ival.lower
+  for i in range(0,segments):
+    ub = lb + spread
+    yield ivallib.Interval(lb,ub)
+    lb = ub
