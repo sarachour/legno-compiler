@@ -45,9 +45,9 @@ def dict_to_identifier(dict_):
 
 class PhysicalDatabase:
 
-  def __init__(self,board_name):
+  def __init__(self,board_name,path=""):
     self.board = board_name
-    self.filename = "%s.db" % self.board
+    self.filename = path+"%s.db" % self.board
     self.conn = sqlite3.connect(self.filename)
     self.curs = self.conn.cursor()
     self.curs.execute(CREATE_TABLE)
@@ -80,19 +80,38 @@ class PhysicalDatabase:
     self.curs.execute(cmd)
     self.conn.commit()
 
-  def _select(self,action_clause,where_clause):
+  def _select(self,action_clause,where_clause,distinct=False):
     where_clause_frag = self._where_clause(where_clause)
+    if distinct:
+      command = "SELECT DISTINCT"
+    else:
+      command = "SELECT"
 
-    SELECT = "SELECT %s FROM physical %s" % (action_clause, \
-                                             where_clause_frag)
+    cmd_templ = "{command} {action} FROM physical {where}"
+
+    SELECT = cmd_templ.format(command=command, \
+                              action=action_clause, \
+                              where=where_clause_frag)
 
     result = self.curs.execute(SELECT)
     for row in self.curs.fetchall():
-      yield dict(zip(self.keys,row))
-
+      yield row
 
   def select(self,where_clause):
-    return self._select("*",where_clause)
+    for row in self._select("*",where_clause):
+      yield dict(zip(self.keys,row))
+
+  def select_field(self,field_names,where_clause):
+    for field_name in field_names:
+      if not (field_name in self.keys):
+        raise Exception("field <%s> not in database" % field_name)
+
+    select_clause = ",".join(field_names)
+    for field_values in self._select(select_clause, \
+                                    where_clause,\
+                              distinct=True):
+      yield dict(zip(field_names,field_values))
+
 
 
 
@@ -313,18 +332,25 @@ class PhysCfgBlock:
 
   # combinatorial block config (modes) and calibration codes
   @staticmethod
-  def get_hidden_cfg(block,cfg):
+  def get_hidden_cfg(block,cfg,exclude=[]):
     mode = cfg.mode
     kvs = {}
     for stmt in cfg.stmts:
       if stmt.t == adplib.ConfigStmtType.STATE and \
          isinstance(block.state[stmt.name].impl, \
-                        blocklib.BCCalibImpl):
+                        blocklib.BCCalibImpl) and \
+                        not stmt.name in exclude:
         assert(not stmt.name in kvs)
         kvs[stmt.name] = stmt.t.value+" "+stmt.pretty_print()
 
     return dict_to_identifier(kvs)
 
+  def hidden_codes(self):
+    for stmt in self.cfg.stmts:
+      if stmt.t == adplib.ConfigStmtType.STATE and \
+         isinstance(self.block.state[stmt.name].impl, \
+                    blocklib.BCCalibImpl):
+        yield stmt.name,stmt.value
 
   @staticmethod
   def get_static_cfg(block,cfg):
@@ -463,9 +489,77 @@ class PhysCfgBlock:
 
 
 
+class HiddenCodeOrganizer:
+  def __init__(self,codes):
+    self.by_hidden_code = {}
+    self.codes = codes
+
+  def to_key(self,physblk):
+    key = physblk.block.name + ";"
+    key + str(physblk.loc) + ";"
+    key += physblk.static_cfg + ";"
+    key += physblk.get_hidden_cfg(physblk.block, \
+                                  physblk.cfg, \
+                                  exclude=self.codes)
+    return key
+
+  def add(self,physblk):
+    key = self.to_key(physblk)
+    if not key in self.by_hidden_code:
+      self.by_hidden_code[key] = []
+    self.by_hidden_code[key].append(physblk)
+
+  def keys(self):
+    return self.by_hidden_code.keys()
+
+  def foreach(self,key):
+    assert(key in self.by_hidden_code)
+    values = self.by_hidden_code[key]
+    for v in values:
+      code_values = dict(map(lambda c: (c,v.cfg[c].value), \
+                             self.codes))
+      yield code_values, v
 
 
-def get_best_calibrated_block(db,dev,blk,inst,cfg):
+
+def get_hidden_states(db,dev,blk,inst,st):
+  where_clause = {'block':blk.name,
+                  'loc':str(inst),
+                  'static_config':st}
+  cfgs = {}
+  for fields in db.select_field(["hidden_config"],where_clause):
+    hidden_cfg = fields["hidden_config"]
+    cfgs[str(hidden_cfg)] = hidden_cfg
+  return cfgs.values()
+
+
+def get_static_states(db,dev,blk,inst):
+  where_clause = {'block':blk.name,'loc':str(inst)}
+  cfgs = {}
+  for fields in db.select_field(["static_config"],where_clause):
+    static_cfg = fields["static_config"]
+    cfgs[str(static_cfg)] = static_cfg
+  return cfgs.values()
+
+def get_instances(db,dev,blk):
+  where_clause = {'block':blk.name}
+  insts = {}
+  for fields in db.select_field(["loc"],where_clause):
+    location = devlib.Location.from_string(fields["loc"])
+    insts[str(location)] = location
+  return insts.values()
+
+
+def get_blocks(db,dev):
+  where_clause = {}
+  blocks = {}
+  for fields in db.select_field(["block"],where_clause):
+    block = dev.get_block(fields["block"])
+    blocks[block.name] = block
+
+  return blocks.values()
+
+def get_best_configured_physical_block(db,dev,blk,inst,cfg):
   static_cfg = PhysCfgBlock.get_static_cfg(blk,cfg)
   where_clause = {'block':blk.name, \
                   'loc':str(inst), \
@@ -494,18 +588,20 @@ def get_best_calibrated_block(db,dev,blk,inst,cfg):
   for physblk in by_hidden_cfg[best_hidden_cfg]:
     yield physblk
 
-def get_all_calibrated_blocks(db,dev,blk,inst,cfg):
-  static_cfg = PhysCfgBlock.get_static_cfg(blk,cfg)
+def get_by_block_instance(db,dev,blk,inst,cfg=None):
   where_clause = {'block':blk.name, \
-                  'loc':str(inst), \
-                  'static_config':static_cfg}
+                  'loc':str(inst) \
+  }
+
+  if not cfg is None:
+    static_cfg = PhysCfgBlock.get_static_cfg(blk,cfg)
+    where_clause['static_config'] = static_cfg
 
   for row in db.select(where_clause):
     yield PhysCfgBlock.from_json(db,dev,row)
 
-def get_all_configured_calibrated_blocks(db,dev,blk,inst):
-  where_clause = {'block':blk.name, \
-                  'loc':str(inst)}
 
-  for row in db.select(where_clause):
+def get_all(db,dev):
+  for row in db.select({}):
     yield PhysCfgBlock.from_json(db,dev,row)
+

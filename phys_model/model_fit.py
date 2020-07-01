@@ -29,15 +29,13 @@ assigns = dict(zip(lbls,popt))
 perr = np.sqrt(np.diag(pcov))
 '''
 
-def fit_delta_model(phys,data):
+def fit_model(variables,expr,data):
   inputs = data['inputs']
   meas_output = data['meas_mean']
   n_inputs = len(inputs.keys())
   #if phys.model.complete:
   #  return False
 
-  model = phys.model.delta_model
-  # for building expression
   repl = {}
   dataset = [None]*n_inputs
   for idx,bound_var in enumerate(inputs.keys()):
@@ -45,11 +43,11 @@ def fit_delta_model(phys,data):
     dataset[idx] = inputs[bound_var]
     repl[bound_var] = genoplib.Var("x[%d]" % idx)
 
-  expr = model.relation.substitute(repl)
-  _,pyexpr = lambdoplib.to_python(expr)
+  conc_expr = expr.substitute(repl)
+  _,pyexpr = lambdoplib.to_python(conc_expr)
   fields = {
-    'free_vars':",".join(model.params),
-    'free_var_array':",".join(map(lambda p: '"%s"' % p, model.params)),
+    'free_vars':",".join(variables),
+    'free_var_array':",".join(map(lambda p: '"%s"' % p, variables)),
     'x_dataset': str(dataset),
     'y_dataset': str(meas_output),
     'expr':pyexpr
@@ -60,28 +58,42 @@ def fit_delta_model(phys,data):
   parameters = loc['lbls']
   parameter_values = loc['popt']
   parameter_stdevs = loc['perr']
+  return {
+    'params': dict(zip(parameters,parameter_values)),
+    'param_error': parameter_stdevs
+  }
+
+def predict_output(variable_assigns,expr,data):
+  inputs = data['inputs']
+  meas_output = data['meas_mean']
+  npts = len(meas_output)
+  pred = []
+  for idx in range(0,npts):
+    assigns = dict(map(lambda inp: (inp,inputs[inp][idx]), \
+                       inputs.keys()))
+    for param,val in variable_assigns.items():
+      assigns[param] = val
+    value = expr.compute(assigns)
+    pred.append(value)
+
+  return pred
+
+def fit_delta_model(phys,data):
+  model = phys.model.delta_model
+  result = fit_model(model.params,model.relation,data)
   phys.model.clear()
-  for idx,par in enumerate(parameters):
-    val = parameter_values[idx]
+  for par,val in result['params'].items():
     phys.model.bind(par,val)
 
+  inputs = data['inputs']
+  meas_output = data['meas_mean']
   sumsq = phys.model.error(inputs,meas_output)
   phys.model.cost = sumsq
   phys.update()
 
-def analyze_physical_output(phys_output):
-  def valid_data_point(dataset,method,idx):
-    return dataset.meas_status[idx] == llenums.ProfileStatus.SUCCESS \
-      and dataset.meas_method[idx] == method
-
-  delta_model = phys_output.model.delta_model
+def analyze_physical_output(phys_output,operation=llenums.ProfileOpType.INPUT_OUTPUT):
   dataset = phys_output.dataset
-  indices = list(filter(lambda idx: valid_data_point(dataset, \
-                                                  llenums.ProfileOpType.INPUT_OUTPUT, \
-                                                  idx), range(0,dataset.size)))
-
-  meas = phys_util.get_subarray(dataset.meas_mean,indices)
-  meas_stdev = phys_util.get_subarray(dataset.meas_stdev,indices)
-  ref = phys_util.get_subarray(dataset.output, indices)
-  fit_delta_model(phys_output,dataset.get_data(llenums.ProfileStatus.SUCCESS, \
-                                               llenums.ProfileOpType.INPUT_OUTPUT))
+  fit_delta_model(phys_output, \
+                  phys_output.dataset.get_data( \
+                                  llenums.ProfileStatus.SUCCESS, \
+                                                operation))

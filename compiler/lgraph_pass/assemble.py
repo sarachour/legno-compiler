@@ -1,6 +1,6 @@
-from compiler.lgraph_pass.tableau_data import *
 import compiler.lgraph_pass.tableau as tablib
 import compiler.lgraph_pass.unify as unifylib
+import hwlib.block as blocklib
 import ops.base_op as oplib
 import ops.generic_op as genoplib
 import itertools
@@ -72,14 +72,15 @@ def build_copier(blk,ident,input_var,sinks):
       continue
 
     vadpprog = []
-    vadpprog.append(VADPConfig(blk,ident, \
+    vadpprog.append(tablib.VADPConfig(blk,ident, \
                                 list(isect_modes)))
 
-    port_var = PortVar(blk,ident,list(blk.inputs)[0])
-    vadpprog.append(VADPSink(port_var, genoplib.Var(input_var)))
+    port_var = tablib.PortVar(blk,ident,list(blk.inputs)[0])
+    vadpprog.append(tablib.VADPSink(port_var, \
+                                    genoplib.Var(input_var)))
     for outp,expr in zip(output_ports,exprs):
-      port_var = PortVar(blk,ident,blk.outputs[outp])
-      vadpprog.append(VADPSource(port_var, \
+      port_var = tablib.PortVar(blk,ident,blk.outputs[outp])
+      vadpprog.append(tablib.VADPSource(port_var, \
                                   expr))
     yield vadpprog
 
@@ -117,7 +118,7 @@ def assemble_copiers(root_vadp,vadps):
 
   # find which signals are being generated
   for stmt in root_vadp:
-    if isinstance(stmt,VADPSource):
+    if isinstance(stmt,tablib.VADPSource):
       if not stmt.dsexpr in sources:
         sources[stmt.dsexpr] = []
         sinks[stmt.dsexpr] = []
@@ -128,7 +129,7 @@ def assemble_copiers(root_vadp,vadps):
 
   # figure out which signals are needed by the circuits
   for stmt in vadps:
-    if isinstance(stmt,VADPSink):
+    if isinstance(stmt,tablib.VADPSink):
       if stmt.dsexpr in sources:
         sinks[stmt.dsexpr].append(stmt.port)
       else:
@@ -141,9 +142,9 @@ def assemble_copiers(root_vadp,vadps):
     assert(len(sources[dsexpr]) >= len(sinks[dsexpr]))
     for idx,source in enumerate(sources[dsexpr]):
       if idx < len(sinks[dsexpr]):
-        assembled_vadp.append(VADPConn(source,sinks[dsexpr][idx]))
+        assembled_vadp.append(tablib.VADPConn(source,sinks[dsexpr][idx]))
       else:
-        assembled_vadp.append(VADPSource(source,dsexpr))
+        assembled_vadp.append(tablib.VADPSource(source,dsexpr))
 
 
   return assembled_vadp
@@ -203,28 +204,39 @@ def assemble_circuit(stmts):
   compute_sources= {}
   assembled = []
   for stmt in stmts:
-    if isinstance(stmt,VADPSink):
+    if isinstance(stmt,tablib.VADPSink):
       if stmt.port.block.type == blocklib.BlockType.COPY:
         add(copier_sinks,stmt.dsexpr,stmt.port)
       else:
         add(compute_sinks,stmt.dsexpr,stmt.port)
 
-    elif isinstance(stmt,VADPSource):
-      if stmt.port.block.type == blocklib.BlockType.COPY:
-        add(copier_sources,stmt.dsexpr,stmt.port)
+    elif isinstance(stmt,tablib.VADPSource):
+      if isinstance(stmt.port,tablib.VirtualSourceVar):
+        srcs = tablib.get_virtual_variable_sources(stmts,stmt.port)
+        add(compute_sources,stmt.dsexpr, srcs)
+        continue
+      elif stmt.port.block.type == blocklib.BlockType.COPY:
+        add(copier_sources,stmt.dsexpr,[stmt.port])
       else:
-        add(compute_sources,stmt.dsexpr,stmt.port)
+        add(compute_sources,stmt.dsexpr,[stmt.port])
+
       assembled.append(stmt)
+
+    elif isinstance(stmt,tablib.VADPConn):
+      if not isinstance(stmt.sink,tablib.VirtualSourceVar):
+        assembled.append(stmt)
 
     else:
       assembled.append(stmt)
+
 
   for dsexpr,sink_ports in copier_sinks.items():
     source_ports = compute_sources[dsexpr]
     assert(len(sink_ports) <= len(source_ports))
     assert(len(source_ports) == 1)
-    for src,sink in zip(source_ports,sink_ports):
-      assembled.append(VADPConn(src,sink))
+    for srcs,sink in zip(source_ports,sink_ports):
+      for src in srcs:
+        assembled.append(tablib.VADPConn(src,sink))
 
     compute_sources[dsexpr] = []
 
@@ -234,8 +246,9 @@ def assemble_circuit(stmts):
       source_ports += copier_sources[dsexpr]
 
     assert(len(sink_ports) <= len(source_ports))
-    for src,sink in zip(source_ports,sink_ports):
-      assembled.append(VADPConn(src,sink))
+    for srcs,sink in zip(source_ports,sink_ports):
+      for src in srcs:
+        assembled.append(tablib.VADPConn(src,sink))
 
   return assembled
 
@@ -247,11 +260,11 @@ def assemble(blocks,fragments,depth=3,n_copiers=10):
                    fragments.keys()))
   for var,frag in fragments.items():
     for stmt in frag:
-      if isinstance(stmt,VADPSink):
+      if isinstance(stmt,tablib.VADPSink):
         assert(len(stmt.dsexpr.vars()) == 1)
         variable = stmt.dsexpr.vars()[0]
         sinks[variable].append(stmt.dsexpr)
-      if isinstance(stmt,VADPSource):
+      if isinstance(stmt,tablib.VADPSource):
         assert(not var in sources)
         sources[var] = stmt.dsexpr
 
@@ -271,6 +284,11 @@ def assemble(blocks,fragments,depth=3,n_copiers=10):
                                 copier_frag_vars))
 
   for combo in itertools.product(*copier_frag_values):
-    disconn_circuit = remap_vadps(list(fragments.values()) + list(combo))
+    disconn_circuit = tablib.remap_vadps(list(fragments.values()) \
+                                         + list(combo))
     circ = assemble_circuit(disconn_circuit)
+    if not tablib.is_concrete_vadp(circ):
+      for stmt in circ:
+        print(stmt)
+      raise Exception("vadp is not concrete")
     yield circ
