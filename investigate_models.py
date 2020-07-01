@@ -33,6 +33,7 @@ db = physdb.PhysicalDatabase('board6')
 # build up dataset
 params = {}
 inputs = {}
+costs = []
 for blk in physdb.get_by_block_instance(db, dev,block,inst,cfg=cfg):
   for par,value in blk.model.params.items():
     if not par in params:
@@ -45,14 +46,24 @@ for blk in physdb.get_by_block_instance(db, dev,block,inst,cfg=cfg):
       inputs[hidden_code] = []
     inputs[hidden_code].append(value)
 
+
+  costs.append(blk.model.cost)
+
 # fit model
-dataset = {'inputs':inputs,'meas_mean':params['d']}
-variables = ['c1','c2','c3','c4','c5']
+dataset = {'inputs':inputs, \
+           'meas_mean':params['d']}
 # good for gain prediction
-expr_text = "c1*pmos*nmos + c2*pmos + c3*nmos + c4*gain_cal + c5"
+terms = ["pmos*nmos", "pmos", "nmos", "gain_cal","bias_in0"]
 # ok for gain offset prediction
-variables = ['c1','c2','c3','c4','c5','c6']
-expr_text = "c1*bias_out*gain_cal + c2*pmos + c3*nmos + c4*bias_in0 + c5*gain_cal + c6"
+terms = ['bias_in0','pmos','nmos','bias_out']
+
+variables = list(map(lambda i: "c%d" % i, range(0,len(terms)))) \
+            + ['offset']
+expr = ['offset']
+for coeff,term in zip(variables,terms):
+  expr.append("%s*%s" % (coeff,term))
+
+expr_text = "+".join(expr)
 expr = opparse.parse_expr(expr_text)
 result = fitlib.fit_model(variables,expr,dataset)
 prediction = fitlib.predict_output(result['params'], \
@@ -60,7 +71,15 @@ prediction = fitlib.predict_output(result['params'], \
 
 plt.plot(dataset['meas_mean'])
 plt.plot(prediction)
+plt.savefig('predictions.png')
+plt.close()
+print("---- PARAMETERS ----")
 print(result['params'])
 print(result['param_error'])
-plt.show()
+print("---- ERROR ---")
+error = list(map(lambda idx: dataset['meas_mean'][idx]-prediction[idx], \
+                 range(0,len(prediction))))
+plt.plot(error)
+plt.savefig('error.png')
+plt.close()
 #visualize_it(org)
