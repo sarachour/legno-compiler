@@ -1,6 +1,5 @@
 import compiler.lgraph_pass.unify as unifylib
-from compiler.lgraph_pass.tableau_data import *
-import compiler.lgraph_pass.tableau_data as tablib
+import compiler.lgraph_pass.tableau as tablib
 import ops.generic_op as genoplib
 
 def cstrs_flip(variables):
@@ -39,14 +38,14 @@ def simplify_kirchoff(vadp_stmts,rule):
   sink_stmt = None
   # identify statements with rule variables
   for stmt in vadp_stmts:
-    if isinstance(stmt, VADPConn) and \
-       isinstance(stmt.source, LawVar):
+    if isinstance(stmt, tablib.VADPConn) and \
+       isinstance(stmt.source, tablib.LawVar):
       sink_stmt = stmt
       sink_var = stmt.sink
       target_var = stmt.source
       break
-    elif isinstance(stmt,VADPSource) and \
-         isinstance(stmt.port, LawVar):
+    elif isinstance(stmt,tablib.VADPSource) and \
+         isinstance(stmt.port, tablib.LawVar):
       sink_stmt = stmt
       sink_var = VirtualSourceVar(stmt.dsexpr.name)
       target_var = stmt.port
@@ -59,8 +58,8 @@ def simplify_kirchoff(vadp_stmts,rule):
   sources = []
   replaced_stmts = [sink_stmt]
   for stmt in vadp_stmts:
-    if isinstance(stmt,VADPConn) and \
-       isinstance(stmt.sink, LawVar) and \
+    if isinstance(stmt,tablib.VADPConn) and \
+       isinstance(stmt.sink, tablib.LawVar) and \
        stmt.sink.same_usage(target_var):
       sources.append(stmt.source)
       replaced_stmts.append(stmt)
@@ -70,12 +69,12 @@ def simplify_kirchoff(vadp_stmts,rule):
 
   new_vadp = []
   for source in sources:
-    new_vadp.append(VADPConn(source,sink_var))
+    new_vadp.append(tablib.VADPConn(source,sink_var))
 
-  if isinstance(sink_stmt,VADPSink):
+  if isinstance(sink_stmt,tablib.VADPSink):
     new_vadp.append(VADPSink(sink_var, \
                              sink_stmt.ds_var))
-  elif isinstance(sink_stmt,VADPSource):
+  elif isinstance(sink_stmt,tablib.VADPSource):
     new_vadp.append(VADPSource(sink_var, \
                                sink_stmt.dsexpr))
 
