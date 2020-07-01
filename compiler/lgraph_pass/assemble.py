@@ -210,21 +210,32 @@ def assemble_circuit(stmts):
         add(compute_sinks,stmt.dsexpr,stmt.port)
 
     elif isinstance(stmt,VADPSource):
-      if stmt.port.block.type == blocklib.BlockType.COPY:
-        add(copier_sources,stmt.dsexpr,stmt.port)
+      if isinstance(stmt.port,VirtualSourceVar):
+        srcs = tablib.get_virtual_variable_sources(stmts,stmt.port)
+        add(compute_sources,stmt.dsexpr, srcs)
+        continue
+      elif stmt.port.block.type == blocklib.BlockType.COPY:
+        add(copier_sources,stmt.dsexpr,[stmt.port])
       else:
-        add(compute_sources,stmt.dsexpr,stmt.port)
+        add(compute_sources,stmt.dsexpr,[stmt.port])
+
       assembled.append(stmt)
+
+    elif isinstance(stmt,VADPConn):
+      if not isinstance(stmt.sink,VirtualSourceVar):
+        assembled.append(stmt)
 
     else:
       assembled.append(stmt)
+
 
   for dsexpr,sink_ports in copier_sinks.items():
     source_ports = compute_sources[dsexpr]
     assert(len(sink_ports) <= len(source_ports))
     assert(len(source_ports) == 1)
-    for src,sink in zip(source_ports,sink_ports):
-      assembled.append(VADPConn(src,sink))
+    for srcs,sink in zip(source_ports,sink_ports):
+      for src in srcs:
+        assembled.append(VADPConn(src,sink))
 
     compute_sources[dsexpr] = []
 
@@ -234,8 +245,9 @@ def assemble_circuit(stmts):
       source_ports += copier_sources[dsexpr]
 
     assert(len(sink_ports) <= len(source_ports))
-    for src,sink in zip(source_ports,sink_ports):
-      assembled.append(VADPConn(src,sink))
+    for srcs,sink in zip(source_ports,sink_ports):
+      for src in srcs:
+        assembled.append(VADPConn(src,sink))
 
   return assembled
 
@@ -273,4 +285,8 @@ def assemble(blocks,fragments,depth=3,n_copiers=10):
   for combo in itertools.product(*copier_frag_values):
     disconn_circuit = remap_vadps(list(fragments.values()) + list(combo))
     circ = assemble_circuit(disconn_circuit)
+    if not tablib.is_concrete_vadp(circ):
+      for stmt in circ:
+        print(stmt)
+      raise Exception("vadp is not concrete")
     yield circ

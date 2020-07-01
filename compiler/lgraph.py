@@ -296,6 +296,7 @@ def compile(board,prob,depth=3, \
                               blk.type == blocklib.BlockType.COMPUTE, \
                               board.blocks))
 
+    # perform synthesis
     laws = get_laws()
     fragments = {}
     for variable in prob.variables():
@@ -304,7 +305,6 @@ def compile(board,prob,depth=3, \
         for vadp in tablib.search(compute_blocks,laws,variable,expr):
             if len(fragments[variable]) >= vadp_fragments:
                 break
-
             fragments[variable].append(vadp)
 
         print("%s: %d"  \
@@ -321,5 +321,5 @@ def compile(board,prob,depth=3, \
         circuit[variable] = fragments[variable][0]
 
     for circ in asmlib.assemble(copy_blocks,circuit):
-        print(circ)
+        pass
     raise NotImplementedError

@@ -198,6 +198,7 @@ def select_tableau(frontier,complexity):
 def simplify_tableau(tableau,simplify_laws=False):
   new_tableau = tableau.copy()
 
+  # replace trivial goals of the form port=var with sinks
   for goal in tableau.goals:
     if isinstance(goal.variable, PortVar) and \
        goal.expr.op == oplib.OpType.VAR:
@@ -205,6 +206,7 @@ def simplify_tableau(tableau,simplify_laws=False):
       new_tableau.add_stmt(VADPSink(goal.variable, \
                                     goal.expr))
 
+  # perform simplification
   if simplify_laws:
     for rel in new_tableau.relations:
       if isinstance(rel,PhysicsLawRelation):
@@ -212,24 +214,6 @@ def simplify_tableau(tableau,simplify_laws=False):
         new_tableau.vadp = new_vadp
 
   return new_tableau
-
-def is_concrete_vadp(vadp):
-  for stmt in vadp:
-    if isinstance(stmt,VADPSink) or \
-       isinstance(stmt,VADPSource):
-      if not isinstance(stmt.port,PortVar):
-        return False
-
-    elif isinstance(stmt,VADPConn):
-      if not isinstance(stmt.source,PortVar) or \
-         not isinstance(stmt.sink,PortVar):
-        return False
-    elif isinstance(stmt,VADPConfig):
-      pass
-    else:
-      raise Exception("unhandled: %s" % stmt)
-
-  return True
 
 def search(blocks,laws,variable,expr,depth=20):
   tableau = make_initial_tableau(blocks,laws, \
@@ -250,7 +234,11 @@ def search(blocks,laws,variable,expr,depth=20):
       if simpl_tableau.success():
         simpl_tableau = simplify_tableau(new_tableau, \
                                          simplify_laws=True)
-        assert(is_concrete_vadp(simpl_tableau.vadp))
+        if not is_concrete_vadp(simpl_tableau.vadp,allow_virtual=True):
+          for stmt in simpl_tableau.vadp:
+            print("  %s" % stmt)
+          raise Exception("vadp tableau is not concrete!")
+
         yield simpl_tableau.vadp
         solutions += 1
       else:

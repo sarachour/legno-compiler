@@ -19,7 +19,7 @@ def apply_flip(goal,rule):
     yield tablib.VADPSource(generic_var,genoplib.Var(goal.variable))
 
 def simplify_flip(vadp_stmts,rule):
-  return vadp_stmts
+  return False,vadp_stmts
 
 def cstrs_kirchoff(variables):
   cstrs = dict(map(lambda v: (v,unifylib.UnifyConstraint.NONE), \
@@ -29,13 +29,15 @@ def cstrs_kirchoff(variables):
 def apply_kirchoff(goal,rule):
   law_var = tablib.LawVar(rule.law,rule.ident,tablib.LawVar.APPLY)
   if isinstance(goal.variable, tablib.DSVar):
-    yield tablib.VADPSource(goal.variable,law_var)
+    var_name = goal.variable.var
+    yield tablib.VADPSource(law_var,genoplib.Var(var_name))
   else:
     yield tablib.VADPConn(law_var,goal.variable)
 
 def simplify_kirchoff(vadp_stmts,rule):
   target_var = None
   sink_stmt = None
+  # identify statements with rule variables
   for stmt in vadp_stmts:
     if isinstance(stmt, VADPConn) and \
        isinstance(stmt.source, LawVar):
@@ -43,16 +45,17 @@ def simplify_kirchoff(vadp_stmts,rule):
       sink_var = stmt.sink
       target_var = stmt.source
       break
-    elif isinstance(stmt,VADPSink) and \
+    elif isinstance(stmt,VADPSource) and \
          isinstance(stmt.port, LawVar):
       sink_stmt = stmt
-      sink_var = GenericVar(stmt.ds_var)
+      sink_var = VirtualSourceVar(stmt.dsexpr.name)
       target_var = stmt.port
       break
-
+  # is there is no statement with rule variables
   if sink_stmt is None:
-    return vadp_stmts
+    return False,vadp_stmts
 
+  # identify sources that are linked to the same sink
   sources = []
   replaced_stmts = [sink_stmt]
   for stmt in vadp_stmts:
@@ -70,10 +73,14 @@ def simplify_kirchoff(vadp_stmts,rule):
     new_vadp.append(VADPConn(source,sink_var))
 
   if isinstance(sink_stmt,VADPSink):
-    new_vadp.append(VADPSink(sink_var,stmt.ds_var))
+    new_vadp.append(VADPSink(sink_var, \
+                             sink_stmt.ds_var))
+  elif isinstance(sink_stmt,VADPSource):
+    new_vadp.append(VADPSource(sink_var, \
+                               sink_stmt.dsexpr))
 
   for stmt in vadp_stmts:
     if not stmt in replaced_stmts:
       new_vadp.append(stmt)
 
-  return new_vadp
+  return True,new_vadp
