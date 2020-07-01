@@ -102,31 +102,43 @@ def derive_tableau_from_port_rel(tableau,goal,rel,unif):
 
   new_tableau.add_stmt(vadp_cfg)
 
-  for curr_rel in new_tableau.relations:
+  # if we used a freshly generated block, make sure to replace it
+  replenish_block = (rel.ident == max(map(lambda r: r.ident \
+                                          if isinstance(r,PortRelation) \
+                                          and r.same_block(rel) else 0, \
+                                          tableau.relations)))
+
+  # update existing relations in tableau to respect unification
+  new_tableau.relations = []
+  for curr_rel in tableau.relations:
+    # find port relations using the same block
     if isinstance(curr_rel,PortRelation) and \
-       curr_rel.same_block(rel):
-      # create new block
-      exists = any(filter(lambda r:
-                          isinstance(r,PortRelation) and \
-                          r.ident == curr_rel.ident + 1 and \
-                          r.block.name == curr_rel.block.name and \
-                          r.port.name == curr_rel.port.name,
-                          new_tableau.relations))
+       curr_rel.same_block(rel)  \
+       and curr_rel.ident == rel.ident:
 
-      if not exists:
-        new_rel = curr_rel.copy()
-        new_rel.ident += 1
-        new_tableau.add_relation(new_rel)
-
+      new_rel = curr_rel.copy()
+      # do not add relation to new tableau
       if curr_rel.equals(rel):
-        new_tableau.remove_relation(rel)
+        continue
 
-      elif not apply_vadp_config_to_relation(curr_rel.block, \
-                                             vadp_cfg, \
-                                             unif, \
-                                             curr_rel):
-        new_tableau.remove_relation(curr_rel)
+      # could not concretize relation
+      if not apply_vadp_config_to_relation(new_rel.block, \
+                                           vadp_cfg, \
+                                           unif, \
+                                           new_rel):
+        continue
 
+      new_tableau.add_relation(new_rel)
+
+    else:
+      new_tableau.add_relation(curr_rel.copy())
+
+  # add fresh block of same type if necessary
+  if replenish_block:
+    for output in rel.block.outputs:
+      for expr,modes in output.relation.get_by_property():
+        new_rel = PortRelation(rel.block,rel.ident+1,modes,output,expr)
+        new_tableau.add_relation(new_rel)
 
   return new_tableau
 
@@ -180,20 +192,32 @@ def get_valid_tableaus(frontier,depth):
     if idx < depth:
       yield tab,idx
 
-def tableau_complexity(tableau):
+def tableau_complexity(tableau,depth):
   cost = 0.0
   for goal in tableau.goals:
     cost = max(cost,goal.expr.nodes())
-  return cost
+  return cost-depth
+
+def goal_complexity(goal):
+  return goal.expr.nodes()
 
 def select_tableau(frontier,complexity):
-  penalty = list(map(lambda tab: complexity(tab[0]), frontier))
+  penalty = list(map(lambda tab: complexity(*tab), frontier))
   idx = np.argmin(penalty)
   tableau,tableau_depth = frontier[idx]
   other_tableaus = list(map(lambda i: frontier[i], \
                             filter(lambda i: i != idx, \
                                    range(0,len(frontier)))))
   return tableau,tableau_depth,other_tableaus
+
+def select_goal(goals,complexity):
+  penalty = list(map(lambda goal: complexity(goal), goals))
+  idx = np.argmin(penalty)
+  this_goal = goals[idx]
+  other_goals = list(map(lambda i: goals[i], \
+                            filter(lambda i: i != idx, \
+                                   range(0,len(goals)))))
+  return this_goal,other_goals
 
 def simplify_tableau(tableau,simplify_laws=False):
   new_tableau = tableau.copy()
@@ -228,13 +252,18 @@ def search(blocks,laws,variable,expr,depth=20):
     tableau,tab_depth,other_tableaus = select_tableau(valid_tableaus, \
                                                       tableau_complexity)
     next_frontier = other_tableaus
-    goal = tableau.goals[0]
+    goal,other_goals = select_goal(tableau.goals, \
+                       goal_complexity)
+
+    derived = 0
     for new_tableau in derive_tableaus(tableau,goal):
       simpl_tableau = simplify_tableau(new_tableau)
+      derived += 1
       if simpl_tableau.success():
         simpl_tableau = simplify_tableau(new_tableau, \
                                          simplify_laws=True)
-        if not is_concrete_vadp(simpl_tableau.vadp,allow_virtual=True):
+        if not is_concrete_vadp(simpl_tableau.vadp, \
+                                allow_virtual=True):
           for stmt in simpl_tableau.vadp:
             print("  %s" % stmt)
           raise Exception("vadp tableau is not concrete!")

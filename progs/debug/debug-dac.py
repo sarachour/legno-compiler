@@ -4,6 +4,14 @@ from dslang.dssim import DSSim
 def dsname():
   return "dbgdac"
 
+def dsinfo():
+  return DSInfo(dsname(), \
+                "debug-dac",
+                "signal",
+                "signal")
+  return info
+
+
 def dsprog(prob):
   # dummy diffeq
   #prob.decl_stvar("V","(-V)","0.0")

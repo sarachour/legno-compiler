@@ -287,7 +287,6 @@ class Tableau:
     self.relations = []
     self.vadp = []
 
-
   def add_stmt(self,vadp_st):
     assert(isinstance(vadp_st,VADPStmt))
     self.vadp.append(vadp_st)

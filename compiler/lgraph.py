@@ -286,7 +286,7 @@ def remap_vadp_identifiers(insts,fragment):
     else:
         raise Exception("not handled: %s" % stmt)
 
-def compile(board,prob,depth=3, \
+def compile(board,prob,depth=12, \
             vadp_fragments=100, \
             vadps=1, \
             adps=1):
@@ -302,12 +302,14 @@ def compile(board,prob,depth=3, \
     for variable in prob.variables():
         fragments[variable] = []
         expr = prob.binding(variable)
-        for vadp in tablib.search(compute_blocks,laws,variable,expr):
+        print("> synthesizing %s = %s" % (variable,expr))
+        for vadp in tablib.search(compute_blocks,laws,variable,expr, \
+                                  depth=depth):
             if len(fragments[variable]) >= vadp_fragments:
                 break
             fragments[variable].append(vadp)
 
-        print("%s: %d"  \
+        print("var %s: %d fragments"  \
               % (variable,len(fragments[variable])))
 
     # insert copier blocks when necessary
@@ -320,6 +322,10 @@ def compile(board,prob,depth=3, \
     for variable in prob.variables():
         circuit[variable] = fragments[variable][0]
 
-    for circ in asmlib.assemble(copy_blocks,circuit):
-        pass
+    vadp_circuits = []
+    for idx,circ in enumerate(asmlib.assemble(copy_blocks,circuit)):
+        vadp_circuits.append(circ)
+        if len(vadp_circuits) >= vadps:
+            break
+
     raise NotImplementedError
