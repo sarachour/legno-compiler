@@ -46,12 +46,15 @@ for blk in physdb.get_by_block_instance(db, dev,block,inst,cfg=cfg):
       inputs[hidden_code] = []
     inputs[hidden_code].append(value)
 
+  #vizlib.deviation(blk,'output.png', \
+  #                 relative=True)
+  #input("continue")
 
   costs.append(blk.model.cost)
 
 # fit model
 dataset = {'inputs':inputs, \
-           'meas_mean':params['d']}
+           'meas_mean':costs}
 # good for gain prediction
 terms = ["pmos*nmos", "pmos", "nmos", "gain_cal","bias_in0"]
 # ok for gain offset prediction
@@ -64,6 +67,7 @@ for coeff,term in zip(variables,terms):
   expr.append("%s*%s" % (coeff,term))
 
 expr_text = "+".join(expr)
+print(expr_text)
 expr = opparse.parse_expr(expr_text)
 result = fitlib.fit_model(variables,expr,dataset)
 prediction = fitlib.predict_output(result['params'], \
@@ -77,7 +81,8 @@ print("---- PARAMETERS ----")
 print(result['params'])
 print(result['param_error'])
 print("---- ERROR ---")
-error = list(map(lambda idx: dataset['meas_mean'][idx]-prediction[idx], \
+error = list(map(lambda idx: dataset['meas_mean'][idx] \
+                 -prediction[idx], \
                  range(0,len(prediction))))
 plt.plot(error)
 plt.savefig('error.png')

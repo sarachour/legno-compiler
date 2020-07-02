@@ -90,24 +90,20 @@ class BruteForcePlanner(ProfilePlanner):
 
 class SinglePointPlanner(BruteForcePlanner):
 
-  def __init__(self,block,loc,cfg,n,m):
-    ProfilePlanner.__init__(self,block,loc,cfg)
-    self.n = n					#outer dimensions of search space
-    self.m = m					#resolution (linspace) of search space
-    self.block = block
-    self.loc = loc
-    self.cfg = cfg
+  def __init__(self,block,loc,cfg,m):
+    BruteForcePlanner.__init__(self,block,loc,cfg,0,m)
 
   def new_hidden(self):
     hidden = {}
     for state in filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), self.block.state):
-      hidden[state] = self.cfg[state.name]
+      hidden[state] = self.cfg[state.name].value
 
     self.hidden_iterator = hidden
+    self.dynamic_iterator = None
 
   def next_hidden(self):
-    value = self.hidden
-    self.hidden = None
+    value = self.hidden_iterator
+    self.hidden_iterator = None
     return value
 
 

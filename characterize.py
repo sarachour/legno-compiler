@@ -38,5 +38,5 @@ runtime = GrendelRunner()
 #planner = planlib.BruteForcePlanner(block,inst,cfg,3,10)
 #planner = planlib.NeighborhoodPlanner(block,inst,cfg,3,10)
 planner = planlib.SensitivityPlanner(block,inst,cfg,32,10)
-proflib.profile_all_hidden_codes(runtime,dev,planner)
+proflib.profile_all_hidden_states(runtime,dev,planner)
 

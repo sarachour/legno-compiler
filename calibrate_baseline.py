@@ -33,10 +33,14 @@ inst = devlib.Location([0,1,2,0])
 cfg = adplib.BlockConfig.make(block,inst)
 #cfg.modes = [['+','+','-','m']]
 cfg.modes = [block.modes.get(['x','m','m'])]
-
-
+cfg['pmos'].value = 0
+cfg['nmos'].value = 2
+cfg['bias_in0'].value = 31
+cfg['bias_in1'].value = 31
+cfg['bias_out'].value = 16
+print(cfg)
 runtime = GrendelRunner()
 #runtime.initialize()
 #proflib.calibrate(dev,runtime,block,inst,cfg)
-planlib.SinglePointPlanner(block,inst,cfg,n)
-proflib.profile_all_hidden_codes(runtime,dev,planner)
+planner = planlib.SinglePointPlanner(block,inst,cfg,20)
+proflib.profile_all_hidden_states(runtime,dev,planner)
