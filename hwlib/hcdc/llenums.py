@@ -1,5 +1,10 @@
 from enum import Enum
 
+class CalibrateObjective(Enum):
+    MINIMIZE_ERROR = "minimize_error"
+    MAXIMIZE_FIT = "maximize_fit"
+    FAST = "fast"
+
 class ResponseType(Enum):
     PROFILE_RESULT = "resp_profile_result"
     BLOCK_STATE = "resp_block_state"

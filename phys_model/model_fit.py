@@ -8,6 +8,8 @@ import phys_model.phys_util as phys_util
 import ops.generic_op as genoplib
 import ops.lambda_op as lambdoplib
 import itertools
+import math
+import numpy as np
 
 PROG = '''
 from scipy.optimize import curve_fit
@@ -52,7 +54,7 @@ def fit_model(variables,expr,data):
     'y_dataset': str(meas_output),
     'expr':pyexpr
   }
-  snippet = PROG.format(**fields)
+  snippet = PROG.format(**fields).replace('math.','np.')
   loc = {}
   exec(snippet,globals(),loc)
   parameters = loc['lbls']

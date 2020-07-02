@@ -193,6 +193,16 @@ def state_t():
                          "adc" / adc_state_t()
     )
 
+def calibrate_objective_t():
+    kwargs = {
+        llenums.CalibrateObjective.MINIMIZE_ERROR.name: 0,
+        llenums.CalibrateObjective.MAXIMIZE_FIT.name: 1,
+        llenums.CalibrateObjective.FAST.name:2
+    }
+    return cstruct.Enum(cstruct.Int8ul,
+                        **kwargs)
+
+
 def profile_status_t():
     kwargs = {
         llenums.ProfileStatus.SUCCESS.name: 0,
@@ -266,7 +276,7 @@ def cmd_block_loc_t():
 
 def cmd_calib_t():
     return cstruct.Struct(
-        "calib_obj" / cstruct.Int8ul,
+        "calib_obj" / calibrate_objective_t(),
         "inst" / block_loc_t()
     )
 

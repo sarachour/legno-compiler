@@ -76,9 +76,14 @@ mult.outputs['z'].relation \
 
 
 
-spec = DeltaSpec(parser.parse_expr('(a*c+b)*x + d'))
+spec = DeltaSpec(parser.parse_expr('(a*c+b)*x+0.15*sin((3*w1*c+phi1))*sin((3*w2*x+phi2))+d'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('b',DeltaParamType.CORRECTABLE,ideal=0.0)
+spec.param('ampl',DeltaParamType.GENERAL,ideal=0.0)
+spec.param('phi1',DeltaParamType.CORRECTABLE,ideal=0.0)
+spec.param('w1',DeltaParamType.CORRECTABLE,ideal=1.0)
+spec.param('phi2',DeltaParamType.CORRECTABLE,ideal=0.0)
+spec.param('w2',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('d',DeltaParamType.GENERAL,ideal=0.0)
 mult.outputs['z'].deltas.bind(['x','m','m'],spec)
 mult.outputs['z'].deltas.bind(['x','h','h'],spec)

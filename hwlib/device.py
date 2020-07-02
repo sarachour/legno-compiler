@@ -37,12 +37,23 @@ class Layer:
 class Layout:
 
   def __init__(self):
+    self.views = {}
+    self.root_view = None
     self.layers = []
+
+  def add_view(self,view,parent=None):
+    assert(parent is None or parent in self.views)
+    self.views[view] = parent
+    if parent is None:
+      assert(self.root_view is None)
+      self.root_view = view
+
 
 class Device:
 
   def __init__(self):
     self._blocks = {}
+    self.layout = Layout()
 
   def add_block(self,blk):
     assert(isinstance(blk,blocklib.Block))

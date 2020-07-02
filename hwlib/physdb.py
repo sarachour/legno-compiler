@@ -259,7 +259,10 @@ class PhysDeltaModel:
 
   def bind(self,par,value):
     assert(not par in self.params)
-    assert(par in self.delta_model.params)
+    if not (par in self.delta_model.params):
+      print("WARN: couldn't bind nonexistant parameter <%s> in delta" % par)
+      return
+
     self.params[par] = value
 
   def error(self,inputs,meas_outputs):

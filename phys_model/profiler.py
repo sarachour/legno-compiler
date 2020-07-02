@@ -15,7 +15,22 @@ from enum import Enum
 import numpy as np
 
 
-def profile_calibrated_block(dev,runtime,planner,hidden):
+def calibrate(dev,runtime,block,inst,cfg):
+  assert(cfg.inst.block == block.name)
+  assert(cfg.inst.loc == inst)
+  new_adp= adplib.ADP()
+  new_adp.add_instance(block,inst)
+  config = new_adp.configs.get(block.name, \
+                               inst)
+  config.set_config(cfg)
+  all_codes = llcmd.calibrate(runtime,block,inst, \
+                              new_adp, \
+                              method=llenums.CalibrateObjective.MAXIMIZE_FIT)
+  print(all_codes)
+
+
+
+def profile_hidden_state(dev,runtime,planner,hidden):
   # make new config for profiling operation
   new_adp= adplib.ADP()
   new_adp.add_instance(planner.block,planner.loc)
@@ -64,11 +79,11 @@ def profile_calibrated_block(dev,runtime,planner,hidden):
 
     dynamic = planner.next_dynamic()
 
-def profile_uncalibrated_block(runtime,dev,planner):
+def profile_all_hidden_states(runtime,dev,planner):
   runtime.initialize()
 
   planner.new_hidden()
   hidden_state = planner.next_hidden()
   while not hidden_state is None:
-    profile_calibrated_block(dev,runtime,planner,hidden_state)
+    profile_hidden_state(dev,runtime,planner,hidden_state)
     hidden_state = planner.next_hidden()
