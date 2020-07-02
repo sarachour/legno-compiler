@@ -16,17 +16,6 @@ import numpy as np
 
 import phys_model.profiler as proflib
 import phys_model.planner as planlib
-
-'''
-dev = hcdclib.get_device()
-block = dev.get_block('integ')
-inst = devlib.Location([0,3,2,0])
-cfg = adplib.BlockConfig.make(block,inst)
-cfg.modes = [block.modes.get(['m','m','+'])]
-characterize(block,inst,cfg)
-'''
-
-#block = dev.get_block('fanout')
 dev = hcdclib.get_device()
 block = dev.get_block('mult')
 inst = devlib.Location([0,1,2,0])

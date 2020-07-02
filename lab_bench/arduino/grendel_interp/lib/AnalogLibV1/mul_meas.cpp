@@ -115,6 +115,9 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(profile_spec_t spec)
   profile_t prof = prof::make_profile(spec,
                                       mean,
                                       sqrt(variance));
+  sprintf(FMTBUF,"result target=%f mean=%f std=%f", target_vga,
+          mean,sqrt(variance));
+  print_info(FMTBUF);
   if(!calib.success){
     prof.status = FAILED_TO_CALIBRATE;
   }
