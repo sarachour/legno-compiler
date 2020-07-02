@@ -7,6 +7,7 @@ import hwlib.hcdc.llcmd as llcmd
 import hwlib.hcdc.hcdcv2 as hcdclib
 import itertools
 import ops.op as oplib
+import time
 
 from lab_bench.grendel_runner import GrendelRunner
 import lab_bench.grendel_util as grendel_util
