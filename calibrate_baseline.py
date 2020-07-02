@@ -36,5 +36,7 @@ cfg.modes = [block.modes.get(['x','m','m'])]
 
 
 runtime = GrendelRunner()
-runtime.initialize()
-proflib.calibrate(dev,runtime,block,inst,cfg)
+#runtime.initialize()
+#proflib.calibrate(dev,runtime,block,inst,cfg)
+planlib.SinglePointPlanner(block,inst,cfg,n)
+proflib.profile_all_hidden_codes(runtime,dev,planner)

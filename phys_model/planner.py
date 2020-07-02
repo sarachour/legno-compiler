@@ -23,6 +23,7 @@ class ProfilePlanner:
     raise NotImplementedError
 
 
+
 class BruteForcePlanner(ProfilePlanner):
 
   def __init__(self,block,loc,cfg,n,m):
@@ -49,7 +50,7 @@ class BruteForcePlanner(ProfilePlanner):
     hidden_values = list(map(lambda k :hidden[k], self._hidden_fields))
     print("hidden_values are: ", hidden_values)
     self.hidden_iterator = itertools.product(*hidden_values)
-    self.dynamic_iterator = None        
+    self.dynamic_iterator = None
 
   def next_hidden(self):
     try:
@@ -86,6 +87,29 @@ class BruteForcePlanner(ProfilePlanner):
     except StopIteration:
       self.dynamic_iterator = None
       return None
+
+class SinglePointPlanner(BruteForcePlanner):
+
+  def __init__(self,block,loc,cfg,n,m):
+    ProfilePlanner.__init__(self,block,loc,cfg)
+    self.n = n					#outer dimensions of search space
+    self.m = m					#resolution (linspace) of search space
+    self.block = block
+    self.loc = loc
+    self.cfg = cfg
+
+  def new_hidden(self):
+    hidden = {}
+    for state in filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), self.block.state):
+      hidden[state] = self.cfg[state.name]
+
+    self.hidden_iterator = hidden
+
+  def next_hidden(self):
+    value = self.hidden
+    self.hidden = None
+    return value
+
 
 class GenericHiddenCodeIterator:
   def __init__(self,output_codes):
