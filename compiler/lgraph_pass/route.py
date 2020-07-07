@@ -1,4 +1,4 @@
 
 
-def route(circ):
+def route(board,circ):
   raise NotImplementedError

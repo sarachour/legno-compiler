@@ -56,25 +56,24 @@ chip1_chip0 = [
 def make_instances(layout):
 
   for c,t,s in layout.locs('slice'):
-    loc = layout.loc('indec',[c,t,s,0])
-    layout.block_at('integrator',[c,t,s,0])
-    layout.block_at('multiplier',[c,t,s,0])
-    layout.block_at('multiplier',[c,t,s,1])
+    layout.block_at('integ',[c,t,s,0])
+    layout.block_at('mult',[c,t,s,0])
+    layout.block_at('mult',[c,t,s,1])
     layout.block_at('fanout',[c,t,s,0])
     layout.block_at('fanout',[c,t,s,1])
     layout.block_at('dac',[c,t,s,0])
-    if z in [0,2]:
+    if s in [0,2]:
       layout.block_at('adc',[c,t,s,0])
       layout.block_at('lut',[c,t,s,0])
 
     if (c,t,s) in external_locs:
       if (c,t,s) in external_outs:
-        layout.block_out('extout',[c,t,s,0])
+        layout.block_at('extout',[c,t,s,0])
       if (c,t,s) in external_inps:
-        layout.block_out('extin',[c,t,s,0])
+        layout.block_at('extin',[c,t,s,0])
     else:
-      layout.block_at('cin',layout,[c,t,s,0])
-      layout.block_at('cout',layout,[c,t,s,0])
+      layout.block_at('cin',[c,t,s,0])
+      layout.block_at('cout',[c,t,s,0])
 
   for x,y,z,w in layout.locs('index'):
     layout.block_at('tin',[x,y,z,w])
@@ -85,15 +84,44 @@ def make_instances(layout):
     if sign == '-':
       pass
 
-def make_connections(layout):
-  raise NotImplementedError
+def make_connections(dev,layout):
+  WC = layout.WILDCARD
+  for block1 in ['mult',
+                 'integ',
+                 'fanout',
+                 'dac',
+                 'tin']:
+    for block2 in [
+        'mult',
+        'integ',
+        'fanout',
+        'adc',
+        'tout'
+    ]:
+      for op in dev.get_block(block1).outputs:
+        for ip in dev.get_block(block2).inputs:
+          for c,t in layout.locs('tile'):
+            layout.connect(block1,[c,t,WC,WC],op.name, \
+                           block2,[c,t,WC,WC],ip.name)
+
+  for c,t,s,i in layout.instances('adc'):
+    layout.connect("adc",[c,t,s,i],'z','lut',[c,t,s,i],'x')
+    layout.connect("lut",[c,t,s,i],'z','dac',[c,t,s,i],'x')
+
+  for block1 in ['tout']:
+    for block2 in ['cout','extout']:
+      for c,t in layout.locs('tile'):
+        layout.connect(block1,[c,t,WC,WC],'z',block2,[c,t,WC,WC],'x')
+
+  for block1 in ['extin','cin']:
+    for block2 in ['tin']:
+      for c,t in layout.locs('tile'):
+        layout.connect(block1,[c,t,WC,WC],'z',block2,[c,t,WC,WC],'x')
+
 
 def make(board):
   layout = board.layout
-  layout.add_view('chip')
-  layout.add_view('tile','chip')
-  layout.add_view('slice','tile')
-  layout.add_view('index','slice')
+  layout.set_views(['chip','tile','slice','index'])
 
   layout.add_locs('chip',[0,1])
   layout.add_locs('tile',[0,1,2,3])
@@ -101,3 +129,4 @@ def make(board):
   layout.add_locs('index',[0,1,2,3])
 
   make_instances(layout)
+  make_connections(board,layout)

@@ -75,6 +75,7 @@ def compile(board,prob,depth=12, \
         print("var %s: %d fragments"  \
               % (variable,len(fragments[variable])))
 
+    print("> assembling circuit")
     # insert copier blocks when necessary
     copy_blocks = list(filter(lambda blk: \
                               blk.type == blocklib.BlockType.COPY, \
@@ -92,6 +93,7 @@ def compile(board,prob,depth=12, \
             break
 
 
+    print("> routing circuit")
     for circ in vadp_circuits:
         routelib.route(circ)
     raise NotImplementedError
