@@ -1,20 +1,16 @@
 import hwlib.block as blocklib
 import compiler.lgraph_pass.unify as unifylib
 import ops.base_op as oplib
+from compiler.lgraph_pass.vadp import * 
 
-class TableauVar:
-
-  def __init__(self):
-    pass
-
-class DSVar(TableauVar):
+class DSVar:
   def __init__(self,var):
     self.var = var
 
   def __repr__(self):
     return self.var
 
-class LawVar(TableauVar):
+class LawVar:
   APPLY = "app"
 
   def __init__(self,law,idx,var):
@@ -31,36 +27,13 @@ class LawVar(TableauVar):
     return "%s[%s].%s" % (self.law,self.ident,self.var)
 
 
-class VirtualSourceVar(TableauVar):
-
-  def __init__(self,var):
-    self.var = var
-
-  def copy(self):
-    return VirtualSourceVar(self.var)
-
-  def __repr__(self):
-    return "source-var(%s)" % (self.var)
-
-
-class PortVar(TableauVar):
-
-  def __init__(self,block,idx,port):
-    assert(not isinstance(port,str))
-    self.block = block
-    self.ident = idx
-    self.port = port
-
-  def copy(self):
-    return PortVar(self.block,self.ident,self.port)
-
-  def __repr__(self):
-    return "%s[%s].%s" % (self.block.name,self.ident,self.port.name)
 
 class Goal:
 
   def __init__(self,var,typ,expr):
-    assert(isinstance(var,TableauVar))
+    assert(isinstance(var,PortVar) or \
+           isinstance(var,LawVar) or \
+           isinstance(var,DSVar))
     self.variable = var
     self.type = typ
     self.expr = expr
@@ -122,93 +95,6 @@ class PortRelation:
                                         self.port.name, \
                                         self.port.type,self.expr)
 
-class VADPStmt:
-
-  def __init__(self):
-    pass
-
-class VADPConn(VADPStmt):
-
-  def __init__(self,src,snk):
-    VADPStmt.__init__(self)
-    assert(isinstance(src,PortVar)  \
-           or isinstance(src,LawVar))
-    assert(isinstance(snk,PortVar)  \
-           or isinstance(snk,LawVar) or \
-           isinstance(snk,VirtualSourceVar))
-    self.source = src
-    self.sink = snk
-
-  def copy(self):
-    return VADPConn(self.source.copy(),self.sink.copy())
-
-  def __repr__(self):
-    return "conn(%s,%s)" % (self.source,self.sink)
-
-class VADPSink(VADPStmt):
-
-  def __init__(self,port,expr):
-    VADPStmt.__init__(self)
-    assert(isinstance(port,PortVar))
-    self.dsexpr = expr
-    self.port = port
-
-  def copy(self):
-    return VADPSink(self.port.copy(),self.dsexpr)
-
-  def __repr__(self):
-    return "sink(%s,%s)" % (self.port,self.dsexpr)
-
-class VADPSource(VADPStmt):
-
-  def __init__(self,port,expr):
-    VADPStmt.__init__(self)
-    if not (isinstance(port,PortVar)) and \
-       not (isinstance(port,LawVar)) and \
-       not (isinstance(port,VirtualSourceVar)):
-      raise Exception("unexpected port: %s"  \
-                      % port.__class__.__name__)
-    self.dsexpr = expr
-    self.port = port
-
-  def copy(self):
-    return VADPSource(self.port.copy(),self.dsexpr)
-
-  def __repr__(self):
-    return "source(%s,%s)" % (self.port,self.dsexpr)
-
-
-
-class VADPConfig(VADPStmt):
-
-  def __init__(self,block,ident,mode):
-    VADPStmt.__init__(self)
-    self.block = block
-    self.ident = ident
-    self.mode = mode
-    self.assigns = {}
-
-  def copy(self):
-    cfg = VADPConfig(self.block,self.ident,self.mode)
-    for v,e in self.assigns.items():
-      cfg.bind(v,e)
-    return cfg
-
-  def same_block(self,other):
-    assert(isinstance(other,VADPConfig))
-    return self.block == other.block and \
-      self.ident == other.ident
-
-  def bind(self,var,value):
-    assert(isinstance(var,str))
-    assert(not var in self.assigns)
-    self.assigns[var] = value
-
-  def __repr__(self):
-    return "config(%s,%d)[%s]%s" % (self.block.name, \
-                                    self.ident,\
-                                    self.mode, \
-                                    self.assigns)
 
 class PhysicsLawRelation:
 
@@ -350,97 +236,4 @@ class Tableau:
     return st
 
 
-def remap_vadp_identifiers(insts,fragment):
-  mappings = {}
-  def get_identifier(block,inst):
-    if not (block.name,inst) in mappings:
-      if not block.name in insts:
-        insts[block.name] = 0
 
-      mappings[(block.name,inst)] = insts[block.name]
-      insts[block.name] += 1
-
-    return mappings[(block.name,inst)]
-
-  for stmt in fragment:
-    if isinstance(stmt,VADPSource) or \
-       isinstance(stmt,VADPSink):
-      new_stmt = stmt.copy()
-      if isinstance(stmt,PortVar):
-        new_stmt.port.ident = get_identifier(stmt.port.block, \
-                                             stmt.port.ident)
-      yield new_stmt
-
-    elif isinstance(stmt,VADPSink):
-      new_stmt = stmt.copy()
-      new_stmt.port.ident = get_identifier(stmt.port.block, \
-                                           stmt.port.ident)
-      yield new_stmt
-
-    elif isinstance(stmt,VADPConn):
-        new_stmt = stmt.copy()
-        new_stmt.source.ident = get_identifier(stmt.source.block, \
-                                               stmt.source.ident)
-        if isinstance(stmt.sink,PortVar):
-          new_stmt.sink.ident = get_identifier(stmt.sink.block, \
-                                               stmt.sink.ident)
-        yield new_stmt
-
-    elif isinstance(stmt,VADPConfig):
-        new_stmt = stmt.copy()
-        new_stmt.ident = get_identifier(stmt.block, \
-                                   stmt.ident)
-        yield new_stmt
-
-    else:
-        raise Exception("not handled: %s" % stmt)
-
-def remap_vadps(vadps,insts={}):
-  stmts = []
-  for vadp_prog in vadps:
-    for stmt in remap_vadp_identifiers(insts,vadp_prog):
-      stmts.append(stmt)
-
-  return stmts
-
-
-def is_concrete_vadp(vadp,allow_virtual=False):
-  def is_concrete_node(node):
-    if isinstance(node,VirtualSourceVar):
-      return allow_virtual
-    elif isinstance(node,PortVar):
-      return True
-    else:
-      return False
-
-  for stmt in vadp:
-    if isinstance(stmt,VADPSource):
-      if not is_concrete_node(stmt.port):
-        return False
-    elif isinstance(stmt,VADPSink):
-      if not isinstance(stmt.port,PortVar):
-        return False
-    elif isinstance(stmt,VADPConn):
-      if not isinstance(stmt.source,PortVar):
-        return False
-      if not is_concrete_node(stmt.sink):
-        return False
-
-    elif isinstance(stmt,VADPConfig):
-      pass
-    else:
-      raise Exception("unhandled: %s" % stmt)
-
-  return True
-
-def get_virtual_variable_sources(vadp,virtvar):
-  assert(isinstance(virtvar,VirtualSourceVar))
-
-  sources = []
-  for stmt in vadp:
-    if isinstance(stmt, VADPConn) and \
-      isinstance(stmt.sink,VirtualSourceVar) and \
-      stmt.sink.var == virtvar.var:
-      sources.append(stmt.source)
-
-  return sources

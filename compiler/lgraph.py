@@ -95,5 +95,5 @@ def compile(board,prob,depth=12, \
 
     print("> routing circuit")
     for circ in vadp_circuits:
-        routelib.route(circ)
+        routelib.route(board,circ)
     raise NotImplementedError
