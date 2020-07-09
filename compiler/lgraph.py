@@ -96,6 +96,7 @@ def compile(board,prob,depth=12, \
             break
 
 
+    print("> routing circuit")
     for circ in vadp_circuits:
         vadp = routelib.route(board,circ)
         if not vadp is None:

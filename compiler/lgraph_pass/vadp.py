@@ -230,9 +230,6 @@ def remap_vadps(vadps,insts={}):
 
 def to_adp(vadps):
   adp = adplib.ADP()
-  for st in vadps:
-    print(st)
-
   for stmt in vadps:
     if isinstance(stmt,VADPConfig):
       block = stmt.block

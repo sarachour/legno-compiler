@@ -48,21 +48,26 @@ def ilp_tempvar(ilp):
 def ilp_not(ilp,clause,name):
   return 1-clause
 
-def ilp_and(ilp,clauses,name):
-  total = len(clauses)
-  tempvar_name = ilp_tempvar(ilp)
-  tempvar = pulp.LpVariable(tempvar_name,
-                            cat='Binary')
-  ilp += (sum(clauses)-total*tempvar == 0),name
-  return tempvar
+def ilp_implies(ilp,condvar,stmt,name):
+  # condvar^stmt
+  # if p then q
+  # | p | q |
+  # | 1 | 1 |
+  # | 0 | 1 |
+  # | 0 | 0 |
+  # basically everything but
+  # | 1 | 0 |
+  ilp += (condvar <= stmt),name
 
-def ilp_or(ilp,clauses,name):
-  total = len(clauses)
+def ilp_and(ilp,c1,c2,name):
   tempvar_name = ilp_tempvar(ilp)
   tempvar = pulp.LpVariable(tempvar_name,
                             cat='Binary')
-  ilp += (total*tempvar-sum(clauses) <= total-1,name+".1")
-  ilp += (total*tempvar-sum(clauses) >= 0,name+".2")
+
+  cstr = (c1+c2-2*tempvar >= 0)
+  ilp += cstr,name+".lower"
+  cstr = (c1+c2-2*tempvar <= 1)
+  ilp += cstr,name+".upper"
   return tempvar
 
 
@@ -70,7 +75,7 @@ def solve(prob):
   ilp = pulp.LpProblem("routing",pulp.LpMinimize)
   if not prob.valid:
     print("failed during problem construction: %s" % prob.message)
-    return
+    return None
 
   ident_assign_by_name = {}
   for ident_assign in prob.identifier_assigns:
@@ -92,10 +97,13 @@ def solve(prob):
                                       cat='Integer')
     resource_by_name[str(resource)] = resource
 
+  # objective function: minimize resource consumption
+  ilp += sum(map(lambda r: r.ilpvar, prob.resources))
+
   # each identifier is assigned to exactly one instance
   for group_name,idents in \
       group_inst_assign_by_block_identifier(prob.identifier_assigns):
-      ilp += sum(map(lambda ident: ident.ilpvar, idents)) == 1,group_name
+    ilp += sum(map(lambda ident: ident.ilpvar, idents)) == 1,group_name
 
   # each connection identifier is assigned to exactly one instance
   for group_name,idents in \
@@ -115,14 +123,12 @@ def solve(prob):
     src_assign = ident_assign_by_name[str(src_assign_key)]
     dest_assign = ident_assign_by_name[str(dest_assign_key)]
 
-  name = str(conn_assign)+":instances"
-  not_conn = ilp_not(ilp,conn_assign.ilpvar,name+".not")
-  and_conn = ilp_and(ilp,[src_assign.ilpvar, \
-                          dest_assign.ilpvar, \
-                          conn_assign.ilpvar], \
-                         name+".and")
-  or_conn = ilp_or(ilp,[not_conn,and_conn],name+'.clause')
-  ilp += or_conn == 1,name
+    name = str(conn_assign)+":instances"
+    and_conn = ilp_and(ilp, \
+                       src_assign.ilpvar, \
+                       dest_assign.ilpvar, \
+                       name+".and")
+    ilp_implies(ilp,conn_assign.ilpvar,and_conn,name+".implies")
 
   # each resource has a limited number quantity
   for resource_name,idents in \
@@ -139,11 +145,16 @@ def solve(prob):
   status = pulp.LpStatus[ilp.status]
   if status == "Optimal":
     assigns = routelib.LocAssignments()
+    print("-- Instances ---")
     for ident_assign in prob.identifier_assigns:
       if ident_assign.ilpvar.varValue == 1.0:
+        print(ident_assign)
         assigns.add(ident_assign)
+    print("-- Connections ---")
     for conn_assign in prob.conn_assigns:
       if conn_assign.ilpvar.varValue == 1.0:
+        print(conn_assign)
+        print(conn_assign.path)
         assigns.add_conn(conn_assign)
 
     return assigns

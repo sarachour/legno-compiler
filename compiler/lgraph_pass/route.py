@@ -90,7 +90,15 @@ def finalize(board,vadp,assigns):
       assert(isinstance(new_stmt.ident,devlib.Location))
       new_vadp.append(new_stmt)
 
-    elif isinstance(stmt,vadplib.VADPConn):
+    elif isinstance(stmt,vadplib.VADPSource):
+      assign = assigns.get(stmt.port.block,stmt.port.ident)
+      new_stmt = stmt.copy()
+      new_stmt.port.ident = assign.loc
+      assert(isinstance(new_stmt.port.ident,devlib.Location))
+      new_vadp.append(new_stmt)
+
+  for stmt in vadp:
+    if isinstance(stmt,vadplib.VADPConn):
       srcloc = assigns.get(stmt.source.block, \
                         stmt.source.ident).loc
       sinkloc = assigns.get(stmt.sink.block, \
@@ -104,15 +112,6 @@ def finalize(board,vadp,assigns):
       frag = list(generate_vadp_fragment_for_path(board,path))
       new_vadp += frag
 
-    elif isinstance(stmt,vadplib.VADPSource):
-      assign = assigns.get(stmt.port.block,stmt.port.ident)
-      new_stmt = stmt.copy()
-      new_stmt.port.ident = assign.loc
-      assert(isinstance(new_stmt.port.ident,devlib.Location))
-      new_vadp.append(new_stmt)
-
-    else:
-      raise Exception("unhandled")
 
 
   return new_vadp
@@ -125,24 +124,19 @@ def route(board,vadp):
   views = board.layout.views
   assign_stack = LocAssignmentStack()
 
-  idx = 3
-  '''
+  idx = 1
   while idx <= len(views)-1 and idx >= 0:
     view = views[idx]
     prob = routing_problem(board,view,vadp, \
                            assign_stack.top())
     assigns = route_solver.solve(prob)
     if assigns is None:
-      idx -= 1
       assign_stack.pop()
+      idx -= 1
     else:
       assign_stack.push(assigns)
       idx += 1
-  '''
-  view = views[idx]
-  prob = routing_problem(board,view,vadp, \
-                         assign_stack.top())
-  assigns = route_solver.solve(prob)
+
   if assigns is None:
     assign_stack.pop()
   else:

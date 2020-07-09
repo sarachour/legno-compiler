@@ -57,7 +57,8 @@ class ConnectionResource:
 
 class ConnectionAssignVar:
 
-  def __init__(self,dev,sblk,sident,sport,sloc, \
+  def __init__(self,dev, \
+               sblk,sident,sport,sloc, \
                 dblk,dident,dport,dloc, \
                 path_id,path):
     assert(isinstance(sblk,blocklib.Block))
@@ -69,10 +70,12 @@ class ConnectionAssignVar:
     self.source_ident = sident
     self.source_port = sport
     self.source_loc = sloc
+
     self.dest_block = dblk
     self.dest_ident = dident
     self.dest_port = dport
     self.dest_loc = dloc
+
     self.path = path
     self.path_id = path_id
 
@@ -92,6 +95,7 @@ class ConnectionAssignVar:
                               devlib.Location(route_loc))
 
 
+    '''
     for idx,_ in enumerate(self.path[:-1]):
       src = self.path[idx]
       dst = self.path[idx+1]
@@ -109,6 +113,7 @@ class ConnectionAssignVar:
                                self.dev.get_block(dst[0]) \
                                .inputs[dstport]
       )
+      '''
 
 
 class BlockIdentifierAssignVar:
@@ -225,13 +230,14 @@ class RoutingProblem:
               self.resources.append(res)
 
 
+
   def add_virtual_conn(self,sblk,sident,sport, \
                        dblk,dident,dport):
 
-    source_idents = list(filter(lambda v: v.block == sblk and \
+    source_idents = list(filter(lambda v: v.block.name == sblk.name and \
                            v.ident == sident,
                            self.identifier_assigns))
-    dest_idents = list(filter(lambda v: v.block == dblk and \
+    dest_idents = list(filter(lambda v: v.block.name == dblk.name and \
                            v.ident == dident,
                            self.identifier_assigns))
 
