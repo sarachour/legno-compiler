@@ -87,7 +87,7 @@ class PathHandler:
 
 
     def lgraph_adp_diagram_file(self,graph_index):
-        path = "{path}/{prog}_g{lgraph}.dot"
+        path = "{path}/{prog}_g{lgraph}.gv"
         return path.format(path=self.LGRAPH_ADP_DIAG_DIR,
                            prog=self._prog,
                            lgraph=graph_index)

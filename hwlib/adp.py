@@ -63,12 +63,23 @@ class BlockInstanceCollection:
     if not data.inst.block in self._collection:
       self._collection[data.inst.block] = {}
 
-    assert(not str(data.inst.loc) \
-           in self._collection[data.inst.block])
+    if (data.inst.loc \
+        in self._collection[data.inst.block]):
+      raise Exception("location %s of block %s already in use" % (data.inst.loc, \
+                                                                  data.inst.block))
     self._collection[data.inst.block][data.inst.loc] = data
 
   def __getitem__(self,key):
     return self._collection[key]
+
+  def __iter__(self):
+    for blk in self._collection:
+      for loc in self._collection[blk]:
+        yield self._collection[blk][loc]
+
+  def to_json(self):
+    return list(map(lambda obj: obj.to_json(),self))
+
 
 
 class ConfigStmtType(Enum):
@@ -148,6 +159,7 @@ class PortConfig(ConfigStmt):
   def __init__(self,name):
     ConfigStmt.__init__(self,ConfigStmtType.PORT,name)
     self.scf = 1.0
+    self.source = None
 
   def pretty_print(self):
     return "scf=%f" % (self.scf)
@@ -156,6 +168,8 @@ class PortConfig(ConfigStmt):
     return {
       'name':self.name,
       'type': self.t.value,
+      'source': self.source.to_json() \
+      if not self.source is None else None,
       'scf': self.scf
     }
 
@@ -296,17 +310,56 @@ class BlockConfig:
 
     return st
 
+class Connection:
+
+  def __init__(self,src_inst,src_port,dest_inst,dest_port):
+    assert(isinstance(src_inst,BlockInst))
+    assert(isinstance(src_port,str))
+    assert(isinstance(dest_inst,BlockInst))
+    assert(isinstance(src_port,str))
+    self.source_inst = src_inst
+    self.source_port = src_port
+    self.dest_inst = dest_inst
+    self.dest_port = dest_port
+
+  def to_json(self):
+    return {
+      'source_inst': self.source_inst.to_json(),
+      'source_port': self.source_port,
+      'dest_inst':self.dest_inst.to_json(),
+      'dest_port':self.dest_port
+
+    }
 
 class ADP:
 
   def __init__(self):
     self.configs = BlockInstanceCollection(self)
+    self.conns = []
     self.tau = 1.0
+
+  def add_source(self,block,loc,port,expr):
+    self.configs.get(block.name,loc)[port.name].source = expr
 
   def add_instance(self,block,loc):
     assert(isinstance(block,blocklib.Block))
+    assert(isinstance(loc,devlib.Location))
     self.configs.add(BlockConfig.make(block,loc))
 
   def add_conn(self,srcblk,srcloc,srcport, \
                dstblk,dstloc,dstport):
-    raise NotImplementedError
+    self.conns.append(
+      Connection(
+        BlockInst(srcblk.name,srcloc),
+        srcport.name,
+        BlockInst(dstblk.name,dstloc),
+        dstport.name
+      )
+    )
+
+  def to_json(self):
+    return {
+      'tau':self.tau,
+      'conns': list(map(lambda c: c.to_json(), self.conns)),
+      'configs': self.configs.to_json()
+    }

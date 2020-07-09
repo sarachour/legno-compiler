@@ -40,8 +40,8 @@ def get_vadp_source(stmts,variable):
       if stmt.dsexpr == genoplib.Var(variable):
         return stmt.port
 
-# configure the copier blk to accept `input_var` and generate `sinks`
-def build_copier(blk,ident,input_var,sinks):
+# configure the asm blk to accept `input_var` and generate `sinks`
+def build_asm(blk,ident,input_var,sinks):
   if len(sinks) < 2:
     return
 
@@ -110,7 +110,7 @@ def all_subsets(lst,subset_sizes):
     for subsets in all_subsets(next_lst,subset_sizes[1:]):
       yield [this_lst]+subsets
 
-def assemble_copiers(root_vadp,vadps):
+def assemble_asms(root_vadp,vadps):
   sinks = {}
   sources = {}
   assembled_vadp = []
@@ -148,44 +148,44 @@ def assemble_copiers(root_vadp,vadps):
 
   return assembled_vadp
 
-# build a nested  hierarchy of copiers
-def build_copier_frag(copy_blocks,input_var,sinks):
-  n_copy_fragments=10
+# build a nested  hierarchy of asms
+def build_asm_frag(asm_blocks,input_var,sinks):
+  n_asm_fragments=10
   n_generated = 0
   indices = list(range(0,len(sinks)))
   if len(sinks) <= 1:
     yield []
     return
 
-  for blk in copy_blocks:
+  for blk in asm_blocks:
     if len(sinks) > len(blk.outputs):
-      # chain one copier in series
+      # chain one asm in series
       n_outputs = len(blk.outputs)
-      for n_child_copiers in range(1,n_outputs+1):
-        subsets = [n_outputs-n_child_copiers] \
-                  + [None]*n_child_copiers
+      for n_child_asms in range(1,n_outputs+1):
+        subsets = [n_outputs-n_child_asms] \
+                  + [None]*n_child_asms
         for sink_subsets in all_subsets(sinks, \
                                         subsets):
-          child_frags = [None]*(n_child_copiers)
+          child_frags = [None]*(n_child_asms)
           for idx,sink_subset in enumerate(sink_subsets[1:]):
-            child_frags[idx] = list(get_first_n(build_copier_frag(copy_blocks, \
+            child_frags[idx] = list(get_first_n(build_asm_frag(asm_blocks, \
                                                                   input_var, \
                                                                   sink_subset),
-                                                n_copy_fragments))
+                                                n_asm_fragments))
 
           for children in itertools.product(*child_frags):
-            first_subset = [genoplib.Var(input_var)]*n_child_copiers \
+            first_subset = [genoplib.Var(input_var)]*n_child_asms \
                            + sink_subsets[0];
-            for root_node in build_copier_frag(copy_blocks, \
+            for root_node in build_asm_frag(asm_blocks, \
                                                input_var, \
                                                first_subset):
               block_counts = {}
               root_vadp = remap_vadps([root_node],block_counts)
               vadps = remap_vadps(list(children),block_counts)
-              yield assemble_copiers(root_vadp,vadps)
+              yield assemble_asms(root_vadp,vadps)
 
     elif len(sinks) > 1:
-      for frag in build_copier(blk,0,input_var,sinks):
+      for frag in build_asm(blk,0,input_var,sinks):
         yield frag
 
     else:
@@ -197,15 +197,15 @@ def assemble_circuit(stmts):
       dict_[key] = []
     dict_[key].append(val)
 
-  copier_sinks = {}
+  asm_sinks = {}
   compute_sinks = {}
-  copier_sources = {}
+  asm_sources = {}
   compute_sources= {}
   assembled = []
   for stmt in stmts:
     if isinstance(stmt,vadplib.VADPSink):
-      if stmt.port.block.type == blocklib.BlockType.COPY:
-        add(copier_sinks,stmt.dsexpr,stmt.port)
+      if stmt.port.block.type == blocklib.BlockType.ASSEMBLE:
+        add(asm_sinks,stmt.dsexpr,stmt.port)
       else:
         add(compute_sinks,stmt.dsexpr,stmt.port)
 
@@ -214,8 +214,8 @@ def assemble_circuit(stmts):
         srcs = vadplib.get_virtual_variable_sources(stmts,stmt.port)
         add(compute_sources,stmt.dsexpr, srcs)
         continue
-      elif stmt.port.block.type == blocklib.BlockType.COPY:
-        add(copier_sources,stmt.dsexpr,[stmt.port])
+      elif stmt.port.block.type == blocklib.BlockType.ASSEMBLE:
+        add(asm_sources,stmt.dsexpr,[stmt.port])
       else:
         add(compute_sources,stmt.dsexpr,[stmt.port])
 
@@ -229,7 +229,7 @@ def assemble_circuit(stmts):
       assembled.append(stmt)
 
 
-  for dsexpr,sink_ports in copier_sinks.items():
+  for dsexpr,sink_ports in asm_sinks.items():
     source_ports = compute_sources[dsexpr]
     assert(len(sink_ports) <= len(source_ports))
     assert(len(source_ports) == 1)
@@ -241,8 +241,8 @@ def assemble_circuit(stmts):
 
   for dsexpr,sink_ports in compute_sinks.items():
     source_ports = compute_sources[dsexpr]
-    if dsexpr in copier_sources:
-      source_ports += copier_sources[dsexpr]
+    if dsexpr in asm_sources:
+      source_ports += asm_sources[dsexpr]
 
     assert(len(sink_ports) <= len(source_ports))
     for srcs,sink in zip(source_ports,sink_ports):
@@ -251,7 +251,7 @@ def assemble_circuit(stmts):
 
   return assembled
 
-def assemble(blocks,fragments,depth=3,n_copiers=10):
+def assemble(blocks,fragments,depth=3):
 
   # count sinks and sources
   sources = {}
@@ -268,21 +268,21 @@ def assemble(blocks,fragments,depth=3,n_copiers=10):
         sources[var] = stmt.dsexpr
 
 
-  # build copiers
-  copier_frags = {}
+  # build asms
+  asm_frags = {}
   for var,sinks in sinks.items():
-    copier_frags[var] = []
-    for frag in build_copier_frag(blocks, \
+    asm_frags[var] = []
+    for frag in build_asm_frag(blocks, \
                                   var, \
                                   sinks):
-      copier_frags[var].append(frag)
+      asm_frags[var].append(frag)
 
 
-  copier_frag_vars = list(copier_frags.keys())
-  copier_frag_values = list(map(lambda var: copier_frags[var], \
-                                copier_frag_vars))
+  asm_frag_vars = list(asm_frags.keys())
+  asm_frag_values = list(map(lambda var: asm_frags[var], \
+                                asm_frag_vars))
 
-  for combo in itertools.product(*copier_frag_values):
+  for combo in itertools.product(*asm_frag_values):
     disconn_circuit = vadplib.remap_vadps(list(fragments.values()) \
                                          + list(combo))
     circ = assemble_circuit(disconn_circuit)

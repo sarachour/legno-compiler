@@ -1,4 +1,5 @@
 import hwlib.adp as adplib
+import hwlib.device as devlib
 
 class VirtualSourceVar:
 
@@ -10,6 +11,23 @@ class VirtualSourceVar:
 
   def __repr__(self):
     return "source-var(%s)" % (self.var)
+
+class LawVar:
+  APPLY = "app"
+
+  def __init__(self,law,idx,var):
+    self.law =law
+    self.ident = idx
+    self.var = var
+
+  def same_usage(self,other):
+    assert(isinstance(other,LawVar))
+    return other.ident == self.ident and \
+      other.law == self.law
+
+  def __repr__(self):
+    return "%s[%s].%s" % (self.law,self.ident,self.var)
+
 
 
 class PortVar:
@@ -109,7 +127,7 @@ class VADPConfig(VADPStmt):
     self.assigns[var] = value
 
   def __repr__(self):
-    return "config(%s,%d)[%s]%s" % (self.block.name, \
+    return "config(%s,%s)[%s]%s" % (self.block.name, \
                                     self.ident,\
                                     self.mode, \
                                     self.assigns)
@@ -212,14 +230,17 @@ def remap_vadps(vadps,insts={}):
 
 def to_adp(vadps):
   adp = adplib.ADP()
+  for st in vadps:
+    print(st)
+
   for stmt in vadps:
     if isinstance(stmt,VADPConfig):
       block = stmt.block
       loc = stmt.ident
       adp.add_instance(block,loc)
-      cfg = adp.configs.get(block,loc)
-      cfg.modes = stmt.modes
-      for datafield,value in stmt.assignments.items():
+      cfg = adp.configs.get(block.name,loc)
+      cfg.modes = stmt.mode
+      for datafield,value in stmt.assigns.items():
         if(isinstance(cfg[datafield], adplib.ExprDataConfig)):
           raise NotImplementedError
         elif(isinstance(cfg[datafield], adplib.ConstDataConfig)):
@@ -236,13 +257,12 @@ def to_adp(vadps):
       dp = stmt.sink.port
       adp.add_conn(sb,sl,sp,db,dl,dp)
 
-    elif isinstance(stmt,VADPSource):
+  for stmt in vadps:
+    if isinstance(stmt,VADPSource):
       block = stmt.port.block
       loc = stmt.port.ident
       port = stmt.port.port
       dsexpr = stmt.dsexpr
-      if not adp.configs.has(block.name,loc):
-        adp.add_instance(block,loc)
       adp.add_source(block,loc,port,dsexpr)
 
 

@@ -100,6 +100,7 @@ def make_connections(dev,layout):
     ]:
       for op in dev.get_block(block1).outputs:
         for ip in dev.get_block(block2).inputs:
+          print(block1,op.name,block2,ip.name)
           for c,t in layout.locs('tile'):
             layout.connect(block1,[c,t,WC,WC],op.name, \
                            block2,[c,t,WC,WC],ip.name)
@@ -121,7 +122,7 @@ def make_connections(dev,layout):
 
 def make(board):
   layout = board.layout
-  layout.set_views(['chip','tile','slice','index'])
+  layout.views = ['chip','tile','slice','index']
 
   layout.add_locs('chip',[0,1])
   layout.add_locs('tile',[0,1,2,3])

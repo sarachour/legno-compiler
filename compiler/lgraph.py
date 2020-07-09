@@ -20,6 +20,7 @@ import compiler.lgraph_pass.route as routelib
 import compiler.lgraph_pass.assemble as asmlib
 import compiler.lgraph_pass.synth as synthlib
 import compiler.lgraph_pass.rule as rulelib
+import compiler.lgraph_pass.vadp as vadplib
 
 def get_laws():
     return [
@@ -51,6 +52,8 @@ def get_laws():
 
 def compile(board,prob,depth=12, \
             vadp_fragments=100, \
+            assembly_num_copiers=10, \
+            assembly_depth=3, \
             vadps=1, \
             adps=1):
 
@@ -77,9 +80,9 @@ def compile(board,prob,depth=12, \
 
     print("> assembling circuit")
     # insert copier blocks when necessary
-    copy_blocks = list(filter(lambda blk: \
-                              blk.type == blocklib.BlockType.COPY, \
-                              board.blocks))
+    assemble_blocks = list(filter(lambda blk: \
+                                  blk.type == blocklib.BlockType.ASSEMBLE, \
+                                  board.blocks))
 
     circuit = {}
     block_counts = {}
@@ -87,13 +90,13 @@ def compile(board,prob,depth=12, \
         circuit[variable] = fragments[variable][0]
 
     vadp_circuits = []
-    for idx,circ in enumerate(asmlib.assemble(copy_blocks,circuit)):
+    for circ in asmlib.assemble(assemble_blocks,circuit):
         vadp_circuits.append(circ)
         if len(vadp_circuits) >= vadps:
             break
 
 
-    print("> routing circuit")
     for circ in vadp_circuits:
-        routelib.route(board,circ)
-    raise NotImplementedError
+        vadp = routelib.route(board,circ)
+        if not vadp is None:
+            yield vadplib.to_adp(vadp)

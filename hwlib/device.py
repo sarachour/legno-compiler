@@ -2,9 +2,11 @@ import hwlib.block as blocklib
 import itertools
 
 class Location:
+  WILDCARD = "*"
 
   def __init__(self,address):
-    assert(all(map(lambda item: isinstance(item,int), \
+    assert(all(map(lambda item: isinstance(item,int) or \
+                   item == Location.WILDCARD, \
                    address)))
     self.address = address
 
@@ -26,6 +28,14 @@ class Location:
     tup = ",".join(map(lambda i: str(i), self.address))
     return "loc(%s)" % (tup)
 
+  def __hash__(self):
+    return hash(str(self))
+
+  def __eq__(self,loc):
+    if not (isinstance(loc,Location)):
+      raise Exception("cannot compare %s with %s" % (self,loc))
+    return str(loc) == str(self)
+
   def __len__(self):
     return len(self.address)
 
@@ -46,7 +56,27 @@ class Layout:
     self._src2sink = {}
     self._sink2src = {}
 
-  def set_views(self,views):
+  @staticmethod
+  def intersection(loc1,loc2):
+    isect = []
+    for l1,l2 in zip(loc1,loc2):
+      if l1 == l2:
+        isect.append(l1)
+      elif l1 == Layout.WILDCARD:
+        isect.append(l2)
+      elif l2 == Layout.WILDCARD:
+        isect.append(l1)
+      else:
+        return None
+
+    return isect
+
+  @property
+  def views(self):
+    return self._views
+
+  @views.setter
+  def views(self,views):
     self._views = views
 
   def view_list(self,view):
@@ -62,6 +92,11 @@ class Layout:
          idx == Layout.WILDCARD:
         return False
     return True
+
+  def prefix(self,loc,view):
+    idx = self._views.index(view)
+    assert(idx >= 0)
+    return loc[:idx+1]
 
   def connect(self,sblk,sloc,sport,dblk,dloc,dport):
     self._dev.get_block(sblk).outputs[sport]
@@ -80,6 +115,30 @@ class Layout:
       self._sink2src[(dblk,dport)][(sblk,sport)] = []
 
     self._sink2src[(dblk,dport)][(sblk,sport)].append((dloc,sloc))
+
+  def get_connections(self,sblk,sport,dblk,dport):
+    if not (sblk,sport) in self._src2sink:
+      raise Exception("no connection originating from: (%s,%s)" % (sblk,sport))
+    if not (dblk,dport) in self._src2sink[(sblk,sport)]:
+      raise Exception("no connection originating at (%s,%s) and ending at (%s,%s)" % (sblk,sport,dblk,dport))
+
+    for sloc,dloc in self._src2sink[(sblk,sport)][(dblk,dport)]:
+      yield sloc,dloc
+
+
+
+  @property
+  def connections(self):
+    for sblk,sport in self._src2sink.keys():
+      for dblk,dport in self._src2sink[(sblk,sport)].keys():
+        for sloc,dloc in self._src2sink[(sblk,sport)][(dblk,dport)]:
+          yield sblk,sloc,sport,dblk,dloc,dport
+
+
+  @property
+  def get_connection_sources(self):
+    for sblk,sport in self._src2sink.keys():
+      yield sblk,sport
 
 
   def instances(self,block_name):
@@ -123,3 +182,98 @@ class Device:
   @property
   def blocks(self):
     return self._blocks.values()
+
+def path_exists(dev,sblk,sport,dblk,dport):
+  raise NotImplementedError
+
+
+def distinct_paths(dev,sblk,sloc,sport,dblk,dloc,dport, \
+                   num_route_blocks=8):
+  route_blocks = []
+  interim_paths = []
+  start_paths = []
+  end_paths = []
+  for blk in dev.blocks:
+    if blk.type == blocklib.BlockType.ROUTE:
+      assert(len(blk.inputs) == 1)
+      assert(len(blk.outputs) == 1)
+      route_blocks.append(blk.name)
+
+  for csblk,csloc,csport, \
+      cdblk,cdloc,cdport in dev.layout.connections:
+    # internal edge on path
+    if csblk in route_blocks and cdblk in route_blocks:
+      interim_paths.append((csblk,csloc, \
+                            cdblk,cdloc))
+    # ending edge on path
+    elif csblk in route_blocks and cdblk == dblk and \
+         cdport == dport:
+      cdloc = Layout.intersection(cdloc,dloc)
+      if not cdloc is None:
+        end_paths.append((csblk,csloc, \
+                          cdblk,cdloc,cdport))
+    # starting edge on path
+    elif cdblk in route_blocks and csblk == sblk and \
+         csport == sport:
+      csloc = Layout.intersection(csloc,sloc)
+      if not csloc is None:
+        start_paths.append((csblk,csloc,csport, \
+                            cdblk,cdloc))
+
+
+  # return if there's a direct connection without route blocks
+  def has_direct_connection():
+    try:
+      direct_connections = False
+      for sl,dl in dev.layout.get_connections(sblk,sport, \
+                                                dblk,dport):
+        dl = Layout.intersection(dl,dloc)
+        sl = Layout.intersection(sl,sloc)
+        if not dl is None and not sl is None:
+          direct_connections = True 
+          break
+
+      return direct_connections
+    except Exception as e:
+      return False
+
+  # walk over paths, starting from shortest
+  def walk_paths(curr_path):
+    if len(curr_path) - 2 >= num_route_blocks:
+      return
+
+    if len(curr_path) == 0:
+      if has_direct_connection():
+          yield [(sblk,sloc,sport),(dblk,dloc,dport)]
+
+      for sb,sl,sp,db,dl in start_paths:
+        for path in walk_paths([(sb,sl,sp),(db,dl)]):
+          yield path
+
+    else:
+      db,dl = curr_path[-1]
+      for csb,csl,cdb,cdl,cdp in end_paths:
+        if csb == db and \
+           not Layout.intersection(csl,dl) is None:
+          new_dl = Layout.intersection(dl,csl)
+          new_path = list(curr_path)
+          new_path[-1] = (db,new_dl)
+          new_path.append((cdb,cdl,cdp))
+          yield new_path
+
+      # find 
+      for csb,csl,cdb,cdl in interim_paths:
+        if csb == db and \
+           not Layout.intersection(csl,dl) is None:
+          new_dl = Layout.intersection(dl,csl)
+          new_path = list(curr_path)
+          new_path[-1] = (db,new_dl)
+          new_path.append((cdb,cdl))
+          for path in walk_paths(new_path):
+            yield path
+
+
+  # enumerate all paths
+  for path in walk_paths([]):
+    yield path
+

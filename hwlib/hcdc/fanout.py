@@ -3,7 +3,7 @@ from hwlib.block import *
 import ops.interval as interval
 import ops.opparse as parser
 
-fan = Block('fanout',BlockType.COPY, \
+fan = Block('fanout',BlockType.ASSEMBLE, \
             [enums.SignType,enums.SignType,enums.SignType,enums.RangeType])
 fan.modes.add_all([
   ['+','+','+','m'],

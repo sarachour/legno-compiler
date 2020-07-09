@@ -33,7 +33,7 @@ class Quantize:
 
 class BlockType(Enum):
     COMPUTE = "compute"
-    COPY = "copy"
+    ASSEMBLE = "assemble"
     ROUTE = "route"
 
 

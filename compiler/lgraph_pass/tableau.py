@@ -10,23 +10,6 @@ class DSVar:
   def __repr__(self):
     return self.var
 
-class LawVar:
-  APPLY = "app"
-
-  def __init__(self,law,idx,var):
-    self.law =law
-    self.ident = idx
-    self.var = var
-
-  def same_usage(self,other):
-    assert(isinstance(other,LawVar))
-    return other.ident == self.ident and \
-      other.law == self.law
-
-  def __repr__(self):
-    return "%s[%s].%s" % (self.law,self.ident,self.var)
-
-
 
 class Goal:
 

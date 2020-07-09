@@ -9,6 +9,8 @@ import util.util as util
 import util.paths as paths
 from hwlib.adp import ADP
 from dslang.dsprog import DSProgDB
+import json
+import hwlib.adp_renderer as adprender
 
 def exec_lgraph(args):
     from compiler import lgraph
@@ -21,23 +23,26 @@ def exec_lgraph(args):
     timer.start()
     count = 0
     for indices,adp in \
-        lgraph.compile(hdacv2_board,
-                       program,
-                       vadp_fragments=args.vadp_fragments,
-                       vadps=args.vadps,
-                       adps=args.adps):
+        enumerate(lgraph.compile(hdacv2_board,
+                                 program,
+                                 vadp_fragments=args.vadp_fragments,
+                                 assembly_depth=args.assembly_depth,
+                                 vadps=args.vadps,
+                                 adps=args.adps)):
         timer.end()
 
         print("<<< writing circuit>>>")
         filename = path_handler.lgraph_adp_file(indices)
-        adp.write_circuit(filename)
+        with open(filename,'w') as fh:
+            jsondata = adp.to_json()
+            fh.write(json.dumps(jsondata,indent=4))
 
         print("<<< writing graph >>>")
         filename = path_handler.lgraph_adp_diagram_file(indices)
-        adp.write_graph(filename,write_png=True)
-
+        #adp.write_graph(filename,write_png=True)
+        adprender.render(hdacv2_board,adp,filename)
         count += 1
-        if count >= args.max_circuits:
+        if count >= args.adps:
             break
 
         timer.start()
