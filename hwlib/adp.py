@@ -323,6 +323,15 @@ class Connection:
     self.dest_inst = dest_inst
     self.dest_port = dest_port
 
+  @staticmethod
+  def from_json(obj):
+    src_inst = BlockInst.from_json(obj['source_inst'])
+    src_port = obj['source_port']
+    dest_inst = BlockInst.from_json(obj['dest_inst'])
+    dest_port = obj['dest_port']
+    return Connection(src_inst, src_port, \
+                      dest_inst, dest_port)
+
   def to_json(self):
     return {
       'source_inst': self.source_inst.to_json(),
@@ -331,6 +340,12 @@ class Connection:
       'dest_port':self.dest_port
 
     }
+
+  def __repr__(self):
+    return "conn (%s,%s) -> (%s,%s)" % (self.source_inst, \
+                                        self.source_port, \
+                                        self.dest_inst, \
+                                        self.dest_port)
 
 class ADP:
 
@@ -366,9 +381,38 @@ class ADP:
       )
     )
 
+  @staticmethod
+  def from_json(board,jsonobj):
+    adp = ADP()
+    adp.tau = jsonobj['tau']
+    for jsonconn in jsonobj['conns']:
+      conn = Connection.from_json(jsonconn)
+      adp.conns.append(conn)
+
+    for jsonconfig in jsonobj['configs']:
+      cfg = BlockConfig.from_json(board,jsonconfig)
+      adp.configs.add(cfg)
+
+    return adp
+
   def to_json(self):
     return {
       'tau':self.tau,
       'conns': list(map(lambda c: c.to_json(), self.conns)),
       'configs': self.configs.to_json()
     }
+
+  def __repr__(self):
+    st = []
+    def q(stmt):
+      st.append(stmt)
+
+    q('tau=%f' % self.tau)
+    q('=== connections ===')
+    for conn in self.conns:
+      q(str(conn))
+    q('=== configs ===')
+    for config in self.configs:
+      q(str(config))
+
+    return "\n".join(st)
