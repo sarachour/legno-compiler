@@ -100,19 +100,28 @@ def make_connections(dev,layout):
     ]:
       for op in dev.get_block(block1).outputs:
         for ip in dev.get_block(block2).inputs:
-          print(block1,op.name,block2,ip.name)
           for c,t in layout.locs('tile'):
             layout.connect(block1,[c,t,WC,WC],op.name, \
                            block2,[c,t,WC,WC],ip.name)
 
   for c,t,s,i in layout.instances('adc'):
-    layout.connect("adc",[c,t,s,i],'z','lut',[c,t,s,i],'x')
-    layout.connect("lut",[c,t,s,i],'z','dac',[c,t,s,i],'x')
+    layout.connect("adc",[c,t,s,i],'z', \
+                   'lut',[c,t,s,i],'x')
+    layout.connect("lut",[c,t,s,i],'z', \
+                   'dac',[c,t,s,i],'x')
+
+  for c1,t1 in layout.locs('tile'):
+    for c2,t2 in layout.locs('tile'):
+      if c1 != c2 or t1 == t2:
+        continue
+      layout.connect('tout',[c1,t1,WC,WC],'z', \
+                     'tin',[c2,t2,WC,WC],'x')
 
   for block1 in ['tout']:
     for block2 in ['cout','extout']:
       for c,t in layout.locs('tile'):
-        layout.connect(block1,[c,t,WC,WC],'z',block2,[c,t,WC,WC],'x')
+        layout.connect(block1,[c,t,WC,WC],'z', \
+                       block2,[c,t,WC,WC],'x')
 
   for block1 in ['extin','cin']:
     for block2 in ['tin']:

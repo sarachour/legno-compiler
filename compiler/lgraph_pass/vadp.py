@@ -190,7 +190,7 @@ def remap_vadp_identifiers(insts,fragment):
     if isinstance(stmt,VADPSource) or \
        isinstance(stmt,VADPSink):
       new_stmt = stmt.copy()
-      if isinstance(stmt,PortVar):
+      if isinstance(stmt.port,PortVar):
         new_stmt.port.ident = get_identifier(stmt.port.block, \
                                              stmt.port.ident)
       yield new_stmt
@@ -222,7 +222,7 @@ def remap_vadp_identifiers(insts,fragment):
 
 def remap_vadps(vadps,insts={}):
   stmts = []
-  for vadp_prog in vadps:
+  for frag_index,vadp_prog in enumerate(vadps):
     for stmt in remap_vadp_identifiers(insts,vadp_prog):
       stmts.append(stmt)
 

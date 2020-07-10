@@ -290,4 +290,6 @@ def assemble(blocks,fragments,depth=3):
       for stmt in circ:
         print(stmt)
       raise Exception("vadp is not concrete")
+
+
     yield circ

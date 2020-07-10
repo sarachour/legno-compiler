@@ -12,18 +12,37 @@ from dslang.dsprog import DSProgDB
 import json
 import hwlib.adp_renderer as adprender
 
+def get_device():
+    import hwlib.hcdc.hcdcv2 as hcdclib
+    return hcdclib.get_device(layout=True)
+
+def exec_lscale(args):
+    from compiler import lscale
+
+    board = get_device()
+    path_handler = paths.PathHandler(args.subset,args.program)
+    program = DSProgDB.get_prog(args.program)
+    timer = util.Timer('lscale',path_handler)
+    for dirname, subdirlist, filelist in \
+        os.walk(path_handler.lgraph_adp_dir()):
+        for lgraph_adp_file in filelist:
+            if lgraph_adp_file.endswith('.adp'):
+                adp = ADP.from_json(board,lgraph_adp_file)
+                print(adp)
+    #timer.start()
+    count = 0
+
 def exec_lgraph(args):
     from compiler import lgraph
-    import hwlib.hcdc.hcdcv2 as hcdclib
 
-    hdacv2_board = hcdclib.get_device(layout=True)
+    board = get_device()
     path_handler = paths.PathHandler(args.subset,args.program)
     program = DSProgDB.get_prog(args.program)
     timer = util.Timer('lgraph',path_handler)
     timer.start()
     count = 0
     for indices,adp in \
-        enumerate(lgraph.compile(hdacv2_board,
+        enumerate(lgraph.compile(board,
                                  program,
                                  vadp_fragments=args.vadp_fragments,
                                  assembly_depth=args.assembly_depth,
@@ -40,7 +59,7 @@ def exec_lgraph(args):
         print("<<< writing graph >>>")
         filename = path_handler.lgraph_adp_diagram_file(indices)
         #adp.write_graph(filename,write_png=True)
-        adprender.render(hdacv2_board,adp,filename)
+        adprender.render(board,adp,filename)
         count += 1
         if count >= args.adps:
             break
@@ -191,7 +210,7 @@ def exec_lscale_search(timer,prog,adp,args,tolerance=0.01):
 
 
 
-def exec_lscale(args):
+def exec_lscale_backup(args):
     from hwlib.hcdc.hcdcv2_4 import make_board
     from hwlib.hcdc.globals import HCDCSubset
 

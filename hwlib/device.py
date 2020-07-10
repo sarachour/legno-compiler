@@ -57,6 +57,13 @@ class Layout:
     self._sink2src = {}
 
   @staticmethod
+  def is_pattern(loc):
+    for l in loc:
+      if l == Layout.WILDCARD:
+        return True
+    return False
+
+  @staticmethod
   def intersection(loc1,loc2):
     isect = []
     for l1,l2 in zip(loc1,loc2):
@@ -188,7 +195,7 @@ def path_exists(dev,sblk,sport,dblk,dport):
 
 
 def distinct_paths(dev,sblk,sloc,sport,dblk,dloc,dport, \
-                   num_route_blocks=8):
+                   num_route_blocks=4):
   route_blocks = []
   interim_paths = []
   start_paths = []
@@ -230,7 +237,7 @@ def distinct_paths(dev,sblk,sloc,sport,dblk,dloc,dport, \
         dl = Layout.intersection(dl,dloc)
         sl = Layout.intersection(sl,sloc)
         if not dl is None and not sl is None:
-          direct_connections = True 
+          direct_connections = True
           break
 
       return direct_connections
@@ -261,7 +268,7 @@ def distinct_paths(dev,sblk,sloc,sport,dblk,dloc,dport, \
           new_path.append((cdb,cdl,cdp))
           yield new_path
 
-      # find 
+      # find
       for csb,csl,cdb,cdl in interim_paths:
         if csb == db and \
            not Layout.intersection(csl,dl) is None:

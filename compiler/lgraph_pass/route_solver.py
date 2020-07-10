@@ -145,16 +145,11 @@ def solve(prob):
   status = pulp.LpStatus[ilp.status]
   if status == "Optimal":
     assigns = routelib.LocAssignments()
-    print("-- Instances ---")
     for ident_assign in prob.identifier_assigns:
       if ident_assign.ilpvar.varValue == 1.0:
-        print(ident_assign)
         assigns.add(ident_assign)
-    print("-- Connections ---")
     for conn_assign in prob.conn_assigns:
       if conn_assign.ilpvar.varValue == 1.0:
-        print(conn_assign)
-        print(conn_assign.path)
         assigns.add_conn(conn_assign)
 
     return assigns

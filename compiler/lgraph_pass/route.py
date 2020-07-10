@@ -29,13 +29,11 @@ def routing_problem(board,view,vadp,assignments):
   prob = RoutingProblem(board,view,assignments)
   for vadpstmt in vadp:
     if isinstance(vadpstmt, vadplib.VADPConfig):
-      print(vadpstmt)
       prob.add_virtual_instance(vadpstmt.block, \
                                 vadpstmt.ident)
 
   for vadpstmt in vadp:
     if isinstance(vadpstmt, vadplib.VADPConn):
-      print(vadpstmt)
       prob.add_virtual_conn(vadpstmt.source.block, \
                             vadpstmt.source.ident, \
                             vadpstmt.source.port, \
@@ -49,7 +47,35 @@ def routing_problem(board,view,vadp,assignments):
 
   return prob
 
-def generate_vadp_fragment_for_path(dev,conn_assign):
+def use_route_blocks(dev,used_route_blocks,conn_assign):
+  path = conn_assign.path
+  vadpstmts = []
+  if len(path) <= 2:
+    return vadpstmts,list(path)
+
+  new_path = list(path)
+  for idx,(route_block,route_inst_pattern) in enumerate(path[1:-1]):
+    blk = dev.get_block(route_block)
+    assert(len(blk.modes) == 1)
+    assert(len(blk.state) == 0)
+    assert(len(blk.data) == 0)
+    # get first compatible instance that has not been used yet
+    try:
+      inst = next(inst for inst in dev.layout.instances(route_block) \
+                  if not devlib.Layout \
+                  .intersection(inst,route_inst_pattern) is None and \
+                  (route_block,inst) not in used_route_blocks )
+
+      new_path[1+idx]= (route_block,inst)
+      used_route_blocks.append((route_block,inst))
+      stmt = vadplib.VADPConfig(blk,devlib.Location(inst),blk.modes)
+      vadpstmts.append(stmt)
+    except StopIteration as e:
+      raise Exception("no instances for route block <%s>" % route_block)
+
+  return vadpstmts,new_path
+
+def generate_vadp_fragment_for_path(dev,route_block_instances,conn_assign):
   def get_route_input(blk):
     name = blk.inputs.field_names()[0]
     return blk.inputs[name]
@@ -58,11 +84,17 @@ def generate_vadp_fragment_for_path(dev,conn_assign):
     name = blk.outputs.field_names()[0]
     return blk.outputs[name]
 
-  path = conn_assign.path
+  vadp_config_stmts, path = use_route_blocks(dev, \
+                                             route_block_instances, \
+                                             conn_assign)
+  for stmt in vadp_config_stmts:
+    yield stmt
+
   for idx in range(0,len(path)-1):
     src_tuple = path[idx]
     dest_tuple = path[idx+1]
-
+    assert(not devlib.Layout.is_pattern(src_tuple[1]))
+    assert(not devlib.Layout.is_pattern(dest_tuple[1]))
     srcblk = dev.get_block(src_tuple[0])
     src = vadplib.PortVar(srcblk, \
                   devlib.Location(src_tuple[1]), \
@@ -70,18 +102,20 @@ def generate_vadp_fragment_for_path(dev,conn_assign):
                   if len(src_tuple) == 3 else \
                   get_route_output(srcblk)
     )
-    destblk = dev.get_block(src_tuple[0])
+    destblk = dev.get_block(dest_tuple[0])
     dest = vadplib.PortVar(destblk, \
                   devlib.Location(dest_tuple[1]), \
                   destblk.inputs[dest_tuple[2]] \
                   if len(dest_tuple) == 3 else \
-                  get_route_output(destblk)
+                  get_route_input(destblk)
     )
     yield vadplib.VADPConn(src,dest)
 
 
 def finalize(board,vadp,assigns):
   new_vadp = []
+  # route block instances in use
+  route_block_instances = []
   for stmt in vadp:
     if isinstance(stmt,vadplib.VADPConfig):
       assign = assigns.get(stmt.block,stmt.ident)
@@ -109,7 +143,9 @@ def finalize(board,vadp,assigns):
         stmt.sink.block,stmt.sink.ident,stmt.sink.port
       )
 
-      frag = list(generate_vadp_fragment_for_path(board,path))
+      frag = list(generate_vadp_fragment_for_path(board, \
+                                                  route_block_instances, \
+                                                  path))
       new_vadp += frag
 
 
@@ -124,8 +160,9 @@ def route(board,vadp):
   views = board.layout.views
   assign_stack = LocAssignmentStack()
 
-  idx = 1
+  idx = 0
   while idx <= len(views)-1 and idx >= 0:
+    print("--> routing view %s" % views[idx])
     view = views[idx]
     prob = routing_problem(board,view,vadp, \
                            assign_stack.top())

@@ -22,7 +22,8 @@ class BlockInst:
     }
 
   def __repr__(self):
-    return "%s.%s" % (self.block,self.loc)
+    return "%s_%s" % (self.block,"_".join(map(lambda a: str(a), \
+                                              self.loc.address)))
 
 class BlockInstanceCollection:
 
@@ -348,11 +349,19 @@ class ADP:
 
   def add_conn(self,srcblk,srcloc,srcport, \
                dstblk,dstloc,dstport):
+    src_inst = BlockInst(srcblk.name,srcloc)
+    if not self.configs.has(src_inst.block,src_inst.loc):
+      raise Exception("no configuration for block instance <%s>" % (src_inst))
+    dest_inst = BlockInst(dstblk.name,dstloc)
+    if not self.configs.has(dest_inst.block,dest_inst.loc):
+      raise Exception("no configuration for block instance <%s>" % (dest_inst))
+    assert(isinstance(srcport, blocklib.BlockOutput))
+    assert(isinstance(dstport, blocklib.BlockInput))
     self.conns.append(
       Connection(
-        BlockInst(srcblk.name,srcloc),
+        src_inst,
         srcport.name,
-        BlockInst(dstblk.name,dstloc),
+        dest_inst,
         dstport.name
       )
     )
