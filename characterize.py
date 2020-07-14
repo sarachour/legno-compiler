@@ -37,13 +37,8 @@ cfg.modes = [block.modes.get(['x','m','m'])]
 runtime = GrendelRunner()
 #planner = planlib.BruteForcePlanner(block,inst,cfg,3,10)
 #planner = planlib.NeighborhoodPlanner(block,inst,cfg,3,10)
-<<<<<<< HEAD
 #planner = planlib.SensitivityPlanner(block,inst,cfg,32,10)
 #planner = planlib.CorrelationPlanner(block,inst,cfg,8,10)
 planner = planlib.FullCorrelationPlanner(block,inst,cfg,8,10)
-proflib.profile_uncalibrated_block(runtime,dev,planner)
-=======
-planner = planlib.SensitivityPlanner(block,inst,cfg,32,10)
 proflib.profile_all_hidden_states(runtime,dev,planner)
->>>>>>> calibrate-server-side
 
