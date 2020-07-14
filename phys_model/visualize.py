@@ -4,6 +4,7 @@ import ops.interval as ivallib
 import itertools
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy.interpolate
 
 class ReferenceType:
   MODEL_PREDICTION = "model_pred"
@@ -32,6 +33,25 @@ class ParametricSurface:
                     round((bnd.upper+bnd.lower)/2.0,2), \
       self._patches[var]))
 
+  def interpolate(self,patch,inputs,outputs):
+    n_pts = len(outputs)
+    input_data = np.zeros((n_pts,len(self.variables)));
+    pt = [0]*len(self.variables)
+    for varid,v in enumerate(self.variables):
+      patch_id = patch[v]
+      var_range = self._patches[v][patch_id]
+      pt[varid] = var_range.middle
+
+    for idx in range(n_pts):
+      for varid,v in enumerate(self.variables):
+        input_data[idx,varid] = inputs[v][idx]
+
+    output_data = np.array(outputs)
+    ys = scipy.interpolate.griddata(input_data, \
+                                    output_data, \
+                                    [pt])
+    return ys[0]
+
   def divide(self,inputs,output):
     def test_index(patch,index):
       for var,patch_id in patch.items():
@@ -54,7 +74,14 @@ class ParametricSurface:
       for v in variables:
         sub_inputs[v] = phys_util.get_subarray(inputs[v], \
                                                indices)
-      yield patch,sub_inputs,sub_output
+      if len(sub_output) == 0:
+        sub_inputs = {}
+        for v in variables:
+          sub_inputs[v] = [patch[v]]
+        sub_output = self.interpolate(patch,inputs,output)
+        yield patch,sub_inputs,[sub_output]
+      else:
+        yield patch,sub_inputs,sub_output
 
 
 
@@ -62,6 +89,7 @@ class ParametricSurface:
 def heatmap(physblk,output_file,inputs,output,n,amplitude=None):
   bounds = physblk.get_bounds()
   surf = ParametricSurface(n)
+  colormap_name = "coolwarm"
   for var in inputs.keys():
     surf.add_variable(var,ivallib.Interval(bounds[var][0], \
                                            bounds[var][1]))
@@ -71,13 +99,10 @@ def heatmap(physblk,output_file,inputs,output,n,amplitude=None):
     data = np.zeros((surf.num_patches,surf.num_patches));
     variables = list(surf.variables)
     v1 = surf.variables[0]
-    v2 = surf.variables[1] if len(surf.variables) == 2 else None
-    print("iterate over patches")
+    v2 = surf.variables[1]
     for patch,inps,out in surf.divide(inputs,output):
-      print(patch)
       data[patch[v1],patch[v2]] = np.mean(out)
 
-    print("plot")
     fig,ax = plt.subplots()
     ax.set_xlabel(v1)
     ax.set_ylabel(v2)
@@ -86,15 +111,46 @@ def heatmap(physblk,output_file,inputs,output,n,amplitude=None):
     ax.set_xticklabels(surf.ticks(v1))
     ax.set_yticklabels(surf.ticks(v2))
     if amplitude is None:
-      im = ax.imshow(data)
-    else:
-      im = ax.imshow(data,vmin=-amplitude,vmax=amplitude)
+      amplitude = np.max(np.abs(data))
+
+    im = ax.imshow(data, \
+                    cmap=plt.get_cmap(colormap_name), \
+                    vmin=-amplitude, \
+                    vmax=amplitude)
+
 
     cbar = ax.figure.colorbar(im, ax=ax)
     cbar.ax.set_ylabel("value", rotation=-90, va="bottom")
     fig.tight_layout()
     plt.savefig(output_file)
     plt.close()
+
+  elif len(surf.variables) == 1:
+    v1 = surf.variables[0]
+    data = np.zeros((2,surf.num_patches));
+    for patch,inps,out in surf.divide(inputs,output):
+      data[0,patch[v1]] = np.mean(out)
+      data[1,patch[v1]] = np.mean(out)
+
+    fig,ax = plt.subplots()
+    ax.set_xlabel(v1)
+    ax.set_xticks(np.arange(surf.num_patches))
+    ax.set_xticklabels(surf.ticks(v1))
+    if amplitude is None:
+      amplitude = np.max(np.abs(data))
+
+    im = ax.imshow(data, \
+                    cmap=plt.get_cmap(colormap_name), \
+                    vmin=-amplitude, \
+                    vmax=amplitude)
+
+    cbar = ax.figure.colorbar(im, ax=ax)
+    cbar.ax.set_ylabel("value", rotation=-90, va="bottom")
+    fig.tight_layout()
+    plt.savefig(output_file)
+    plt.close()
+
+
   else:
     raise Exception("unimplemented")
 

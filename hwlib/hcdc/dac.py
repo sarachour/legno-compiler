@@ -29,6 +29,9 @@ dac.outputs['z'].relation.bind(['const','m'], \
 dac.outputs['z'].relation.bind(['const','h'], \
                                parser.parse_expr('20.0*c'))
 
+dac.inputs['x'] \
+    .interval.bind(['_','_'],interval.Interval(-1,1))
+
 dac.outputs['z'] \
     .interval.bind(['_','h'],interval.Interval(-20,20))
 dac.outputs['z'] \
@@ -41,6 +44,22 @@ dac.data['c'] \
     .interval.bind(['_','_'],interval.Interval(-1,1))
 dac.data['c'] \
     .quantize.bind(['_','_'],Quantize(256,QuantizeType.LINEAR))
+dac.inputs['x'] \
+    .quantize.bind(['_','_'],Quantize(256,QuantizeType.LINEAR))
+
+
+
+
+spec = DeltaSpec(parser.parse_expr('a*2.0*c+b'))
+spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
+spec.param('b',DeltaParamType.CORRECTABLE,ideal=0.0)
+dac.outputs['z'].deltas.bind(['_','m'],spec)
+
+spec = DeltaSpec(parser.parse_expr('a*20.0*c+b'))
+spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
+spec.param('b',DeltaParamType.CORRECTABLE,ideal=0.0)
+dac.outputs['z'].deltas.bind(['_','h'],spec)
+
 
 # bind codes, range
 dac.state.add(BlockState('inv',
@@ -82,7 +101,7 @@ dac.state['dynamic'] \
 
 
 dac.state.add(BlockState('gain_cal',
-                        values=range(0,32), \
+                        values=range(0,64), \
                         state_type=BlockStateType.CALIBRATE))
 dac.state['gain_cal'].impl.set_default(16)
 

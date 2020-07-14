@@ -69,15 +69,18 @@ namespace cutil {
                              float& variance){
     float delta = 0.0;
     float thresh = 1.3;
-    float step = 0.12;
+    float step = 0.24;
     float measurement = 0;
     float ref_dac_val;
     float targ_dac_val;
 
     dac_state_t codes_dac = ref_dac->m_state;
 
+    const float MED_CURRENT_AMPL = 2.0;
+    const float DAC_VAL_AMPL = 1.0;
     // configure reference dac to maximize gain
-    ref_dac->setRange(fabs(target) > 1.0 ? RANGE_HIGH : RANGE_MED);
+    ref_dac->setRange(fabs(target) > MED_CURRENT_AMPL
+                      ? RANGE_HIGH : RANGE_MED);
 
     fast_calibrate_dac(ref_dac);
     targ_dac_val = Fabric::Chip::Tile::Slice::Dac
@@ -85,13 +88,17 @@ namespace cutil {
                      -target);
 
     do {
-      ref_dac->setConstant(max(min(targ_dac_val,1.0),-1.0));
+      //initialize the dac digital value ([-1,1]) to the target value
+      //the dac emits a current that is 2*digital value
+      ref_dac_val = max(min(targ_dac_val,DAC_VAL_AMPL),-DAC_VAL_AMPL);
+      ref_dac->setConstant(ref_dac_val);
       if(steady){
         util::meas_steady_chip_out(fu,measurement,variance);
       }
       else{
         util::meas_dist_chip_out(fu,measurement,variance);
       }
+      // tune measurement if we saturated the range
       if(fabs(measurement) > thresh){
         delta += measurement < 0 ? -step : step;
         targ_dac_val = Fabric::Chip::Tile::Slice::Dac
@@ -99,7 +106,7 @@ namespace cutil {
                                               -(target+delta));
       }
     } while(fabs(measurement) > thresh &&
-            fabs(targ_dac_val) <= 1.0);
+            fabs(targ_dac_val) <= DAC_VAL_AMPL);
 
     if(fabs(measurement) > thresh){
       sprintf(FMTBUF,
@@ -109,6 +116,10 @@ namespace cutil {
     }
     float dummy;
     ref_dac_val = ref_dac->fastMeasureValue(dummy);
+    sprintf(FMTBUF, "targ_dac_val=%f ref_dac_out=%f meas=%f\n",
+            targ_dac_val,ref_dac_val,measurement);
+    print_info(FMTBUF);
+
     mean = measurement-ref_dac_val;
     variance = variance;
 

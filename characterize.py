@@ -28,11 +28,7 @@ characterize(block,inst,cfg)
 
 #block = dev.get_block('fanout')
 dev = hcdclib.get_device()
-block = dev.get_block('mult')
-inst = devlib.Location([0,3,2,0])
-cfg = adplib.BlockConfig.make(block,inst)
-#cfg.modes = [['+','+','-','m']]
-cfg.modes = [block.modes.get(['x','m','m'])]
+block,inst,cfg = target_block.get_block(dev)
 
 runtime = GrendelRunner()
 #planner = planlib.BruteForcePlanner(block,inst,cfg,3,10)

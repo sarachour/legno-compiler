@@ -350,7 +350,7 @@ class PhysCfgBlock:
 
   def hidden_codes(self):
     for stmt in self.cfg.stmts:
-      if stmt.t == adplib.ConfigStmtType.STATE and \
+      if stmt.type == adplib.ConfigStmtType.STATE and \
          isinstance(self.block.state[stmt.name].impl, \
                     blocklib.BCCalibImpl):
         yield stmt.name,stmt.value
@@ -373,7 +373,7 @@ class PhysCfgBlock:
   def get_dynamic_cfg(cfg):
     kvs = {}
     for stmt in cfg.stmts:
-      if stmt.t == adplib.ConfigStmtType.CONSTANT:
+      if stmt.type == adplib.ConfigStmtType.CONSTANT:
         assert(not stmt.name in kvs)
         kvs[stmt.name] = stmt.value
     return kvs
@@ -410,14 +410,24 @@ class PhysCfgBlock:
     bounds = {}
     for inp in self.block.inputs:
       ival = inp.interval[self.cfg.mode]
+      if ival is None:
+        raise Exception("no interval for input %s.<%s> in mode <%s>" \
+                        % (self.block.name,inp.name,self.cfg.mode))
       bounds[inp.name] = [ival.lower,ival.upper]
 
     for dat in self.block.data:
       ival = dat.interval[self.cfg.mode]
+      if ival is None:
+        raise Exception("no interval for datum %s.<%s> in mode <%s>" \
+                        % (self.block.name,dat.name,self.cfg.mode))
       bounds[dat.name] = [ival.lower,ival.upper]
 
     for out in self.block.outputs:
       ival = out.interval[self.cfg.mode]
+      if ival is None:
+        raise Exception("no interval for output %s.<%s> in mode <%s>" \
+                        % (self.block.name,out.name,self.cfg.mode))
+
       bounds[out.name] = [ival.lower,ival.upper]
 
     return bounds

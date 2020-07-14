@@ -270,7 +270,10 @@ class ModeDependentProperty:
       return mode.key in self._fields
 
   def bind(self,mode_pattern,field):
-    assert(isinstance(field,self._type))
+    if not (isinstance(field,self._type)):
+        raise Exception("field <%s> is not of type %s" \
+                        % (field,self._type))
+
     for mode in self._modes.matches(mode_pattern):
         assert(self._fields[mode.key] is None)
         self._fields[mode.key] = field
@@ -597,8 +600,10 @@ class BlockInput(BlockField):
   def initialize(self,block):
       self.block = block
       self.interval = ModeDependentProperty("interval",block.modes,interval.Interval)
-      self.freq_limit = ModeDependentProperty("max_frequency",block.modes,float)
-      self.quantize = ModeDependentProperty("quantization",block.modes,list)
+      self.freq_limit = ModeDependentProperty("max_frequency",block.modes, \
+                                              float)
+      self.quantize = ModeDependentProperty("quantization",block.modes, \
+                                            Quantize)
 
   @property
   def properties(self):
@@ -682,7 +687,9 @@ class BlockOutput(BlockField):
     self.relation = ModeDependentProperty("relation",block.modes,oplib.Op)
     self.deltas = ModeDependentProperty("delta_model",block.modes,DeltaSpec)
     if self.type == BlockSignalType.DIGITAL:
-      self.quantize = ModeDependentProperty("quantization",block.modes,Quantize)
+      self.quantize = ModeDependentProperty("quantization", \
+                                            block.modes, \
+                                            Quantize)
 
   @property
   def properties(self):
