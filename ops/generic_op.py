@@ -20,14 +20,6 @@ class Integ(GenericOp2):
         return self._handle
 
     @property
-    def ic_handle(self):
-        return self._handle+"[0]"
-
-    @property
-    def deriv_handle(self):
-        return self._handle+"\'"
-
-    @property
     def deriv(self):
         return self.arg1
 
@@ -120,15 +112,6 @@ class Var(Op):
         GenericOp.__init__(self,OpType.VAR,[])
         self._name = name
 
-    def coefficient(self):
-        return 1.0
-
-    def sum_terms(self):
-        return [self]
-
-    def prod_terms(self):
-        return [self]
-
     def to_json(self):
         obj = Op.to_json(self)
         obj['name'] = self._name
@@ -146,12 +129,6 @@ class Var(Op):
     @property
     def name(self):
         return self._name
-
-    def infer_interval(self,intervals={}):
-      if not self.name in intervals:
-        raise Exception("unknown interval: <%s>" % self.name)
-
-      return interval.IntervalCollection(intervals[self._name])
 
     def substitute(self,assigns):
         if not self._name in assigns:
@@ -192,25 +169,11 @@ class Const(GenericOp):
         return Const(obj['value'])
 
 
-    def is_constant(self):
-      return True
-
-    def coefficient(self):
-        return self.value
-
-    def sum_terms(self):
-        return [self]
-
     def prod_terms(self):
         return []
 
     def compute(self,bindings={}):
         return self._value
-
-    def infer_interval(self,bindings):
-        return interval.IntervalCollection(
-            interval.IValue(self._value)
-        )
 
     @property
     def value(self):
@@ -235,8 +198,6 @@ class Emit(Op):
     def compute(self,bindings={}):
         return self.arg(0).compute(bindings)
 
-    def infer_interval(self,intervals={}):
-        return self.arg(0).infer_interval(intervals)
 
 
 
@@ -257,8 +218,6 @@ class Paren(Op):
     def substitute(self,args):
         return Paren(self.arg(0).substitute(args))
 
-    def infer_interval(self,intervals={}):
-        return self.arg(0).infer_interval(intervals)
 
 
 
@@ -275,15 +234,6 @@ class Mult(GenericOp2):
     def from_json(obj):
         return Mult(Op.from_json(obj['args'][0]),
                     Op.from_json(obj['args'][1]))
-
-    def coefficient(self):
-        return self.arg1.coefficient()*self.arg2.coefficient()
-
-    def prod_terms(self):
-        return self.arg1.prod_terms()+self.arg2.prod_terms()
-
-    def sum_terms(self):
-        return [self]
 
     def substitute(self,assigns):
         return Mult(self.arg1.substitute(assigns),
@@ -312,28 +262,12 @@ class Add(GenericOp2):
                    Op.from_json(obj['args'][1]))
 
 
-    def coefficient(self):
-        return 1.0
-
-    def prod_terms(self):
-        return [self]
-
-    def sum_terms(self):
-        return self.arg1.sum_terms() + self.arg2.sum_terms()
-
-
+   
     def substitute(self,args):
         return Add(
             self.arg(0).substitute(args),
             self.arg(1).substitute(args)
         )
-
-
-    def infer_interval(self,bindings):
-        is1 = self.arg1.infer_interval(bindings)
-        is2 = self.arg2.infer_interval(bindings)
-        return is1.merge(is2,
-                  is1.interval.add(is2.interval))
 
 
 
@@ -347,19 +281,6 @@ class Call(GenericOp):
         self._params = params
         GenericOp.__init__(self,OpType.CALL,params+[self._func])
         assert(expr.op == OpType.FUNC)
-
-    #def evaluate(self):
-    #    self._expr = self._func.apply(self._params)
-
-    def coefficient(self):
-        return 1.0
-
-    def prod_terms(self):
-        return [self]
-
-    def sum_terms(self):
-        return [self]
-
 
     def compute(self,bindings={}):
         new_bindings = {}
@@ -382,9 +303,6 @@ class Call(GenericOp):
         expr = self._func.apply(self._params)
         return expr
 
-
-    def infer_interval(self,ivals):
-        return self.concretize().infer_interval(ivals)
 
     def to_json(self):
         obj = Op.to_json(self)

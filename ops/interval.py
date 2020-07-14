@@ -1,4 +1,5 @@
 import math
+import ops.base_op as oplib
 
 class Interval:
 
@@ -354,3 +355,13 @@ class IntervalCollection:
       st += "  %s: %s\n" % (bnd,ival)
 
     return st
+
+
+def propagate_intervals(expr,ivals):
+    if expr.op == oplib.OpType.VAR:
+        return ivals.get(expr.name)
+    elif expr.op == oplib.OpType.EMIT:
+        return propagate_intervals(expr.arg(0), \
+                                   ivals)
+    else:
+        raise Exception("expression: %s" % (expr))

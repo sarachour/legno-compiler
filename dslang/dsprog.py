@@ -7,7 +7,7 @@ import util.util as util
 
 import ops.op as op
 import ops.opparse as opparse
-from ops.interval import Interval
+import ops.interval as intervallib
 import os
 import subprocess
 
@@ -216,7 +216,7 @@ class DSProg:
         assert(min_v <= max_v)
         if not v in self._variables:
             self._variables.append(v)
-        self._intervals[v] = Interval.type_infer(min_v,max_v)
+        self._intervals[v] = intervallib.Interval.type_infer(min_v,max_v)
 
     def intervals(self):
         for v,ival in self._intervals.items():
@@ -230,8 +230,8 @@ class DSProg:
                     raise Exception("cannot infer ival: <%s> has no expression" \
                                     % variable)
 
-                icoll = expr.infer_interval(self._intervals)
-                self._intervals[variable] = icoll.interval
+                interval = intervallib.propagate_intervals(expr,self._intervals)
+                self._intervals[variable] = interval
 
 
         if not (util.keys_in_dict(self._bindings.keys(), self._intervals)):

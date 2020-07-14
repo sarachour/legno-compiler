@@ -86,6 +86,7 @@ class BlockInstanceCollection:
 class ConfigStmtType(Enum):
   STATE = "state"
   CONSTANT = "const"
+  EXPR = "expr"
   PORT = "port"
 
 class ConfigStmt:
@@ -93,7 +94,7 @@ class ConfigStmt:
   def __init__(self,type_,name):
     self.name = name
     assert(isinstance(type_,ConfigStmtType))
-    self.t = type_
+    self.type = type_
 
   def pretty_print(self):
     raise NotImplementedError()
@@ -114,7 +115,9 @@ class ConfigStmt:
       raise Exception("unhandled from_json: %s" % typ)
 
   def __repr__(self):
-    return "%s %s %s" % (self.name,self.t.value,self.pretty_print())
+    return "%s %s %s" % (self.name, \
+                         self.type.value, \
+                         self.pretty_print())
 
 class ConstDataConfig(ConfigStmt):
 
@@ -136,7 +139,7 @@ class ConstDataConfig(ConfigStmt):
   def to_json(self):
     return {
       'name':self.name,
-      'type': self.t.value,
+      'type': self.type.value,
       'scf': self.scf,
       'value': self.value
     }
@@ -168,7 +171,7 @@ class PortConfig(ConfigStmt):
   def to_json(self):
     return {
       'name':self.name,
-      'type': self.t.value,
+      'type': self.type.value,
       'source': self.source.to_json() \
       if not self.source is None else None,
       'scf': self.scf
@@ -263,6 +266,11 @@ class BlockConfig:
   def stmts(self):
     for stmt in self._stmts.values():
       yield stmt
+
+  def stmts_of_type(self,stmt_type):
+    for stmt in self.stmts:
+      if stmt.type == stmt_type:
+        yield stmt
 
   def complete(self):
     return len(self.modes) == 1

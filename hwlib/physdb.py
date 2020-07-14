@@ -145,7 +145,7 @@ class PhysDataset:
         self.inputs[input_port.name] = []
 
     for stmt in self.phys.cfg.stmts:
-      if stmt.t == adplib.ConfigStmtType.CONSTANT:
+      if stmt.type == adplib.ConfigStmtType.CONSTANT:
         self.data[stmt.name] = []
 
     assigned = list(self.inputs.keys()) + list(self.data.keys())
@@ -339,12 +339,12 @@ class PhysCfgBlock:
     mode = cfg.mode
     kvs = {}
     for stmt in cfg.stmts:
-      if stmt.t == adplib.ConfigStmtType.STATE and \
+      if stmt.type == adplib.ConfigStmtType.STATE and \
          isinstance(block.state[stmt.name].impl, \
                         blocklib.BCCalibImpl) and \
                         not stmt.name in exclude:
         assert(not stmt.name in kvs)
-        kvs[stmt.name] = stmt.t.value+" "+stmt.pretty_print()
+        kvs[stmt.name] = stmt.type.value+" "+stmt.pretty_print()
 
     return dict_to_identifier(kvs)
 
@@ -361,7 +361,7 @@ class PhysCfgBlock:
     kvs = {}
     kvs['mode'] = mode
     for stmt in cfg.stmts:
-      if stmt.t == adplib.ConfigStmtType.STATE and \
+      if stmt.type == adplib.ConfigStmtType.STATE and \
          not isinstance(block.state[stmt.name].impl, \
                         blocklib.BCCalibImpl):
         assert(not stmt.name in kvs)

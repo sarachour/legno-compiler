@@ -27,8 +27,12 @@ def exec_lscale(args):
         os.walk(path_handler.lgraph_adp_dir()):
         for lgraph_adp_file in filelist:
             if lgraph_adp_file.endswith('.adp'):
-                adp = ADP.from_json(board,lgraph_adp_file)
-                print(adp)
+                with open(dirname+"/"+lgraph_adp_file,'r') as fh:
+                    adp = ADP.from_json(board,json.loads(fh.read()))
+                    for idx,scaled_adp in enumerate(lscale.scale(board, \
+                                                                 program, \
+                                                                 adp)):
+                        print(scaled_adp)
     #timer.start()
     count = 0
 

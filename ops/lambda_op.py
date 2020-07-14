@@ -147,12 +147,6 @@ class Max(Op):
         a1 = self.arg(1).compute(bindings)
         return max(a0,a1)
 
-    def infer_interval(self,ivals):
-        ivalcoll1 = self.arg(0).infer_interval(ivals)
-        ivalcoll2 = self.arg(1).infer_interval(ivals)
-        ivalcoll1.update(ivalcoll1.interval.max(ivalcoll2.interval))
-        return ivalcoll1
-
     @staticmethod
     def from_json(obj):
         return Max( \
@@ -178,12 +172,6 @@ class Min(Op):
         a1 = self.arg(1).compute(bindings)
         return min(a0,a1)
 
-
-    def infer_interval(self,ivals):
-        ivalcoll1 = self.arg(0).infer_interval(ivals)
-        ivalcoll2 = self.arg(1).infer_interval(ivals)
-        ivalcoll1.update(ivalcoll1.interval.min(ivalcoll2.interval))
-        return ivalcoll1
 
     @staticmethod
     def from_json(obj):
@@ -231,12 +219,6 @@ class Abs(Op):
     def substitute(self,args):
         return Abs(self.arg(0).substitute(args))
 
-    def infer_interval(self,ivals):
-        ivalcoll = self.arg(0).infer_interval(ivals)
-        ivalcoll.update(ivalcoll.interval.abs())
-        return ivalcoll
-
-
 
 class Sgn(Op):
 
@@ -254,12 +236,6 @@ class Sgn(Op):
     def compute(self,bindings):
         return math.copysign(1.0,self.arg(0).compute(bindings).real)
 
-
-    def infer_interval(self,ivals):
-        ivalcoll = self.arg(0).infer_interval(ivals)
-        new_ival = ivalcoll.interval.sgn()
-        ivalcoll.update(new_ival)
-        return ivalcoll
 
 class Ln(Op):
 
@@ -292,11 +268,6 @@ class Sin(Op):
     def from_json(obj):
         return Sin(Op.from_json(obj['args'][0]))
 
-    def infer_interval(self,ivals):
-        ivalcoll = self.arg(0).infer_interval(ivals)
-        ivalcoll.update(interval.Interval.type_infer(-1,1))
-        return ivalcoll
-
 class Cos(Op):
 
     def __init__(self,arg1):
@@ -314,11 +285,6 @@ class Cos(Op):
 
     def substitute(self,args):
         return Cos(self.arg(0).substitute(args))
-
-    def infer_interval(self,ivals):
-        ivalcoll = self.arg(0).infer_interval(ivals)
-        ivalcoll.update(interval.Interval.type_infer(-1,1))
-        return ivalcoll
 
 
 
@@ -341,12 +307,6 @@ class Pow(Op):
                    Op.from_json(obj['args'][1]))
 
 
-    def infer_interval(self,ivals):
-        bcoll = self.arg(0).infer_interval(ivals)
-        ecoll = self.arg(1).infer_interval(ivals)
-        new_ival = bcoll.interval.exponent(ecoll.interval)
-        rcoll = bcoll.merge(ecoll, new_ival)
-        return rcoll
 
     def substitute(self,args):
         return Pow(

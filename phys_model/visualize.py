@@ -72,10 +72,12 @@ def heatmap(physblk,output_file,inputs,output,n,amplitude=None):
     variables = list(surf.variables)
     v1 = surf.variables[0]
     v2 = surf.variables[1] if len(surf.variables) == 2 else None
-
+    print("iterate over patches")
     for patch,inps,out in surf.divide(inputs,output):
+      print(patch)
       data[patch[v1],patch[v2]] = np.mean(out)
 
+    print("plot")
     fig,ax = plt.subplots()
     ax.set_xlabel(v1)
     ax.set_ylabel(v2)
@@ -113,10 +115,19 @@ def deviation(blk,output_file, \
   else:
     raise Exception("unimplemented")
 
+  for idx in range(0,len(ref)):
+    pred = ref[idx]
+    inps = {}
+    for var in data['inputs']:
+      inps[var] = data['inputs'][var][idx]
+    obs = data['meas_mean'][idx]
+    print("inputs=%s pred=%s obs=%s" % (inps,pred,obs))
+    #input("continue")
+
   errors = []
   ampl = max(np.abs(ref)) if relative else 1.0
   for pred,meas in zip(ref, data['meas_mean']):
     errors.append((meas-pred)/ampl)
 
-  heatmap(blk,output_file,data['inputs'],errors,n=10, \
+  heatmap(blk,output_file,data['inputs'],errors,n=num_bins, \
           amplitude=amplitude)
