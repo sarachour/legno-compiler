@@ -11,13 +11,6 @@ import target_block
 
 dev = hcdclib.get_device()
 block,inst,cfg = target_block.get_block(dev)
-block = dev.get_block('mult')
-#block = dev.get_block('dac')
-inst = devlib.Location([0,1,2,0])
-cfg = adplib.BlockConfig.make(block,inst)
-#cfg.modes = [['+','+','-','m']]
-cfg.modes = [block.modes.get(['x','m','m'])]
-#cfg.modes = [block.modes.get(['const','m'])]
 
 db = physdb.PhysicalDatabase('board6')
 # build up dataset
