@@ -33,13 +33,7 @@ def profile_calibrated(dev,block,inst,cfg):
   planner = planlib.SinglePointPlanner(block,inst,cfg,12)
   proflib.profile_all_hidden_states(runtime,dev,planner)
 
-
-  cfg['nmos'].value = 7
-  cfg['pmos'].value = 3
-  cfg['gain_cal'].value = 63
-  profile_calibrated(dev,block,inst,cfg)
-
-do_calibrate = False
+do_calibrate = True
 dev = hcdclib.get_device()
 block,inst,cfg = target_block.get_block(dev)
 if do_calibrate:
