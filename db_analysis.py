@@ -12,9 +12,9 @@ import itertools
 dev = hcdclib.get_device()
 db = physdb.PhysicalDatabase('board6')
 
-xcat = "bias_in0" #this can change
-ycat = "bias_in1" #this can change 
-zcat = "param_D" #this should be either "cost", "param_A", "param_D"
+xcat = "pmos" #this can change
+ycat = "nmos" #this can change 
+zcat = "param_A" #this should be either "cost", "param_A", "param_D"
 
 data_list_of_dicts = []
 
@@ -41,6 +41,15 @@ for row in db.select(where_clause):
 
 isolate_rows = []
 
+acceptable_short_values = [0,1,2,4,5,6,7]
+acceptable_long_values = [0,4,8,12,20,24,28]
+
+for row in data_list_of_dicts:
+	if ((row[xcat] in acceptable_short_values) or (row[xcat] in acceptable_long_values))\
+	and ((row[ycat] in acceptable_short_values) or (row[ycat] in acceptable_long_values))\
+	or ((row["pmos"] == 3) and (row["nmos"] == 3) and (row["gain_cal"] == 16)\
+	and (row["bias_out"] == 16) and (row["bias_in1"] == 16) and (row["bias_in0"] == 16)):
+		isolate_rows.append(row)
 
 #this is specific to the data being compared, will need to be changed if xcat,ycat change
 
@@ -64,14 +73,21 @@ for row in data_list_of_dicts:
 
 '''
 
-
+'''
 #FOR COMPARING BIAS_IN0, BIAS_IN1
 for row in data_list_of_dicts:
 	if (row["gain_cal"] == row["bias_out"]) and \
 	(row["nmos"] == row["pmos"]) and \
 	(row["nmos"] == 3) and (row["gain_cal"] == 16):
 		isolate_rows.append(row)
-
+'''
+'''
+for row in data_list_of_dicts:
+	if (row["gain_cal"] == row["bias_in1"]) and \
+	(row["gain_cal"] == row["bias_in0"]) and \
+	(row["nmos"] == 3):
+		isolate_rows.append(row)
+'''
 
 #print(isolate_rows)
 
@@ -154,8 +170,8 @@ plt.ylabel(ycat)
 cbar = ax.figure.colorbar(im, ax=ax)
 cbar.ax.set_ylabel("value",rotation=-90,va="bottom")
 
-plt.show()
-
+#plt.show()
+plt.savefig("figures/all/0320/"+ zcat +"/0320_" + xcat + "_" + ycat + "_" + zcat + ".png")
 
 #CURVE FITTING FOLLOWS FROM HERE
 

@@ -8,6 +8,8 @@ import hwlib.adp as adplib
 import ops.opparse as opparse
 import time
 import matplotlib.pyplot as plt
+import random
+import time
 
 def visualize_it(org):
   for key in org.keys():
@@ -21,65 +23,168 @@ def visualize_it(org):
 
     input("continue?")
 
-dev = hcdclib.get_device()
-block = dev.get_block('mult')
-inst = devlib.Location([0,1,2,0])
-cfg = adplib.BlockConfig.make(block,inst)
-#cfg.modes = [['+','+','-','m']]
-cfg.modes = [block.modes.get(['x','m','m'])]
+def investigate_model(terms):
 
-db = physdb.PhysicalDatabase('board6')
-#org = physdb.HiddenCodeOrganizer([])
-# build up dataset
-params = {}
-inputs = {}
-costs = []
-for blk in physdb.get_by_block_instance(db, dev,block,inst,cfg=cfg):
-  for par,value in blk.model.params.items():
-    if not par in params:
-      params[par] = []
-    params[par].append(value)
+  dev = hcdclib.get_device()
+  block = dev.get_block('mult')
+  inst = devlib.Location([0,1,2,0])
+  cfg = adplib.BlockConfig.make(block,inst)
+  #cfg.modes = [['+','+','-','m']]
+  cfg.modes = [block.modes.get(['x','m','m'])]
 
-
-  for hidden_code,value in blk.hidden_codes():
-    if not hidden_code in inputs:
-      inputs[hidden_code] = []
-    inputs[hidden_code].append(value)
+  db = physdb.PhysicalDatabase('board6')
+  #org = physdb.HiddenCodeOrganizer([])
+  # build up dataset
+  params = {}
+  inputs = {}
+  costs = []
+  for blk in physdb.get_by_block_instance(db, dev,block,inst,cfg=cfg):
+    for par,value in blk.model.params.items():
+      if not par in params:
+        params[par] = []
+      params[par].append(value)
 
 
-  costs.append(blk.model.cost)
+    for hidden_code,value in blk.hidden_codes():
+      if not hidden_code in inputs:
+        inputs[hidden_code] = []
+      inputs[hidden_code].append(value)
 
-# fit model
-dataset = {'inputs':inputs, \
-           'meas_mean':params['d']}
-# good for gain prediction
-terms = ["pmos*nmos", "pmos", "nmos", "gain_cal","bias_in0"]
-# ok for gain offset prediction
+
+    costs.append(blk.model.cost)
+
+  # fit model
+  #dataset = {'inputs':inputs, 'meas_mean':params['d']}
+  #dataset = {'inputs':inputs, 'meas_mean':costs}
+  dataset = {'inputs':inputs, 'meas_mean':params['a']}
+  
+  number_of_datapoints = 100
+  print(len(dataset['meas_mean']))
+  #number_of_datapoints = len(dataset['meas_mean'])
+  random_indexes = random.sample(range(0,len(dataset['meas_mean'])),number_of_datapoints)
+
+  sampled_dataset = {}
+  sampled_dataset['meas_mean'] = []
+  sampled_dataset['inputs'] = {}
+  sampled_dataset['inputs']['gain_cal'] = []
+  sampled_dataset['inputs']['pmos'] = []
+  sampled_dataset['inputs']['nmos'] = []
+  sampled_dataset['inputs']['bias_in0'] = []
+  sampled_dataset['inputs']['bias_in1'] = []
+  sampled_dataset['inputs']['bias_out'] = []
+  for i in random_indexes:
+    sampled_dataset['meas_mean'].append(dataset['meas_mean'][i])
+    sampled_dataset['inputs']['pmos'].append(dataset['inputs']['pmos'][i])
+    sampled_dataset['inputs']['nmos'].append(dataset['inputs']['nmos'][i])
+    sampled_dataset['inputs']['bias_in0'].append(dataset['inputs']['bias_in0'][i])
+    sampled_dataset['inputs']['bias_in1'].append(dataset['inputs']['bias_in1'][i])
+    sampled_dataset['inputs']['bias_out'].append(dataset['inputs']['bias_out'][i])
+    sampled_dataset['inputs']['gain_cal'].append(dataset['inputs']['gain_cal'][i])
+
+  dataset = sampled_dataset
+  
+
+
+
+           
+
+  variables = list(map(lambda i: "c%d" % i, range(0,len(terms)))) \
+              + ['offset']
+  expr = ['offset']
+  for coeff,term in zip(variables,terms):
+    expr.append("%s*%s" % (coeff,term))
+
+  expr_text = "+".join(expr)
+  #print(expr_text)
+  expr = opparse.parse_expr(expr_text)
+  result = fitlib.fit_model(variables,expr,dataset)
+  prediction = fitlib.predict_output(result['params'], \
+                                     expr,dataset)
+
+  error = list(map(lambda idx: dataset['meas_mean'][idx]-prediction[idx], \
+                   range(0,len(prediction))))
+  return error, result['params']
+  '''
+  plt.plot(dataset['meas_mean'])
+  plt.plot(prediction)
+  plt.savefig('predictions.png')
+  plt.close()
+  print("---- PARAMETERS ----")
+  print(result['params'])
+  print(result['param_error'])
+  print("---- ERROR ---")
+  
+  #for i in range(len(error)):
+  #  print("error ", i , " is ", error[i])
+
+  plt.plot(error)
+  #plt.show()
+  plt.savefig('error.png')
+  plt.close()
+  #visualize_it(org)
+  '''
+
+
 terms = ['bias_in0','pmos','nmos','bias_out']
 
-variables = list(map(lambda i: "c%d" % i, range(0,len(terms)))) \
-            + ['offset']
-expr = ['offset']
-for coeff,term in zip(variables,terms):
-  expr.append("%s*%s" % (coeff,term))
+#good for param_D
+'''
+terms = ["pmos", "nmos", "gain_cal","bias_in0","bias_out",\
+          "pmos*nmos", "pmos*gain_cal",\
+          "nmos*gain_cal", \
+          "pmos*bias_out",\
+          #"pmos*nmos*gain_cal",\
+          ]
+          '''
+#good for param_A
+#terms = ['pmos', 'nmos', 'gain_cal', 'bias_in0', 'bias_in1', 'bias_out', 'pmos*nmos', 'pmos*bias_in0', 'pmos*bias_in1', 'pmos*bias_out', 'nmos*gain_cal', 'nmos*bias_in0', 'nmos*bias_in1', 'nmos*bias_out', 'bias_in0*bias_in1', 'nmos*pmos*bias_in0', 'nmos*pmos*bias_in1', 'nmos*pmos*bias_out', 'nmos*bias_in0*bias_in1']
 
-expr_text = "+".join(expr)
-expr = opparse.parse_expr(expr_text)
-result = fitlib.fit_model(variables,expr,dataset)
-prediction = fitlib.predict_output(result['params'], \
-                                   expr,dataset)
 
-plt.plot(dataset['meas_mean'])
-plt.plot(prediction)
-plt.savefig('predictions.png')
-plt.close()
-print("---- PARAMETERS ----")
-print(result['params'])
-print(result['param_error'])
-print("---- ERROR ---")
-error = list(map(lambda idx: dataset['meas_mean'][idx]-prediction[idx], \
-                 range(0,len(prediction))))
-plt.plot(error)
-plt.savefig('error.png')
-plt.close()
-#visualize_it(org)
+'''
+terms = ["pmos", "nmos", "gain_cal", "bias_in0", "bias_in1", "bias_out",
+          "pmos*nmos","pmos*gain_cal","pmos*bias_in0","pmos*bias_in1","pmos*bias_out",\
+          "nmos*gain_cal","nmos*bias_in0","nmos*bias_in1","nmos*bias_out","gain_cal*bias_in0",\
+          "gain_cal*bias_in1","gain_cal*bias_out","bias_in0*bias_in1","bias_in0*bias_out","bias_in1*bias_out",\
+          
+          
+          "nmos*pmos*bias_in0",\
+          "nmos*pmos*bias_in1",\
+          "nmos*pmos*bias_out",\
+          "nmos*pmos*gain_cal",\
+          "nmos*bias_in0*bias_in1",\
+          "nmos*bias_in0*bias_out",\
+          "nmos*bias_in0*gain_cal",\
+          "nmos*bias_in1*bias_out",\
+          "nmos*bias_in1*gain_cal",\
+          "nmos*bias_out*gain_cal",\
+          "pmos*bias_in0*bias_in1",\
+          "pmos*bias_in0*bias_out",\
+          "pmos*bias_in0*gain_cal",\
+          "pmos*bias_in1*bias_out",\
+          "pmos*bias_in1*gain_cal",\
+          "pmos*bias_out*gain_cal",\
+          "bias_in0*bias_in1*bias_out",\
+          "bias_in0*bias_in1*gain_cal",\
+          "bias_in0*bias_out*gain_cal",\
+          "bias_in1*bias_out*gain_cal",\
+          
+          
+          ]
+'''
+min_terms = terms
+num_of_iterations = len(terms)
+
+for i in range(1):
+  error, params = investigate_model(terms)
+  sumsq_error = sum(map(lambda x:x*x,error))
+  coefficients = list(params.values())
+  min_index = coefficients.index(min(coefficients, key=abs))
+  terms.remove(terms[min_index])
+
+
+#print(terms)
+
+
+
+#plt.plot(error)
+#plt.show()
