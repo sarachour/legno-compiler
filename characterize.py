@@ -5,6 +5,7 @@ import hwlib.hcdc.llstructs as llstructs
 import hwlib.hcdc.llenums as llenums
 import hwlib.hcdc.llcmd as llcmd
 import hwlib.hcdc.hcdcv2 as hcdclib
+import target_block
 import itertools
 import ops.op as oplib
 
