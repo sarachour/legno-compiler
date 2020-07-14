@@ -2,49 +2,37 @@ import hwlib.physdb as physdb
 import phys_model.model_fit as fitlib
 import hwlib.hcdc.hcdcv2 as hcdclib
 import hwlib.hcdc.llenums as llenums
+import phys_model.visualize as vizlib
 import hwlib.device as devlib
 import hwlib.block as blocklib
 import hwlib.adp as adplib
 import json
-
+import target_block
 import ops.lambda_op as lambdoplib
 
 dev = hcdclib.get_device()
-block = dev.get_block('mult')
-inst = devlib.Location([0,3,2,0])
-
+block,inst,cfg = target_block.get_block(dev)
 
 db = physdb.PhysicalDatabase('board6')
-dataset = {}
-for blk in physdb.get_all_configured_calibrated_blocks(db, \
-                                                       dev,block, \
-                                                       inst):
-  if not blk.static_cfg in dataset:
-    dataset[blk.static_cfg] = {}
+params = {}
+inputs = {}
+costs = []
+for blk in physdb.get_by_block_instance(db, dev,block,inst,cfg=cfg):
+  for par,value in blk.model.params.items():
+    if not par in params:
+      params[par] = []
+    params[par].append(value)
 
-  entry = blk.to_json()
-  if blk.model.complete:
-    data = blk.dataset.get_data(llenums.ProfileStatus.SUCCESS, \
-                                llenums.ProfileOpType.INPUT_OUTPUT)
-    pred_model = blk.model.predict(data['inputs'])
-    pred_delta = blk.model.predict(data['inputs'], \
-                                   correctable_only=True)
-    del entry['dataset']
-    entry['data'] = data
-    entry['data']['predict'] = pred_model
-    entry['data']['delta_model'] = pred_delta
-    entry['info'] = {}
 
-    variables,strrepr = lambdoplib.to_python(blk.model \
-                                             .delta_model \
-                                             .get_model(blk.model.params))
-    entry['info']['model'] = strrepr
+  for hidden_code,value in blk.hidden_codes():
+    if not hidden_code in inputs:
+      inputs[hidden_code] = []
+    inputs[hidden_code].append(value)
 
-    variables,strrepr = lambdoplib.to_python(blk.model.delta_model.get_correctable_model(blk.model.params))
-    entry['info']['correctable_model'] = strrepr
+  vizlib.deviation(blk,'output.png', \
+                   num_bins=32, \
+                   baseline=vizlib.ReferenceType.MODEL_PREDICTION, \
+                   relative=False)
+  costs.append(blk.model.cost)
 
-    entry['bounds'] = blk.get_bounds()
-    dataset[blk.static_cfg][blk.hidden_cfg] = entry
 
-with open('output.json','w') as fh:
-  fh.write(json.dumps(dataset))

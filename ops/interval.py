@@ -36,6 +36,11 @@ class Interval:
         return max(abs(self.lower),abs(self.upper))
 
     @property
+    def middle(self):
+        return (self._upper+self._lower)/2.0
+
+
+    @property
     def lower(self):
         return self._lower
 

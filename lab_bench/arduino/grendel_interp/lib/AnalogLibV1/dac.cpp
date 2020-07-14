@@ -22,14 +22,14 @@ void Fabric::Chip::Tile::Slice::Dac::computeInterval(dac_state_t& state,
 float Fabric::Chip::Tile::Slice::Dac::computeInput(dac_state_t& codes, float output){
   float sign = util::sign_to_coeff(codes.inv);
   float rng = util::range_to_coeff(codes.range);
-  return output/(sign*rng);
+  return output/(sign*rng*2.0);
 }
 
 float Fabric::Chip::Tile::Slice::Dac::computeOutput(dac_state_t& codes){
   float sign = util::sign_to_coeff(codes.inv);
   float rng = util::range_to_coeff(codes.range);
   float const_val = (codes.const_code - 128.0)/128.0;
-  return sign*rng*const_val;
+  return sign*rng*const_val*2.0;
 }
 void Fabric::Chip::Tile::Slice::Dac::update(dac_state_t codes){
   this->m_state = codes;

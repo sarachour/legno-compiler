@@ -90,9 +90,9 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(profile_spec_t spec)
 
   spec.inputs[in0Id]= val1_dac->fastMakeValue(spec.inputs[in0Id]);
   float target_vga = computeOutput(this->m_state,
-                                   spec.inputs[in0Id], 
+                                   spec.inputs[in0Id],
                                    VAL_DONT_CARE);
-  if(fabs(target_vga) > 10.0){
+  if(fabs(target_vga) > 20.0){
     sprintf(FMTBUF, "can't fit %f", target_vga);
     calib.success = false;
   }
@@ -115,7 +115,7 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(profile_spec_t spec)
   profile_t prof = prof::make_profile(spec,
                                       mean,
                                       sqrt(variance));
-  sprintf(FMTBUF,"result target=%f mean=%f std=%f", target_vga,
+  sprintf(FMTBUF,"result target=%f mean=%f std=%f\n", target_vga,
           mean,sqrt(variance));
   print_info(FMTBUF);
   if(!calib.success){
@@ -175,14 +175,16 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureMult(profile_spec_t spec
   ref_to_tileout.setConn();
 
 
-  float target_in0 = val1_dac->fastMakeValue(spec.inputs[in0Id]);
-  float target_in1 = val2_dac->fastMakeValue(spec.inputs[in1Id]);
-  float target_mult = computeOutput(m_state,target_in0,target_in1);
-  if(fabs(target_mult) > 10.0){
+  spec.inputs[in0Id ]= val1_dac->fastMakeValue(spec.inputs[in0Id]);
+  spec.inputs[in1Id] = val2_dac->fastMakeValue(spec.inputs[in1Id]);
+  float target_mult = computeOutput(m_state,
+                                    spec.inputs[in0Id],
+                                    spec.inputs[in1Id]);
+  if(fabs(target_mult) > 20.0){
     calib.success = false;
   }
   float mean,variance;
-  const bool meas_steady;
+  const bool meas_steady = false;
   if(calib.success){
     calib.success &= cutil::measure_signal_robust(this,
                                                   ref_dac,
@@ -199,6 +201,9 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureMult(profile_spec_t spec
   if(!calib.success){
     prof.status = FAILED_TO_CALIBRATE;
   }
+  sprintf(FMTBUF,"result target=%f mean=%f std=%f\n", target_mult,
+          mean,sqrt(variance));
+  print_info(FMTBUF);
   dac_to_in0.brkConn();
   dac_to_in1.brkConn();
   mult_to_tileout.brkConn();

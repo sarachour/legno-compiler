@@ -197,7 +197,7 @@ class StateConfig(ConfigStmt):
   def to_json(self):
     return {
       'name':self.name,
-      'type': self.t.value,
+      'type': self.type.value,
       'value': self.value
     }
 

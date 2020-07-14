@@ -10,6 +10,7 @@
 // R^2 = 0.99902
 // ===== FULLSCALE =====
 #define ADC_FULLSCALE (1208.0)
+#define NORMALIZED_TO_CURRENT (2.0)
 
 inline int from_diff_dma(int val){
   // convert to a single-ended differential value
@@ -18,11 +19,18 @@ inline int from_diff_dma(int val){
   return new_val;
 }
 inline float to_diff_voltage(int val){
+  //
+  float val_mV = val*ADC_CONVERSION;
+  return val_mV/1000.0;
+}
+inline float to_current(int val){
+  //
   float val_mV = val*ADC_CONVERSION;
   float scaled_value = val_mV/ADC_FULLSCALE;
-  return scaled_value;
+  float analog_current = NORMALIZED_TO_CURRENT*scaled_value;
+  //return scaled_value;
+  return analog_current;
 }
-
 
 int measure_seq_single(Fabric* fab,
                 int ardAnaDiffChan,float* times, float* values, int& n){
@@ -44,7 +52,7 @@ int measure_seq_single(Fabric* fab,
   assert(n <= SAMPLES);
   int oob_idx = n;
   for(unsigned int index = 0; index < n; index++){
-    values[index] = to_diff_voltage(pos[index] - neg[index]);
+    values[index] = to_current(pos[index] - neg[index]);
     times[index] = ((float)(codes[index]-codes[0]))*1.0e-6;
     if(index < oob_idx && fabs(values[index]) > thresh){
       oob_idx = index;
@@ -70,7 +78,7 @@ int measure_seq_dma(Fabric* fab,
   assert(n <= SAMPLES);
   int oob_idx = n;
   for(unsigned int index = 0; index < n; index++){
-    values[index] = to_diff_voltage(from_diff_dma(vals[index]));
+    values[index] = to_current(from_diff_dma(vals[index]));
     times[index] = ((float)(codes[index]-codes[0]))*1.0e-6;
     if(index < oob_idx && fabs(values[index]) > thresh){
       oob_idx = index;
@@ -100,7 +108,7 @@ float measure_dist_single(int ardAnaDiffChan, float& variance,int n){
 
   float values[SAMPLES];
   for(unsigned int index = 0; index < n; index++){
-    values[index] = to_diff_voltage(pos[index]-neg[index]);
+    values[index] = to_current(pos[index]-neg[index]);
     //sprintf(FMTBUF,"dist val=%d",val[index]);
     //print_info(FMTBUF);
   }
@@ -136,7 +144,7 @@ float measure_dist_dma(int ardAnaDiffChan, float& variance,int n){
 
   float values[SAMPLES];
   for(unsigned int index = 0; index < n; index++){
-    values[index] = to_diff_voltage(from_diff_dma(vals[index]));
+    values[index] = to_current(from_diff_dma(vals[index]));
     //sprintf(FMTBUF,"dist val=%d",val[index]);
     //print_info(FMTBUF);
   }
@@ -173,7 +181,7 @@ float measure_single(int ardAnaDiffChan, int n){
   }
   float pos = (((float)adcPos)/samples);
   float neg = (((float)adcNeg)/samples);
-  float value = to_diff_voltage((int) (pos-neg));
+  float value = to_current((int) (pos-neg));
   return value;
 }
 
@@ -198,7 +206,7 @@ float measure_dma(int ardAnaDiffChan, int n){
   float digval = (((float)adcVal)/samples);
   //sprintf(FMTBUF,"meas val=%d",digval);
   //print_info(FMTBUF);
-  float value = to_diff_voltage(from_diff_dma((int) (digval)));
+  float value = to_current(from_diff_dma((int) (digval)));
   return value;
 }
 

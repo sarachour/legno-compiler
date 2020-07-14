@@ -17,6 +17,8 @@ import numpy as np
 
 import phys_model.profiler as proflib
 import phys_model.planner as planlib
+import target_block
+import sys
 
 def calibrate(dev,block,inst,cfg):
   runtime = GrendelRunner()
@@ -28,19 +30,24 @@ def calibrate(dev,block,inst,cfg):
 
 def profile_calibrated(dev,block,inst,cfg):
   runtime = GrendelRunner()
-  planner = planlib.SinglePointPlanner(block,inst,cfg,128)
+  planner = planlib.SinglePointPlanner(block,inst,cfg,12)
   proflib.profile_all_hidden_states(runtime,dev,planner)
 
-dev = hcdclib.get_device()
-block = dev.get_block('mult')
-inst = devlib.Location([0,1,2,0])
-cfg = adplib.BlockConfig.make(block,inst)
-#cfg.modes = [['+','+','-','m']]
-cfg.modes = [block.modes.get(['x','m','m'])]
-cfg['pmos'].value = 0
-cfg['nmos'].value = 2
-cfg['bias_in0'].value = 31
-cfg['bias_in1'].value = 31
-cfg['bias_out'].value = 16
+if len(sys.argv) == 2:
+  if sys.argv[1] == 'cal':
+    do_calibrate = True
+  elif sys.argv[1] == 'prof':
+    do_calibrate = False
+  else:
+    print("usage: calibrate_baseline <cal|prof>")
+    sys.exit(1)
 
-profile_calibrated(dev,block,inst,cfg)
+  dev = hcdclib.get_device()
+  block,inst,cfg = target_block.get_block(dev)
+  if do_calibrate:
+    calibrate(dev,block,inst,cfg)
+  else:
+    profile_calibrated(dev,block,inst,cfg)
+else:
+  print("usage: calibrate_baseline <cal|prof>")
+  sys.exit(1)

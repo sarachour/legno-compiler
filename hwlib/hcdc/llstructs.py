@@ -120,8 +120,8 @@ def dac_state_t():
 
 def mult_state_t():
     return cstruct.Struct(
-        "enable" / bool_t(),
         "vga" / bool_t(),
+        "enable" / bool_t(),
         "range" / cstruct.Array(3,range_t()),
         "pmos" / cstruct.Int8ul,
         "nmos" / cstruct.Int8ul,
@@ -250,11 +250,11 @@ def cmd_connection_t():
 def profile_spec_t():
     return cstruct.Struct(
         "inst" / block_loc_t(),
-        cstruct.Padding(3),
-        "in_vals" / cstruct.Array(2,cstruct.Float32l),
         "method" / profile_type_t(),
         "output" / port_type_t(),
-        "state" / state_t()
+        cstruct.Padding(1),
+        "in_vals" / cstruct.Array(2,cstruct.Float32l),
+        "state" / state_t(),
     )
 
 def cmd_profile_t():
