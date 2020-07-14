@@ -159,8 +159,9 @@ int sprintf_block_state(block_type_t blk, block_state_t state,char * buf){
 
   case block_type_t::MULT:
     offset = sprintf(buf,                                                        \
-                     "enable=%s range=(%s,%s,%s) pmos=%d nmos=%d gain_cal=%d port_cal=(%d,%d,%d) gain_code=%d", \
+                     "enable=%s vga=%s range=(%s,%s,%s) pmos=%d nmos=%d gain_cal=%d port_cal=(%d,%d,%d) gain_code=%d", \
                      bool_to_string(state.mult.enable),
+                     bool_to_string(state.mult.vga),
                      range_to_string(state.mult.range[in0Id]),
                      range_to_string(state.mult.range[in1Id]),
                      range_to_string(state.mult.range[out0Id]),
@@ -247,7 +248,7 @@ void sprintf_profile_spec(profile_spec_t& result, char * buf){
           BUF,
           result.inputs[in0Id],
           result.inputs[in1Id],
-          util::ifc_to_string(result.output),
+          port_type_to_string(result.output),
           profile_type_to_string(result.type));
 }
 void sprintf_profile(profile_t& result, char * buf){

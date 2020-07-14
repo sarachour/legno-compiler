@@ -8,6 +8,8 @@
 
 #define CALIB_NPTS 7
 const float TEST_POINTS[CALIB_NPTS] = {0,0.875,0.5,-0.875,-0.5,0.25,-0.25};
+unsigned int N_DAC_POINTS_TESTED = 0;
+
 float Fabric::Chip::Tile::Slice::Dac::getLoss(calib_objective_t obj){
   float loss = 0;
   switch(obj){
@@ -51,6 +53,7 @@ void Fabric::Chip::Tile::Slice::Dac::calibrate (calib_objective_t obj)
   dac_to_tile.setConn();
 	tile_to_chip.setConn();
 
+  N_DAC_POINTS_TESTED = 0;
   //populate calibration table
   cutil::calib_table_t calib_table = cutil::make_calib_table();
   for(int nmos=0; nmos < MAX_NMOS; nmos += 1){
@@ -80,6 +83,8 @@ void Fabric::Chip::Tile::Slice::Dac::calibrate (calib_objective_t obj)
   sprintf(FMTBUF,"BEST nmos=%d\tgain_cal=%d\tloss=%f",
           best_nmos,best_gain_cal,calib_table.loss);
   print_info(FMTBUF);
+  sprintf(FMTBUF,"Tested Points: %d\n", N_DAC_POINTS_TESTED);
+  print_info(FMTBUF);
 
   // teardown
   update(codes_dac);
@@ -103,6 +108,7 @@ float Fabric::Chip::Tile::Slice::Dac::calibrateMaxDeltaFit(){
     float target = Fabric::Chip::Tile::Slice::Dac::computeOutput(this->m_state);
     float mean,variance;
     mean = this->fastMeasureValue(variance);
+    N_DAC_POINTS_TESTED += 1;
     errors[i] = mean-target;
     expected[i] = target;
     max_std = max(sqrt(variance),max_std);
@@ -123,6 +129,7 @@ float Fabric::Chip::Tile::Slice::Dac::calibrateMinError(){
     this->setConstant(const_val);
     float target = Fabric::Chip::Tile::Slice::Dac::computeOutput(this->m_state);
     float mean,variance;
+    N_DAC_POINTS_TESTED += 1;
     mean = this->fastMeasureValue(variance);
     loss_total += fabs(target-mean);
   }

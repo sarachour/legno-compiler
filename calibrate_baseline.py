@@ -33,10 +33,21 @@ def profile_calibrated(dev,block,inst,cfg):
   planner = planlib.SinglePointPlanner(block,inst,cfg,12)
   proflib.profile_all_hidden_states(runtime,dev,planner)
 
-do_calibrate = True
-dev = hcdclib.get_device()
-block,inst,cfg = target_block.get_block(dev)
-if do_calibrate:
-  calibrate(dev,block,inst,cfg)
+if len(sys.argv) == 2:
+  if sys.argv[1] == 'cal':
+    do_calibrate = True
+  elif sys.argv[1] == 'prof':
+    do_calibrate = False
+  else:
+    print("usage: calibrate_baseline <cal|prof>")
+    sys.exit(1)
+
+  dev = hcdclib.get_device()
+  block,inst,cfg = target_block.get_block(dev)
+  if do_calibrate:
+    calibrate(dev,block,inst,cfg)
+  else:
+    profile_calibrated(dev,block,inst,cfg)
 else:
-  profile_calibrated(dev,block,inst,cfg)
+  print("usage: calibrate_baseline <cal|prof>")
+  sys.exit(1)

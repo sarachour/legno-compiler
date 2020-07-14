@@ -68,7 +68,7 @@ namespace cutil {
                              float& mean,
                              float& variance){
     float delta = 0.0;
-    float thresh = 1.3;
+    float thresh = 2.6;
     float step = 0.24;
     float measurement = 0;
     float ref_dac_val;
@@ -78,6 +78,7 @@ namespace cutil {
 
     const float MED_CURRENT_AMPL = 2.0;
     const float DAC_VAL_AMPL = 1.0;
+    print_info("calibrating reference dac");
     // configure reference dac to maximize gain
     ref_dac->setRange(fabs(target) > MED_CURRENT_AMPL
                       ? RANGE_HIGH : RANGE_MED);
@@ -116,9 +117,6 @@ namespace cutil {
     }
     float dummy;
     ref_dac_val = ref_dac->fastMeasureValue(dummy);
-    sprintf(FMTBUF, "targ_dac_val=%f ref_dac_out=%f meas=%f\n",
-            targ_dac_val,ref_dac_val,measurement);
-    print_info(FMTBUF);
 
     mean = measurement-ref_dac_val;
     variance = variance;

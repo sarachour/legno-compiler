@@ -26,7 +26,7 @@ mult.inputs.add(BlockInput('x',BlockSignalType.ANALOG, \
 mult.inputs['x'] \
     .interval.bind(['_','m','_'],interval.Interval(-2,2))
 mult.inputs['x'] \
-    .interval.bind(['_','h','_'],interval.Interval(-2,2))
+    .interval.bind(['_','h','_'],interval.Interval(-20,20))
 
 mult.inputs.add(BlockInput('y',BlockSignalType.ANALOG, \
                            ll_identifier=enums.PortType.IN1))

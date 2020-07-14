@@ -171,6 +171,8 @@ def deviation(blk,output_file, \
   else:
     raise Exception("unimplemented")
 
+  #valid_vars = blk.model.delta_model.vars()
+  #print("valid variables: %s" % valid_vars)
   for idx in range(0,len(ref)):
     pred = ref[idx]
     inps = {}

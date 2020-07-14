@@ -10,6 +10,7 @@ const float TEST0_POINTS[CALIB_NPTS] = {-0.75,0.75,0.5,0.0};
 const float TEST1_MULT_POINTS[CALIB_NPTS] = {-0.75,0.75,0.5,0.0};
 const float TEST1_VGA_POINTS[CALIB_NPTS] = {-0.75,0.75,0.5,0.0};
 
+unsigned int N_MULT_POINTS_TESTED = 0;
 float Fabric::Chip::Tile::Slice::Multiplier::getLoss(calib_objective_t obj,
                                                      Dac * val0_dac,
                                                      Dac * val1_dac,
@@ -85,6 +86,7 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperVga(Dac * val_dac,
                                             meas_steady,
                                             mean,
                                             variance);
+      N_MULT_POINTS_TESTED += 1;
       if(succ){
         observations[npts] = mean;
         expected[npts] = target_out;
@@ -137,6 +139,7 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperMult(Dac * val0_dac,
                                                meas_steady,
                                                mean,
                                                variance);
+      N_MULT_POINTS_TESTED += 1;
       if(succ){
         observations[npts] = mean;
         expected[npts] = target_out;
@@ -263,12 +266,14 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperFindBiasCodes(cutil::
       error += fabs(util::meas_fast_chip_out(this) - target_pos);
       this->setGain(neg);
       error += fabs(util::meas_fast_chip_out(this) - target_neg);
+      N_MULT_POINTS_TESTED += 2;
     }
     else{
       val1_dac->setConstant(pos);
       error += fabs(util::meas_fast_chip_out(this) - target_pos);
       val1_dac->setConstant(neg);
       error += fabs(util::meas_fast_chip_out(this) - target_neg);
+      N_MULT_POINTS_TESTED += 2;
     }
     cutil::update_calib_table(in0_table,error,1,i);
   }
@@ -284,6 +289,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperFindBiasCodes(cutil::
       val1_dac->setConstant(neg);
       error += fabs(util::meas_fast_chip_out(this) - target_neg);
       cutil::update_calib_table(in1_table,error,1,i);
+      N_MULT_POINTS_TESTED += 2;
     }
     this->m_state.port_cal[in1Id] = in1_table.state[0];
   }
@@ -297,12 +303,14 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperFindBiasCodes(cutil::
       error += fabs(util::meas_fast_chip_out(this) - target_pos);
       this->setGain(neg);
       error += fabs(util::meas_fast_chip_out(this) - target_neg);
+      N_MULT_POINTS_TESTED += 2;
     }
     else{
       val1_dac->setConstant(pos);
       error += fabs(util::meas_fast_chip_out(this) - target_pos);
       val1_dac->setConstant(neg);
       error += fabs(util::meas_fast_chip_out(this) - target_neg);
+      N_MULT_POINTS_TESTED += 2;
     }
     cutil::update_calib_table(out_table,error,1,i);
   }
@@ -337,6 +345,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
   dac_state_t state_dac_val1 = val1_dac->m_state;
   dac_state_t state_dac_ref = ref_dac->m_state;
 
+  N_MULT_POINTS_TESTED = 0;
   cutil::calibrate_t calib;
   cutil::initialize(calib);
   cutil::buffer_mult_conns(calib,this);
@@ -553,5 +562,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
           this->m_state.port_cal[out0Id],
           this->m_state.gain_cal,
           calib_table.loss);
+  print_info(FMTBUF);
+  sprintf(FMTBUF,"Tested Points: %d\n", N_MULT_POINTS_TESTED);
   print_info(FMTBUF);
 }

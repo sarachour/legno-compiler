@@ -176,9 +176,9 @@ typedef enum {
 
 typedef struct {
   block_loc_t inst;
-  float inputs[2];
   profile_type_t type;
   port_type_t output;
+  float inputs[2];
   block_state_t state;
 } profile_spec_t;
 
