@@ -1,117 +1,254 @@
-import util.util as util
+import hwlib.adp as adplib
+import hwlib.block as blocklib
+import ops.base_op as baseoplib
 
-import ops.scop as scop
-import ops.op as ops
-import ops.interval as interval
+class ScaleMethod:
+  IDEAL = "ideal"
+  PHYSICAL = "physical"
 
-import hwlib.model as hwmodel
-import hwlib.props as props
-from hwlib.adp import AnalogDeviceProg
+class DynamicalSystemInfo:
 
+  def __init__(self):
+    self.intervals = {}
 
-import compiler.common.prop_interval as prop_interval
+class HardwareInfo:
 
-import compiler.lscale_pass.lscale_util as lscale_util
-import compiler.lscale_pass.lscale_common as lscale_common
-import compiler.lscale_pass.scenv as scenvlib
-import compiler.lscale_pass.scenv_gpkit as scenv_gpkit
-import compiler.lscale_pass.scenv_linear as scenv_linear
-import compiler.lscale_pass.scenv_smt as scenv_smt
-
-import compiler.lscale_pass.expr_visitor as exprvisitor
-import compiler.lscale_pass.lscale_util as lscale_util
-import compiler.lscale_pass.lscale_common as lscale_common
-import compiler.lscale_pass.lscale_infer as lscale_infer
-import compiler.lscale_pass.lscale_physlog as lscale_physlog
-from compiler.lscale_pass.objective.obj_mgr import LScaleObjectiveFunctionManager
+  def __init__(self,dev,scale_method=ScaleMethod.IDEAL):
+    self.dev = dev
+    self.scale_method = scale_method
 
 
+  def get_relation(self,instance,mode,port):
+    out = self.dev.get_block(instance.block) \
+                  .outputs[port]
+    if self.scale_method == ScaleMethod.IDEAL:
+      assert(out.relation.has(mode))
+      return out.relation[mode]
+    else:
+      delta = out.deltas[mode]
+      raise Exception("get_relation")
 
-def report_missing_models(model,circ):
-    for block,loc,port,comp_mode,scale_mode in hwmodel.ModelDB.MISSING:
-        lscale_physlog.log(circ,block,loc, \
-                          comp_mode,
-                          scale_mode)
-        msg = "NO model: %s[%s].%s %s %s error" % \
-              (block,loc,port, \
-               comp_mode,scale_mode)
+class SCVar:
 
-def scale(prog,adp,nslns, \
-          model, \
-          mdpe, \
-          mape, \
-          vmape, \
-          mc, \
-          ignore_models=[], \
-          max_freq_khz=None, \
-          do_log=True, \
-          test_existence=False):
-    def gen_models(model):
-        models = [model]
-        #if model.uses_delta_model():
-        #    models.append(model.naive_model())
+  def __init__(self):
+    pass
 
-        return models
+class ModeVar(SCVar):
 
-    assert(isinstance(model,util.DeltaModel))
-    prop_interval.clear_intervals(adp)
-    prop_interval.compute_intervals(prog,adp)
-    objs = LScaleObjectiveFunctionManager.basic_methods()
-    n_missing = 0
-    has_solution = False
-    for this_model in gen_models(model):
-        for obj in objs:
-            for idx,adp in enumerate(lscale_infer.infer_scale_config(prog, \
-                                                                     adp, \
-                                                                     nslns, \
-                                                                     model=this_model, \
-                                                                     max_freq_khz=max_freq_khz, \
-                                                                     ignore_models=ignore_models, \
-                                                                     mdpe=mdpe, \
-                                                                     mape=mape, \
-                                                                     vmape=vmape, \
-                                                                     obj_fun=obj, \
-                                                                     mc=mc)):
-                if test_existence:
-                    has_solution = True
-                    break
+  def __init__(self,instance):
+    SCVar.__init__(self)
+    self.inst = instance
 
-                #for this_model in gen_models(model):
-                scenv = scenvlib.LScaleEnv(model=this_model, \
-                                           max_freq_khz=max_freq_khz, \
-                                           mdpe=mdpe, \
-                                           mape=mape, \
-                                           vmape=vmape, \
-                                           mc=mc)
-                yield idx,obj.name(),scenv.params.tag(),adp
+  def __repr__(self):
+    return "mode(%s)" % self.inst
 
-            if test_existence:
-                break
+class PortScaleVar(SCVar):
+
+  def __init__(self,instance,port):
+    SCVar.__init__(self)
+    self.inst = instance
+    self.port = port
+
+  def __repr__(self):
+    return "port(%s,%s)" \
+      % (self.inst,self.port)
+
+class TimeScaleVar(SCVar):
+
+  def __init__(self):
+    SCVar.__init__(self)
+    pass
+
+  def __repr__(self):
+    return "tau"
 
 
-        if test_existence:
-            break
+class ConstCoeffVar(SCVar):
 
-    if test_existence:
-        if has_solution:
-            yield None
+  def __init__(self,instance,port,index):
+    self.inst = instance
+    self.port = port
+    self.index = ConstCoeffVar.INDEX
+    ConstCoeffVar.INDEX + 1
 
-        if not do_log:
-            return
+class PropertyVar(SCVar):
+  class Type:
+    FREQUENCY = "freq"
+    INTERVAL = "interval"
+
+  def __init__(self,type,instance,port):
+    SCVar.__init__(self)
+    self.type = type
+    self.inst = instance
+    self.port = port
+
+class SCMonomial:
+
+  def __init__(self):
+    self._coeff =  1.0
+    self._terms = []
+    self._expos = []
+
+  @property
+  def coeff(self):
+    return self._coeff
+
+  @coeff.setter
+  def coeff(self,c):
+    assert(c > 0)
+    self._coeff = c
+
+  def product(self,mono):
+    assert(isinstance(mono,SCMonomial))
+    self.coeff *= mono.coeff
+    for term,expo in mono.terms:
+      self.add_term(term,expo)
+
+  def add_term(self,term,expo=1.0):
+    assert(isinstance(term,SCVar))
+    assert(isinstance(expo,float))
+    self._terms.append(term)
+    self._expos.append(expo)
+
+  @staticmethod
+  def make_var(v):
+    m = SCMonomial()
+    m.add_term(v,1.0)
+    return m
+
+  @staticmethod
+  def make_const(value):
+    m = SCMonomial()
+    m.coeff = value
+    return m
+
+  @property
+  def terms(self):
+    for t,e in zip(self._terms,self._expos):
+      yield t,e
+
+  def __repr__(self):
+    st = ["%f" % self.coeff]
+    for t,e in zip(self._terms,self._expos):
+      st.append("(%s^%f)" % (t,e))
+    return "*".join(st)
+
+class SCSubsetEq:
+
+  def __init__(self,lhs_expr,lhs_interval,rhs_expr,rhs_interval):
+    assert(isinstance(lhs,SCMonomial) or \
+           isinstance(lhs,SCVar))
+    self.lhs_expr = lhs_expr
+    self.lhs_interval = lhs_interval
+    self.rhs_expr = rhs_expr
+    self.rhs_interval = rhs_interval
 
 
-    if do_log:
-        print("logging missing models: %s" % do_log)
-        pars = scenvlib.LScaleEnvParams(model=model,
-                                        max_freq_khz=max_freq_khz, \
-                                        mdpe=mdpe,
-                                        mape=mape,
-                                        vmape=vmape,
-                                        mc=mc)
-        report_missing_models(model,adp)
-        lscale_physlog.save(pars.calib_obj)
-        if not lscale_physlog.is_empty() and \
-           model.uses_delta_model():
-            raise Exception("must calibrate components")
 
-        lscale_physlog.clear()
+class SCEq:
+
+  def __init__(self,lhs,rhs):
+    assert(isinstance(lhs,SCMonomial) or \
+           isinstance(lhs,SCVar))
+    assert(isinstance(rhs,SCMonomial) or \
+           isinstance(rhs,SCVar))
+
+    self.lhs = lhs
+    self.rhs = rhs
+
+  def __repr__(self):
+    return "%s == %s" % (self.lhs,self.rhs)
+
+def generate_dynamical_system_info(program,adp):
+  ivals = DynamicalSystemInfo()
+  for config in adp.configs:
+    for stmt in config.stmts_of_type(adplib.ConfigStmtType.PORT):
+      print(stmt)
+
+  return ivals
+
+def templatize_relation(templ,modes):
+  '''
+  Create a relation with ConstVars instead of coefficients.
+  Divide each mode relation by the baseline. If the shape doesn't match
+  up, raise an exception
+  '''
+  raise Exception("templatize %s for %s" % (templ,modes))
+
+def generate_factor_constraints(inst,rel):
+  if rel.op == baseoplib.OpType.INTEG:
+    c1,mderiv = generate_factor_constraints(inst,rel.deriv)
+    c2,mic = generate_factor_constraints(inst,rel.init_cond)
+    monomial = SCMonomial()
+    monomial.product(mderiv)
+    monomial.add_term(TimeScaleVar())
+    cspeed = SCEq(monomial,mic)
+    return c1+c2+[cspeed],mic
+
+  if rel.op == baseoplib.OpType.VAR:
+    variable = PortScaleVar(inst,rel.name)
+    return [],SCMonomial.make_var(variable)
+
+  if rel.op == baseoplib.OpType.CONST:
+    return [],SCMonomial.make_const(rel.value)
+
+  if rel.op == baseoplib.OpType.MULT:
+    c1,op1 = generate_factor_constraints(inst,rel.arg(0))
+    c2,op2 = generate_factor_constraints(inst,rel.arg(1))
+    m = SCMonomial()
+    m.product(op1)
+    m.product(op2)
+    return c1+c2,m
+  else:
+    raise Exception(rel)
+
+def generate_constraint_problem(dev,program,adp):
+  dsinfo = generate_dynamical_system_info(program,adp)
+  hwinfo = HardwareInfo(dev)
+
+  for conn in adp.conns:
+    yield SCEq(PortScaleVar(conn.source_inst,conn.source_port), \
+               PortScaleVar(conn.dest_inst, conn.dest_port))
+
+  for config in adp.configs:
+    mode_var = ModeVar(config.inst)
+    block = dev.get_block(config.inst.block)
+    valid_modes = set(block.modes)
+    # identify which modes can be templatized
+    for out in block.outputs:
+      cstr,modes,rel = templatize_relation(block.outputs[out.name] \
+                                     .relation[config.modes[0]],
+                                block.modes)
+      for cstr in cstrs:
+        yield cstr
+
+      # ensure the expression is factorable
+      cstrs, scexpr = generate_factor_constraints(config.inst,rel)
+      for cstr in cstrs:
+        yield cstr
+
+      yield SCEq(PortScaleVar(config.inst,out.name), scexpr)
+      valid_modes = valid_modes.intersection(modes)
+
+    # any data-specific constraints
+    for mode in valid_modes:
+      for datum in block.data:
+        if datum.type == blocklib.BlockDataType.CONST:
+          pass
+        elif datum.type == blocklib.BlockDataType.EXPR:
+          pass
+        else:
+          raise NotImplementedError
+
+      # generate interval, freq limitation, and port constraints
+      for port in list(block.inputs) + list(block.outputs):
+        interval = port.interval[mode]
+        freq_lim = port.freq_limit[mode]
+        if hasattr(port,'quantize'):
+          quantize = port.quantize[mode]
+
+
+def scale(dev, program, adp):
+  for stmt in generate_constraint_problem(dev,program,adp):
+    print(stmt)
+  raise NotImplementedError

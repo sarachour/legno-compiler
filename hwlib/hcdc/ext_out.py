@@ -2,7 +2,7 @@ import hwlib.hcdc.llenums as enums
 from hwlib.block import *
 import ops.opparse as parser
 
-ext_out = Block('ext_out',BlockType.COMPUTE, \
+ext_out = Block('extout',BlockType.COMPUTE, \
             [enums.NoModeType])
 
 ext_out.modes.add_all([["*"]])

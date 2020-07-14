@@ -33,7 +33,7 @@ class Quantize:
 
 class BlockType(Enum):
     COMPUTE = "compute"
-    COPY = "copy"
+    ASSEMBLE = "assemble"
     ROUTE = "route"
 
 
@@ -265,6 +265,9 @@ class ModeDependentProperty:
   @property
   def value_type(self):
     return self._type
+
+  def has(self,mode):
+      return mode.key in self._fields
 
   def bind(self,mode_pattern,field):
     assert(isinstance(field,self._type))
@@ -707,13 +710,15 @@ class BlockData(BlockField):
       self.quantize = ModeDependentProperty("quantization", \
                                             block.modes, \
                                             Quantize)
+
+      self.interval = ModeDependentProperty("interval", \
+                                            block.modes, \
+                                            interval.Interval)
+
+
     else:
       assert(isinstance(self.n_inputs,int))
-
-    self.interval = ModeDependentProperty("interval", \
-                                          block.modes, \
-                                          interval.Interval)
-
+      print("[WARN] need to add quantization info")
 
 class Block:
 

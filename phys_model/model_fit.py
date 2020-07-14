@@ -8,8 +8,59 @@ import phys_model.phys_util as phys_util
 import ops.generic_op as genoplib
 import ops.lambda_op as lambdoplib
 import itertools
+import math
+import numpy as np
 
-PROG = '''
+MIN_PROG = '''
+from scipy.optimize import minimize
+import numpy as np
+
+def func(x):
+  return {expr}
+
+
+x0={x0}
+bnds={bounds}
+lbls={variable_array}
+res = minimize(func,x0,bounds=bnds)
+assigns = dict(zip(lbls,res.x))
+print(assigns)
+'''
+
+
+def minimize_model(variables,expr,params,bounds={}):
+  n_inputs = len(variables)
+  #if phys.model.complete:
+  #  return False
+
+  repl = {}
+  dataset = [None]*n_inputs
+  for idx,bound_var in enumerate(variables):
+    repl[bound_var] = genoplib.Var("x[%d]" % idx)
+
+  for par,value in params.items():
+    repl[par] = genoplib.Const(value)
+
+  bounds_arr = [(None,None)]*n_inputs
+  for var,(lower,upper) in bounds.items():
+    idx = variables.index(var)
+    bounds_arr[idx] = (lower,upper)
+
+  conc_expr = expr.substitute(repl)
+  _,pyexpr = lambdoplib.to_python(conc_expr)
+  x0 = list(map(lambda v: 1, variables))
+  fields = {
+    'x0': x0,
+    'expr':pyexpr,
+    'bounds':bounds_arr,
+    'variable_array':variables
+  }
+  snippet = MIN_PROG.format(**fields) \
+                    .replace('math.','np.')
+  loc = {}
+  exec(snippet,globals(),loc)
+
+FIT_PROG = '''
 from scipy.optimize import curve_fit
 import numpy as np
 
@@ -28,6 +79,7 @@ lbls = [{free_var_array}]
 assigns = dict(zip(lbls,popt))
 perr = np.sqrt(np.diag(pcov))
 '''
+
 
 def fit_model(variables,expr,data):
   inputs = data['inputs']
@@ -52,7 +104,8 @@ def fit_model(variables,expr,data):
     'y_dataset': str(meas_output),
     'expr':pyexpr
   }
-  snippet = PROG.format(**fields)
+  snippet = FIT_PROG.format(**fields) \
+                    .replace('math.','np.')
   loc = {}
   exec(snippet,globals(),loc)
   parameters = loc['lbls']
@@ -95,5 +148,5 @@ def analyze_physical_output(phys_output,operation=llenums.ProfileOpType.INPUT_OU
   dataset = phys_output.dataset
   fit_delta_model(phys_output, \
                   phys_output.dataset.get_data( \
-                                  llenums.ProfileStatus.SUCCESS, \
+                                                llenums.ProfileStatus.SUCCESS, \
                                                 operation))

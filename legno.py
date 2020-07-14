@@ -25,16 +25,14 @@ subparsers = parser.add_subparsers(dest='subparser_name',
                                    help='compilers/compilation passes.')
 
 lgraph_subp = subparsers.add_parser('lgraph', help='generate circuit')
-lgraph_subp.add_argument('--simulate', action="store_true",
-                       help="ignore resource constraints while compiling.")
-lgraph_subp.add_argument('--xforms', type=int,default=3,
-                       help='number of abs circuits to generate.')
 lgraph_subp.add_argument('--vadp-fragments', type=int,default=100,
                        help='number of abs circuits to generate.')
 lgraph_subp.add_argument('--vadps', type=int,default=3,
                        help='number of conc circuits to generate.')
 lgraph_subp.add_argument('--adps', type=int,default=5,
                        help='maximum number of circuits to generate.')
+lgraph_subp.add_argument('--assembly-depth',type=int,default=3,
+                         help='depth of assembly fragments that are generated')
 
 
 lgraph_subp.add_argument('program', type=str,help='benchmark to compile')

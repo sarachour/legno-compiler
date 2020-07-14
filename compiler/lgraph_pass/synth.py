@@ -196,7 +196,7 @@ def tableau_complexity(tableau,depth):
   cost = 0.0
   for goal in tableau.goals:
     cost = max(cost,goal.expr.nodes())
-  return cost-depth
+  return cost + depth
 
 def goal_complexity(goal):
   return goal.expr.nodes()

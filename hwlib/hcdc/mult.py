@@ -76,9 +76,16 @@ mult.outputs['z'].relation \
 
 
 
-spec = DeltaSpec(parser.parse_expr('(a*c+b)*x + d'))
+spec = DeltaSpec(parser.parse_expr('(a*c+b)*x+d'))
+
+#spec = DeltaSpec(parser.parse_expr('(a*c+b)*x+0.15*sin((3*w1*c+phi1))*sin((3*w2*x+phi2))+d'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('b',DeltaParamType.CORRECTABLE,ideal=0.0)
+#spec.param('ampl',DeltaParamType.GENERAL,ideal=0.0)
+#spec.param('phi1',DeltaParamType.CORRECTABLE,ideal=0.0)
+#spec.param('w1',DeltaParamType.CORRECTABLE,ideal=1.0)
+#spec.param('phi2',DeltaParamType.CORRECTABLE,ideal=0.0)
+#spec.param('w2',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('d',DeltaParamType.GENERAL,ideal=0.0)
 mult.outputs['z'].deltas.bind(['x','m','m'],spec)
 mult.outputs['z'].deltas.bind(['x','h','h'],spec)
@@ -187,33 +194,33 @@ mult.state['nmos'].impl.set_default(3)
 # gain_code
 
 mult.state.add(BlockState('gain_cal',
-                        values=range(0,32), \
+                        values=range(0,64), \
                         state_type=BlockStateType.CALIBRATE))
 mult.state['gain_cal'].impl.set_default(16)
 
 calarr = BlockStateArray('port_cal', \
                          indices=enums.PortType, \
-                         values=range(0,32), \
+                         values=range(0,64), \
                          length=3,\
-                         default=16)
+                         default=32)
 
 mult.state.add(BlockState('bias_in0',
-                        values=range(0,32), \
+                        values=range(0,64), \
                         index=enums.PortType.IN0, \
                         array=calarr, \
                         state_type=BlockStateType.CALIBRATE))
-mult.state['bias_in0'].impl.set_default(16)
+mult.state['bias_in0'].impl.set_default(32)
 
 mult.state.add(BlockState('bias_in1',
-                        values=range(0,32), \
+                        values=range(0,64), \
                         index=enums.PortType.IN1, \
                         array=calarr, \
                         state_type=BlockStateType.CALIBRATE))
-mult.state['bias_in1'].impl.set_default(16)
+mult.state['bias_in1'].impl.set_default(32)
 
 mult.state.add(BlockState('bias_out',
-                        values=range(0,32), \
+                        values=range(0,64), \
                         index=enums.PortType.OUT0, \
                         array=calarr, \
                         state_type=BlockStateType.CALIBRATE))
-mult.state['bias_out'].impl.set_default(16)
+mult.state['bias_out'].impl.set_default(32)
