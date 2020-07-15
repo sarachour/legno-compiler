@@ -86,6 +86,9 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperVga(Dac * val_dac,
                                             meas_steady,
                                             mean,
                                             variance);
+      sprintf(FMTBUF,"in0=%f c=%f out=%f meas=%f", target_in0, in1,
+              target_out,mean);
+      print_info(FMTBUF);
       N_MULT_POINTS_TESTED += 1;
       if(succ){
         observations[npts] = mean;

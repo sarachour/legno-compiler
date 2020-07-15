@@ -1,3 +1,4 @@
+
 import hwlib.physdb as physdb
 import phys_model.model_fit as fitlib
 import hwlib.hcdc.hcdcv2 as hcdclib
@@ -32,7 +33,7 @@ for blk in physdb.get_by_block_instance(db, dev,block,inst,cfg=cfg):
   vizlib.deviation(blk,'output.png', \
                    num_bins=32, \
                    baseline=vizlib.ReferenceType.MODEL_PREDICTION, \
-                   relative=False)
+                   relative=True)
   costs.append(blk.model.cost)
 
 
