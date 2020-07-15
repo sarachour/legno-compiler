@@ -78,7 +78,6 @@ namespace cutil {
 
     const float MED_CURRENT_AMPL = 2.0;
     const float DAC_VAL_AMPL = 1.0;
-    print_info("calibrating reference dac");
     // configure reference dac to maximize gain
     ref_dac->setRange(fabs(target) > MED_CURRENT_AMPL
                       ? RANGE_HIGH : RANGE_MED);

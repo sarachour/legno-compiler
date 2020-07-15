@@ -75,23 +75,22 @@ def get_mult_hm(dev):
   cfg.modes = [block.modes.get(['x','h','m'])]
 
   print("[WARN] not calibrated")
-  cfg['pmos'].value = 0
-  cfg['nmos'].value = 0
+  cfg['pmos'].value = 1
+  cfg['nmos'].value = 1
   cfg['gain_cal'].value = 0
-  cfg['bias_in0'].value = 31
+  cfg['bias_in0'].value = 26
   cfg['bias_in1'].value = 32
-  cfg['bias_out'].value = 21
+  cfg['bias_out'].value = 17
 
   npts = 774978919
   return block,inst,cfg
 
 
 def get_mult_mh(dev):
-  # this has really high error for some reason... debug?
+  # fixed. About 0.5% error
   block = dev.get_block('mult')
   inst = devlib.Location([0,1,2,0])
   cfg = adplib.BlockConfig.make(block,inst)
-  #cfg.modes = [['+','+','-','m']]
   cfg.modes = [block.modes.get(['x','m','h'])]
 
   print("[WARN] not calibrated")
@@ -108,7 +107,8 @@ def get_mult_mh(dev):
 
 def get_block(dev):
   #return get_mult_mmm(dev)
-  return get_mult_mm(dev)
+  #return get_mult_mm(dev)
   #return get_mult_hm(dev)
+  return get_mult_mh(dev)
   #return get_dac_h(dev)
 

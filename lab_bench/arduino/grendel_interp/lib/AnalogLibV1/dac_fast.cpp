@@ -31,7 +31,7 @@ void fast_calibrate_dac(Fabric::Chip::Tile::Slice::Dac * aux_dac){
 }
 void Fabric::Chip::Tile::Slice::Dac::fastMakeDacModel(){
 #define NPTS 5
-  float values[NPTS] = {-10,-5,0,5,10};
+  float values[NPTS] = {-20,-10,0,10,20};
   float measurements[NPTS];
   float codes[NPTS];
   for(int i=0; i < NPTS; i += 1){
@@ -53,7 +53,7 @@ void Fabric::Chip::Tile::Slice::Dac::fastMakeDacModel(){
   print_info(FMTBUF);
 }
 float Fabric::Chip::Tile::Slice::Dac::fastMakeValue(float target){
-  if(fabs(target) < 0.9){
+  if(fabs(target) < 1.8){
     return fastMakeMedValue(target, 0.02);
   }
   else{
@@ -87,7 +87,8 @@ float Fabric::Chip::Tile::Slice::Dac::fastMakeMedValue(float target,
   tile_to_chip.setConn();
 
   // start at what the value would be if the gain was one.
-  this->setConstant(target);
+  float digital_value = this->computeInput(this->m_state, target);
+  this->setConstant(digital_value);
   // start out with no code offset
   int delta = 0;
   // store the base code
@@ -167,7 +168,7 @@ float Fabric::Chip::Tile::Slice::Dac::fastMakeHighValue(float target,
   this_dac_to_tile.brkConn();
   ref_dac_to_tile.setConn();
   ref_dac->setConstant(0.0);
-  float ref_value = util::meas_chip_out(this);
+  float ref_value = util::meas_chip_out(ref_dac);
 
   // determine zero for this dac
   ref_dac_to_tile.brkConn();
@@ -183,19 +184,22 @@ float Fabric::Chip::Tile::Slice::Dac::fastMakeHighValue(float target,
   // telescope the dacs outward until we find
   // a value for the reference dac that is within
   // one step of the target
+  float digital_value;
   while(fabs(ref_value) < fabs(target)
-        && fabs(value) <= 10.0){
+        && fabs(value) < 20.0){
     float old_value = value;
     // telescope outward
     value = -(value < 0 ? value - step : value + step);
     float mean = -99.0;
     if(update_ref){
-      ref_dac->setConstant((value)*0.1);
+      digital_value = ref_dac->computeInput(ref_dac->m_state, value);
+      ref_dac->setConstant(digital_value);
       mean = util::meas_chip_out(this);
       ref_value = -dac_value + mean;
     }
     else{
-      this->setConstant((value)*0.1);
+      digital_value = this->computeInput(this->m_state, value);
+      this->setConstant(digital_value);
       mean = util::meas_chip_out(this);
       dac_value = -ref_value + mean;
     }
@@ -206,7 +210,8 @@ float Fabric::Chip::Tile::Slice::Dac::fastMakeHighValue(float target,
   // reference dac
   float target_diff = target + ref_value;
   // start at what the value would be if the gain was one.
-  this->setConstant(target*0.1);
+  digital_value = this->computeInput(this->m_state, target);
+  this->setConstant(digital_value);
   // start out with no code offset
   int delta = 0;
   // store the base code
