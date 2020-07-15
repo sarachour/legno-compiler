@@ -7,6 +7,7 @@ import hwlib.hcdc.llcmd as llcmd
 import hwlib.hcdc.hcdcv2 as hcdclib
 
 def get_dac_h(dev):
+  # sumsq error 0.033
   block = dev.get_block('dac')
   inst = devlib.Location([0,1,2,0])
   cfg = adplib.BlockConfig.make(block,inst)
@@ -20,6 +21,7 @@ def get_dac_h(dev):
 
 
 def get_dac_m(dev):
+  # sumsq error 0.005
   block = dev.get_block('dac')
   inst = devlib.Location([0,1,2,0])
   cfg = adplib.BlockConfig.make(block,inst)
@@ -32,6 +34,7 @@ def get_dac_m(dev):
   return block,inst,cfg
 
 def get_mult_mmm(dev):
+  # sumsq error 0.059
   block = dev.get_block('mult')
   inst = devlib.Location([0,1,2,0])
   cfg = adplib.BlockConfig.make(block,inst)
@@ -50,6 +53,7 @@ def get_mult_mmm(dev):
 
 
 def get_mult_mm(dev):
+  # sumsq error 0.0169
   block = dev.get_block('mult')
   inst = devlib.Location([0,1,2,0])
   cfg = adplib.BlockConfig.make(block,inst)
@@ -67,7 +71,7 @@ def get_mult_mm(dev):
   return block,inst,cfg
 
 def get_mult_hm(dev):
-  # this has really high error for some reason... debug?
+  # sumsq error 0.015
   block = dev.get_block('mult')
   inst = devlib.Location([0,1,2,0])
   cfg = adplib.BlockConfig.make(block,inst)
@@ -87,19 +91,18 @@ def get_mult_hm(dev):
 
 
 def get_mult_mh(dev):
-  # fixed. About 0.5% error
+  # sumsq error 0.228
   block = dev.get_block('mult')
   inst = devlib.Location([0,1,2,0])
   cfg = adplib.BlockConfig.make(block,inst)
   cfg.modes = [block.modes.get(['x','m','h'])]
 
-  print("[WARN] not calibrated")
-  cfg['pmos'].value = 4
-  cfg['nmos'].value = 0
+  cfg['pmos'].value = 0
+  cfg['nmos'].value = 1
   cfg['gain_cal'].value = 0
-  cfg['bias_in0'].value = 37
+  cfg['bias_in0'].value = 28
   cfg['bias_in1'].value = 32
-  cfg['bias_out'].value = 19
+  cfg['bias_out'].value = 20
 
   npts = -1
   return block,inst,cfg
@@ -107,8 +110,9 @@ def get_mult_mh(dev):
 
 def get_block(dev):
   #return get_mult_mmm(dev)
-  #return get_mult_mm(dev)
+  return get_mult_mm(dev)
   #return get_mult_hm(dev)
-  return get_mult_mh(dev)
+  #return get_mult_mh(dev)
+  #return get_dac_m(dev)
   #return get_dac_h(dev)
 
