@@ -143,7 +143,7 @@ def fit_delta_model(phys,data):
   sumsq = phys.model.error(inputs,meas_output)
   phys.model.cost = sumsq
   print(result)
-  print(phys.model.cost)
+  print("sumsq error: %s" % phys.model.cost)
   phys.update()
 
 def analyze_physical_output(phys_output,operation=llenums.ProfileOpType.INPUT_OUTPUT):
