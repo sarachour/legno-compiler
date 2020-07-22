@@ -24,7 +24,6 @@ bnds={bounds}
 lbls={variable_array}
 res = minimize(func,x0,bounds=bnds)
 assigns = dict(zip(lbls,res.x))
-print(assigns)
 '''
 
 
@@ -59,6 +58,12 @@ def minimize_model(variables,expr,params,bounds={}):
                     .replace('math.','np.')
   loc = {}
   exec(snippet,globals(),loc)
+  return {
+    'values': loc['assigns'],
+    'success': loc['res'].success,
+    'objective_val': loc['res'].fun
+  }
+
 
 FIT_PROG = '''
 from scipy.optimize import curve_fit
@@ -143,7 +148,7 @@ def fit_delta_model(phys,data):
   sumsq = phys.model.error(inputs,meas_output)
   phys.model.cost = sumsq
   print(result)
-  print(phys.model.cost)
+  print("sumsq error: %s" % phys.model.cost)
   phys.update()
 
 def analyze_physical_output(phys_output,operation=llenums.ProfileOpType.INPUT_OUTPUT):

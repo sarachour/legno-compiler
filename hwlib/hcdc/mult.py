@@ -196,7 +196,7 @@ mult.state['nmos'].impl.set_default(3)
 mult.state.add(BlockState('gain_cal',
                         values=range(0,64), \
                         state_type=BlockStateType.CALIBRATE))
-mult.state['gain_cal'].impl.set_default(16)
+mult.state['gain_cal'].impl.set_default(32)
 
 calarr = BlockStateArray('port_cal', \
                          indices=enums.PortType, \

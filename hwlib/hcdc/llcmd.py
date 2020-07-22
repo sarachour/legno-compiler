@@ -137,7 +137,6 @@ def profile(runtime,blk,loc,adp,output_port, \
     for input_ident,input_val in inputs.items():
         values[input_ident.code()] = input_val
 
-    print(state_t)
     profile_data = {"method": method.name, \
                     "inst": loc_d,
                     "in_vals": values, \
@@ -147,8 +146,6 @@ def profile(runtime,blk,loc,adp,output_port, \
     cmd_t, cmd_data = make_circ_cmd(llenums.CircCmdType.PROFILE,
                              profile_data)
     cmd = cmd_t.build(cmd_data,debug=True)
-    print(values)
-    print(state_t)
     # execute profiling command
     runtime.execute(cmd)
     resp = _unpack_response(runtime.result())
