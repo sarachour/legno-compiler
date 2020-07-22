@@ -1,9 +1,16 @@
 import hwlib.device as devlib
 import hwlib.block as blocklib
 import hwlib.adp as adplib
+import hwlib.hcdc.hcdcv2 as hcdclib
+import phys_model.phys_util as phys_util
+import phys_model.model_fit as model_fit
+
+
+import random
 import itertools
 
-import phys_model.phys_util as phys_util
+
+#import investigate_models
 
 class ProfilePlanner:
 
@@ -42,20 +49,16 @@ class BruteForcePlanner(ProfilePlanner):
     hidden = {}
     for state in filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), self.block.state):
       hidden[state] = phys_util.select_from_array(state.values,self.n)
-      #print("hidden[state] is: ", hidden[state])
-      print("state is: ",state)
-    print("hidden is: ", hidden)
     self._hidden_fields = list(hidden.keys())
-    print("_hidden_fields are: ", self._hidden_fields)
     hidden_values = list(map(lambda k :hidden[k], self._hidden_fields))
-    print("hidden_values are: ", hidden_values)
+
     self.hidden_iterator = itertools.product(*hidden_values)
     self.dynamic_iterator = None
 
   def next_hidden(self):
     try:
       values = next(self.hidden_iterator)
-      print("values are ", values)
+      #print("values are ", values)
       return dict(zip(self._hidden_fields,values))
     except StopIteration:
       return None
@@ -107,31 +110,10 @@ class SinglePointPlanner(BruteForcePlanner):
     return value
 
 
-class GenericHiddenCodeIterator:
-  def __init__(self,output_codes):
-    self.index = 0
-    self.output_codes = output_codes
-    #print("in generic iterator output_codes is ", output_codes)
-
-  def __iter__(self):
-    return self
-
-  def __next__(self):
-    try:
-      result = self.output_codes[self.index]
-      #print("in generic iterator result is ", result)
-      _output_fields = list(result.keys())
-      output_values = list(map(lambda k :result[k], _output_fields))
-      #print("!!!generic iterator called, returning: ", result)
-    except IndexError:
-      raise StopIteration
-    self.index += 1
-    return output_values
-
 
 class SensitivityPlanner(BruteForcePlanner):
-  def __init(self,block,loc,cfg,n,m):
-    BruteForcePlanner.__init(self,block,loc,cfg,n,m)
+  def __init__(self,block,loc,cfg,n,m):
+    BruteForcePlanner.__init__(self,block,loc,cfg,n,m)
 
   def new_hidden(self):
 
@@ -207,8 +189,8 @@ class NeighborhoodPlanner(BruteForcePlanner):
 
 
 class CorrelationPlanner(BruteForcePlanner):
-  def __init(self,block,loc,cfg,n,m):
-    BruteForcePlanner.__init(self,block,loc,cfg,n,m)
+  def __init__(self,block,loc,cfg,n,m):
+    BruteForcePlanner.__init__(self,block,loc,cfg,n,m)
 
   def new_hidden(self):
 
@@ -249,12 +231,12 @@ class CorrelationPlanner(BruteForcePlanner):
     self.dynamic_iterator = None
 
 class FullCorrelationPlanner(BruteForcePlanner):
-  def __init(self,block,loc,cfg,n,m):
-    BruteForcePlanner.__init(self,block,loc,cfg,n,m)
+  def __init__(self,block,loc,cfg,n,m):
+    BruteForcePlanner.__init__(self,block,loc,cfg,n,m)
 
   def new_hidden(self):
 
-    svd = {}
+    svd = {} #start value dictionary
     hidden = {}
     correlation_pairs = []
     output_with_repeats = []
@@ -284,10 +266,161 @@ class FullCorrelationPlanner(BruteForcePlanner):
       if current_row not in output_without_repeats:
         output_without_repeats.append(current_row)
 
-    print(output_without_repeats)
+    #print(output_without_repeats)
 
     self._hidden_fields = list(hidden.keys())
     hidden_values = list(map(lambda k :hidden[k], self._hidden_fields))  
 
     self.hidden_iterator = GenericHiddenCodeIterator(output_without_repeats)
     self.dynamic_iterator = None
+
+
+class GenericHiddenCodeIterator:
+  def __init__(self,output_codes):
+    self.index = 0
+    self.output_codes = output_codes
+    #print("in generic iterator output_codes is ", output_codes)
+
+  def __iter__(self):
+    return self
+
+  def __next__(self):
+    try:
+      result = self.output_codes[self.index]
+      #print("in generic iterator result is ", result)
+      _output_fields = list(result.keys())
+      print("_output_fields: ", _output_fields)
+      output_values = list(map(lambda k :result[k], _output_fields))
+      #print("!!!generic iterator called, returning: ", result)
+    except IndexError:
+      raise StopIteration
+    self.index += 1
+    return output_values
+
+class RandomCodeIterator:
+  def __init__(self,default_code,num_codes):
+    random.seed()
+    self.default_code = default_code
+    self.code_index = 0
+    self.codes_to_generate = num_codes
+
+
+  def __iter__(self):
+    return self
+
+  def __next__(self):
+    self.dev = hcdclib.get_device()
+    self.blk = self.dev.get_block('mult')
+    if self.code_index < self.codes_to_generate:
+      current_output = {}
+      for code in self.default_code:
+        current_output[code] = random.randint(0,max(self.blk.state[code.name].values))
+      _output_fields = list(current_output.keys())
+      output_values = list(map(lambda k :current_output[k], _output_fields))
+
+      self.code_index += 1
+      return output_values
+    else:
+      raise StopIteration
+    
+class RandomPlanner(BruteForcePlanner):
+  def __init__(self,block,loc,cfg,n,m):
+    BruteForcePlanner.__init__(self,block,loc,cfg,n,m)
+
+  def new_hidden(self):
+
+    default_code = {}
+    hidden = {}
+    for state in filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), self.block.state):
+      default_code[state] = self.config[state.name].value
+      hidden[state] = phys_util.select_from_array(state.values,self.n)
+
+    self._hidden_fields = list(hidden.keys())
+
+
+    num_codes = 50
+    self.hidden_iterator = RandomCodeIterator(default_code, num_codes)
+    self.dynamic_iterator = None
+
+
+'''
+class ModelBasedPlanner(BruteForcePlanner):
+  def __init__(self,block,loc,cfg,n,m):
+    BruteForcePlanner.__init__(self,block,loc,cfg,n,m)
+  def new_hidden(self):
+
+    default_code = {}
+    for state in filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), self.block.state):
+      default_code[state] = self.config[state.name].value
+
+    self.hidden_iterator = ExperimentalIterator(default_code)
+    self.dynamic_iterator = None
+
+class ExperimentalIterator(GenericHiddenCodeIterator):
+  def __init__(self, default_code):
+    random.seed()
+    self.default_code = default_code
+    self.experiments_run = 0
+    self.preliminary_experiment_size = 15
+    self.experiments_per_step = 10
+    self.reached_convergence = False
+    #print("in generic iterator output_codes is ", output_codes)
+
+  def __iter__(self):
+    return self
+
+  def __next__(self):
+    if self.experiments_run < self.preliminary_experiment_size:
+      self.experiments_run += 1
+      return generate_random_code(default_code)
+
+    if self.experiments_run == self.preliminary_experiment_size:
+      #FIT_MODELS_TO_DATA
+
+    if ((self.experiments_run - self.preliminary_experiment_size) % self.experiments_per_step == 0) :
+      #CHECK IF HAVE REACHED CONVERGENCE
+      if ***good_enough***:
+        return ***optimal code found***
+      else:
+        self.experiments_run += 1
+        return generate_random_code(default_code)
+
+    else:
+      self.experiments_run += 1
+      return generate_random_code(default_code)
+
+  def generate_random_code(default_code):
+    current_output = {}
+    for state in default_code:
+      current_output[state] = random.randint(0,current_output[state].values)
+    return current_output
+
+  def make_prediction():
+
+  def fit_models_to_data():
+    cost_model = fit_parameters("cost")
+    param_A_model = fit_parameters("A")
+    param_D_model = fit_parameters("D")
+
+  def minimize_model();
+'''
+'''
+ALGORITHM SPEC
+
+(a*c + d)*x + e = z
+
+1) Query some random points 
+2) Fit the physical model parameters to the data
+3) Using the physical model parameters, search for the hidden code h' that minimizes the extra error e(h)
+4) Pick 10 NEW hidden codes at which to compare the predictions
+5) Generate predictions for each hidden code
+6) Run the experiment to get the real data at these 10 new codes
+7) Compare the experimental data to the prediction
+8) DOES THE PREDICTION REPRESENT THE EXPERIMENT WELL ENOUGH?
+    YES)  Return h', and the physical model parameters
+    NO)   return to 1 
+
+
+
+
+'''

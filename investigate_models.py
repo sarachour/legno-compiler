@@ -23,8 +23,8 @@ def visualize_it(org):
 
     input("continue?")
 
-<<<<<<< HEAD
-def investigate_model(terms):
+#<<<<<<< HEAD
+def investigate_model(terms, param):
 
   dev = hcdclib.get_device()
   block = dev.get_block('mult')
@@ -54,14 +54,26 @@ def investigate_model(terms):
 
     costs.append(blk.model.cost)
 
+  print(inputs)
+  print(params)
+  if param == "D":
+    dataset = {'inputs':inputs, 'meas_mean':params['d']}
+  elif param == "A":
+    dataset = {'inputs':inputs, 'meas_mean':params['a']}
+  elif param == "cost":
+    dataset = {'inputs':inputs, 'meas_mean':costs}
   # fit model
-  #dataset = {'inputs':inputs, 'meas_mean':params['d']}
-  #dataset = {'inputs':inputs, 'meas_mean':costs}
-  dataset = {'inputs':inputs, 'meas_mean':params['a']}
+  #
   
-  number_of_datapoints = 100
-  print(len(dataset['meas_mean']))
+  #
+  
+
+  '''
+  number_of_datapoints = 500
+  #print(len(dataset['meas_mean']))
   #number_of_datapoints = len(dataset['meas_mean'])
+
+
   random_indexes = random.sample(range(0,len(dataset['meas_mean'])),number_of_datapoints)
 
   sampled_dataset = {}
@@ -83,7 +95,7 @@ def investigate_model(terms):
     sampled_dataset['inputs']['gain_cal'].append(dataset['inputs']['gain_cal'][i])
 
   dataset = sampled_dataset
-  
+  '''
 
 
 
@@ -125,29 +137,69 @@ def investigate_model(terms):
   #visualize_it(org)
   '''
 
+def fit_parameters(param):
 
-terms = ['bias_in0','pmos','nmos','bias_out']
+  if param == "D":
+    terms = ["pmos", "nmos", "gain_cal", "bias_in0", "bias_out", "pmos*nmos", "pmos*gain_cal", "nmos*gain_cal", "pmos*bias_out"]
+  elif param == "A":
+    terms = ['pmos', 'nmos', 'gain_cal', 'bias_in0', 'bias_in1', 'bias_out', 'pmos*nmos', 'pmos*bias_in0', 'pmos*bias_in1', 'pmos*bias_out', 'nmos*gain_cal', 'nmos*bias_in0', 'nmos*bias_in1', 'nmos*bias_out', 'bias_in0*bias_in1', 'nmos*pmos*bias_in0', 'nmos*pmos*bias_in1', 'nmos*pmos*bias_out', 'nmos*bias_in0*bias_in1']
+  elif param == "cost":
+    terms = [ "pmos","nmos","bias_in0"]
+  
+
+  
+  
+  min_terms = terms
+  num_of_iterations = len(terms)
+
+  for i in range(1):
+    error, params = investigate_model(terms,param)
+    sumsq_error = sum(map(lambda x:x*x,error))
+    coefficients = list(params.values())
+    min_index = coefficients.index(min(coefficients, key=abs))
+    terms.remove(terms[min_index])
+
+
+  print(params)
+  print(sumsq_error)
+
+fit_parameters("A")
+
+#terms = ['bias_in0','pmos','nmos','bias_out']
 
 #good for param_D
-'''
 terms = ["pmos", "nmos", "gain_cal","bias_in0","bias_out",\
           "pmos*nmos", "pmos*gain_cal",\
           "nmos*gain_cal", \
           "pmos*bias_out",\
-          #"pmos*nmos*gain_cal",\
           ]
-          '''
+          
 #good for param_A
-#terms = ['pmos', 'nmos', 'gain_cal', 'bias_in0', 'bias_in1', 'bias_out', 'pmos*nmos', 'pmos*bias_in0', 'pmos*bias_in1', 'pmos*bias_out', 'nmos*gain_cal', 'nmos*bias_in0', 'nmos*bias_in1', 'nmos*bias_out', 'bias_in0*bias_in1', 'nmos*pmos*bias_in0', 'nmos*pmos*bias_in1', 'nmos*pmos*bias_out', 'nmos*bias_in0*bias_in1']
+#
 
 
 '''
-terms = ["pmos", "nmos", "gain_cal", "bias_in0", "bias_in1", "bias_out",
-          "pmos*nmos","pmos*gain_cal","pmos*bias_in0","pmos*bias_in1","pmos*bias_out",\
-          "nmos*gain_cal","nmos*bias_in0","nmos*bias_in1","nmos*bias_out","gain_cal*bias_in0",\
-          "gain_cal*bias_in1","gain_cal*bias_out","bias_in0*bias_in1","bias_in0*bias_out","bias_in1*bias_out",\
-          
-          
+terms = [ "pmos",\
+          "nmos",\
+          "gain_cal",\
+          "bias_in0",\
+          "bias_in1",\
+          "bias_out",\
+          "pmos*nmos",\
+          "pmos*gain_cal",\
+          "pmos*bias_in0",\
+          "pmos*bias_in1",\
+          "pmos*bias_out",\
+          "nmos*gain_cal",\
+          "nmos*bias_in0",\
+          "nmos*bias_in1",\
+          "nmos*bias_out",\
+          "gain_cal*bias_in0",\
+          "gain_cal*bias_in1",\
+          "gain_cal*bias_out",\
+          "bias_in0*bias_in1",\
+          "bias_in0*bias_out",\
+          "bias_in1*bias_out",\
           "nmos*pmos*bias_in0",\
           "nmos*pmos*bias_in1",\
           "nmos*pmos*bias_out",\
@@ -169,24 +221,11 @@ terms = ["pmos", "nmos", "gain_cal", "bias_in0", "bias_in1", "bias_out",
           "bias_in0*bias_out*gain_cal",\
           "bias_in1*bias_out*gain_cal",\
           
-          
           ]
+  '''
+
+
 '''
-min_terms = terms
-num_of_iterations = len(terms)
-
-for i in range(1):
-  error, params = investigate_model(terms)
-  sumsq_error = sum(map(lambda x:x*x,error))
-  coefficients = list(params.values())
-  min_index = coefficients.index(min(coefficients, key=abs))
-  terms.remove(terms[min_index])
-
-
-#print(terms)
-
-
-
 #plt.plot(error)
 #plt.show()
 =======
@@ -258,3 +297,4 @@ plt.savefig('error.png')
 plt.close()
 #visualize_it(org)
 >>>>>>> calibrate-server-side
+'''
