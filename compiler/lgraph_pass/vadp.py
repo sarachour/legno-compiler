@@ -71,7 +71,8 @@ class VADPSink(VADPStmt):
 
   def __init__(self,port,expr):
     VADPStmt.__init__(self)
-    assert(isinstance(port,PortVar))
+    assert(isinstance(port,PortVar) or \
+           isinstance(port,LawVar))
     self.dsexpr = expr
     self.port = port
 

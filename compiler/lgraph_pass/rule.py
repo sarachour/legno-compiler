@@ -10,15 +10,57 @@ def cstrs_flip(variables):
 def apply_flip(goal,rule):
   law_var = tablib.LawVar(rule.law,rule.ident,tablib.LawVar.APPLY)
   if isinstance(goal.variable, tablib.PortVar):
-    yield tablib.VADPSink(goal.variable,goal.expr)
+    yield tablib.VADPConn(law_var, goal.variable)
 
   elif isinstance(goal.variable, tablib.DSVar):
     generic_var = GenericVar(goal.variable,rule.ident)
-    yield tablib.VADPSink(generic_var,goal.expr)
+    yield tablib.VADPConn(law_var,generic_var)
     yield tablib.VADPSource(generic_var,genoplib.Var(goal.variable))
 
 def simplify_flip(vadp_stmts,rule):
-  return False,vadp_stmts
+  sink_stmt = None
+  for stmt in vadp_stmts:
+    # identify a connection or source flip is used
+    if isinstance(stmt, tablib.VADPConn) and \
+       isinstance(stmt.source, tablib.LawVar) and \
+       stmt.source.law == rule.law:
+      sink_stmt = stmt
+      sink_var = stmt.sink
+      target_var = stmt.source
+      break
+    elif isinstance(stmt,tablib.VADPSource) and \
+         isinstance(stmt.port, tablib.LawVar) and \
+         stmt.port.law == rule.law:
+      sink_stmt = stmt
+      sink_var = VirtualSourceVar(stmt.dsexpr.name)
+      target_var = stmt.port
+      break
+
+  # is there is no statement with rule variables
+  if sink_stmt is None:
+    return False,vadp_stmts
+
+  # identify sink statement connected to law variable
+  new_stmt = []
+  replaced_stmts = [sink_stmt]
+  for stmt in vadp_stmts:
+    if isinstance(stmt,tablib.VADPSink) and \
+       isinstance(stmt.port, tablib.LawVar) and \
+       stmt.port.same_usage(target_var):
+      new_stmt.append(tablib.VADPSink(sink_var, \
+                               genoplib.Mult(genoplib.Const(-1), \
+                                             stmt.dsexpr) \
+      ))
+      replaced_stmts.append(stmt)
+
+  new_vadp = []
+  for stmt in vadp_stmts:
+    if not stmt in replaced_stmts:
+      new_vadp.append(stmt)
+
+
+
+  return True,new_vadp
 
 def cstrs_kirchoff(variables):
   cstrs = dict(map(lambda v: (v,unifylib.UnifyConstraint.NONE), \
@@ -39,13 +81,15 @@ def simplify_kirchoff(vadp_stmts,rule):
   # identify statements with rule variables
   for stmt in vadp_stmts:
     if isinstance(stmt, tablib.VADPConn) and \
-       isinstance(stmt.source, tablib.LawVar):
+       isinstance(stmt.source, tablib.LawVar) and \
+       stmt.source.law == rule.law:
       sink_stmt = stmt
       sink_var = stmt.sink
       target_var = stmt.source
       break
     elif isinstance(stmt,tablib.VADPSource) and \
-         isinstance(stmt.port, tablib.LawVar):
+         isinstance(stmt.port, tablib.LawVar) and \
+         stmt.port.law == rule.law:
       sink_stmt = stmt
       sink_var = VirtualSourceVar(stmt.dsexpr.name)
       target_var = stmt.port

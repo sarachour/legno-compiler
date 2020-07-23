@@ -224,7 +224,8 @@ def simplify_tableau(tableau,simplify_laws=False):
 
   # replace trivial goals of the form port=var with sinks
   for goal in tableau.goals:
-    if isinstance(goal.variable, PortVar) and \
+    if (isinstance(goal.variable, PortVar) or \
+        isinstance(goal.variable, LawVar)) and \
        goal.expr.op == oplib.OpType.VAR:
       new_tableau.remove_goal(goal)
       new_tableau.add_stmt(VADPSink(goal.variable, \
