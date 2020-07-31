@@ -79,7 +79,7 @@ xdata = {x_dataset}
 ydata = {y_dataset}
 
 
-popt,pcov = curve_fit(func,xdata,ydata)
+popt,pcov = curve_fit(func,xdata,ydata,maxfev=5000)
 lbls = [{free_var_array}]
 assigns = dict(zip(lbls,popt))
 perr = np.sqrt(np.diag(pcov))

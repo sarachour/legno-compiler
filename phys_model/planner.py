@@ -1,16 +1,18 @@
+import hwlib.physdb as physdb
 import hwlib.device as devlib
 import hwlib.block as blocklib
 import hwlib.adp as adplib
 import hwlib.hcdc.hcdcv2 as hcdclib
 import phys_model.phys_util as phys_util
 import phys_model.model_fit as model_fit
-
-
+import target_block
 import random
 import itertools
-
-
-#import investigate_models
+from fit_and_minimize import investigate_model
+import phys_model.visualize as vizlib
+import ops.opparse as opparse
+import time
+import matplotlib.pyplot as plt
 
 class ProfilePlanner:
 
@@ -324,8 +326,14 @@ class RandomCodeIterator:
       raise StopIteration
     
 class RandomPlanner(BruteForcePlanner):
-  def __init__(self,block,loc,cfg,n,m):
-    BruteForcePlanner.__init__(self,block,loc,cfg,n,m)
+  def __init__(self,block,loc,cfg,n,m,num_codes):
+    ProfilePlanner.__init__(self,block,loc,cfg)
+    self.n = n          #outer dimensions of search space
+    self.m = m          #resolution (linspace) of search space
+    self.block = block
+    self.loc = loc
+    self.cfg = cfg
+    self.num_codes = num_codes
 
   def new_hidden(self):
 
@@ -337,21 +345,23 @@ class RandomPlanner(BruteForcePlanner):
 
     self._hidden_fields = list(hidden.keys())
 
-
-    num_codes = 50
-    self.hidden_iterator = RandomCodeIterator(default_code, num_codes)
+    self.hidden_iterator = RandomCodeIterator(default_code, self.num_codes)
     self.dynamic_iterator = None
 
 
-'''
+
 class ModelBasedPlanner(BruteForcePlanner):
   def __init__(self,block,loc,cfg,n,m):
     BruteForcePlanner.__init__(self,block,loc,cfg,n,m)
   def new_hidden(self):
 
     default_code = {}
+    hidden = {}
     for state in filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), self.block.state):
       default_code[state] = self.config[state.name].value
+      hidden[state] = phys_util.select_from_array(state.values,self.n)
+    self._hidden_fields = list(hidden.keys())
+
 
     self.hidden_iterator = ExperimentalIterator(default_code)
     self.dynamic_iterator = None
@@ -361,7 +371,7 @@ class ExperimentalIterator(GenericHiddenCodeIterator):
     random.seed()
     self.default_code = default_code
     self.experiments_run = 0
-    self.preliminary_experiment_size = 15
+    self.preliminary_experiment_size = 1
     self.experiments_per_step = 10
     self.reached_convergence = False
     #print("in generic iterator output_codes is ", output_codes)
@@ -372,38 +382,68 @@ class ExperimentalIterator(GenericHiddenCodeIterator):
   def __next__(self):
     if self.experiments_run < self.preliminary_experiment_size:
       self.experiments_run += 1
-      return generate_random_code(default_code)
+      return self.gen_random_code()
 
-    if self.experiments_run == self.preliminary_experiment_size:
-      #FIT_MODELS_TO_DATA
-
-    if ((self.experiments_run - self.preliminary_experiment_size) % self.experiments_per_step == 0) :
+    if (((self.experiments_run - self.preliminary_experiment_size) % self.experiments_per_step == 0) \
+      or (self.experiments_run == self.preliminary_experiment_size)):
+      self.reached_convergence = self.run_convergence_check()
       #CHECK IF HAVE REACHED CONVERGENCE
-      if ***good_enough***:
-        return ***optimal code found***
+      if self.reached_convergence == True:
+        raise StopIteration
       else:
         self.experiments_run += 1
-        return generate_random_code(default_code)
+        return self.gen_random_code()
 
     else:
       self.experiments_run += 1
-      return generate_random_code(default_code)
+      return self.gen_random_code()
 
-  def generate_random_code(default_code):
+  def gen_random_code(self):
+    print("\n\n generating code \n\n")
+    self.dev = hcdclib.get_device()
+    self.blk = self.dev.get_block('mult')
+    current_output = {}
+    for code in self.default_code:
+      current_output[code] = random.randint(0,max(self.blk.state[code.name].values))
+    _output_fields = list(current_output.keys())
+    output_values = list(map(lambda k :current_output[k], _output_fields))
+    return output_values
+
+  def run_convergence_check(self):
+    evaluation_point = self.fit_models_to_data("A")
+    return True #PLACEHOLDER
+
+  def make_prediction(self):
+    return
+
+  def fit_models_to_data(self,target_param):
+    self.analyze_db()
+    optimal_code = investigate_model(target_param)
+    return optimal_code
+  
+  def analyze_db(self):
+    dev = hcdclib.get_device()
+    block,inst,cfg = target_block.get_block(dev)
+
+    db = physdb.PhysicalDatabase('board6')
+    # build up dataset
+    params = {}
+    inputs = {}
+    for blk in physdb.get_by_block_instance(db, dev,block,inst,cfg=cfg):
+      model_fit.analyze_physical_output(blk)
+
+    return
+
+  def minimize_model(self):
+    return
+
+  '''def generate_random_code(default_code):
     current_output = {}
     for state in default_code:
       current_output[state] = random.randint(0,current_output[state].values)
-    return current_output
+    return current_output'''
 
-  def make_prediction():
 
-  def fit_models_to_data():
-    cost_model = fit_parameters("cost")
-    param_A_model = fit_parameters("A")
-    param_D_model = fit_parameters("D")
-
-  def minimize_model();
-'''
 '''
 ALGORITHM SPEC
 

@@ -9,7 +9,7 @@ import ops.opparse as opparse
 import time
 import matplotlib.pyplot as plt
 import random
-import time
+
 
 def visualize_it(org):
   for key in org.keys():
@@ -152,33 +152,25 @@ def fit_parameters(param):
   min_terms = terms
   num_of_iterations = len(terms)
 
-  for i in range(1):
-    error, params = investigate_model(terms,param)
-    sumsq_error = sum(map(lambda x:x*x,error))
-    coefficients = list(params.values())
-    min_index = coefficients.index(min(coefficients, key=abs))
-    terms.remove(terms[min_index])
+  error, params = investigate_model(terms,param)
+  sumsq_error = sum(map(lambda x:x*x,error))
+  coefficients = list(params.values())
+  min_index = coefficients.index(min(coefficients, key=abs))
+  terms.remove(terms[min_index])
 
 
   print(params)
   print(sumsq_error)
 
+  return
+
 fit_parameters("A")
 
-#terms = ['bias_in0','pmos','nmos','bias_out']
-
-#good for param_D
-terms = ["pmos", "nmos", "gain_cal","bias_in0","bias_out",\
-          "pmos*nmos", "pmos*gain_cal",\
-          "nmos*gain_cal", \
-          "pmos*bias_out",\
-          ]
-          
-#good for param_A
-#
 
 
 '''
+
+GENERAL PROCEDURE FOR MANUALLY FINDING A MODEL
 terms = [ "pmos",\
           "nmos",\
           "gain_cal",\
@@ -222,6 +214,21 @@ terms = [ "pmos",\
           "bias_in1*bias_out*gain_cal",\
           
           ]
+
+
+min_terms = terms
+  num_of_iterations = len(terms)
+
+  for i in range(1):
+    error, params = investigate_model(terms,param)
+    sumsq_error = sum(map(lambda x:x*x,error))
+    coefficients = list(params.values())
+    min_index = coefficients.index(min(coefficients, key=abs))
+    terms.remove(terms[min_index])
+
+
+  print(params)
+  print(sumsq_error)
   '''
 
 
