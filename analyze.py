@@ -9,6 +9,18 @@ import ops.opparse as opparse
 import time
 import target_block
 
+def analyze_db():
+	dev = hcdclib.get_device()
+	block,inst,cfg = target_block.get_block(dev)
+
+	db = physdb.PhysicalDatabase('board6')
+	# build up dataset
+	params = {}
+	inputs = {}
+	for blk in physdb.get_by_block_instance(db, dev,block,inst,cfg=cfg):
+  		fitlib.analyze_physical_output(blk)
+	return
+
 dev = hcdclib.get_device()
 block,inst,cfg = target_block.get_block(dev)
 
@@ -17,4 +29,4 @@ db = physdb.PhysicalDatabase('board6')
 params = {}
 inputs = {}
 for blk in physdb.get_by_block_instance(db, dev,block,inst,cfg=cfg):
-  fitlib.analyze_physical_output(blk)
+  	fitlib.analyze_physical_output(blk)
