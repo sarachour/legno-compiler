@@ -106,8 +106,8 @@ def investigate_model(param):
 
   #print("VARIABLES:  \n", variables, "\n\nEXPR:\n", expr, "\n\nDATASET:\n", dataset)
   #print(dataset)
-  if len(dataset['meas_mean']) == 0:
-  	raise Exception("Empty DB")
+  #if len(dataset['meas_mean']) == 0:
+  #	raise Exception("Empty DB")
 
   result = fitlib.fit_model(variables,expr,dataset)
 
