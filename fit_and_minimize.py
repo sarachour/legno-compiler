@@ -8,7 +8,7 @@ import hwlib.adp as adplib
 import ops.opparse as opparse
 import ops.generic_op as genoplib
 import target_block as targ
-import lambda_op as lambdoplib
+import ops.lambda_op as lambdoplib
 
 import time
 import matplotlib.pyplot as plt
