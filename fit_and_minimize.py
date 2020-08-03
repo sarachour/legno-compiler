@@ -7,6 +7,8 @@ import hwlib.block as blocklib
 import hwlib.adp as adplib
 import ops.opparse as opparse
 import ops.generic_op as genoplib
+import target_block as targ
+import lambda_op as lambdoplib
 
 import time
 import matplotlib.pyplot as plt
@@ -16,9 +18,13 @@ import time
 def investigate_model(param):
 
   dev = hcdclib.get_device()
-  block = dev.get_block('mult')
-  inst = devlib.Location([0,3,2,0])
-  cfg = adplib.BlockConfig.make(block,inst)
+
+  targ.get_block(dev)
+  block,inst,cfg = targ.get_block(dev)
+
+  #block = dev.get_block('mult')
+  #inst = devlib.Location([0,3,2,0])
+  #cfg = adplib.BlockConfig.make(block,inst)
   #cfg.modes = [['+','+','-','m']]
   cfg.modes = [block.modes.get(['x','m','m'])]
 
@@ -44,6 +50,8 @@ def investigate_model(param):
     costs.append(blk.model.cost)
   print(params)
   #print(params['params']['d'])
+  
+  '''
   if param == "D":
   	dataset = {'inputs':inputs, 'meas_mean':params['d']}
   	terms = ["pmos", "nmos", "gain_cal", "bias_in0", "bias_out","bias_in1", "pmos*nmos", "pmos*gain_cal", "nmos*gain_cal", "pmos*bias_out"]
@@ -53,15 +61,41 @@ def investigate_model(param):
   elif param == "cost":
   	dataset = {'inputs':inputs, 'meas_mean':costs}
   	terms = [ "pmos","nmos","bias_in0", "bias_in1", "bias_out", "gain_cal"]
+  '''
 
-  variables = list(map(lambda i: "c%d" % i, range(0,len(terms)))) \
-              + ['offset']
-  expr = ['offset']
-  for coeff,term in zip(variables,terms):
-    expr.append("%s*%s" % (coeff,term))
+  A_dataset = {'inputs':inputs, 'meas_mean':params['a']}
+  A_terms = ['pmos', 'nmos', 'gain_cal', 'bias_in0', 'bias_in1', 'bias_out', 'pmos*nmos', 'pmos*bias_in0', 'pmos*bias_in1', 'pmos*bias_out', 'nmos*gain_cal', 'nmos*bias_in0', 'nmos*bias_in1', 'nmos*bias_out', 'bias_in0*bias_in1', 'nmos*pmos*bias_in0', 'nmos*pmos*bias_in1', 'nmos*pmos*bias_out', 'nmos*bias_in0*bias_in1']
+  A_variables = list(map(lambda i: "c%d" % i, range(0,len(A_terms)))) + ['offset']
+  A_expr = ['offset']
+  for coeff,term in zip(A_variables,A_terms):
+    A_expr.append("%s*%s" % (coeff,term))
+  A_expr_text = "+".join(A_expr)
+  A_expr = opparse.parse_expr(A_expr_text)
+  A2_expr = genoplib.Mult(A_expr,A_expr)
 
-  expr_text = "+".join(expr)
-  expr = opparse.parse_expr(expr_text)
+  D_dataset = {'inputs':inputs, 'meas_mean':params['d']}
+  D_terms = ["pmos", "nmos", "gain_cal", "bias_in0", "bias_out","bias_in1", "pmos*nmos", "pmos*gain_cal", "nmos*gain_cal", "pmos*bias_out"]
+  D_variables = list(map(lambda i: "c%d" % i, range(0,len(D_terms)))) + ['offset']
+  D_expr = ['offset']
+  for coeff,term in zip(D_variables,D_terms):
+    D_expr.append("%s*%s" % (coeff,term))
+  D_expr_text = "+".join(D_expr)
+  D_expr = opparse.parse_expr(D_expr_text)
+  D2_expr = genoplib.Mult(D_expr,D_expr)
+
+  cost_variables = list(map(lambda i: "c%d" % i, range(0,len(cost_terms)))) + ['offset']
+  cost_expr = ['offset']
+  for coeff,term in zip(cost_variables,cost_terms):
+    cost_expr.append("%s*%s" % (coeff,term))
+  cost_expr_text = "+".join(cost_expr)
+  cost_expr = opparse.parse_expr(cost_expr_text)
+  inv_cost_expr = lambdoplib.Pow(cost_expr,-1)
+
+  prod_expr_A = genoplib.Mult(A2_expr,inv_cost_expr)
+  prod_expr_B = genoplib.Mult(D2_expr,inv_cost_expr)
+  sum_expr = genoplib.Add(prod_expr_A, prod_expr_B)
+
+  expr = sum_expr
   #prod_expr = genoplib.Mult(expr,expr)
   #neg_expr = genoplib.Mult(genoplib.Const(-1.0), prod_expr)
   #expr = neg_expr
@@ -70,7 +104,7 @@ def investigate_model(param):
   #print("VARIABLES:  \n", variables, "\n\nEXPR:\n", expr, "\n\nDATASET:\n", dataset)
   print(dataset)
   if len(dataset['meas_mean']) == 0:
-  	raise EmptyDBerror
+  	raise Exception("empty db")
   result = fitlib.fit_model(variables,expr,dataset)
 
   prediction = fitlib.predict_output(result['params'], \

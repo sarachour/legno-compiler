@@ -38,7 +38,7 @@ runtime = GrendelRunner()
 #planner = planlib.CorrelationPlanner(block,inst,cfg,8,10)
 #planner = planlib.ModelBasedPlanner(block,inst,cfg,8,10)
 
-planner = planlib.RandomPlanner(block,inst,cfg,8,10,1)
+planner = planlib.RandomPlanner(block,inst,cfg,8,10,0)
 proflib.profile_all_hidden_states(runtime,dev,planner)
 analyze_db()
 
