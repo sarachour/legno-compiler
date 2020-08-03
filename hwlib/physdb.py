@@ -237,14 +237,92 @@ class PhysDataset:
       }
     }
 
+class PhysicalModel:
+
+  def __init__(self,name,physical_model):
+    assert(isinstance(physical_model,PhysicalModelSpec))
+    self.phys_model = physical_model
+    self.name = name
+    assert(not self.phys_model is None)
+    self.params = map(lambda p: (p,None),self.phys_model.params)
+
+  def predict(self,inputs):
+    input_fields = list(inputs.keys())
+    input_value_set = list(inputs.values())
+    n = len(input_value_set[0])
+    outputs = []
+    params = dict(self.params)
+    rel = self.phys_model.get_model(params)
+
+    for values in zip(*input_value_set):
+      inp_map = dict(list(zip(input_fields,values)) + \
+                     list(params.items()))
+      output = rel.compute(inp_map)
+      outputs.append(output)
+
+    return outputs
+
+
+  def bind(self,par,value):
+    assert(not par in self.params)
+    if not (par in self.phys_model.params):
+      print("WARN: couldn't bind nonexistant parameter <%s> in delta" % par)
+      return
+
+    self.params[par] = value
+
+
+  def to_json(self):
+    return {
+      'name': self.name,
+      'params': self.params
+    }
+
+  def update(self,jsonobj):
+    for par,val in jsonobj['params'].items():
+      self.bind(par,val)
+
+class PhysicalModelCollection:
+  MODEL_ERROR = "model_error"
+  def __init__(self,physblk):
+    self.delta_model = self.phys.output \
+                                .deltas[self.phys.cfg.mode]
+
+    self.delta_params = {}
+    for par in self.delta_model.params:
+      self.delta_params[par] = PhysicalModel(par,self.delta_model[par])
+
+    self.model_error = PhysicalModel(PhysicalModelCollection.MODEL_ERROR, \
+                                     self.delta_model.model_error)
+
+
+
+  def to_json(self):
+    delta_pars = dict(map(lambda tup: (tup[0],tup[1].to_json()),  \
+                          self.delta_params.items()))
+    return {
+      'delta_params': delta_pars,
+      'model_error': self.model_error.to_json()
+    }
+
+
+  @staticmethod
+  def from_json(physcfg,obj):
+    cfg = PhysicalModelCollection(physcfg)
+    cfg.model_error.update(obj['model_error'])
+    for par,subobj in obj['delta_params'].items():
+      cfg.model_error.update(subobj)
+    return cfg
+
 class PhysDeltaModel:
   MAX_COST = 9999
+
   def __init__(self,physblk):
     self.phys = physblk
     self.delta_model = self.phys.output \
                                 .deltas[self.phys.cfg.mode]
-    self.params = {}
     self.cost = PhysDeltaModel.MAX_COST
+    self.params = {}
 
   @property
   def complete(self):
