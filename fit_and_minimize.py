@@ -92,7 +92,7 @@ def investigate_model(param):
   cost_expr_text = "+".join(cost_expr)
   cost_expr = opparse.parse_expr(cost_expr_text)
   inv_const = genoplib.Const(-1)
-  inv_cost_expr = lambdoplib.Pow(cost_expr,inv)
+  inv_cost_expr = lambdoplib.Pow(cost_expr,inv_const)
 
   prod_expr_A = genoplib.Mult(A2_expr,inv_cost_expr)
   prod_expr_B = genoplib.Mult(D2_expr,inv_cost_expr)
