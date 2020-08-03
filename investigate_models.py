@@ -9,18 +9,6 @@ import ops.opparse as opparse
 import time
 import matplotlib.pyplot as plt
 
-def visualize_it(org):
-  for key in org.keys():
-    print("key: %s" % key)
-    for codes,physblk in org.foreach(key):
-      print(codes)
-      vizlib.deviation(physblk,'output.png', \
-                       amplitude=0.2, \
-                       relative=True)
-      time.sleep(1.0)
-
-    input("continue?")
-
 dev = hcdclib.get_device()
 block = dev.get_block('mult')
 inst = devlib.Location([0,1,2,0])
@@ -46,9 +34,10 @@ for blk in physdb.get_by_block_instance(db, dev,block,inst,cfg=cfg):
       inputs[hidden_code] = []
     inputs[hidden_code].append(value)
 
-  #vizlib.deviation(blk,'output.png', \
-  #                 relative=True)
-  #input("continue")
+  vizlib.deviation(blk,'output.png', \
+                   num_bins=32, \
+                   baseline=vizlib.ReferenceType.CORRECTABLE_MODEL_PREDICTION, \
+                   relative=False)
 
   costs.append(blk.model.cost)
 
@@ -67,8 +56,17 @@ for coeff,term in zip(variables,terms):
   expr.append("%s*%s" % (coeff,term))
 
 expr_text = "+".join(expr)
-print(expr_text)
 expr = opparse.parse_expr(expr_text)
+
+result = fitlib.minimize_model(["pmos","nmos","gain_cal", \
+                       "bias_in0","bias_out"],
+                      expr,
+                      {"c0":0.5,"c1":0.25, \
+                       "c2":0.75,"c3":-1.2, \
+                       "offset":-0.6}
+)
+print(result)
+input("continue?")
 result = fitlib.fit_model(variables,expr,dataset)
 prediction = fitlib.predict_output(result['params'], \
                                    expr,dataset)
