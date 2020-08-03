@@ -20,7 +20,7 @@ def investigate_model(param):
   dev = hcdclib.get_device()
 
   targ.get_block(dev)
-  block,inst,cfg = targ.get_block(dev)
+  block,inst,cfg = targ.get_block(dev)  
 
   #block = dev.get_block('mult')
   #inst = devlib.Location([0,3,2,0])
@@ -48,7 +48,7 @@ def investigate_model(param):
 
 
     costs.append(blk.model.cost)
-  print(params)
+  #print(params)
   #print(params['params']['d'])
   
   '''
@@ -102,9 +102,10 @@ def investigate_model(param):
   #TODO
 
   #print("VARIABLES:  \n", variables, "\n\nEXPR:\n", expr, "\n\nDATASET:\n", dataset)
-  print(dataset)
+  #print(dataset)
   if len(dataset['meas_mean']) == 0:
-  	raise Exception("empty db")
+  	raise Exception("Empty DB")
+
   result = fitlib.fit_model(variables,expr,dataset)
 
   prediction = fitlib.predict_output(result['params'], \
@@ -113,7 +114,7 @@ def investigate_model(param):
   error = list(map(lambda idx: dataset['meas_mean'][idx]-prediction[idx], \
                    range(0,len(prediction))))
   sumsq_error = sum(map(lambda x:x*x,error))
-
+  print("\n\nSUMSQ_ERROR:\n", sumsq_error,"\nERROR:\n ", error,"\n\n")
   #TODO AUTOMATE
   bounds = {'pmos':(0,7),\
   			'nmos':(0,7),\
@@ -137,15 +138,16 @@ def investigate_model(param):
   		print("Can't round non-numerical value")
 
   with open("convergence_data.txt", 'a') as file:
-  	file.write("%f \n" %sumsq_error)
+  	file.write("SUMSQ_ERR = %s\n PREDICTION = %s\n RESULT = %s\n" %(sumsq_error, prediction, result))
 
 
 
-  print("\n\nOPTIMAL CODE:\n", optimal_codes['values'])
 
-  print("\n\nTOTAL ERROR:\n", sumsq_error)
+  #print("\n\nOPTIMAL CODE:\n", optimal_codes['values'])
 
-  print("\n\nRESULT:\n", result)
+  #print("\n\nTOTAL ERROR:\n", sumsq_error)
+
+  #print("\n\nRESULT:\n", result)
 
   #return error, result['params']
   return optimal_codes['values']

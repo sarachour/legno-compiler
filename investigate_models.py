@@ -9,7 +9,7 @@ import ops.opparse as opparse
 import time
 import matplotlib.pyplot as plt
 import random
-
+import target_block as targ
 
 def visualize_it(org):
   for key in org.keys():
@@ -27,9 +27,13 @@ def visualize_it(org):
 def investigate_model(terms, param):
 
   dev = hcdclib.get_device()
-  block = dev.get_block('mult')
-  inst = devlib.Location([0,1,2,0])
-  cfg = adplib.BlockConfig.make(block,inst)
+
+  targ.get_block(dev)
+  block,inst,cfg = targ.get_block(dev)
+
+  #block = dev.get_block('mult')
+  #inst = devlib.Location([0,1,2,0])
+  #cfg = adplib.BlockConfig.make(block,inst)
   #cfg.modes = [['+','+','-','m']]
   cfg.modes = [block.modes.get(['x','m','m'])]
 
