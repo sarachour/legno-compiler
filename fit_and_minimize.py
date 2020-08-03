@@ -83,6 +83,8 @@ def investigate_model(param):
   D_expr = opparse.parse_expr(D_expr_text)
   D2_expr = genoplib.Mult(D_expr,D_expr)
 
+  cost_dataset = {'inputs':inputs, 'meas_mean':costs}
+  cost_terms = [ "pmos","nmos","bias_in0", "bias_in1", "bias_out", "gain_cal"]
   cost_variables = list(map(lambda i: "c%d" % i, range(0,len(cost_terms)))) + ['offset']
   cost_expr = ['offset']
   for coeff,term in zip(cost_variables,cost_terms):
