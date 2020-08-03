@@ -3,6 +3,16 @@ from hwlib.block import *
 import ops.opparse as parser
 import ops.interval as interval
 
+def mkmodel(blk,terms):
+  variables = list(map(lambda i: "c%d" % i, range(1,len(terms)+1))) \
+              + ['c0']
+  expr = ['c0']
+  for coeff,term in zip(variables,terms):
+    expr.append("%s*%s" % (coeff,term))
+  expr_text = "+".join(expr)
+  expr_ast = parser.parse_expr(expr_text)
+  return PhysicalModel.make(blk,expr_ast)
+
 mult = Block('mult',BlockType.COMPUTE, \
             [enums.RangeType, \
              enums.RangeType, \
@@ -76,40 +86,6 @@ mult.outputs['z'].relation \
 
 
 
-spec = DeltaSpec(parser.parse_expr('(a*c+b)*x+d'))
-
-#spec = DeltaSpec(parser.parse_expr('(a*c+b)*x+0.15*sin((3*w1*c+phi1))*sin((3*w2*x+phi2))+d'))
-spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
-spec.param('b',DeltaParamType.CORRECTABLE,ideal=0.0)
-#spec.param('ampl',DeltaParamType.GENERAL,ideal=0.0)
-#spec.param('phi1',DeltaParamType.CORRECTABLE,ideal=0.0)
-#spec.param('w1',DeltaParamType.CORRECTABLE,ideal=1.0)
-#spec.param('phi2',DeltaParamType.CORRECTABLE,ideal=0.0)
-#spec.param('w2',DeltaParamType.CORRECTABLE,ideal=1.0)
-spec.param('d',DeltaParamType.GENERAL,ideal=0.0)
-mult.outputs['z'].deltas.bind(['x','m','m'],spec)
-mult.outputs['z'].deltas.bind(['x','h','h'],spec)
-
-spec = DeltaSpec(parser.parse_expr('0.1*(a*c+b)*x + d'))
-spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
-spec.param('b',DeltaParamType.CORRECTABLE,ideal=0.0)
-spec.param('d',DeltaParamType.GENERAL,ideal=0.0)
-mult.outputs['z'].deltas.bind(['x','h','m'],spec)
-
-
-spec = DeltaSpec(parser.parse_expr('10.0*(a*c+b)*x + d'))
-spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
-spec.param('b',DeltaParamType.CORRECTABLE,ideal=0.0)
-spec.param('d',DeltaParamType.GENERAL,ideal=0.0)
-mult.outputs['z'].deltas.bind(['x','m','h'],spec)
-
-
-spec = DeltaSpec(parser.parse_expr('0.5*a*x*y + b'))
-spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
-spec.param('b',DeltaParamType.GENERAL,ideal=0.0)
-mult.outputs['z'].deltas.bind(['m','m','m'],spec)
-mult.outputs['z'].deltas.bind(['h','m','h'],spec)
-mult.outputs['z'].deltas.bind(['m','h','h'],spec)
 
 # bind codes, range
 mult.state.add(BlockState('enable',
@@ -224,3 +200,44 @@ mult.state.add(BlockState('bias_out',
                         array=calarr, \
                         state_type=BlockStateType.CALIBRATE))
 mult.state['bias_out'].impl.set_default(32)
+
+
+
+spec = DeltaSpec(parser.parse_expr('(a*c+b)*x+d'))
+
+#spec = DeltaSpec(parser.parse_expr('(a*c+b)*x+0.15*sin((3*w1*c+phi1))*sin((3*w2*x+phi2))+d'))
+phys_model_d = ["pmos", "nmos", "gain_cal", "bias_in0", "bias_out","bias_in1", "pmos*nmos", "pmos*gain_cal", "nmos*gain_cal", "pmos*bias_out"]
+phys_model_a = ['pmos', 'nmos', 'gain_cal', 'bias_in0', 'bias_in1', 'bias_out', 'pmos*nmos', 'pmos*bias_in0', 'pmos*bias_in1', 'pmos*bias_out', 'nmos*gain_cal', 'nmos*bias_in0', 'nmos*bias_in1', 'nmos*bias_out', 'bias_in0*bias_in1', 'nmos*pmos*bias_in0', 'nmos*pmos*bias_in1', 'nmos*pmos*bias_out', 'nmos*bias_in0*bias_in1']
+phys_model_error = [ "pmos","nmos","bias_in0", "bias_in1", "bias_out", "gain_cal"]
+
+spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0, \
+           model=mkmodel(mult,phys_model_a))
+spec.param('b',DeltaParamType.CORRECTABLE,ideal=0.0, \
+           model=None)
+spec.param('d',DeltaParamType.GENERAL,ideal=0.0, \
+           model=mkmodel(mult,phys_model_d))
+spec.model_error = mkmodel(mult,phys_model_error)
+
+mult.outputs['z'].deltas.bind(['x','m','m'],spec)
+mult.outputs['z'].deltas.bind(['x','h','h'],spec)
+
+spec = DeltaSpec(parser.parse_expr('0.1*(a*c+b)*x + d'))
+spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
+spec.param('b',DeltaParamType.CORRECTABLE,ideal=0.0)
+spec.param('d',DeltaParamType.GENERAL,ideal=0.0)
+mult.outputs['z'].deltas.bind(['x','h','m'],spec)
+
+
+spec = DeltaSpec(parser.parse_expr('10.0*(a*c+b)*x + d'))
+spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
+spec.param('b',DeltaParamType.CORRECTABLE,ideal=0.0)
+spec.param('d',DeltaParamType.GENERAL,ideal=0.0)
+mult.outputs['z'].deltas.bind(['x','m','h'],spec)
+
+
+spec = DeltaSpec(parser.parse_expr('0.5*a*x*y + b'))
+spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
+spec.param('b',DeltaParamType.GENERAL,ideal=0.0)
+mult.outputs['z'].deltas.bind(['m','m','m'],spec)
+mult.outputs['z'].deltas.bind(['h','m','h'],spec)
+mult.outputs['z'].deltas.bind(['m','h','h'],spec)

@@ -566,7 +566,6 @@ class BlockState(BlockField):
           return True
       return False
 
-  # add the 
   def lift(self,adp,block,loc,data):
     if not self.array is None:
         arr_idx = self.index.code()
@@ -625,13 +624,66 @@ class BlockInput(BlockField):
       return st
 
 
+class PhysicalModelSpec:
+
+    def __init__(self,relation,parameters,hidden_state):
+        self.model = relation
+        self.params = parameters
+        self.hidden_state = hidden_state
+
+    @staticmethod
+    def make(block,relation):
+        all_hidden_vars = set(map(lambda st: st.name, \
+                                filter(lambda st: isinstance(st.impl,BCCalibImpl), \
+                                       block.state)))
+        variables = set(relation.vars())
+        hidden_state = list(variables.intersection(all_hidden_vars))
+        model_pars = list(variables.difference(all_hidden_vars))
+        return PhysicalModelSpec(relation,model_pars,hidden_state)
+
+    def get_model(self,assigns):
+        repls = dict(map(lambda tup: (tup[0],oplib.Const(tup[1])), \
+                         params.items()))
+        return self.relation.substitute(repls)
+
+    def __repr__(self):
+        return "{hidden-state:%s, params:%s, expr:%s}" % (self.hidden_state, \
+                                                          self.params, \
+                                                          self.model)
 class DeltaSpec:
+
+    class Parameter:
+
+        def __init__(self,name,typ,ideal_value,model=None):
+            self.typ = typ
+            self.name = name
+            self.val = ideal_value
+            print(model)
+            assert(model is None \
+                   or isinstance(model,PhysicalModelSpec))
+            self._model = model
+
+        def __repr__(self):
+            val = self.ideal_values[par_name]
+            return "%s: %s = %s / model=%s" % (indent, \
+                                               self.name, \
+                                               self.typ, \
+                                               self.val, \
+                                               model)
 
     def __init__(self,rel):
         assert(isinstance(rel,oplib.Op))
-        self.relation = rel
         self._params = {}
-        self.ideal_values = {}
+        self.relation = rel
+        self._model_error = None
+
+    @property
+    def model_error(self):
+        return self._model_error
+
+    @model_error.setter
+    def model_error(self,v):
+        self._model_error = v
 
     def get_model(self,params):
         repls = dict(map(lambda tup: (tup[0],oplib.Const(tup[1])), \
@@ -641,9 +693,9 @@ class DeltaSpec:
     def get_correctable_model(self,params):
         pdict = dict(params)
         for par in params.keys():
-            if self._params[par]  \
+            if self._params[par].typ  \
                != DeltaParamType.CORRECTABLE:
-                pdict[par] = self.ideal_values[par]
+                pdict[par] = par.val
 
         return self.get_model(pdict)
 
@@ -651,10 +703,13 @@ class DeltaSpec:
     def params(self):
         return list(self._params.keys())
 
-    def param(self,param_name,param_type,ideal):
+    def param(self,param_name,param_type,ideal,model=None):
         assert(not param_name in self._params)
-        self._params[param_name] = param_type
-        self.ideal_values[param_name] = ideal
+        self._params[param_name] = DeltaSpec.Parameter(param_name,\
+                                                       param_type,\
+                                                       ideal,\
+                                                       model)
+
 
     def __getitem__(self,par):
         type_ = self._params[par]
@@ -664,9 +719,9 @@ class DeltaSpec:
     def __repr__(self):
         st = "delta {\n"
         indent = "  "
-        for par_name,typ_ in self._params.items():
-            val = self.ideal_values[par_name]
-            st += "%spar %s: %s = %s\n" % (indent,par_name,typ_,val)
+        for par_name,par in self._params.items():
+            st += "%spar %s\n" % par
+
         st += "%srel %s\n" % (indent,self.relation)
         st += "}\n"
         return st
