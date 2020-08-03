@@ -96,7 +96,9 @@ def fit_model(variables,expr,data):
   repl = {}
   dataset = [None]*n_inputs
   for idx,bound_var in enumerate(inputs.keys()):
-    assert(len(inputs[bound_var]) == len(meas_output))
+    #assert(len(inputs[bound_var]) == len(meas_output))
+    if len(inputs[bound_var]) != len(meas_output):
+      raise Exception("input <%s> has length %d, expected length %d" % (bound_var,len(inputs[bound_var]),len(meas_output)))
     dataset[idx] = inputs[bound_var]
     repl[bound_var] = genoplib.Var("x[%d]" % idx)
 

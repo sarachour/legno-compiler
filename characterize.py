@@ -38,13 +38,13 @@ runtime = GrendelRunner()
 #planner = planlib.CorrelationPlanner(block,inst,cfg,8,10)
 #planner = planlib.ModelBasedPlanner(block,inst,cfg,8,10)
 
-planner = planlib.RandomPlanner(block,inst,cfg,8,10,1)
+planner = planlib.RandomPlanner(block,inst,cfg,8,10,25)
 proflib.profile_all_hidden_states(runtime,dev,planner)
 analyze_db()
 
 for i in range(10):
 	new_optimal_code = {}
-	optimal_code = investigate_model("cost")
+	optimal_code = investigate_model("A")
 	for name,value in optimal_code.items():
 		new_optimal_code[block.state[name]] = value
 	#for name,val in optimal_code.items():
