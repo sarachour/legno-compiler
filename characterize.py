@@ -34,6 +34,11 @@ block,inst,cfg = target_block.get_block(dev)
 runtime = GrendelRunner()
 #planner = planlib.BruteForcePlanner(block,inst,cfg,3,10)
 #planner = planlib.NeighborhoodPlanner(block,inst,cfg,3,10)
-planner = planlib.SensitivityPlanner(block,inst,cfg,32,10)
+#planner = planlib.SensitivityPlanner(block,inst,cfg,32,10)
+#planner = planlib.CorrelationPlanner(block,inst,cfg,8,10)
+#planner = planlib.ModelBasedPlanner(block,inst,cfg,8,10)
+
+
+planner = planlib.RandomPlanner(block,inst,cfg,8,10,20)
 proflib.profile_all_hidden_states(runtime,dev,planner)
 

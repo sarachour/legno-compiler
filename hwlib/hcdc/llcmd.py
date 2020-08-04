@@ -179,7 +179,7 @@ def profile(runtime,blk,loc,adp,output_port, \
     # insert into database
     blkcfg = new_adp.configs.get(blk.name,loc)
     db = physdb.PhysicalDatabase(runtime.board_name)
-    row = physdb.PhysCfgBlock(db,blk,loc,new_out,blkcfg, \
+    row = physdb.ExpCfgBlock(db,blk,loc,new_out,blkcfg, \
                               dev.profile_status_type, \
                               dev.profile_op_type)
     row.update()
