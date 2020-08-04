@@ -73,7 +73,7 @@ for i in range(10):
                                             inst,
                                             cfg=new_cfg,
                                             hidden=True):
-        print(blk.model.hidden_codes())
+        print(blk.hidden_codes())
         print(blk.model.params)
         print(blk.model.cost)
 '''
