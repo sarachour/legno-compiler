@@ -5,6 +5,7 @@ import hwlib.hcdc.llstructs as llstructs
 import hwlib.hcdc.llenums as llenums
 import hwlib.hcdc.llcmd as llcmd
 import hwlib.hcdc.hcdcv2 as hcdclib
+import hwlib.physdb as physdb
 import target_block
 import itertools
 import ops.op as oplib
@@ -17,6 +18,7 @@ import numpy as np
 from fit_and_minimize import investigate_model
 import phys_model.profiler as proflib
 import phys_model.planner as planlib
+
 '''
 dev = hcdclib.get_device()
 block = dev.get_block('integ')
