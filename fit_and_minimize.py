@@ -156,7 +156,7 @@ def investigate_model(param):
 
   hidden_vars = expr.vars()
   optimal_codes = fitlib.minimize_model(hidden_vars, expr, {}, bounds)
-
+  print("\n\nOPTIMAL CODE: ", optimal_codes, "\n\n\n")
   #clean up optimal codes
   for code in optimal_codes['values']:
   	try:
