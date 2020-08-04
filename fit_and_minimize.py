@@ -36,6 +36,7 @@ def investigate_model(param):
   costs = []
   for blk in physdb.get_by_block_instance(db, dev,block,inst,cfg=cfg):
     if not blk.model.complete:
+      print("\n\n[WARN] found incomplete delta model\n\n\n")
   	  continue
     for par,value in blk.model.params.items():
       if not par in params:
@@ -52,7 +53,8 @@ def investigate_model(param):
     costs.append(blk.model.cost)
 
   print(len(costs))
-  #print(params)
+  print("\n\nparams:", params)
+  print("\n\ninputs:", inputs)
   #print(params['params']['d'])
   
   '''
