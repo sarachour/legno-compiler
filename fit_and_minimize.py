@@ -77,8 +77,6 @@ def investigate_model(param):
   	A_sub_dict[key] = genoplib.Const(value)
   A_baked_expr = A_expr.substitute(A_sub_dict)
 
-  
-
   D_dataset = {'inputs':inputs, 'meas_mean':params['d']}
   D_terms = ["pmos", "nmos", "gain_cal", "bias_in0", "bias_out","bias_in1", "pmos*nmos", "pmos*gain_cal", "nmos*gain_cal", "pmos*bias_out"]
   D_variables = list(map(lambda i: "c%d" % i, range(0,len(D_terms)))) + ['offset']
@@ -144,10 +142,11 @@ def investigate_model(param):
   			'bias_in1':(0,63),\
   }
 
-  hidden_vars = expr.vars()
-  for var in variables:
-  	hidden_vars.remove(var)
+  #hidden_vars = expr.vars()
+  #for var in variables:
+ # 	hidden_vars.remove(var)
 
+  hidden_vars = expr.vars()
   optimal_codes = fitlib.minimize_model(hidden_vars, expr, {}, bounds)
 
   #clean up optimal codes
