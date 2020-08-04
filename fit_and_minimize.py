@@ -73,7 +73,7 @@ def investigate_model(param):
   A_expr = opparse.parse_expr(A_expr_text)
   A_result = fitlib.fit_model(A_variables, A_expr, A_dataset)
   A_sub_dict = {}
-  for key,value in A_result['params']:
+  for key,value in A_result['params'].items():
   	A_sub_dict[key] = value
   A_baked_expr = A_expr.substitute(A_sub_dict)
 
@@ -89,7 +89,7 @@ def investigate_model(param):
   D_expr = opparse.parse_expr(D_expr_text)
   D_result = fitlib.fit_model(D_variables, D_expr, D_dataset)
   D_sub_dict = {}
-  for key,value in D_result['params']:
+  for key,value in D_result['params'].items():
   	D_sub_dict[key] = value
   D_baked_expr = D_expr.substitute(D_sub_dict)
 
@@ -103,7 +103,7 @@ def investigate_model(param):
   cost_expr = opparse.parse_expr(cost_expr_text)
   cost_result = fitlib.fit_model(cost_variables, cost_expr, cost_dataset)
   cost_sub_dict = {}
-  for key,value in cost_result['params']:
+  for key,value in cost_result['params'].items():
   	cost_sub_dict[key] = value
   cost_baked_expr = cost_expr.substitute(cost_sub_dict)
   
