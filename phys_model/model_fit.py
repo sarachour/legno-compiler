@@ -178,8 +178,10 @@ def predict_output(variable_assigns,expr,data):
 
   return pred
 
-def fit_delta_model(phys,data):
+def fit_delta_model_to_data(phys,data):
   spec = phys.delta_model.spec
+  if len(spec.params) > len(data['meas_mean']):
+    raise Exception("cannot fit delta model with <%d> params. Too few (%d) datapoints" % (len(spec.params),len(data['meas_mean'])))
   result = fit_model(spec.params,spec.relation,data)
   phys.delta_model.clear()
   for par,val in result['params'].items():
@@ -189,13 +191,11 @@ def fit_delta_model(phys,data):
   meas_output = data['meas_mean']
   sumsq = phys.delta_model.error(inputs,meas_output)
   phys.delta_model.cost = sumsq
-  print(result)
-  print("sumsq error: %s" % phys.delta_model.cost)
   phys.update()
 
-def analyze_physical_output(phys_output,operation=llenums.ProfileOpType.INPUT_OUTPUT):
+def fit_delta_model(phys_output,operation=llenums.ProfileOpType.INPUT_OUTPUT):
   dataset = phys_output.dataset
-  fit_delta_model(phys_output, \
+  fit_delta_model_to_data(phys_output, \
                   phys_output.dataset.get_data( \
                                                 llenums.ProfileStatus.SUCCESS, \
                                                 operation))

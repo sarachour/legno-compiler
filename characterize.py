@@ -8,7 +8,7 @@ import hwlib.hcdc.hcdcv2 as hcdclib
 import target_block
 import itertools
 import ops.op as oplib
-from analyze import analyze_db
+from analyze import analyze_delta_models,analyze_physical_models
 from lab_bench.grendel_runner import GrendelRunner
 import lab_bench.grendel_util as grendel_util
 from enum import Enum
@@ -39,9 +39,11 @@ runtime = GrendelRunner()
 #planner = planlib.ModelBasedPlanner(block,inst,cfg,8,10)
 
 
-planner = planlib.RandomPlanner(block,inst,cfg,8,10,0)
+npts =0
+planner = planlib.RandomPlanner(block,inst,cfg,8,10,npts)
 proflib.profile_all_hidden_states(runtime,dev,planner)
-analyze_db()
+analyze_delta_models()
+analyze_physical_models()
 
 for i in range(10):
 	new_optimal_code = {}

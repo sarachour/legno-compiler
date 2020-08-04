@@ -49,62 +49,14 @@ def investigate_model(param):
         costs.append(blk.delta_model.cost)
     #print(params)
     #print(params['params']['d'])
-    phys_model = physdb.get_physical_model(db,dev,block,inst,cfg=cfg)
+    phys_model = physdb.get_physical_models(db, dev, block, inst, cfg=cfg)
 
-    '''
-  if param == "D":
-  	dataset = {'inputs':inputs, 'meas_mean':params['d']}
-  	terms = ["pmos", "nmos", "gain_cal", "bias_in0", "bias_out","bias_in1", "pmos*nmos", "pmos*gain_cal", "nmos*gain_cal", "pmos*bias_out"]
-  elif param == "A":
-  	dataset = {'inputs':inputs, 'meas_mean':params['a']}
-  	terms = ['pmos', 'nmos', 'gain_cal', 'bias_in0', 'bias_in1', 'bias_out', 'pmos*nmos', 'pmos*bias_in0', 'pmos*bias_in1', 'pmos*bias_out', 'nmos*gain_cal', 'nmos*bias_in0', 'nmos*bias_in1', 'nmos*bias_out', 'bias_in0*bias_in1', 'nmos*pmos*bias_in0', 'nmos*pmos*bias_in1', 'nmos*pmos*bias_out', 'nmos*bias_in0*bias_in1']
-  elif param == "cost":
-  	dataset = {'inputs':inputs, 'meas_mean':costs}
-  	terms = [ "pmos","nmos","bias_in0", "bias_in1", "bias_out", "gain_cal"]
-  '''
-
-    A_dataset = {'inputs': inputs, 'meas_mean': params['a']}
-    A_terms = [
-        'pmos', 'nmos', 'gain_cal', 'bias_in0', 'bias_in1', 'bias_out',
-        'pmos*nmos', 'pmos*bias_in0', 'pmos*bias_in1', 'pmos*bias_out',
-        'nmos*gain_cal', 'nmos*bias_in0', 'nmos*bias_in1', 'nmos*bias_out',
-        'bias_in0*bias_in1', 'nmos*pmos*bias_in0', 'nmos*pmos*bias_in1',
-        'nmos*pmos*bias_out', 'nmos*bias_in0*bias_in1'
-    ]
-    A_variables = list(map(lambda i: "c%d" % i, range(
-        0, len(A_terms)))) + ['offset']
-    A_expr = ['offset']
-    for coeff, term in zip(A_variables, A_terms):
-        A_expr.append("%s*%s" % (coeff, term))
-    A_expr_text = "+".join(A_expr)
-    A_expr = opparse.parse_expr(A_expr_text)
+    A_expr = phys_model['a'].concrete_relation()
     A2_expr = genoplib.Mult(A_expr, A_expr)
-
-    D_dataset = {'inputs': inputs, 'meas_mean': params['d']}
-    D_terms = [
-        "pmos", "nmos", "gain_cal", "bias_in0", "bias_out", "bias_in1",
-        "pmos*nmos", "pmos*gain_cal", "nmos*gain_cal", "pmos*bias_out"
-    ]
-    D_variables = list(map(lambda i: "c%d" % i, range(
-        0, len(D_terms)))) + ['offset']
-    D_expr = ['offset']
-    for coeff, term in zip(D_variables, D_terms):
-        D_expr.append("%s*%s" % (coeff, term))
-    D_expr_text = "+".join(D_expr)
-    D_expr = opparse.parse_expr(D_expr_text)
+    D_expr = phys_model['d'].concrete_relation()
     D2_expr = genoplib.Mult(D_expr, D_expr)
 
-    cost_dataset = {'inputs': inputs, 'meas_mean': costs}
-    cost_terms = [
-        "pmos", "nmos", "bias_in0", "bias_in1", "bias_out", "gain_cal"
-    ]
-    cost_variables = list(map(lambda i: "c%d" % i, range(
-        0, len(cost_terms)))) + ['offset']
-    cost_expr = ['offset']
-    for coeff, term in zip(cost_variables, cost_terms):
-        cost_expr.append("%s*%s" % (coeff, term))
-    cost_expr_text = "+".join(cost_expr)
-    cost_expr = opparse.parse_expr(cost_expr_text)
+    cost_expr = phys_model.model_error.concrete_relation()
     inv_const = genoplib.Const(-1)
     inv_cost_expr = lambdoplib.Pow(cost_expr, inv_const)
 
@@ -113,25 +65,6 @@ def investigate_model(param):
     sum_expr = genoplib.Add(prod_expr_A, prod_expr_B)
 
     expr = sum_expr
-    #prod_expr = genoplib.Mult(expr,expr)
-    #neg_expr = genoplib.Mult(genoplib.Const(-1.0), prod_expr)
-    #expr = neg_expr
-    #TODO
-
-    #print("VARIABLES:  \n", variables, "\n\nEXPR:\n", expr, "\n\nDATASET:\n", dataset)
-    #print(dataset)
-    #if len(dataset['meas_mean']) == 0:
-    #	raise Exception("Empty DB")
-
-    result = fitlib.fit_model(variables, expr, dataset)
-
-    prediction = fitlib.predict_output(result['params'], \
-                                       expr,dataset)
-
-    error = list(map(lambda idx: dataset['meas_mean'][idx]-prediction[idx], \
-                     range(0,len(prediction))))
-    sumsq_error = sum(map(lambda x: x * x, error))
-    print("\n\nSUMSQ_ERROR:\n", sumsq_error, "\nERROR:\n ", error, "\n\n")
     #TODO AUTOMATE
     bounds = {'pmos':(0,7),\
        'nmos':(0,7),\
@@ -141,11 +74,10 @@ def investigate_model(param):
        'bias_in1':(0,63),\
     }
 
-    hidden_vars = expr.vars()
-    for var in variables:
-        hidden_vars.remove(var)
-
-    optimal_codes = fitlib.minimize_model(hidden_vars, expr, result['params'],
+    hidden_vars = list(set(phys_model['a'].spec.hidden_state  \
+                      + phys_model['d'].spec.hidden_state  \
+                      + phys_model.model_error.spec.hidden_state))
+    optimal_codes = fitlib.minimize_model(hidden_vars, expr, {},
                                           bounds)
 
     #clean up optimal codes
@@ -155,10 +87,6 @@ def investigate_model(param):
                 round(optimal_codes['values'][code]))
         except:
             print("Can't round non-numerical value")
-
-    with open("convergence_data.txt", 'a') as file:
-        file.write("SUMSQ_ERR = %s\n PREDICTION = %s\n RESULT = %s\n" %
-                   (sumsq_error, prediction, result))
 
     #print("\n\nOPTIMAL CODE:\n", optimal_codes['values'])
 

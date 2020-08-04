@@ -290,8 +290,8 @@ class ExpPhysModel:
     assert(isinstance(physmodelcoll,ExpPhysModelCollection))
     assert(isinstance(physical_model,blocklib.PhysicalModelSpec))
     self.coll = physmodelcoll
-    self.phys_model = physical_model
-    assert(not self.phys_model is None)
+    self.spec = physical_model
+    assert(not self.spec is None)
     self.params = {}
 
   def predict(self,inputs):
@@ -300,7 +300,7 @@ class ExpPhysModel:
     n = len(input_value_set[0])
     outputs = []
     params = dict(self.params)
-    rel = self.phys_model.get_model(params)
+    rel = self.spec.get_model(params)
 
     for values in zip(*input_value_set):
       inp_map = dict(list(zip(input_fields,values)) + \
@@ -311,10 +311,17 @@ class ExpPhysModel:
     return outputs
 
 
+  def concrete_relation(self):
+    assert(self.complete)
+    assigns = dict(map(lambda tup: (tup[0],ops.Const(tup[1])), \
+                       self.params.items()))
+    return self.spec.relation.substitute(assigns)
+
   def bind(self,par,value):
     assert(not par in self.params)
-    if not (par in self.phys_model.params):
-      print("WARN: couldn't bind nonexistant parameter <%s> in delta" % par)
+    if not (par in self.spec.params):
+      print("WARN: couldn't bind nonexistant parameter <%s> in phys (%s)" % \
+            (par,self.spec.params))
       return
 
     self.params[par] = value
@@ -327,26 +334,64 @@ class ExpPhysModel:
     for par,value in json.items():
       self.bind(par,value)
 
+  @property
+  def complete(self):
+    for par in self.spec.params:
+      if not par in self.params:
+        return False
+    return True
+
+  def clear(self):
+    self.params = {}
+    self.cost = ExpDeltaModel.MAX_COST
+
+  def bind(self,par,value):
+    if not (par in self.spec.params):
+      print("WARN: couldn't bind nonexistant parameter <%s> in delta" % par)
+      return
+
+    self.params[par] = value
+
+  def __repr__(self):
+    return str(self.params) + " / " + str(self.spec)
+
 class ExpPhysModelCollection:
   def __init__(self,physblk):
     self.phys = physblk
     self.delta_model = self.phys.output \
                                 .deltas[self.phys.cfg.mode]
 
-    self.delta_params = {}
+    self._delta_params = {}
     for par in self.delta_model.params:
       if not self.delta_model[par].model is None:
-        self.delta_params[par] = ExpPhysModel(self,self.delta_model[par].model)
+        self._delta_params[par] = ExpPhysModel(self, \
+                                               self.delta_model[par].model)
 
     if not self.delta_model.model_error is None:
       self.model_error = ExpPhysModel(self, \
                                       self.delta_model.model_error)
 
 
+  @property
+  def complete(self):
+    for v in self._delta_params.values():
+      if not v.complete:
+        return False
+    return self.model_error.complete
+
+  def clear(self):
+    self.model_error.clear()
+    for v in self._delta_params.values():
+      v.clear()
+
+  @property
+  def delta_model_params(self):
+    for p,v in self._delta_params.items():
+      yield p,v
 
   def to_json(self):
     delta_pars = dict(map(lambda tup: (tup[0],tup[1].to_json()),  \
-                          self.delta_params.items()))
+                          self._delta_params.items()))
     return {
       'delta_params': delta_pars,
       'model_error': self.model_error.to_json()
@@ -358,8 +403,22 @@ class ExpPhysModelCollection:
     cfg = ExpPhysModelCollection(physcfg)
     cfg.model_error.update(obj['model_error'])
     for par,subobj in obj['delta_params'].items():
-      cfg.model_error.update(subobj)
+      cfg._delta_params[par].update(subobj)
     return cfg
+
+  def update(self):
+    self.phys.update()
+
+  def __getitem__(self,v):
+    return self._delta_params[v]
+
+  def __repr__(self):
+    st = ""
+    for par,model in self._delta_params.items():
+      st += "par %s = %s\n" % (par,model)
+
+    st += "model-error = %s\n" % (self.model_error)
+    return st
 
 class ExpDeltaModel:
   MAX_COST = 9999
@@ -611,7 +670,7 @@ class ExpCfgBlock:
                                   where_clause))
     if len(matches) == 1:
       json_physical_model = decode_dict(matches[0]['phys_model'])
-      self.physical_models = ExpPhysModelCollection \
+      self.phys_models = ExpPhysModelCollection \
           .from_json(self,json_physical_model)
     elif len(matches) == 0:
       pass
@@ -734,5 +793,16 @@ def get_all(db,dev):
     yield ExpCfgBlock.from_json(db,dev,row)
 
 # get concretization of physical model
-def get_physical_model(db,dev,blk,inst,cfg=None):
-  raise NotImplementedError
+def get_physical_models(db,dev,blk,inst,cfg=None):
+  where_clause = {'block':blk.name, \
+                  'loc':str(inst) \
+  }
+
+  if not cfg is None:
+    static_cfg = ExpCfgBlock.get_static_cfg(blk,cfg)
+    where_clause['static_config'] = static_cfg
+
+  for row in db.select(PhysicalDatabase.DB.DELTA_MODELS, where_clause):
+    return ExpCfgBlock.from_json(db,dev,row).phys_models
+
+

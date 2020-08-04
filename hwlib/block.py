@@ -627,7 +627,16 @@ class BlockInput(BlockField):
 class PhysicalModelSpec:
 
     def __init__(self,relation,parameters,hidden_state):
-        self.model = relation
+        # sanity check
+        all_vars = relation.vars()
+        for v in all_vars:
+           if not v in parameters and not v in hidden_state:
+               raise Exception("variable <%s> is not a parameter or hidden code" % v)
+        for v in parameters + hidden_state:
+            if not v in all_vars:
+                raise Exception("parameter or hidden state <%s> not in relation "% v)
+
+        self.relation = relation
         self.params = parameters
         self.hidden_state = hidden_state
 
@@ -649,7 +658,7 @@ class PhysicalModelSpec:
     def __repr__(self):
         return "{hidden-state:%s, params:%s, expr:%s}" % (self.hidden_state, \
                                                           self.params, \
-                                                          self.model)
+                                                          self.relation)
 class DeltaSpec:
 
     class Parameter:
