@@ -43,7 +43,7 @@ def replicate_config(planner, optimal_code):
 #block = dev.get_block('fanout')
 dev = hcdclib.get_device()
 block, inst, cfg = target_block.get_block(dev)
-
+db = physdb.PhysicalDatabase('board6')
 runtime = GrendelRunner()
 #planner = planlib.BruteForcePlanner(block,inst,cfg,3,10)
 #planner = planlib.NeighborhoodPlanner(block,inst,cfg,3,10)
