@@ -48,6 +48,8 @@ def investigate_model(param):
 
 
     costs.append(blk.model.cost)
+
+   print(costs)
   #print(params)
   #print(params['params']['d'])
   
