@@ -30,25 +30,6 @@ def investigate_model(param):
     cfg.modes = [block.modes.get(['x', 'm', 'm'])]
 
     db = physdb.PhysicalDatabase('board6')
-    #org = physdb.HiddenCodeOrganizer([])
-    # build up dataset
-    params = {}
-    inputs = {}
-    costs = []
-    for blk in physdb.get_by_block_instance(db, dev, block, inst, cfg=cfg):
-        for par, value in blk.delta_model.params.items():
-            if not par in params:
-                params[par] = []
-            params[par].append(value)
-
-        for hidden_code, value in blk.hidden_codes():
-            if not hidden_code in inputs:
-                inputs[hidden_code] = []
-            inputs[hidden_code].append(value)
-
-        costs.append(blk.delta_model.cost)
-    #print(params)
-    #print(params['params']['d'])
     phys_model = physdb.get_physical_models(db, dev, block, inst, cfg=cfg)
 
     A_expr = phys_model['a'].concrete_relation()
