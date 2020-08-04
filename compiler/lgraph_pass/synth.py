@@ -195,11 +195,11 @@ def get_valid_tableaus(frontier,depth):
 def tableau_complexity(tableau,depth):
   cost = 0.0
   for goal in tableau.goals:
-    cost = max(cost,goal.expr.nodes())
+    cost = max(cost,goal.expr.count())
   return cost + depth
 
 def goal_complexity(goal):
-  return goal.expr.nodes()
+  return goal.expr.count()
 
 def select_tableau(frontier,complexity):
   penalty = list(map(lambda tab: complexity(*tab), frontier))

@@ -73,7 +73,15 @@ class Op:
         return self._args
 
     def nodes(self):
-        child_nodes = sum(map(lambda a: a.nodes(), self._args))
+        child_nodes = [self]
+        for nodes in map(lambda a: a.nodes(), self._args):
+          child_nodes += nodes
+
+        return child_nodes
+
+
+    def count(self):
+        child_nodes = sum(map(lambda a: a.count(), self._args))
         return 1 + child_nodes
 
     def depth(self):

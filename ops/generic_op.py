@@ -27,9 +27,6 @@ class Integ(GenericOp2):
     def init_cond(self):
         return self.arg2
 
-    def coefficient(self):
-        return self.deriv.coefficient()
-
     def handles(self):
         ch = Op.handles(self)
         assert(not self.handle in ch and \
@@ -63,15 +60,6 @@ class ExtVar(GenericOp):
         GenericOp.__init__(self,OpType.EXTVAR,[])
         self._name = name
         self._loc = loc
-
-    def coefficient(self):
-        return 1.0
-
-    def sum_terms(self):
-        return [self]
-
-    def prod_terms(self):
-        return [self]
 
     @property
     def loc(self):
@@ -169,9 +157,6 @@ class Const(GenericOp):
         return Const(obj['value'])
 
 
-    def prod_terms(self):
-        return []
-
     def compute(self,bindings={}):
         return self._value
 
@@ -262,7 +247,7 @@ class Add(GenericOp2):
                    Op.from_json(obj['args'][1]))
 
 
-   
+
     def substitute(self,args):
         return Add(
             self.arg(0).substitute(args),

@@ -178,6 +178,9 @@ class BlockModeset:
     for mode in self._modes.values():
       yield mode
 
+def __repr__(self):
+    return str(self._modes.values())
+
 class BlockField:
 
   def __init__(self,name):
