@@ -11,7 +11,7 @@ def mkmodel(blk,terms):
     expr.append("%s*%s" % (coeff,term))
   expr_text = "+".join(expr)
   expr_ast = parser.parse_expr(expr_text)
-  return PhysicalModel.make(blk,expr_ast)
+  return PhysicalModelSpec.make(blk,expr_ast)
 
 mult = Block('mult',BlockType.COMPUTE, \
             [enums.RangeType, \

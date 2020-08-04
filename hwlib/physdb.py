@@ -30,7 +30,7 @@ block text,
 loc text,
 output text,
 static_config text,
-physical_model text,
+phys_model text,
 primary key (block,loc,output,static_config)
 );
 '''
@@ -69,25 +69,32 @@ class PhysicalDatabase:
     self.curs.execute(CREATE_DELTA_TABLE)
     self.conn.commit()
     self.phys_keys = ['block','loc','output','static_config', \
-                      'physical_model']
+                      'phys_model']
     self.delta_keys = ['block','loc','output','static_config','hidden_config', \
-            'config','dataset','model','cost']
+            'config','dataset','delta_model','cost']
 
-  def insert(self,db,fields):
+  def insert(self,db,_fields):
     assert(isinstance(db,PhysicalDatabase.DB))
     if db == PhysicalDatabase.DB.DELTA_MODELS:
-      INSERT = '''INSERT INTO physical (block,loc,output,static_config,hidden_config,config,dataset,model,cost)
-      VALUES ('{block}','{loc}','{output}','{static_config}','{hidden_config}','{config}','{dataset}','{model}',{cost});'''
+      INSERT = '''INSERT INTO {db} (block,loc,output,static_config,hidden_config,config,dataset,delta_model,cost)
+      VALUES ('{block}','{loc}','{output}','{static_config}','{hidden_config}','{config}','{dataset}','{delta_model}',{cost});'''
     elif db == PhysicalDatabase.DB.PHYSICAL_MODELS:
-      INSERT = '''INSERT INTO final (block,loc,output,static_config,physical_model)
-      VALUES ('{block}','{loc}','{output}','{static_config}','{physical_model}');'''
+      INSERT = '''INSERT INTO {db} (block,loc,output,static_config,phys_model)
+      VALUES ('{block}','{loc}','{output}','{static_config}','{phys_model}');'''
 
+    fields = dict(_fields)
+    fields['db'] = db.value
     cmd = INSERT.format(**fields)
     self.curs.execute(cmd)
     self.conn.commit()
 
-  def _where_clause(self,where_clause):
+  def _where_clause(self,db,fields):
+    assert(isinstance(db,PhysicalDatabase.DB))
     reqs = []
+    keys = self.delta_keys if db == PhysicalDatabase.DB.DELTA_MODELS \
+           else self.phys_keys
+    where_clause = dict(filter(lambda tup: tup[0] in keys, \
+                               fields.items()))
     for k,v in where_clause.items():
       reqs.append("%s='%s'" % (k,v.replace("'","''")))
 
@@ -98,9 +105,13 @@ class PhysicalDatabase:
 
   def update(self,db,where_clause,_fields):
     assert(isinstance(db,PhysicalDatabase.DB))
-    where_clause_frag = self._where_clause(where_clause)
+    where_clause_frag = self._where_clause(db,where_clause)
     assert(len(where_clause_frag) > 0)
-    UPDATE = "UPDATE {db} SET dataset='{dataset}',model='{model}',cost={cost} "
+    if db == PhysicalDatabase.DB.DELTA_MODELS:
+      UPDATE = "UPDATE {db} SET dataset='{dataset}',delta_model='{delta_model}',cost={cost} "
+    else:
+      UPDATE = "UPDATE {db} SET phys_model='{phys_model}' "
+
     fields = dict(_fields)
     fields['db'] = db.value
     cmd = UPDATE.format(**fields) + where_clause_frag
@@ -109,7 +120,7 @@ class PhysicalDatabase:
 
   def _select(self,db,action_clause,where_clause,distinct=False):
     assert(isinstance(db,PhysicalDatabase.DB))
-    where_clause_frag = self._where_clause(where_clause)
+    where_clause_frag = self._where_clause(db,where_clause)
     if distinct:
       command = "SELECT DISTINCT"
     else:
@@ -126,18 +137,18 @@ class PhysicalDatabase:
     for row in self.curs.fetchall():
       yield row
 
-  def select(self,db,where_clause):
+  def select(self,db,fields):
     assert(isinstance(db,PhysicalDatabase.DB))
-    keys = self.phys_keys if db == PhysicalDatabase.DB.DELTA_MODELS \
-           else self.final_keys
+    keys = self.delta_keys if db == PhysicalDatabase.DB.DELTA_MODELS \
+           else self.phys_keys
 
-    for row in self._select(db,"*",where_clause):
+    for row in self._select(db,"*",fields):
       yield dict(zip(keys,row))
 
   def select_field(self,db,field_names,where_clause):
     assert(isinstance(db,PhysicalDatabase.DB))
-    keys = self.phys_keys if db == PhysicalDatabase.DB.DELTA_MODELS \
-           else self.final_keys
+    keys = self.delta_keys if db == PhysicalDatabase.DB.DELTA_MODELS \
+           else self.phys_keys
 
     for field_name in field_names:
       if not (field_name in keys):
@@ -273,14 +284,15 @@ class ExpDataset:
       }
     }
 
-class ExpPhysicalModel:
+class ExpPhysModel:
 
-  def __init__(self,name,physical_model):
-    assert(isinstance(physical_model,PhysicalModelSpec))
+  def __init__(self,physmodelcoll,physical_model):
+    assert(isinstance(physmodelcoll,ExpPhysModelCollection))
+    assert(isinstance(physical_model,blocklib.PhysicalModelSpec))
+    self.coll = physmodelcoll
     self.phys_model = physical_model
-    self.name = name
     assert(not self.phys_model is None)
-    self.params = map(lambda p: (p,None),self.phys_model.params)
+    self.params = {}
 
   def predict(self,inputs):
     input_fields = list(inputs.keys())
@@ -306,30 +318,29 @@ class ExpPhysicalModel:
       return
 
     self.params[par] = value
-
+    self.coll.update()
 
   def to_json(self):
-    return {
-      'name': self.name,
-      'params': self.params
-    }
+    return self.params
 
-  def update(self,jsonobj):
-    for par,val in jsonobj['params'].items():
-      self.bind(par,val)
+  def update(self,json):
+    for par,value in json.items():
+      self.bind(par,value)
 
-class ExpPhysicalModelCollection:
-  MODEL_ERROR = "model_error"
+class ExpPhysModelCollection:
   def __init__(self,physblk):
+    self.phys = physblk
     self.delta_model = self.phys.output \
                                 .deltas[self.phys.cfg.mode]
 
     self.delta_params = {}
     for par in self.delta_model.params:
-      self.delta_params[par] = PhysicalModel(par,self.delta_model[par])
+      if not self.delta_model[par].model is None:
+        self.delta_params[par] = ExpPhysModel(self,self.delta_model[par].model)
 
-    self.model_error = PhysicalModel(PhysicalModelCollection.MODEL_ERROR, \
-                                     self.delta_model.model_error)
+    if not self.delta_model.model_error is None:
+      self.model_error = ExpPhysModel(self, \
+                                      self.delta_model.model_error)
 
 
 
@@ -344,7 +355,7 @@ class ExpPhysicalModelCollection:
 
   @staticmethod
   def from_json(physcfg,obj):
-    cfg = PhysicalModelCollection(physcfg)
+    cfg = ExpPhysModelCollection(physcfg)
     cfg.model_error.update(obj['model_error'])
     for par,subobj in obj['delta_params'].items():
       cfg.model_error.update(subobj)
@@ -355,14 +366,14 @@ class ExpDeltaModel:
 
   def __init__(self,physblk):
     self.phys = physblk
-    self.delta_model = self.phys.output \
+    self.spec = self.phys.output \
                                 .deltas[self.phys.cfg.mode]
     self.params = {}
     self.cost = ExpDeltaModel.MAX_COST
 
   @property
   def complete(self):
-    for par in self.delta_model.params:
+    for par in self.spec.params:
       if not par in self.params:
         return False
     return True
@@ -373,7 +384,7 @@ class ExpDeltaModel:
 
   def bind(self,par,value):
     assert(not par in self.params)
-    if not (par in self.delta_model.params):
+    if not (par in self.spec.params):
       print("WARN: couldn't bind nonexistant parameter <%s> in delta" % par)
       return
 
@@ -397,9 +408,9 @@ class ExpDeltaModel:
     params = dict(self.params)
 
     if correctable_only:
-      rel = self.delta_model.get_correctable_model(params)
+      rel = self.spec.get_correctable_model(params)
     else:
-      rel = self.delta_model.get_model(params)
+      rel = self.spec.get_model(params)
 
     for values in zip(*input_value_set):
       inp_map = dict(list(zip(input_fields,values)) + \
@@ -426,21 +437,6 @@ class ExpDeltaModel:
       'cost': self.cost
     }
 
-class ExpPhysicalModel:
-
-  def __init__(self,physmodels):
-    assert(isinstance(physmodels,ExpPhysicalModels))
-    self.phys_models = physmodels
-
-class ExpPhysicalModels:
-
-  def __init__(self,expcfgblk):
-    assert(isinstance(expcfgblk,ExpCfgBlock))
-    self.expblk= expcfgblk
-    self.params = {}
-    self.model_error = ExpPhysicalModel(self)
-
-
 class ExpCfgBlock:
 
   def __init__(self,db,blk,loc,out_port,blkcfg, \
@@ -456,7 +452,7 @@ class ExpCfgBlock:
     self.cfg = blkcfg
     self.db = db
     self.delta_model = ExpDeltaModel(self)
-    self.phys_models = ExpPhysicalModels(self)
+    self.phys_models = ExpPhysModelCollection(self)
 
     self.status_type = status_type
     self.method_type = method_type
@@ -533,8 +529,8 @@ class ExpCfgBlock:
       'config': self.cfg.to_json(),
       'dataset':self.dataset.to_json(),
       'delta_model': self.delta_model.to_json(),
-      'physical_model': self.physical_models.to_json(),
-      'cost':self.model.cost
+      'phys_model': self.phys_models.to_json(),
+      'cost':self.delta_model.cost
     }
 
   def get_bounds(self):
@@ -568,7 +564,7 @@ class ExpCfgBlock:
     fields['config'] = encode_dict(fields['config'])
     fields['dataset'] = encode_dict(fields['dataset'])
     fields['delta_model'] = encode_dict(fields['delta_model'])
-    fields['physical_model'] = encode_dict(fields['physical_model'])
+    fields['phys_model'] = encode_dict(fields['phys_model'])
     where_clause = {
       'block': self.block.name,
       'loc': str(self.loc),
@@ -614,8 +610,9 @@ class ExpCfgBlock:
     matches = list(self.db.select(PhysicalDatabase.DB.PHYSICAL_MODELS,
                                   where_clause))
     if len(matches) == 1:
-      json_physical = decode_dict(matches[0]['physical_model'])
-      self.physical_models = ExpPhysicalModels.from_json(self,json_physical_model)
+      json_physical_model = decode_dict(matches[0]['phys_model'])
+      self.physical_models = ExpPhysModelCollection \
+          .from_json(self,json_physical_model)
     elif len(matches) == 0:
       pass
     else:
@@ -711,7 +708,6 @@ def get_best_configured_physical_block(db,dev,blk,inst,cfg):
   best_cost = None
   for hidden_cfg,physblocks in by_hidden_cfg.items():
     cost = max(map(lambda blk: blk.model.cost, physblocks))
-    print(cost)
     if best_hidden_cfg is None or best_cost > cost:
       best_hidden_cfg = hidden_cfg
       best_cost = cost

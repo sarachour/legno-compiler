@@ -148,7 +148,12 @@ def fit_model(variables,expr,data):
   }
   snippet = FIT_PROG.format(**fields) \
                     .replace('math.','np.')
+
   loc = {}
+  if len(data['meas_mean']) == 0:
+    print("DATASET: %s" % data)
+    raise Exception("fit_model: cannot fit empty dataset")
+
   exec(snippet,globals(),loc)
   parameters = loc['lbls']
   parameter_values = loc['popt']
@@ -174,18 +179,18 @@ def predict_output(variable_assigns,expr,data):
   return pred
 
 def fit_delta_model(phys,data):
-  model = phys.model.delta_model
-  result = fit_model(model.params,model.relation,data)
-  phys.model.clear()
+  spec = phys.delta_model.spec
+  result = fit_model(spec.params,spec.relation,data)
+  phys.delta_model.clear()
   for par,val in result['params'].items():
-    phys.model.bind(par,val)
+    phys.delta_model.bind(par,val)
 
   inputs = data['inputs']
   meas_output = data['meas_mean']
-  sumsq = phys.model.error(inputs,meas_output)
-  phys.model.cost = sumsq
+  sumsq = phys.delta_model.error(inputs,meas_output)
+  phys.delta_model.cost = sumsq
   print(result)
-  print("sumsq error: %s" % phys.model.cost)
+  print("sumsq error: %s" % phys.delta_model.cost)
   phys.update()
 
 def analyze_physical_output(phys_output,operation=llenums.ProfileOpType.INPUT_OUTPUT):

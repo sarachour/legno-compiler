@@ -658,18 +658,19 @@ class DeltaSpec:
             self.typ = typ
             self.name = name
             self.val = ideal_value
-            print(model)
             assert(model is None \
                    or isinstance(model,PhysicalModelSpec))
             self._model = model
 
+        @property
+        def model(self):
+            return self._model
+
         def __repr__(self):
-            val = self.ideal_values[par_name]
-            return "%s: %s = %s / model=%s" % (indent, \
-                                               self.name, \
-                                               self.typ, \
-                                               self.val, \
-                                               model)
+            return "%s : %s = %s / model=%s" % (self.name, \
+                                           self.typ.value, \
+                                           self.val, \
+                                           self._model)
 
     def __init__(self,rel):
         assert(isinstance(rel,oplib.Op))
@@ -712,9 +713,8 @@ class DeltaSpec:
 
 
     def __getitem__(self,par):
-        type_ = self._params[par]
-        val = self.ideal_values[par]
-        return type_,val
+        par_ = self._params[par]
+        return par_
 
     def __repr__(self):
         st = "delta {\n"

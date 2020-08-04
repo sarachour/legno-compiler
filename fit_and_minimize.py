@@ -35,7 +35,7 @@ def investigate_model(param):
   inputs = {}
   costs = []
   for blk in physdb.get_by_block_instance(db, dev,block,inst,cfg=cfg):
-    for par,value in blk.model.params.items():
+    for par,value in blk.delta_model.params.items():
       if not par in params:
         params[par] = []
       params[par].append(value)
@@ -50,7 +50,8 @@ def investigate_model(param):
     costs.append(blk.model.cost)
   #print(params)
   #print(params['params']['d'])
-  
+  phys_model = physdb.get_physical_model(db,dev,block,inst,cfg=cfg)
+
   '''
   if param == "D":
   	dataset = {'inputs':inputs, 'meas_mean':params['d']}
