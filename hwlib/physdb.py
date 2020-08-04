@@ -601,7 +601,7 @@ def get_best_configured_physical_block(db,dev,blk,inst,cfg):
   for physblk in by_hidden_cfg[best_hidden_cfg]:
     yield physblk
 
-def get_by_block_instance(db,dev,blk,inst,cfg=None):
+def get_by_block_instance(db,dev,blk,inst,cfg=None,hidden=False):
   where_clause = {'block':blk.name, \
                   'loc':str(inst) \
   }
@@ -609,6 +609,10 @@ def get_by_block_instance(db,dev,blk,inst,cfg=None):
   if not cfg is None:
     static_cfg = PhysCfgBlock.get_static_cfg(blk,cfg)
     where_clause['static_config'] = static_cfg
+    if hidden:
+      hidden_cfg = PhysCfgBlock.get_hidden_cfg(blk,cfg)
+      where_clause['hidden_config'] = hidden_cfg
+
 
   for row in db.select(where_clause):
     yield PhysCfgBlock.from_json(db,dev,row)
