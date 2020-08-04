@@ -48,13 +48,13 @@ def investigate_model(param):
       if not hidden_code in inputs:
         inputs[hidden_code] = []
       inputs[hidden_code].append(value)
+    print("\nblk.model.params: ",blk.model.params)
+    print("\nblk.hidden_codes",blk.hidden_codes)
 
 
     costs.append(blk.model.cost)
 
   print(len(costs))
-  print("\n\nparams:", params)
-  print("\n\ninputs:", inputs)
   #print(params['params']['d'])
   
   '''
