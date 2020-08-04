@@ -115,13 +115,15 @@ def investigate_model(param):
 
   A2_expr = genoplib.Mult(A_baked_expr,A_baked_expr)
   D2_expr = genoplib.Mult(D_baked_expr,D_baked_expr)
+  cost2_expr = genoplib.Mult(cost_baked_expr, cost_baked_expr)
   inv_const = genoplib.Const(-1)
   inv_cost_expr = lambdoplib.Pow(cost_baked_expr,inv_const)
   prod_expr_A = genoplib.Mult(A2_expr,inv_cost_expr)
   prod_expr_B = genoplib.Mult(D2_expr,inv_cost_expr)
   sum_expr = genoplib.Add(prod_expr_A, prod_expr_B)
+  D2_plus_cost2 = genoplib.Add(D2_expr, cost2_expr)
 
-  expr = sum_expr
+  expr = D2_plus_cost2
   #prod_expr = genoplib.Mult(expr,expr)
   #neg_expr = genoplib.Mult(genoplib.Const(-1.0), prod_expr)
   #expr = neg_expr
