@@ -35,7 +35,7 @@ def investigate_model(param):
   inputs = {}
   costs = []
   for blk in physdb.get_by_block_instance(db, dev,block,inst,cfg=cfg):
-  	if not blk.model.complete:
+    if not blk.model.complete:
   	  continue
     for par,value in blk.model.params.items():
       if not par in params:
