@@ -49,7 +49,7 @@ def investigate_model(param):
         inputs[hidden_code] = []
       inputs[hidden_code].append(value)
     print("\nblk.model.params: ",blk.model.params)
-    print("\nblk.hidden_codes()",blk.hidden_codes())
+    print("\nblk.hidden_codes()",list(blk.hidden_codes()))
     print("\nblk.model.cost",blk.model.cost)
 
     costs.append(blk.model.cost)
