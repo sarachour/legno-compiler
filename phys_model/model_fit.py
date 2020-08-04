@@ -133,7 +133,7 @@ def fit_model(variables,expr,data):
   repl = {}
   dataset = [None]*n_inputs
   for idx,bound_var in enumerate(inputs.keys()):
-    print("len(inputs[pmos]:", len(inputs[pmos]), "\n")
+    print("len(inputs[pmos]:", len(inputs['pmos']), "\n")
     print("len(meas_output):", len(meas_output), "\n")
     assert(len(inputs[bound_var]) == len(meas_output))
     dataset[idx] = inputs[bound_var]
