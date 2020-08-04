@@ -53,6 +53,7 @@ for i in range(10):
 	test_planner = planlib.SinglePointPlanner(block,inst,cfg,10)
 	test_planner.new_hidden()
 	proflib.profile_hidden_state(dev,runtime,test_planner,new_optimal_code)
+	analyze_db()
 
 
 
