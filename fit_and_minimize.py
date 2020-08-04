@@ -71,7 +71,13 @@ def investigate_model(param):
     A_expr.append("%s*%s" % (coeff,term))
   A_expr_text = "+".join(A_expr)
   A_expr = opparse.parse_expr(A_expr_text)
-  A2_expr = genoplib.Mult(A_expr,A_expr)
+  A_result = fitlib.fit_model(A_variables, A_expr, A_dataset)
+  A_sub_dict = {}
+  for key,value in A_result['params']:
+  	A_sub_dict[key] = value
+  A_baked_expr = A_expr.substitute(A_sub_dict)
+
+  
 
   D_dataset = {'inputs':inputs, 'meas_mean':params['d']}
   D_terms = ["pmos", "nmos", "gain_cal", "bias_in0", "bias_out","bias_in1", "pmos*nmos", "pmos*gain_cal", "nmos*gain_cal", "pmos*bias_out"]
@@ -81,7 +87,11 @@ def investigate_model(param):
     D_expr.append("%s*%s" % (coeff,term))
   D_expr_text = "+".join(D_expr)
   D_expr = opparse.parse_expr(D_expr_text)
-  D2_expr = genoplib.Mult(D_expr,D_expr)
+  D_result = fitlib.fit_model(D_variables, D_expr, D_dataset)
+  D_sub_dict = {}
+  for key,value in D_result['params']:
+  	D_sub_dict[key] = value
+  D_baked_expr = D_expr.substitute(D_sub_dict)
 
   cost_dataset = {'inputs':inputs, 'meas_mean':costs}
   cost_terms = [ "pmos","nmos","bias_in0", "bias_in1", "bias_out", "gain_cal"]
@@ -91,9 +101,18 @@ def investigate_model(param):
     cost_expr.append("%s*%s" % (coeff,term))
   cost_expr_text = "+".join(cost_expr)
   cost_expr = opparse.parse_expr(cost_expr_text)
-  inv_const = genoplib.Const(-1)
-  inv_cost_expr = lambdoplib.Pow(cost_expr,inv_const)
+  cost_result = fitlib.fit_model(cost_variables, cost_expr, cost_dataset)
+  cost_sub_dict = {}
+  for key,value in cost_result['params']:
+  	cost_sub_dict[key] = value
+  cost_baked_expr = cost_expr.substitute(cost_sub_dict)
+  
 
+
+  A2_expr = genoplib.Mult(A_baked_expr,A_baked_expr)
+  D2_expr = genoplib.Mult(D_baked_expr,D_baked_expr)
+  inv_const = genoplib.Const(-1)
+  inv_cost_expr = lambdoplib.Pow(cost_baked_expr,inv_const)
   prod_expr_A = genoplib.Mult(A2_expr,inv_cost_expr)
   prod_expr_B = genoplib.Mult(D2_expr,inv_cost_expr)
   sum_expr = genoplib.Add(prod_expr_A, prod_expr_B)
@@ -109,16 +128,14 @@ def investigate_model(param):
   #if len(dataset['meas_mean']) == 0:
   #	raise Exception("Empty DB")
 
-  result = fitlib.fit_model(variables,expr,dataset)
 
-  prediction = fitlib.predict_output(result['params'], \
-                                     expr,dataset)
+  #prediction = fitlib.predict_output(result['params'],expr,dataset)
+  #error = list(map(lambda idx: dataset['meas_mean'][idx]-prediction[idx], range(0,len(prediction))))
+  #sumsq_error = sum(map(lambda x:x*x,error))
 
-  error = list(map(lambda idx: dataset['meas_mean'][idx]-prediction[idx], \
-                   range(0,len(prediction))))
-  sumsq_error = sum(map(lambda x:x*x,error))
   print("\n\nSUMSQ_ERROR:\n", sumsq_error,"\nERROR:\n ", error,"\n\n")
   #TODO AUTOMATE
+  
   bounds = {'pmos':(0,7),\
   			'nmos':(0,7),\
   			'gain_cal':(0,63),\
@@ -131,7 +148,7 @@ def investigate_model(param):
   for var in variables:
   	hidden_vars.remove(var)
 
-  optimal_codes = fitlib.minimize_model(hidden_vars, expr, result['params'], bounds)
+  optimal_codes = fitlib.minimize_model(hidden_vars, expr, {}, bounds)
 
   #clean up optimal codes
   for code in optimal_codes['values']:
