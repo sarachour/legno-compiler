@@ -10,24 +10,9 @@ import ops.lambda_op as lambdoplib
 import itertools
 import math
 import numpy as np
+import scipy
 
-MIN_PROG = '''
-from scipy.optimize import minimize
-import numpy as np
-
-def func(x):
-  return {expr}
-
-
-x0={x0}
-bnds={bounds}
-lbls={variable_array}
-res = minimize(func,x0,bounds=bnds)
-assigns = dict(zip(lbls,res.x))
-'''
-
-
-def minimize_model(variables,expr,params,bounds={}):
+def _prepare_minimize_model(variables,expr,params,bounds={}):
   n_inputs = len(variables)
   #if phys.model.complete:
   #  return False
@@ -47,14 +32,32 @@ def minimize_model(variables,expr,params,bounds={}):
 
   conc_expr = expr.substitute(repl)
   _,pyexpr = lambdoplib.to_python(conc_expr)
-  x0 = list(map(lambda v: 1, variables))
-  fields = {
-    'x0': x0,
+  return {
     'expr':pyexpr,
     'bounds':bounds_arr,
     'variable_array':variables
   }
-  snippet = MIN_PROG.format(**fields) \
+
+GLOBAL_MIN_PROG = '''
+from scipy import optimize
+import numpy as np
+
+def func(x):
+  return {expr}
+
+
+x0={x0}
+bnds={bounds}
+lbls={variable_array}
+res = optimize.dual_annealing(func,bounds=bnds)
+assigns = dict(zip(lbls,res.x))
+'''
+
+def global_minimize_model(variables,expr,params,bounds={}):
+  fields = _prepare_minimize_model(variables,expr,params,bounds)
+  fields["x0"] = list(map(lambda v: 1, variables))
+  print(scipy.__version__)
+  snippet = GLOBAL_MIN_PROG.format(**fields) \
                     .replace('math.','np.')
   loc = {}
   exec(snippet,globals(),loc)
@@ -64,6 +67,40 @@ def minimize_model(variables,expr,params,bounds={}):
     'objective_val': loc['res'].fun
   }
 
+
+
+LOCAL_MIN_PROG = '''
+from scipy.optimize import minimize
+import numpy as np
+
+def func(x):
+  return {expr}
+
+
+x0={x0}
+bnds={bounds}
+lbls={variable_array}
+res = minimize(func,x0,bounds=bnds)
+assigns = dict(zip(lbls,res.x))
+'''
+
+
+def local_minimize_model(variables,expr,params,bounds={}):
+  fields = _prepare_minimize_model(variables,expr,params,bounds)
+  fields["x0"] = list(map(lambda v: 1, variables))
+  snippet = LOCAL_MIN_PROG.format(**fields) \
+                    .replace('math.','np.')
+  loc = {}
+  exec(snippet,globals(),loc)
+  return {
+    'values': loc['assigns'],
+    'success': loc['res'].success,
+    'objective_val': loc['res'].fun
+  }
+
+
+def minimize_model(variables,expr,params,bounds={}):
+  return local_minimize_model(variables,expr,params,bounds)
 
 FIT_PROG = '''
 from scipy.optimize import curve_fit
