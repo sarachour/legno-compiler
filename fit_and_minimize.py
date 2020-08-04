@@ -133,7 +133,7 @@ def investigate_model(param):
   #error = list(map(lambda idx: dataset['meas_mean'][idx]-prediction[idx], range(0,len(prediction))))
   #sumsq_error = sum(map(lambda x:x*x,error))
 
-  print("\n\nSUMSQ_ERROR:\n", sumsq_error,"\nERROR:\n ", error,"\n\n")
+  #print("\n\nSUMSQ_ERROR:\n", sumsq_error,"\nERROR:\n ", error,"\n\n")
   #TODO AUTOMATE
   
   bounds = {'pmos':(0,7),\
@@ -157,8 +157,8 @@ def investigate_model(param):
   	except:
   		print("Can't round non-numerical value")
 
-  with open("convergence_data.txt", 'a') as file:
-  	file.write("SUMSQ_ERR = %s\n PREDICTION = %s\n RESULT = %s\n" %(sumsq_error, prediction, result))
+  #with open("convergence_data.txt", 'a') as file:
+  #	file.write("SUMSQ_ERR = %s\n PREDICTION = %s\n RESULT = %s\n" %(sumsq_error, prediction, result))
 
 
 
