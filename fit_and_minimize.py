@@ -37,7 +37,7 @@ def investigate_model(param):
   for blk in physdb.get_by_block_instance(db, dev,block,inst,cfg=cfg):
     if not blk.model.complete:
       print("\n\n[WARN] found incomplete delta model\n\n\n")
-  	  continue
+      continue
     for par,value in blk.model.params.items():
       if not par in params:
         params[par] = []
