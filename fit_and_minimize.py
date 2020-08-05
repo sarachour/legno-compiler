@@ -110,8 +110,13 @@ def investigate_model(param):
   for key,value in cost_result['params'].items():
   	cost_sub_dict[key] = genoplib.Const(value)
   cost_baked_expr = cost_expr.substitute(cost_sub_dict)
-  
 
+  phys_model = {
+    'model_error': cost_baked_expr,
+    'D': D_baked_expr,
+    'A': A_baked_expr,
+    'B': B_baked_expr
+  }
 
   A2_expr = genoplib.Mult(A_baked_expr,A_baked_expr)
   D2_expr = genoplib.Mult(D_baked_expr,D_baked_expr)
@@ -177,6 +182,6 @@ def investigate_model(param):
   #print("\n\nRESULT:\n", result)
 
   #return error, result['params']
-  return optimal_codes['values']
+  return phys_model,optimal_codes['values']
 
 #investigate_model("D")
