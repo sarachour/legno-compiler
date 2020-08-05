@@ -73,7 +73,7 @@ for i in range(10):
                                             inst,
                                             cfg=new_cfg,
                                             hidden=True):
-        with open('codes_params_cost.txt,'a') as fh:
+        with open('codes_params_cost.txt','a') as fh:
             fh.write(list(blk.hidden_codes()))
             fh.write(blk.model.params)
             fh.write(blk.model.cost)
