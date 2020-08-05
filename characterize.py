@@ -69,7 +69,8 @@ for i in range(10):
     
     lowest_cost = {'pmos':0,'nmos':7,'gain_cal':31, 'bias_in0':43, 'bias_in1':50, 'bias_out':8}
     lowest_pred_cost = phys_model['model_error'].compute(lowest_cost)
-    fh.write("HARDCODED model cost:%s\n" % lowest_pred_cost)
+    with open('codes_params_cost.txt','a') as fh:
+        fh.write("HARDCODED model cost:%s\n" % lowest_pred_cost)
     
     print("=======")
     for blk in physdb.get_by_block_instance(db,
