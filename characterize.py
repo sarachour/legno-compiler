@@ -74,7 +74,7 @@ for i in range(10):
                                             cfg=new_cfg,
                                             hidden=True):
        with open('codes_params_cost.txt','a') as fh:
-            fh.write("hidden codes: %s" % list(blk.hidden_codes()))
+            fh.write("hidden codes: %s\n" % list(blk.hidden_codes()))
             fh.write("observed:\n")
             fh.write("  params:%s\n" % blk.model.params)
             fh.write("  model_cost:%s\n" % blk.model.cost)
