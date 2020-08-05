@@ -48,13 +48,13 @@ def investigate_model(param):
       if not hidden_code in inputs:
         inputs[hidden_code] = []
       inputs[hidden_code].append(value)
-    print("\nblk.model.params: ",blk.model.params)
-    print("\nblk.hidden_codes()",list(blk.hidden_codes()))
-    print("\nblk.model.cost",blk.model.cost)
+    #print("\nblk.model.params: ",blk.model.params)
+    #print("\nblk.hidden_codes()",list(blk.hidden_codes()))
+    #print("\nblk.model.cost",blk.model.cost)
 
     costs.append(blk.model.cost)
 
-  print(len(costs))
+  #print(len(costs))
   #print(params['params']['d'])
   
   '''
@@ -156,7 +156,7 @@ def investigate_model(param):
 
   hidden_vars = expr.vars()
   optimal_codes = fitlib.minimize_model(hidden_vars, expr, {}, bounds)
-  print("\n\nOPTIMAL CODE: ", optimal_codes, "\n\n\n")
+  #print("\n\nOPTIMAL CODE: ", optimal_codes, "\n\n\n")
   #clean up optimal codes
   for code in optimal_codes['values']:
   	try:
