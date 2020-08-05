@@ -66,9 +66,11 @@ for i in range(10):
     proflib.profile_hidden_state(dev, runtime, test_planner, new_optimal_code)
     analyze_db()
     new_cfg = replicate_config(test_planner, optimal_code)
-    if i == 0:
-        pred_cost = phys_model['model_error'].compute(optimal_code)
-        fh.write("model cost:%s\n" % pred_cost)
+    
+    lowest_cost = {'pmos':0,'nmos':7,'gain_cal':31, 'bias_in0':43, 'bias_in1':50, 'bias_out':8}
+    lowest_pred_cost = phys_model['model_error'].compute(lowest_cost)
+    fh.write("HARDCODED model cost:%s\n" % lowest_pred_cost)
+    
     print("=======")
     for blk in physdb.get_by_block_instance(db,
                                             dev,
