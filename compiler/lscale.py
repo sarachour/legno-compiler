@@ -169,9 +169,9 @@ def templatize_and_factor_relation(hwinfo,inst,output,baseline_mode,modes):
       der_succ,der_coeff,der_expr = templatize(templ.deriv,canon.deriv)
       if ic_succ and der_succ:
         yield scalelib.SCModeImplies(scalelib.ModeVar(inst), \
-                                     mode,deriv_coeff_var,der_coeff)
+                                     modes,mode,deriv_coeff_var,der_coeff)
         yield scalelib.SCModeImplies(scalelib.ModeVar(inst), \
-                                     mode,ic_coeff_var,ic_coeff)
+                                     modes,mode,ic_coeff_var,ic_coeff)
         valid_modes.append(mode)
 
     yield scalelib.SCSubsetOfModes(scalelib.ModeVar(inst),valid_modes,modes)
@@ -195,7 +195,7 @@ def templatize_and_factor_relation(hwinfo,inst,output,baseline_mode,modes):
       succ,coeff,expr = templatize(templ,targ)
       if succ:
         yield scalelib.SCModeImplies(scalelib.ModeVar(inst), \
-                            mode,coeff_var,coeff)
+                                     modes,mode,coeff_var,coeff)
         valid_modes.append(mode)
 
     yield scalelib.SCSubsetOfModes(scalelib.ModeVar(inst),valid_modes,modes)

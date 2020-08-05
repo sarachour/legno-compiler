@@ -222,13 +222,14 @@ class SCSubsetOfModes:
 
 class SCModeImplies:
 
-  def __init__(self,modevar,mode,dep_var,value):
+  def __init__(self,modevar,all_modes,mode,dep_var,value):
     assert(isinstance(modevar,ModeVar))
     assert(isinstance(value,float))
     assert(isinstance(dep_var,ConstCoeffVar) or \
            isinstance(dep_var,PropertyVar))
     self.mode_var = modevar
     self.mode = mode
+    self.modes = list(all_modes)
     self.dep_var = dep_var
     self.value = value
 

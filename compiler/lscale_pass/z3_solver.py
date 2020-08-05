@@ -40,8 +40,18 @@ def scale_cstr_to_z3_cstr(smtenv,cstr):
     z3_rhs = monomial_to_z3_expr(cstr.rhs)
     smtenv.eq(z3_lhs,z3_rhs)
 
+  elif isinstance(cstr,scalelib.SCModeImplies):
+    mode_index = cstr.modes.index(cstr.mode)
+    mode_eq = smtlib.SMTEq(smtlib.SMTVar(cstr.mode_var), \
+                           smtlib.SMTConst(mode_index))
+    val_eq = smtlib.SMTEq(smtlib.SMTVar(cstr.dep_var), \
+                          smtlib.SMTConst(cstr.value))
+    print(mode_eq,val_eq)
+    print("mode: %d" % mode_index)
+    raise Exception("implies not implemented: %s" % cstr)
+
   else:
-    raise Exception("not implemented: %s" % cstr)
+    raise Exception("not implemented: %s <%s>" % (cstr,cstr.__class__.__name__))
 
 def solve(cstrs):
   smtenv = smtlib.SMTEnv()
