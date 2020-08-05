@@ -123,7 +123,7 @@ def investigate_model(param):
   sum_expr = genoplib.Add(prod_expr_A, prod_expr_B)
   D2_plus_cost2 = genoplib.Add(D2_expr, cost2_expr)
 
-  expr = D2_plus_cost2
+  expr = cost2_expr
   #prod_expr = genoplib.Mult(expr,expr)
   #neg_expr = genoplib.Mult(genoplib.Const(-1.0), prod_expr)
   #expr = neg_expr
