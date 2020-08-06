@@ -100,6 +100,7 @@ class RegressionLeafNode:
   def find_minimum(self,bounds):
     hidden_vars = self.expr.vars()
     optimal_codes = fitlib.minimize_model(hidden_vars, self.expr, {}, bounds)
-    print("minimizing model with bounds: ", bounds) 
+    print("minimizing model with bounds: ", bounds)
+    print("minimal value is: ", optimal_codes['objective_val']) 
     return optimal_codes['objective_val'], optimal_codes['values']
 
