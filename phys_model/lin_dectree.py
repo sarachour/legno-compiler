@@ -62,8 +62,8 @@ class DecisionNode:
     self.right_bounds = bounds
     lower = 0
     upper = 1
-    self.left_bounds[self.name][upper] = self.value
-    self.right_bounds[self.name][lower] = self.value
+    self.left_bounds[self.name][lower] = self.value
+    self.right_bounds[self.name][upper] = self.value
     return
 
 
@@ -94,7 +94,6 @@ class RegressionLeafNode:
 
   def find_minimum(self,bounds):
     hidden_vars = self.expr.vars()
-    optimal_codes = fitlib.minimize_model(hidden_vars, self.expr, {}, bounds)
-    #sub in values 
+    optimal_codes = fitlib.minimize_model(hidden_vars, self.expr, {}, bounds) 
     return optimal_codes['objective_val'], optimal_codes['values']
 
