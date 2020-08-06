@@ -83,6 +83,7 @@ class RegressionLeafNode:
     self.params = params
 
     #concretize
+    self.sub_dict = {}
     for key,value in self.params.items():
       self.sub_dict[key] = genoplib.Const(value)
     self.baked_expr = self.expr.substitute(self.sub_dict)
