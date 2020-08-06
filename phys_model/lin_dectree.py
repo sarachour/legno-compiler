@@ -62,8 +62,8 @@ class DecisionNode:
     self.right_bounds = bounds
     lower = 0
     upper = 1
-    self.left_bounds[name][upper] = self.value
-    self.right_bounds[name][lower] = self.value
+    self.left_bounds[self.name][upper] = self.value
+    self.right_bounds[self.name][lower] = self.value
     return
 
 
