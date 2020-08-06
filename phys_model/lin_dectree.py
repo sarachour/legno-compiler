@@ -58,13 +58,13 @@ class DecisionNode:
        'bias_in1':(0,63),\
       }
     '''
-    self.left_bounds = bounds
-    self.right_bounds = bounds
+    self.left_bounds = dict(bounds)
+    self.right_bounds = dict(bounds)
     lower = 0
     upper = 1
     print("OLD BOUNDARY CONDITIONS: ", bounds)
-    self.left_bounds[self.name][1] = self.value
-    self.right_bounds[self.name][0] = self.value
+    self.left_bounds[self.name][upper] = self.value
+    self.right_bounds[self.name][lower] = self.value
     print("NEW LEFT BOUNDARY CONDITIONS: ", self.left_bounds)
     print("NEW RIGHT BOUNDARY CONDITIONS: ", self.right_bounds)
     return
