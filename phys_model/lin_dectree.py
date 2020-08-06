@@ -21,6 +21,11 @@ class DecisionNode:
     st += self.right.pretty_print(indent+1)
     return st
 
+
+  def from_json(self):
+    raise Exception("implement me!")
+
+
   def to_json(self):
     return {
       'name':self.name,
@@ -28,6 +33,10 @@ class DecisionNode:
       'left':self.left.to_json(),
       'right':self.right.to_json()
     }
+
+  def find_minimum(self):
+    raise Exception("implement me")
+
 class RegressionLeafNode:
 
   def __init__(self,expr,npts=0,R2=-1.0,params={}):
@@ -45,4 +54,13 @@ class RegressionLeafNode:
     assigns = dict(list(self.params.items()) +
                    list(hidden_state.items()))
     return self.expr.compute(assigns)
+
+  def from_json(self):
+    raise Exception("implement me!")
+
+  def to_json(self):
+    raise Exception("implement me!")
+
+  def find_minimum(self):
+    raise Exception("implement me")
 
