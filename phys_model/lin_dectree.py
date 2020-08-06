@@ -1,5 +1,6 @@
 import phys_model.model_fit as fitlib
 import copy
+import ops.generic_op as genoplib
 
 class DecisionNode:
 
@@ -80,6 +81,12 @@ class RegressionLeafNode:
     self.npts = npts
     self.R2 = R2
     self.params = params
+
+    #concretize
+    for key,value in self.params.items():
+      self.sub_dict[key] = genoplib.Const(value)
+    self.baked_expr = self.expr.substitute(self.sub_dict)
+    self.expr = self.baked_expr
 
   def pretty_print(self,indent=0):
     ind = " "*indent
