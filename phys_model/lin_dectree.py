@@ -47,7 +47,7 @@ class DecisionNode:
     else:
       return right_minimum, right_min_code
 
-  def calculate_new_bounds(self):
+  def calculate_new_bounds(self,bounds):
     '''
     bounds in the form
       {'pmos':(0,7),\
@@ -58,6 +58,8 @@ class DecisionNode:
        'bias_in1':(0,63),\
       }
     '''
+    self.left_bounds = bounds
+    self.right_bounds = bounds
     lower = 0
     upper = 1
     self.left_bounds[name][upper] = self.value
