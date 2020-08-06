@@ -62,8 +62,11 @@ class DecisionNode:
     self.right_bounds = bounds
     lower = 0
     upper = 1
+    print("OLD BOUNDARY CONDITIONS: ", bounds)
     self.left_bounds[self.name][upper] = self.value
     self.right_bounds[self.name][lower] = self.value
+    print("NEW LEFT BOUNDARY CONDITIONS: ", self.left_bounds)
+    print("NEW RIGHT BOUNDARY CONDITIONS: ", self.right_bounds)
     return
 
 
