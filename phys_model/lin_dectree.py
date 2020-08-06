@@ -93,8 +93,8 @@ class RegressionLeafNode:
     raise Exception("implement me!")
 
   def find_minimum(self,bounds):
-    hidden_vars = expr.vars()
-    optimal_codes = fitlib.minimize_model(hidden_vars, expr, {}, bounds)
+    hidden_vars = self.expr.vars()
+    optimal_codes = fitlib.minimize_model(hidden_vars, self.expr, {}, bounds)
     #sub in values 
     return optimal_codes['objective_val'], optimal_codes['values']
 
