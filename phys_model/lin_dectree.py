@@ -38,7 +38,7 @@ class DecisionNode:
     }
 
   def find_minimum(self,bounds):
-    calculate_new_bounds(bounds)
+    self.calculate_new_bounds(bounds)
     left_minimum,left_min_code = self.left.find_minimum(self.left_bounds)
     right_minimum,right_min_code = self.right.find_minimum(self.right_bounds)
 
