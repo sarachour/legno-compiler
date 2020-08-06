@@ -64,12 +64,8 @@ class DecisionNode:
     self.right_bounds = copy.deepcopy(bounds)
     lower = 0
     upper = 1
-    print("OLD BOUNDARY CONDITIONS: ", bounds)
     self.left_bounds[self.name][upper] = self.value - 1
-    print("NEW LEFT BOUNDARY CONDITIONS: ", self.left_bounds)
     self.right_bounds[self.name][lower] = self.value
-    print("NEW NEW LEFT BOUNDARY CONDITIONS: ", self.left_bounds)
-    print("NEW RIGHT BOUNDARY CONDITIONS: ", self.right_bounds)
     return
 
 
@@ -108,7 +104,5 @@ class RegressionLeafNode:
   def find_minimum(self,bounds):
     hidden_vars = self.expr.vars()
     optimal_codes = fitlib.minimize_model(hidden_vars, self.expr, {}, bounds)
-    print("minimizing model with bounds: ", bounds)
-    print("minimal value is: ", optimal_codes['objective_val'], " at: ", optimal_codes['values']) 
     return optimal_codes['objective_val'], optimal_codes['values']
 

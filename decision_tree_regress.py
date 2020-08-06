@@ -90,3 +90,4 @@ default_bounds = {'pmos':[0,7],\
       }
 min_val,min_code = dectree.find_minimum(default_bounds) 
 print("\n\nmin_val is:%f" % min_val)
+print("min_val occurs at: ", min_code)
