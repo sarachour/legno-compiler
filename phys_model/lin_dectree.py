@@ -1,4 +1,5 @@
 import phys_model.model_fit as fitlib
+import copy
 
 class DecisionNode:
 
@@ -58,8 +59,8 @@ class DecisionNode:
        'bias_in1':(0,63),\
       }
     '''
-    self.left_bounds = dict(bounds)
-    self.right_bounds = dict(bounds)
+    self.left_bounds = copy.deepcopy(bounds)
+    self.right_bounds = copy.deepcopy(bounds)
     lower = 0
     upper = 1
     print("OLD BOUNDARY CONDITIONS: ", bounds)
