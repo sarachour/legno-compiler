@@ -80,3 +80,13 @@ print("error std: %f" % np.std(errors))
 best_code = dict([('pmos', 0), ('nmos', 7), ('gain_cal', 31), ('bias_in0', 43), ('bias_in1', 50), ('bias_out', 8)])
 print("best code pred:   %f" % dectree.evaluate(best_code))
 print("best code actual: %f" % 0.010347767935215952)
+
+default_bounds = {'pmos':(0,7),\
+       'nmos':(0,7),\
+       'gain_cal':(0,63),\
+       'bias_out':(0,63),\
+       'bias_in0':(0,63),\
+       'bias_in1':(0,63),\
+      }
+min_val,min_code = dectree.find_minimum(default_bounds) 
+print("\n\nmin_val is:%f" % min_val)
