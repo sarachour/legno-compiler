@@ -115,7 +115,6 @@ def investigate_model(param):
     'model_error': cost_baked_expr,
     'D': D_baked_expr,
     'A': A_baked_expr,
-    'B': B_baked_expr
   }
 
   A2_expr = genoplib.Mult(A_baked_expr,A_baked_expr)

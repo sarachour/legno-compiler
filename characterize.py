@@ -51,7 +51,7 @@ runtime = GrendelRunner()
 #planner = planlib.CorrelationPlanner(block,inst,cfg,8,10)
 #planner = planlib.ModelBasedPlanner(block,inst,cfg,8,10)
 
-planner = planlib.RandomPlanner(block, inst, cfg, 8, 10, 0)
+planner = planlib.RandomPlanner(block, inst, cfg, 8, 10, 25)
 proflib.profile_all_hidden_states(runtime, dev, planner)
 analyze_db()
 
@@ -66,9 +66,12 @@ for i in range(10):
     proflib.profile_hidden_state(dev, runtime, test_planner, new_optimal_code)
     analyze_db()
     new_cfg = replicate_config(test_planner, optimal_code)
-    if i == 0:
-        pred_cost = phys_model['model_error'].compute(optimal_code)
-        fh.write("model cost:%s\n" % pred_cost)
+    
+    lowest_cost = {'pmos':0,'nmos':7,'gain_cal':31, 'bias_in0':43, 'bias_in1':50, 'bias_out':8}
+    lowest_pred_cost = phys_model['model_error'].compute(lowest_cost)
+    with open('codes_params_cost.txt','a') as fh:
+        fh.write("HARDCODED model cost:%s\n" % lowest_pred_cost)
+    
     print("=======")
     for blk in physdb.get_by_block_instance(db,
                                             dev,
