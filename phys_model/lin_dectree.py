@@ -1,3 +1,5 @@
+import phys_model.model_fit as fitlib
+
 class DecisionNode:
 
   def __init__(self,name,value,left,right):
@@ -5,7 +7,8 @@ class DecisionNode:
     self.value = value
     self.left = left
     self.right = right
-
+    self.left_bounds = {}
+    self.right_bounds = {}
 
   def evaluate(self,hidden_state):
     if hidden_state[self.name] < self.value:
@@ -34,8 +37,34 @@ class DecisionNode:
       'right':self.right.to_json()
     }
 
-  def find_minimum(self):
-    raise Exception("implement me")
+  def find_minimum(self,bounds):
+    calculate_new_bounds(bounds)
+    left_minimum,left_min_code = self.left.find_minimum(self.left_bounds)
+    right_minimum,right_min_code = self.right.find_minimum(self.right_bounds)
+
+    if left_minimum < right_minimum:
+      return left_minimum, left_min_code
+    else:
+      return right_minimum, right_min_code
+
+  def calculate_new_bounds(self):
+    '''
+    bounds in the form
+      {'pmos':(0,7),\
+       'nmos':(0,7),\
+       'gain_cal':(0,63),\
+       'bias_out':(0,63),\
+       'bias_in0':(0,63),\
+       'bias_in1':(0,63),\
+      }
+    '''
+    lower = 0
+    upper = 1
+    self.left_bounds[name][upper] = self.value
+    self.right_bounds[name][lower] = self.value
+    return
+
+
 
 class RegressionLeafNode:
 
@@ -61,6 +90,9 @@ class RegressionLeafNode:
   def to_json(self):
     raise Exception("implement me!")
 
-  def find_minimum(self):
-    raise Exception("implement me")
+  def find_minimum(self,bounds):
+    hidden_vars = expr.vars()
+    optimal_codes = fitlib.minimize_model(hidden_vars, expr, {}, bounds)
+    #sub in values 
+    return optimal_codes['objective_val'], optimal_codes['values']
 
