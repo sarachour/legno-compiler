@@ -9,6 +9,7 @@ import ops.opparse as opparse
 import ops.generic_op as genoplib
 import target_block as targ
 import ops.lambda_op as lambdoplib
+import phys_model.region as reglib
 
 import time
 import matplotlib.pyplot as plt
@@ -90,6 +91,8 @@ default_bounds = {'pmos':[0,7],\
        'bias_in0':[0,63],\
        'bias_in1':[0,63],\
       }
+
+dectree.update()
 min_val,min_code = dectree.find_minimum(default_bounds) 
 print("\n\nmin_val is:%f" % min_val)
 print("min_val occurs at: ", min_code)

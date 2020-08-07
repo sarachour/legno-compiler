@@ -175,7 +175,12 @@ def predict_output(variable_assigns,expr,data):
 
 def fit_delta_model(phys,data):
   model = phys.model.delta_model
-  result = fit_model(model.params,model.relation,data)
+  try:
+    result = fit_model(model.params,model.relation,data)
+  except TypeError as e:
+    print("insufficient data: %d points" % (len(data['meas_mean'])))
+    return
+
   phys.model.clear()
   for par,val in result['params'].items():
     phys.model.bind(par,val)

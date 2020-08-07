@@ -56,6 +56,7 @@ def get_mult_mm(dev):
   # sumsq error 0.0169
   block = dev.get_block('mult')
   inst = devlib.Location([0,1,2,0])
+  #inst = devlib.Location([0,1,0,0])
   cfg = adplib.BlockConfig.make(block,inst)
   #cfg.modes = [['+','+','-','m']]
   cfg.modes = [block.modes.get(['x','m','m'])]
