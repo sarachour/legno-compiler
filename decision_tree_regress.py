@@ -20,9 +20,7 @@ import phys_model.fit_lin_dectree as fit_lindectree
 dev = hcdclib.get_device()
 
 def build_dataset():
-  targ.get_block(dev)
   block,inst,cfg = targ.get_block(dev)
-
 
   db = physdb.PhysicalDatabase('board6')
   params = {}
@@ -31,8 +29,11 @@ def build_dataset():
   costs = []
   for blk in physdb.get_by_block_instance(db, dev,block,inst,cfg=cfg):
     if not blk.model.complete:
-      print("\n\n[WARN] found incomplete delta model\n\n\n")
+      print("[WARN] found incomplete delta model")
       continue
+
+    else:
+      print("success")
 
     for par,value in blk.model.params.items():
       if not par in params:
@@ -61,7 +62,7 @@ n_samples = len(costs)
 n_folds = 5
 max_depth = 3
 min_size = round(n_samples/20.0)
-print("--- fitting decision tree ---")
+print("--- fitting decision tree (%d samples) ---" % n_samples)
 output = costs
 dectree,predictions = fit_lindectree.fit_decision_tree(hidden_codes, \
                                                        inputs,output, \
@@ -76,6 +77,7 @@ for pred,obs in zip(predictions,costs):
 print(dectree.pretty_print())
 print("avg error: %f" % np.mean(errors))
 print("error std: %f" % np.std(errors))
+print("obs range: [%f,%f]" % (min(costs),max(costs)))
 
 best_code = dict([('pmos', 0), ('nmos', 7), ('gain_cal', 31), ('bias_in0', 43), ('bias_in1', 50), ('bias_out', 8)])
 print("best code pred:   %f" % dectree.evaluate(best_code))
