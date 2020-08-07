@@ -109,7 +109,8 @@ class RegressionLeafNode:
   '''
   def to_json(self):
     raise Exception("implement me!")
-'''
+
+  '''
   This function accepts a dictionary of input values for each hidden code
   and a list of output values. It finds the parameters for
   all the leaf nodes in the decision tree and updates the params dictionary
@@ -118,7 +119,6 @@ class RegressionLeafNode:
   '''
   def fit(self,inputs,output):
     raise Exception("implement me!")
-
 
   def evaluate(self,hidden_state):
     assigns = dict(list(self.params.items()) +
