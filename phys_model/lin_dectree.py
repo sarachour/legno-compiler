@@ -9,8 +9,6 @@ class DecisionNode:
     self.value = value
     self.left = left
     self.right = right
-    self.left_bounds = {}
-    self.right_bounds = {}
 
   def evaluate(self,hidden_state):
     if hidden_state[self.name] < self.value:
@@ -26,18 +24,27 @@ class DecisionNode:
     st += self.right.pretty_print(indent+1)
     return st
 
-
-  def from_json(self):
+  '''
+  this function generates a sequence of leaf nodes in the decision tree.
+  use the `yield` python feature to do this
+  '''
+  def leaves(self):
     raise Exception("implement me!")
 
+  '''
+  This function accepts a json object that was previously returned
+  by the to_json routine and builds a decision tree object from the data.
+  '''
+  @staticmethod
+  def from_json(obj):
+    raise Exception("implement me!")
 
+  '''
+  This function serializes the decision tree into a json data structure.
+  '''
   def to_json(self):
-    return {
-      'name':self.name,
-      'value':self.value,
-      'left':self.left.to_json(),
-      'right':self.right.to_json()
-    }
+    raise Exception("implement me!")
+
 
   def find_minimum(self,bounds):
     self.calculate_new_bounds(bounds)
