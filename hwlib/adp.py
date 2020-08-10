@@ -304,7 +304,8 @@ class BlockConfig:
         cfg.add(ConstDataConfig(data.name,0.0))
       else:
         cfg.add(ExprDataConfig(data.name, \
-                               data.args))
+                               data.args, \
+                               None))
     for state in block.state:
       if isinstance(state.impl,blocklib.BCCalibImpl):
         cfg.add(StateConfig(state.name, state.impl.default))

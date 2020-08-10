@@ -121,6 +121,9 @@ class Interval:
         return max(diff1,diff2)
 
 
+    def is_constant(self):
+        return self.lower == self.upper
+
     def contains_zero(self):
         return self.lower <= 0 and self.upper >= 0
 
@@ -183,7 +186,12 @@ class Interval:
             corners = [1.0/self.lower, 1.0/self.upper]
             return Interval.type_infer(min(corners),max(corners))
 
-    def power(self,v):
+    def power(self,_v):
+        if _v.is_constant():
+            v = _v.lower
+        else:
+            v = None
+
         if v == 1.0:
             return self
         elif v == -1.0:
@@ -368,5 +376,30 @@ def propagate_intervals(expr,ivals):
     elif expr.op == oplib.OpType.EMIT:
         return propagate_intervals(expr.arg(0), \
                                    ivals)
+    elif expr.op == oplib.OpType.MULT:
+        i0 = propagate_intervals(expr.arg(0),ivals)
+        i1 = propagate_intervals(expr.arg(1),ivals)
+        return i0.mult(i1)
+
+    elif expr.op == oplib.OpType.SGN:
+        i0 = propagate_intervals(expr.arg(0),ivals)
+        return i0.sgn()
+
+    elif expr.op == oplib.OpType.ABS:
+        i0 = propagate_intervals(expr.arg(0),ivals)
+        return i0.abs()
+
+    elif expr.op == oplib.OpType.POW:
+        i0 = propagate_intervals(expr.arg(0),ivals)
+        i1 = propagate_intervals(expr.arg(1),ivals)
+        return i0.power(i1)
+
+    elif expr.op == oplib.OpType.CALL:
+        conc_expr = expr.concretize()
+        return propagate_intervals(conc_expr,ivals)
+
+    elif expr.op == oplib.OpType.CONST:
+        return Interval(expr.value,expr.value)
+
     else:
         raise Exception("expression: %s" % (expr))

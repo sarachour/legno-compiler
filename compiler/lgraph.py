@@ -50,10 +50,10 @@ def get_laws():
     ]
 
 
-def compile(board,prob,depth=12, \
+def compile(board,prob,
             vadp_fragments=100, \
-            assembly_num_copiers=10, \
-            assembly_depth=3, \
+            synth_depth=12, \
+            asm_frags=10, \
             vadps=1, \
             adps=1):
 
@@ -70,7 +70,7 @@ def compile(board,prob,depth=12, \
         expr = prob.binding(variable)
         print("> synthesizing %s = %s" % (variable,expr))
         for vadp in synthlib.search(compute_blocks,laws,variable,expr, \
-                                    depth=depth):
+                                    depth=synth_depth):
             if len(fragments[variable]) >= vadp_fragments:
                 break
             fragments[variable].append(vadp)
@@ -90,7 +90,8 @@ def compile(board,prob,depth=12, \
         circuit[variable] = fragments[variable][0]
 
     vadp_circuits = []
-    for circ in asmlib.assemble(assemble_blocks,circuit):
+    for circ in asmlib.assemble(assemble_blocks,circuit, \
+                                n_asm_frags=asm_frags):
         vadp_circuits.append(circ)
         if len(vadp_circuits) >= vadps:
             break

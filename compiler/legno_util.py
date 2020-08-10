@@ -49,7 +49,8 @@ def exec_lgraph(args):
         enumerate(lgraph.compile(board,
                                  program,
                                  vadp_fragments=args.vadp_fragments,
-                                 assembly_depth=args.assembly_depth,
+                                 asm_frags=args.asm_fragments,
+                                 synth_depth=args.synth_depth,
                                  vadps=args.vadps,
                                  adps=args.adps)):
         timer.end()

@@ -226,7 +226,8 @@ def simplify_tableau(tableau,simplify_laws=False):
   for goal in tableau.goals:
     if (isinstance(goal.variable, PortVar) or \
         isinstance(goal.variable, LawVar)) and \
-       goal.expr.op == oplib.OpType.VAR:
+       goal.expr.op == oplib.OpType.VAR and \
+       goal.type == blocklib.BlockSignalType.ANALOG:
       new_tableau.remove_goal(goal)
       new_tableau.add_stmt(VADPSink(goal.variable, \
                                     goal.expr))
@@ -255,7 +256,6 @@ def search(blocks,laws,variable,expr,depth=20):
     next_frontier = other_tableaus
     goal,other_goals = select_goal(tableau.goals, \
                        goal_complexity)
-
     derived = 0
     for new_tableau in derive_tableaus(tableau,goal):
       simpl_tableau = simplify_tableau(new_tableau)

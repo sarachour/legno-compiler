@@ -1,31 +1,13 @@
 import compiler.lgraph_pass.vadp as vadplib
+import compiler.lgraph_pass.vadp_renderer as vadp_renderer
 import hwlib.block as blocklib
 import ops.base_op as oplib
 import ops.generic_op as genoplib
 import itertools
+import numpy as np
 
 def unzip(lst):
   return list(zip(*lst))
-
-def subset(xs,ys_):
-  ys = list(ys_)
-  for x in xs:
-    if not x in ys:
-      return False
-    ys.remove(x)
-
-  return True
-
-def powerset(iterable):
-    """
-    powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)
-    """
-    xs = list(iterable)
-    # note we return an iterator rather than a list
-    return itertools.chain.from_iterable( \
-                                          itertools.combinations(xs,n)  \
-                                          for n in range(len(xs)+1))
-
 
 def get_first_n(iterable,n):
   for idx,val in enumerate(iterable):
@@ -40,156 +22,185 @@ def get_vadp_source(stmts,variable):
       if stmt.dsexpr == genoplib.Var(variable):
         return stmt.port
 
-# configure the asm blk to accept `input_var` and generate `sinks`
-def build_asm(blk,ident,input_var,sinks):
-  if len(sinks) < 2:
-    return
+def group_mode_sets(blk,input_var):
+  groupby_mode = {}
+  inp = list(blk.inputs)[0]
+  output_names = list(map(lambda o: o.name, blk.outputs))
+  for mode in blk.modes:
+    key = ""
+    for output in output_names:
+      rel = blk.outputs[output] \
+               .relation[mode].substitute({inp.name:genoplib.Var(input_var)})
+      key += "%s=%s," % (output,rel)
+    if not key in groupby_mode:
+      groupby_mode[key] = []
+    groupby_mode[key].append(mode)
+  return groupby_mode.values()
 
-  target = sinks[0]
-  assert(len(blk.inputs) == 1)
-  input_port = list(blk.inputs)[0].name
-  rel_opts = {}
-  for output in blk.outputs:
-    rel_opts[output.name] = []
-    for expr,modes in output.relation.get_by_property():
-      conc_rel = expr.substitute({ \
-                        input_port:genoplib.Var(input_var) \
+def build_fragment_corpus(asm_blocks,input_var):
+  fragment_map = []
+  for blk in asm_blocks:
+    assert(len(blk.inputs) == 1)
+    inp = list(blk.inputs)[0]
+    modeset_groups = group_mode_sets(blk,input_var)
+    for modeset in modeset_groups:
+      leaves = {}
+      stems = []
+      for output in blk.outputs:
+        rel = output.relation[modeset[0]] \
+                    .substitute({inp.name:genoplib.Var(input_var)})
+        if rel.op == oplib.OpType.VAR and rel.name == input_var:
+          stems.append(output.name)
+
+        leaves[output.name] = rel
+      fragment_map.append({
+        'block':blk,
+        'modes':modeset,
+        'exprs':leaves,
+        'stems':stems
       })
-      rel_opts[output.name].append((modes,conc_rel))
 
-  output_ports = list(rel_opts.keys())
-  output_values = list(map(lambda p: rel_opts[p], \
-                            output_ports))
-  for combo in itertools.product(*output_values):
-    modes,exprs, = unzip(combo)
-    isect_modes = set.intersection(*map(lambda m: set(m), \
-                                        modes))
-    if len(isect_modes) == 0:
-      continue
+  return fragment_map
 
-    if not subset(sinks,exprs):
-      continue
+def find_best_assembly_set(corpus,sinks):
+  def get_best_stem(ports_in_use,scores,best_score):
+    # get fragment that resolves most sinks and has most stems
+    best_entry = -1
+    max_n_stems = -1
+    for idx,score in enumerate(scores):
+      if score == best_score:
+        stems = list(set(corpus[idx]['stems']) \
+                    .difference(set(ports_in_use[idx])))
+        if len(stems) > max_n_stems:
+          max_n_stems = len(stems)
+          best_entry = idx
+    return best_entry
 
-    vadpprog = []
-    vadpprog.append(vadplib.VADPConfig(blk,ident, \
-                                list(isect_modes)))
-
-    port_var = vadplib.PortVar(blk,ident,list(blk.inputs)[0])
-    vadpprog.append(vadplib.VADPSink(port_var, \
-                                    genoplib.Var(input_var)))
-    for outp,expr in zip(output_ports,exprs):
-      port_var = vadplib.PortVar(blk,ident,blk.outputs[outp])
-      vadpprog.append(vadplib.VADPSource(port_var, \
-                                  expr))
-    yield vadpprog
-
-
-def all_subsets(lst,subset_sizes):
-  indices = list(range(0,len(lst)))
-  if len(lst) == 0 and len(subset_sizes) == 0:
+  scores = [0]*len(corpus)
+  new_sinks = [None]*len(corpus)
+  ports_in_use = [None]*len(corpus)
+  if len(sinks) == 0:
     yield []
     return
-  elif len(subset_sizes) == 0 or len(lst) == 0:
-    return
 
-  any_size = subset_sizes[0] is None
-  if any_size:
-    enumerator = powerset(indices)
+  for entry_idx,entry in enumerate(corpus):
+    new_sinks[entry_idx]= list(map(lambda s : str(s), sinks))
+    ports_in_use[entry_idx] = []
+    for port,ent in  entry['exprs'].items():
+      if str(ent) in new_sinks[entry_idx]:
+        idx = new_sinks[entry_idx].index(str(ent))
+        new_sinks[entry_idx].pop(idx)
+        ports_in_use[entry_idx].append(port)
+
+    scores[entry_idx] = len(sinks) - len(new_sinks[entry_idx])
+  # iterate over options, starting from fragment that solves most 
+  while max(scores) > 0:
+    max_score = max(scores)
+    best_entry = get_best_stem(ports_in_use,scores,max_score)
+    new_sink_list = new_sinks[best_entry]
+    new_frag = dict(corpus[best_entry])
+    new_frag['stems'] = list(set(new_frag['stems']) \
+                            .difference(set(ports_in_use[best_entry])))
+
+    for other_frags in find_best_assembly_set(corpus,new_sink_list):
+      yield [new_frag] + other_frags
+
+    for idx in range(len(scores)):
+      if scores[idx] == max_score:
+        scores[idx] = -1
+
+def build_frag_hierarchy(frag_list,parent=None):
+
+  new_frag_list = list(frag_list)
+  if parent is None:
+    best_idx = np.argmax(list(map(lambda frag: len(frag['stems']), frag_list)))
   else:
-    enumerator = itertools.combinations(indices,subset_sizes[0])
+    best_idx=frag_list.index(parent)
 
-  for subindices in enumerator:
-    # make sure that we're actually reducing the complexity
-    if any_size and len(subindices) <= 1:
-      continue
+  # remove best index from new fragment list
+  new_frag_list.pop(best_idx)
+  hierarchy = [[]]
+  hierarchy[0] = [frag_list[best_idx]]
+  # if the root node cannot feed any more assembly blocks, or there are no more leftovers
+  if len(hierarchy[0][0]['stems']) == 0 or len(new_frag_list) == 0:
+    assert(len(hierarchy[0]) > 0)
+    return hierarchy,new_frag_list
 
-    next_lst = list(map(lambda i: lst[i], \
-                        filter(lambda i: not i in subindices, \
-                               indices)));
-    this_lst = list(map(lambda i: lst[i], subindices))
-    for subsets in all_subsets(next_lst,subset_sizes[1:]):
-      yield [this_lst]+subsets
+  hierarchy.append([])
+  for _ in range(len(frag_list[best_idx]['stems'])):
+    # we exhausted the number of fragments
+    if len(new_frag_list) == 0:
+      break
 
-def assemble_asms(root_vadp,vadps):
-  sinks = {}
-  sources = {}
-  assembled_vadp = []
+    # choose the child with the most active stems
+    best_child_idx = np.argmax(list(map(lambda frag: len(frag['stems']), \
+                                        new_frag_list)))
+    hierarchy[1].append(new_frag_list[best_child_idx])
+    new_frag_list.pop(best_child_idx)
 
-  # find which signals are being generated
-  for stmt in root_vadp:
-    if isinstance(stmt,vadplib.VADPSource):
-      if not stmt.dsexpr in sources:
-        sources[stmt.dsexpr] = []
-        sinks[stmt.dsexpr] = []
+  leftover = new_frag_list
+  if len(leftover) == 0:
+    assert(len(hierarchy[0]) > 0 and len(hierarchy[1]) > 0)
+    return hierarchy,[]
+  else:
+    for frag in hierarchy[1]:
+      sub_hierarchy,new_leftover = build_frag_hierarchy(list(leftover)+[frag],parent=frag)
+      # extend the hierarchy
+      for hierarchy_level,blocks in enumerate(sub_hierarchy[1:]):
+        if len(blocks) == 0:
+          continue
+        if hierarchy_level+1 >= len(hierarchy):
+          hierarchy.append([])
+        for block in blocks:
+          hierarchy[hierarchy_level+1].append(block)
+      leftover = new_leftover
 
-      sources[stmt.dsexpr].append(stmt.port)
-    else:
-      assembled_vadp.append(stmt)
+    for lvl in hierarchy:
+      assert(len(lvl) > 0)
 
-  # figure out which signals are needed by the circuits
-  for stmt in vadps:
-    if isinstance(stmt,vadplib.VADPSink):
-      if stmt.dsexpr in sources:
-        sinks[stmt.dsexpr].append(stmt.port)
-      else:
-        assembled_vadp.append(stmt)
-    else:
-      assembled_vadp.append(stmt)
-
-  # link together the sinks and sources
-  for dsexpr in sources:
-    assert(len(sources[dsexpr]) >= len(sinks[dsexpr]))
-    for idx,source in enumerate(sources[dsexpr]):
-      if idx < len(sinks[dsexpr]):
-        assembled_vadp.append(vadplib.VADPConn(source,sinks[dsexpr][idx]))
-      else:
-        assembled_vadp.append(vadplib.VADPSource(source,dsexpr))
+    return hierarchy,leftover
 
 
-  return assembled_vadp
 
-# build a nested  hierarchy of asms
-def build_asm_frag(asm_blocks,input_var,sinks):
-  n_asm_fragments=10
-  n_generated = 0
-  indices = list(range(0,len(sinks)))
+def build_asm_frag(corpus,input_var,sinks):
   if len(sinks) <= 1:
     yield []
     return
 
-  for blk in asm_blocks:
-    if len(sinks) > len(blk.outputs):
-      # chain one asm in series
-      n_outputs = len(blk.outputs)
-      for n_child_asms in range(1,n_outputs+1):
-        subsets = [n_outputs-n_child_asms] \
-                  + [None]*n_child_asms
-        for sink_subsets in all_subsets(sinks, \
-                                        subsets):
-          child_frags = [None]*(n_child_asms)
-          for idx,sink_subset in enumerate(sink_subsets[1:]):
-            child_frags[idx] = list(get_first_n(build_asm_frag(asm_blocks, \
-                                                                  input_var, \
-                                                                  sink_subset),
-                                                n_asm_fragments))
-
-          for children in itertools.product(*child_frags):
-            first_subset = [genoplib.Var(input_var)]*n_child_asms \
-                           + sink_subsets[0];
-            for root_node in build_asm_frag(asm_blocks, \
-                                               input_var, \
-                                               first_subset):
-              block_counts = {}
-              root_vadp = remap_vadps([root_node],block_counts)
-              vadps = remap_vadps(list(children),block_counts)
-              yield assemble_asms(root_vadp,vadps)
-
-    elif len(sinks) > 1:
-      for frag in build_asm(blk,0,input_var,sinks):
-        yield frag
-
+  for frag_list in find_best_assembly_set(corpus,sinks):
+    # count how many sources of input_var we need
+    n_sinks = len(frag_list)
+    # count how many propagated signals of input_var are produced by fragments
+    n_stems = sum(map(lambda frag: len(frag['stems']), frag_list))
+    if n_stems > 0:
+      frag_hierarchy,leftover = build_frag_hierarchy(frag_list)
+      frag_hierarchy[0] += leftover
+      n_stems_required = len(leftover)+1
     else:
-      raise Exception("not possible: %d sinks" % (len(sinks)))
+      frag_hierarchy = [frag_list] if len(frag_list) > 0 else []
+      n_stems_required = len(frag_list)
+    # if we only need one stem, we're done.
+    if n_stems_required <= 1:
+      yield frag_hierarchy
+      return
+
+    # produce new set of sinks to fulfill
+    new_sinks = list(map(lambda idx : genoplib.Var(input_var), \
+                        range(n_stems_required)))
+
+    for par_frags in build_asm_frag(corpus,input_var,new_sinks):
+      new_frags = list(map(lambda lv: [], range(len(par_frags) + len(frag_hierarchy))))
+      for hierarchy_level,blocks in enumerate(par_frags):
+        new_frags[hierarchy_level] = list(blocks)
+        assert(len(list(blocks)) > 0)
+
+      for hierarchy_level,blocks in enumerate(frag_hierarchy):
+        lv = hierarchy_level + len(par_frags)
+        new_frags[lv] = list(blocks)
+        assert(len(list(blocks)) > 0)
+
+      yield new_frags
+
 
 def assemble_circuit(stmts):
   def add(dict_,key,val):
@@ -244,6 +255,7 @@ def assemble_circuit(stmts):
     if dsexpr in asm_sources:
       source_ports += asm_sources[dsexpr]
 
+    print(dsexpr,len(sink_ports),len(source_ports))
     assert(len(sink_ports) <= len(source_ports))
     for srcs,sink in zip(source_ports,sink_ports):
       for src in srcs:
@@ -251,7 +263,59 @@ def assemble_circuit(stmts):
 
   return assembled
 
-def assemble(blocks,fragments,depth=3):
+def create_vadp_frag(hierarchy,input_var,parent_vadp,instance_map={}):
+  def fresh_ident(block):
+    if not block.name in instance_map:
+      instance_map[block.name] = 0
+    inst = instance_map[block.name]
+    instance_map[block.name] += 1
+    return inst
+
+  if len(hierarchy) == 0:
+    return []
+
+  vadp = []
+  n_children = len(hierarchy[1]) if len(hierarchy) > 1 else 0
+  stems = []
+  for frag in hierarchy[0]:
+    inst = fresh_ident(frag['block'])
+    vadp.append(vadplib.VADPConfig(frag['block'],inst,frag['modes']))
+    inp_port = vadplib.PortVar(frag['block'],inst, \
+                               list(frag['block'].inputs)[0])
+ 
+    for port,expr in frag['exprs'].items():
+      out_port_var = vadplib.PortVar(frag['block'],inst,frag['block'].outputs[port])
+      vadp.append(vadplib.VADPSource(out_port_var,expr))
+
+    # inject connection
+    found_source = False
+    for idx,stmt in enumerate(parent_vadp):
+      if isinstance(stmt,vadplib.VADPSource) and stmt.dsexpr.op == oplib.OpType.VAR \
+         and stmt.dsexpr.name == input_var:
+        vadp.append(vadplib.VADPConn(stmt.port, inp_port))
+        parent_vadp.pop(idx)
+        found_source = True
+        break
+    if not found_source:
+      vadp.append(vadplib.VADPSink(inp_port, genoplib.Var(input_var)))
+
+  enclosing_vadp = list(vadp) + list(parent_vadp)
+  if len(hierarchy) > 1:
+    vadp += create_vadp_frag(hierarchy[1:],input_var,enclosing_vadp,instance_map)
+
+  # at most one sink statement
+  sources = list(filter(lambda vst: isinstance(vst,vadplib.VADPSource), vadp))
+  other_stmts = list(filter(lambda vst: not isinstance(vst,vadplib.VADPSource), vadp))
+  for st in vadp:
+    if isinstance(st,vadplib.VADPConn):
+      sources = list(filter(lambda src: st.source != src.port,sources))
+
+  vadp = sources + other_stmts
+  n_sinks = len(list(filter(lambda vst: isinstance(vst,vadplib.VADPSink), vadp)))
+  assert(n_sinks <= 1)
+  return vadp
+
+def assemble(blocks,fragments,n_asm_frags=3):
 
   # count sinks and sources
   sources = {}
@@ -268,15 +332,15 @@ def assemble(blocks,fragments,depth=3):
         sources[var] = stmt.dsexpr
 
 
-  # build asms
+  # build assemble fragments
   asm_frags = {}
   for var,sinks in sinks.items():
     asm_frags[var] = []
-    for frag in build_asm_frag(blocks, \
-                                  var, \
-                                  sinks):
-      asm_frags[var].append(frag)
+    for frag in get_first_n(build_asm_frag(build_fragment_corpus(blocks,var), \
+                                           var, sinks), n_asm_frags):
 
+      vadp_frag = create_vadp_frag(frag,var,[])
+      asm_frags[var].append(vadp_frag)
 
   asm_frag_vars = list(asm_frags.keys())
   asm_frag_values = list(map(lambda var: asm_frags[var], \
@@ -292,4 +356,5 @@ def assemble(blocks,fragments,depth=3):
       raise Exception("vadp is not concrete")
 
 
+    vadp_renderer.render(circ,'asm')
     yield circ

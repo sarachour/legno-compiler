@@ -31,8 +31,11 @@ lgraph_subp.add_argument('--vadps', type=int,default=3,
                        help='number of conc circuits to generate.')
 lgraph_subp.add_argument('--adps', type=int,default=5,
                        help='maximum number of circuits to generate.')
-lgraph_subp.add_argument('--assembly-depth',type=int,default=3,
-                         help='depth of assembly fragments that are generated')
+lgraph_subp.add_argument('--asm-fragments',type=int,default=3,
+                         help='number of assembly fragments that are generated')
+lgraph_subp.add_argument('--synth-depth',type=int,default=20,
+                         help='depth of synthesis fragments that are generated')
+
 
 
 lgraph_subp.add_argument('program', type=str,help='benchmark to compile')

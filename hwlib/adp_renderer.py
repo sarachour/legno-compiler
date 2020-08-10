@@ -21,17 +21,6 @@ def render_config(board,graph,cfg):
     )
     graph.node(block_name, "{%s}" % block_text)
 
-    return
-    graph.attr(shape='point')
-    for port in list(blk.inputs) + list(blk.outputs):
-        port_id = "%s:%s" % (block_name,port.name)
-        port_name = "%s-port-%s" % (block_name,port.name)
-        graph.node(port_name,port.name)
-        if port in blk.inputs:
-            graph.edge(port_name,port_id)
-        else:
-            graph.edge(port_id,port_name)
-
 def render(board,adp,filename):
     print(graphviz.version())
     graph = graphviz.Digraph('adp-viz', \
