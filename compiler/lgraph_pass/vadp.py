@@ -240,7 +240,8 @@ def to_adp(vadps):
       cfg.modes = stmt.mode
       for datafield,value in stmt.assigns.items():
         if(isinstance(cfg[datafield], adplib.ExprDataConfig)):
-          raise NotImplementedError
+          cfg[datafield].expr = value
+
         elif(isinstance(cfg[datafield], adplib.ConstDataConfig)):
           cfg[datafield].value = value.compute()
         else:

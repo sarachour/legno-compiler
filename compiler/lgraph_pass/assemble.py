@@ -282,7 +282,6 @@ def create_vadp_frag(hierarchy,input_var,parent_vadp,instance_map={}):
     vadp.append(vadplib.VADPConfig(frag['block'],inst,frag['modes']))
     inp_port = vadplib.PortVar(frag['block'],inst, \
                                list(frag['block'].inputs)[0])
- 
     for port,expr in frag['exprs'].items():
       out_port_var = vadplib.PortVar(frag['block'],inst,frag['block'].outputs[port])
       vadp.append(vadplib.VADPSource(out_port_var,expr))

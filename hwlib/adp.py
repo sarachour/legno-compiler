@@ -146,7 +146,7 @@ class ConstDataConfig(ConfigStmt):
 
 class ExprDataConfig(ConfigStmt):
 
-  def __init__(self,field,args,expr):
+  def __init__(self,field,args,expr=None):
     ConfigStmt.__init__(self,ConfigStmtType.EXPR,field)
     self.args = args
     self.scfs = {}
@@ -156,14 +156,49 @@ class ExprDataConfig(ConfigStmt):
       self.scfs[key] = 1.0
       self.injs[key] = 1.0
 
+  @property
+  def expr(self):
+    return self._expr
+
+  @expr.setter
+  def expr(self,e):
+    if expr is None:
+      self._expr = None
+
+    for v in e.vars():
+      if not v in self.args:
+        raise Exception("%s is not a valid input. Expected" \
+                        % (v,self.args))
+
+    self._expr = expr
+
+  def to_json(self):
+    return {
+      'name':self.name,
+      'expr': self.expr.to_json(),
+      'args': self.args.to_json(),
+      'scfs': dict(self.scfs),
+      'injs': dict(self.injs),
+      'args': list(self.args)
+    }
+
 
 
 class PortConfig(ConfigStmt):
 
   def __init__(self,name):
     ConfigStmt.__init__(self,ConfigStmtType.PORT,name)
-    self.scf = 1.0
+    self._scf = 1.0
     self.source = None
+
+  @property
+  def scf(self):
+    return self._scf
+
+  @scf.setter
+  def scf(self,v):
+    assert(v > 0)
+    self._scf = v
 
   def pretty_print(self):
     return "scf=%f" % (self.scf)
@@ -303,6 +338,7 @@ class BlockConfig:
       if data.type == blocklib.BlockDataType.CONST:
         cfg.add(ConstDataConfig(data.name,0.0))
       else:
+        print(data)
         cfg.add(ExprDataConfig(data.name, \
                                data.args, \
                                None))
@@ -361,7 +397,35 @@ class ADP:
   def __init__(self):
     self.configs = BlockInstanceCollection(self)
     self.conns = []
-    self.tau = 1.0
+    self._tau = 1.0
+
+  def copy(self,dev):
+    adp = ADP()
+    adp.tau = self.tau
+    for cfg in self.configs:
+      blk = dev.get_block(cfg.inst.block)
+      newcfg = adp.add_instance(blk,cfg.inst.loc)
+      newcfg.set_config(cfg)
+
+    for conn in self.conns:
+      sblk = dev.get_block(conn.source_inst.block)
+      dblk = dev.get_block(conn.dest_inst.block)
+      adp.add_conn(sblk,
+                   conn.source_inst.loc,
+                   sblk.outputs[conn.source_port],
+                   dblk,
+                   conn.dest_inst.loc,
+                   dblk.inputs[conn.dest_port])
+    return adp
+
+  @property
+  def tau(self):
+    return self._tau
+
+  @tau.setter
+  def tau(self,v):
+    assert(v > 0)
+    self._tau = v
 
   def add_source(self,block,loc,port,expr):
     self.configs.get(block.name,loc)[port.name].source = expr
@@ -369,7 +433,9 @@ class ADP:
   def add_instance(self,block,loc):
     assert(isinstance(block,blocklib.Block))
     assert(isinstance(loc,devlib.Location))
-    self.configs.add(BlockConfig.make(block,loc))
+    cfg = BlockConfig.make(block,loc)
+    self.configs.add(cfg)
+    return cfg
 
   def add_conn(self,srcblk,srcloc,srcport, \
                dstblk,dstloc,dstport):

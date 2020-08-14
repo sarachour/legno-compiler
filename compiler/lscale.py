@@ -4,8 +4,8 @@ import ops.base_op as baseoplib
 import ops.generic_op as genoplib
 import ops.opparse as opparse
 import numpy as np
-import compiler.lscale_pass.z3_solver as z3_solver
-import compiler.lscale_pass.scale_ops as scalelib
+import compiler.lscale_pass.lscale_solver as lscale_solver
+import compiler.lscale_pass.lscale_ops as scalelib
 
 def generate_dynamical_system_info(program,adp):
   ivals = scalelib.DynamicalSystemInfo()
@@ -247,4 +247,6 @@ def scale(dev, program, adp):
   for stmt in generate_constraint_problem(dev,program,adp):
     cstr_prob.append(stmt)
 
-  z3_solver.solve(cstr_prob)
+  for adp in lscale_solver.solve(dev,adp,cstr_prob):
+    yield adp
+

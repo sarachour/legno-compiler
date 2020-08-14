@@ -48,9 +48,10 @@ class Z3Ctx:
     self._solver.add(cstr)
 
   def z3var(self,name):
+    assert(isinstance(name,str))
     if not name in self._z3vars:
       for v in self._z3vars.keys():
-        print(v)
+        print("var %s" % v)
 
       raise Exception("not declared: <%s>" % str(name))
 
@@ -60,7 +61,6 @@ class Z3Ctx:
     assigns = {}
     for v in self._z3vars.values():
       smtvar = self._smtvars[v]
-      jvar = self._smtenv.from_smtvar(smtvar)
       value = model[v]
       if value is None:
         unboxed = None
@@ -77,7 +77,7 @@ class Z3Ctx:
       else:
         raise Exception("unknown class <%s> " % (model[v].__class__.__name__))
 
-      assigns[jvar] = unboxed
+      assigns[smtvar] = unboxed
 
     return assigns
 
@@ -137,9 +137,7 @@ class SMTEnv:
   def __init__(self):
     self._decls = []
     self._cstrs = []
-    self._index = 0
-    self._to_smtvar = {}
-    self._from_smtvar = {}
+    self._vars = []
 
   def num_vars(self):
     return len(self._to_smtvar)
@@ -149,25 +147,12 @@ class SMTEnv:
 
 
   def decl(self,name,typ):
-    if name in self._to_smtvar:
-      return self._to_smtvar[name]
+    if name in self._vars:
+      return
 
     assert(isinstance(typ, SMTEnv.Type))
-    vname = "v%d" % self._index
-    self._index += 1
-    self._decls.append(SMTDecl(vname,typ))
-    self._to_smtvar[name] = vname
-    self._from_smtvar[vname] = name
-    return vname
-
-  def from_smtvar(self,name):
-    return self._from_smtvar[name]
-
-  def has_smtvar(self,name):
-    return name in self._to_smtvar
-
-  def get_smtvar(self,name):
-    return self._to_smtvar[name]
+    self._vars.append(name)
+    self._decls.append(SMTDecl(name,typ))
 
   def eq(self,e1,e2):
     self._cstrs.append(SMTAssert(SMTEq(e1,e2)))
@@ -197,6 +182,9 @@ class SMTEnv:
 
     if not optimize is None:
       z3opt = optimize.to_z3(ctx)
+    else:
+      z3opt = None
+
     return ctx,z3opt
 
   def to_smtlib2(self):
@@ -222,6 +210,7 @@ class SMTOp:
 class SMTVar(SMTOp):
 
   def __init__(self,name):
+    assert(isinstance(name,str))
     SMTOp.__init__(self)
     self._name = name
 

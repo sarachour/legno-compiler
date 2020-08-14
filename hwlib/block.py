@@ -142,6 +142,7 @@ class BlockModeset:
   def __init__(self,type_spec):
     self._type = type_spec
     self._modes = {}
+    self._order = []
 
   def matches(self,pattern):
     for mode in self:
@@ -155,6 +156,7 @@ class BlockModeset:
     mode_d = BlockMode(mode,self._type)
     assert(not mode_d.key in self._modes)
     self._modes[mode_d.key] = mode_d
+    self._order.append(mode_d.key)
 
   def add_all(self,modes):
     for mode in modes:
@@ -172,13 +174,16 @@ class BlockModeset:
       return len(self._modes.keys())
 
   def __getitem__(self,m):
+    if isinstance(m,int):
+      return self._modes[self._order[m]]
+    else:
       return self.get(m)
 
   def __iter__(self):
-    for mode in self._modes.values():
-      yield mode
+    for mode_key in self._order:
+        yield self._modes[mode_key]
 
-def __repr__(self):
+  def __repr__(self):
     return str(self._modes.values())
 
 class BlockField:
