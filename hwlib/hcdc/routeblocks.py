@@ -14,6 +14,11 @@ cin.outputs.add(BlockOutput('z', BlockSignalType.ANALOG, \
 
 cin.outputs['z'].relation.bind(['_'], \
                                parser.parse_expr('x'))
+cin.inputs['x'] \
+    .interval.bind(['*'],interval.Interval(-20,20))
+cin.outputs['z'] \
+    .interval.bind(['*'],interval.Interval(-20,20))
+
 
 
 cout= Block('cout',BlockType.ROUTE, \
@@ -27,6 +32,11 @@ cout.outputs.add(BlockOutput('z', BlockSignalType.ANALOG, \
 
 cout.outputs['z'].relation.bind(['_'], \
                                parser.parse_expr('x'))
+cout.inputs['x'] \
+    .interval.bind(['*'],interval.Interval(-20,20))
+cout.outputs['z'] \
+    .interval.bind(['*'],interval.Interval(-20,20))
+
 
 
 tin= Block('tin',BlockType.ROUTE, \
@@ -40,6 +50,11 @@ tin.outputs.add(BlockOutput('z', BlockSignalType.ANALOG, \
 
 tin.outputs['z'].relation.bind(['_'], \
                                parser.parse_expr('x'))
+tin.inputs['x'] \
+    .interval.bind(['*'],interval.Interval(-20,20))
+tin.outputs['z'] \
+    .interval.bind(['*'],interval.Interval(-20,20))
+
 
 
 tout= Block('tout',BlockType.ROUTE, \
@@ -53,4 +68,9 @@ tout.outputs.add(BlockOutput('z', BlockSignalType.ANALOG, \
 
 tout.outputs['z'].relation.bind(['_'], \
                                parser.parse_expr('x'))
+tout.inputs['x'] \
+    .interval.bind(['*'],interval.Interval(-20,20))
+tout.outputs['z'] \
+    .interval.bind(['*'],interval.Interval(-20,20))
+
 

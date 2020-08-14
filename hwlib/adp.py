@@ -1,5 +1,6 @@
 import hwlib.block as blocklib
 import hwlib.device as devlib
+import ops.base_op as baseoplib
 from enum import Enum
 
 class BlockInst:
@@ -24,6 +25,11 @@ class BlockInst:
   def __repr__(self):
     return "%s_%s" % (self.block,"_".join(map(lambda a: str(a), \
                                               self.loc.address)))
+
+  def __eq__(self,other):
+    assert(isinstance(other,BlockInst))
+    return self.block == other.block and \
+      self.loc == other.loc
 
 class BlockInstanceCollection:
 
@@ -201,7 +207,10 @@ class PortConfig(ConfigStmt):
     self._scf = v
 
   def pretty_print(self):
-    return "scf=%f" % (self.scf)
+    st = "scf=%f" % (self.scf)
+    if not self.source is None:
+      st += " src=%s" % self.source
+    return st
 
   def to_json(self):
     return {
@@ -216,6 +225,8 @@ class PortConfig(ConfigStmt):
   def from_json(obj):
     cfg = PortConfig(obj['name'])
     cfg.scf = obj['scf']
+    if not obj['source'] is None:
+      cfg.source = baseoplib.Op.from_json(obj['source'])
     return cfg
 
 
@@ -455,6 +466,17 @@ class ADP:
         dstport.name
       )
     )
+
+  def port_in_use(self,inst,port):
+    for conn in self.conns:
+      if conn.source_inst == inst and \
+         conn.source_port == port:
+        return True
+      if conn.dest_inst == inst and \
+         conn.dest_port == port:
+        return True
+
+    return False
 
   @staticmethod
   def from_json(board,jsonobj):

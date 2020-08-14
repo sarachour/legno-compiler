@@ -609,8 +609,10 @@ class BlockInput(BlockField):
       self.interval = ModeDependentProperty("interval",block.modes,interval.Interval)
       self.freq_limit = ModeDependentProperty("max_frequency",block.modes, \
                                               float)
-      self.quantize = ModeDependentProperty("quantization",block.modes, \
-                                            Quantize)
+      if self.type == BlockSignalType.DIGITAL:
+          self.quantize = ModeDependentProperty("quantization", \
+                                                block.modes, \
+                                                Quantize)
 
   @property
   def properties(self):

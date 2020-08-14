@@ -1,3 +1,5 @@
+import ops.interval as ivallib
+from enum import Enum
 
 class ScaleMethod:
   IDEAL = "ideal"
@@ -8,12 +10,38 @@ class DynamicalSystemInfo:
   def __init__(self):
     self.intervals = {}
 
+  def set_interval(self,inst,port,ival):
+    assert(isinstance(ival,ivallib.Interval))
+    self.intervals[(str(inst),port)] = ival
+
+  def has_interval(self,inst,port):
+    return (str(inst),port) in self.intervals
+
+  def get_interval(self,inst,port):
+    if not self.has_interval(inst,port):
+      raise Exception("no interval <%s,%s>" % (inst,port))
+    return self.intervals[(str(inst),port)]
+
 class HardwareInfo:
 
   def __init__(self,dev,scale_method=ScaleMethod.IDEAL):
     self.dev = dev
     self.scale_method = scale_method
 
+  def _get_port(self,instance,name):
+    blk = self.dev.get_block(instance.block)
+    if blk.inputs.has(name):
+      return blk.inputs[name]
+    else:
+      return blk.outputs[name]
+
+  def get_op_range(self,instance,mode,port_name):
+    assert(isinstance(port_name,str))
+    port = self._get_port(instance,port_name)
+    ival = port.interval[mode]
+    if ival is None:
+      raise Exception("specification error: %s.%s has no operating range for mode %s" % (instance,port_name,mode))
+    return ival
 
   def get_relation(self,instance,mode,port):
     out = self.dev.get_block(instance.block) \
@@ -77,15 +105,21 @@ class ConstCoeffVar(SCVar):
                                 self.index)
 
 class PropertyVar(SCVar):
-  class Type:
+  class Type(Enum):
     FREQUENCY = "freq"
-    INTERVAL = "interval"
+    INTERVAL_UPPER = "ivalU"
+    INTERVAL_LOWER = "ivalL"
 
   def __init__(self,type,instance,port):
+    assert(isinstance(type,PropertyVar.Type))
     SCVar.__init__(self)
     self.type = type
     self.inst = instance
     self.port = port
+
+  def __repr__(self):
+    return "prop.%s(%s,%s)" \
+      % (self.type.value,self.inst,self.port)
 
 class SCMonomial:
 
@@ -97,6 +131,13 @@ class SCMonomial:
   def vars(self):
     for t in self._terms:
       yield t
+
+  def copy(self):
+    monom = SCMonomial()
+    monom.coeff = self.coeff
+    for t,e in self.terms:
+      monom.add_term(t,e)
+    return monom
 
   @property
   def coeff(self):
@@ -137,7 +178,7 @@ class SCMonomial:
       yield t,e
 
   def __repr__(self):
-    if self.coeff != 1.0:
+    if self.coeff != 1.0 or len(self._terms) == 0:
       st = ["%.3f" % self.coeff]
     else:
       st = []
@@ -205,6 +246,73 @@ class SCObserve:
 
   def __repr__(self):
     return "observe(%s)" % self.monomial
+
+class SCIntervalMonomial:
+
+    def __init__(self):
+      self.lower = SCMonomial()
+      self.upper = SCMonomial()
+
+    def vars(self):
+      for v in self.lower.vars():
+        yield v
+      for v in self.upper.vars():
+        yield v
+
+    def __repr__(self):
+      return "[%s,%s]" % (self.lower,self.upper)
+
+class SCIntervalCover:
+
+  def __init__(self,subinterval,interval):
+    assert(isinstance(subinterval,ivallib.Interval))
+    assert(isinstance(interval,ivallib.Interval))
+    self.subinterval = subinterval
+    self.interval = interval
+    self.submonom = SCIntervalMonomial()
+    self.monom = SCIntervalMonomial()
+
+  def valid(self):
+    if self.subinterval.upper == 0 or \
+       self.subinterval.lower == 0:
+      raise Exception("not handled: subinterval %s" % self.subinterval)
+
+    if self.interval.upper == 0 or \
+       self.interval.lower == 0:
+      raise Exception("not handled: interval %s" % self.interval)
+
+    if self.subinterval.upper > 0 and \
+       self.interval.upper < 0:
+      return False
+    if self.subinterval.lower < 0 and \
+       self.interval.lower > 0:
+      return False
+    return True
+
+  def trivial(self):
+    upper_trivial,lower_trivial = False,False
+    if self.subinterval.upper < 0 and \
+       self.interval.upper > 0:
+      upper_trivial = True
+
+    if self.subinterval.lower > 0 and \
+       self.subinterval.lower < 0:
+      lower_trivial = True
+    return (lower_trivial,upper_trivial)
+
+
+  def vars(self):
+    for v in self.submonom.vars():
+      yield v
+    for v in self.monom.vars():
+      yield v
+
+
+  def __repr__(self):
+    st = "%s*%s" % (self.submonom,self.subinterval)
+    st += " SUBSETEQ "
+    st += "%s*%s" % (self.monom,self.interval)
+    return st
 
 class SCSubsetOfModes:
   def __init__(self,modevar,modes,all_modes):

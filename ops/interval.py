@@ -1,6 +1,12 @@
 import math
 import ops.base_op as oplib
 
+def same_sign(v,v1):
+    if v*v1 >= 0:
+        return True
+    else:
+        return False
+
 class Interval:
 
     def __init__(self,lb,ub):
@@ -137,6 +143,11 @@ class Interval:
     def positive(self):
         return self.lower >= 0 and self.upper >= 0
 
+
+    def ratio(self,other):
+        assert(same_sign(other.lower,self.lower))
+        assert(same_sign(other.upper,self.upper))
+        return (self.lower/other.lower,self.upper/other.upper)
 
     def max(self,other):
         new_lower = max(self.lower,other.lower)
@@ -369,10 +380,14 @@ class IntervalCollection:
 
     return st
 
+class UnknownIntervalError(Exception):
+    pass
 
 def propagate_intervals(expr,ivals):
     if expr.op == oplib.OpType.VAR:
-        return ivals.get(expr.name)
+        if not expr.name in ivals:
+            raise UnknownIntervalError("unknown interval for <%s>" % expr.name)
+        return ivals[expr.name]
     elif expr.op == oplib.OpType.EMIT:
         return propagate_intervals(expr.arg(0), \
                                    ivals)

@@ -16,7 +16,8 @@ class SymbolTable:
         self.smtenv.decl(str(v),smtlib.SMTEnv.Type.INT)
       elif isinstance(v,scalelib.PortScaleVar) or \
          isinstance(v,scalelib.TimeScaleVar) or\
-         isinstance(v,scalelib.ConstCoeffVar):
+         isinstance(v,scalelib.ConstCoeffVar) or \
+         isinstance(v,scalelib.PropertyVar):
         self.smtenv.decl(str(v),smtlib.SMTEnv.Type.REAL)
       else:
         raise Exception("unknown var: %s" % v)
@@ -45,6 +46,8 @@ def monomial_to_z3_expr(expr):
 def var_value_to_logval(var,value):
   if isinstance(var,scalelib.ConstCoeffVar):
     return take_log(value)
+  if isinstance(var,scalelib.PropertyVar):
+    return take_log(value)
   else:
     raise Exception("unknown: %s" % var)
 
@@ -53,6 +56,33 @@ def scale_cstr_to_z3_cstr(smtenv,cstr):
     z3_lhs = monomial_to_z3_expr(cstr.lhs)
     z3_rhs = monomial_to_z3_expr(cstr.rhs)
     smtenv.eq(z3_lhs,z3_rhs)
+
+  elif isinstance(cstr,scalelib.SCIntervalCover):
+    if not cstr.valid():
+      smtenv.fail("invalid: %s" % cstr)
+      return
+
+    (triv_lb,triv_ub) = cstr.trivial()
+    if not triv_lb:
+      lhs = cstr.submonom.lower.copy()
+      lhs.coeff = lhs.coeff*abs(cstr.subinterval.lower)
+      rhs = cstr.monom.lower.copy()
+      rhs.coeff = rhs.coeff*abs(cstr.interval.lower)
+
+      z3_lhs = monomial_to_z3_expr(lhs)
+      z3_rhs = monomial_to_z3_expr(rhs)
+      smtenv.lte(z3_lhs,z3_rhs)
+
+    if not triv_ub:
+      lhs = cstr.submonom.upper.copy()
+      lhs.coeff = lhs.coeff*abs(cstr.subinterval.upper)
+      rhs = cstr.monom.upper.copy()
+      rhs.coeff = rhs.coeff*abs(cstr.interval.upper)
+
+      z3_lhs = monomial_to_z3_expr(lhs)
+      z3_rhs = monomial_to_z3_expr(rhs)
+      smtenv.lte(z3_lhs,z3_rhs)
+
 
   elif isinstance(cstr,scalelib.SCModeImplies):
     mode_index = cstr.modes.index(cstr.mode)
