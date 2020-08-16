@@ -17,6 +17,7 @@ import random
 import time
 import numpy as np
 import phys_model.fit_lin_dectree as fit_lindectree
+import phys_model.lin_dectree as lindectree
 
 dev = hcdclib.get_device()
 
@@ -93,6 +94,18 @@ default_bounds = {'pmos':[0,7],\
       }
 
 dectree.update()
-min_val,min_code = dectree.find_minimum(default_bounds) 
-print("\n\nmin_val is:%f" % min_val)
-print("min_val occurs at: ", min_code)
+min_val,min_code = dectree.find_minimum(default_bounds)
+print("\n\n",dectree.pretty_print(),"\n\n")
+#print("\n\nmin_val is:%f" % min_val)
+#print("min_val occurs at: ", min_code)
+#print("leaves: ", dectree.leaves())
+serialized_dectree_dict = {}
+dectree.to_json(serialized_dectree_dict)
+print("serialized_dectree: ", serialized_dectree_dict)
+
+deserialized_dectree = lindectree.DecisionNode.from_json(serialized_dectree_dict)
+print(deserialized_dectree.pretty_print())
+
+print(dectree.random_sample())
+
+

@@ -2,6 +2,7 @@ import phys_model.model_fit as fitlib
 import copy
 import ops.generic_op as genoplib
 import phys_model.region as reglib
+import json
 
 class DecisionNode:
 
@@ -29,23 +30,104 @@ class DecisionNode:
   this function generates a sequence of leaf nodes in the decision tree.
   use the `yield` python feature to do this
   '''
-  def leaves(self):
-    raise Exception("implement me!")
+  def leaves(self, flat_list = []):
+    self.left.leaves(flat_list)
+    self.right.leaves(flat_list)
+    return flat_list
+
+  def min_sample(self):
+    return self.left.min_sample() + self.left.min_sample()
+
+  def random_sample(self, sample_list = []):
+    self.left.random_sample(sample_list)
+    self.right.random_sample(sample_list)
+    return sample_list
+
 
   '''
   This function accepts a json object that was previously returned
   by the to_json routine and builds a decision tree object from the data.
   '''
   @staticmethod
-  def from_json(obj):
-    raise Exception("implement me!")
+  def from_json(parent):
+    if parent['type'] == 'DecisionNode':
+      name = parent['name']
+      value = parent['value']
+      left = DecisionNode.from_json(parent['left'])
+      right = DecisionNode.from_json(parent['right'])
+      return DecisionNode(name,value,left,right)
+    else:
+      return RegressionLeafNode.from_json(parent)
+
+
+    '''
+    value = parent['value']
+    name = parent['name']
+    child_nodes_dicts = [parent['left'],parent['right']]
+    child_nodes = []
+    for node in child_nodes_dicts:
+      if node['type'] == 'DecisionNode':
+        child_nodes.append(DecisionNode.from_json(node))
+      elif node['type'] == 'RegressionLeafNode':
+        child_nodes.append(RegressionLeafNode.from_json(node))
+    return(DecisionNode(name,value,child_nodes[0],child_nodes[1]))
+    '''
+    '''
+    if left_dict['type'] == 'DecisionNode':
+      left = DecisionNode.from_json(left_dict)
+    elif left_dict['type'] == 'RegressionLeafNode':
+      left = RegressionLeafNode.from_json(left_dict)
+
+    if right_dict['type'] == 'DecisionNode':
+      right = DecisionNode.from_json(right_dict)
+    elif right_dict['type'] == 'RegressionLeafNode':
+      right = RegressionLeafNode.from_json(right_dict)
+    '''
+
+    '''
+    left_dict = dictionary['left']
+    right_dict = dictionary['right']
+    left_obj = None
+    right_obj = None
+    for side in [[left_dict,left_obj],[right_dict,right_obj]]:
+      if side[0]['type'] == 'DecisionNode':
+        side[1] = DecisionNode.from_json(side[0])
+      elif side[0]['type'] == 'RegressionLeafNode':
+        side[1] = RegressionLeafNode.from_json(side[0])
+    return(DecisionNode(name,value,left_obj,right_obj))
+    '''
+    '''
+    child_nodes = []
+    child_nodes_dicts = [parent['left'],parent['right']]
+    for child_node in child_nodes_dicts:
+      print("child_node: ", child_node)
+      if child_node['type'] == 'DecisionNode':
+        print("appending DecisionNode")
+        child_nodes.append(DecisionNode.from_json(child_node))
+      elif child_node['type'] == 'RegressionLeafNode:':
+        print("appending RegressionLeafNode")
+        child_nodes.append(RegressionLeafNode.from_json(child_node))
+    print("child_nodes: ", child_nodes)
+    return(DecisionNode(name,value,child_nodes[0],child_nodes[1]))
+
+    '''
+    
+    
+  
+
+
 
   '''
   This function serializes the decision tree into a json data structure.
   '''
-  def to_json(self):
-    raise Exception("implement me!")
+  def to_json(self, dictionary):
+    dictionary['type'] = "DecisionNode"
+    dictionary['value'] = self.value
+    dictionary['name'] = self.name
+    dictionary['left'] = self.left.to_json({})
+    dictionary['right'] = self.right.to_json({})
 
+    return dictionary
 
   def fit(self,inputs,output):
     raise Exception("implement me!")
@@ -76,12 +158,12 @@ class DecisionNode:
 
 class RegressionLeafNode:
 
-  def __init__(self,expr,npts=0,R2=-1.0,params={}):
+  def __init__(self,expr,npts=0,R2=-1.0,params={},region = reglib.Region()):
     self.expr = expr
     self.npts = npts
     self.R2 = R2
     self.params = params
-    self.region = reglib.Region()
+    self.region = region
 
 
   def pretty_print(self,indent=0):
@@ -89,26 +171,47 @@ class RegressionLeafNode:
     return "%sexpr %s, npts=%d, R2=%f, pars=%s\n" \
       % (ind,self.expr,self.npts,self.R2,self.params)
 
+  def min_sample(self):
+    return len(self.params)
+
+  def random_sample(self, sample_list):
+    for i in range(self.min_sample()):
+      sample_list.append(self.region.random_code())
+
+
   '''
   this function generates a sequence of leaf nodes in the decision tree.
   use the `yield` python feature to do this
   '''
-  def leaves(self):
-    raise Exception("implement me!")
+  def leaves(self, flat_list):
+    flat_list.append(self)
+    return
 
   '''
   This function accepts a json object that was previously returned
   by the to_json routine and builds a decision tree object from the data.
   '''
   @staticmethod
-  def from_json(obj):
-    raise Exception("implement me!")
+  def from_json(dictionary):
+    expr = dictionary['expr']
+    npts = dictionary['npts']
+    R2 = dictionary['R2']
+    params = dictionary['params']
+    region = dictionary['region']
+    return RegressionLeafNode(expr,npts,R2,params,region)
 
   '''
   This function serializes the decision tree into a json data structure.
   '''
-  def to_json(self):
-    raise Exception("implement me!")
+  def to_json(self,dictionary):
+    dictionary['type'] = "RegressionLeafNode"
+    dictionary['expr'] = self.expr
+    dictionary['npts'] = self.npts
+    dictionary['R2'] = self.R2
+    dictionary['params'] = self.params
+    dictionary['region'] = self.region
+    
+    return dictionary
 
   '''
   This function accepts a dictionary of input values for each hidden code
