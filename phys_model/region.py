@@ -23,7 +23,7 @@ class Region():
       self.bounds[var] = (minval,maxval)
     else:
       l,u = self.bounds[var]
-      self.bounds[var] = (wnull(max,l,minval),wnull(min,u,minval))
+      self.bounds[var] = (wnull(max,l,minval),wnull(min,u,maxval))
 
   def set_ranges(self,ranges):
     for k,(l,u) in ranges.items():
