@@ -255,7 +255,6 @@ def assemble_circuit(stmts):
     if dsexpr in asm_sources:
       source_ports += asm_sources[dsexpr]
 
-    print(dsexpr,len(sink_ports),len(source_ports))
     assert(len(sink_ports) <= len(source_ports))
     for srcs,sink in zip(source_ports,sink_ports):
       for src in srcs:

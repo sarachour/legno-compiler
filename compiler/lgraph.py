@@ -86,15 +86,16 @@ def compile(board,prob,
 
     circuit = {}
     block_counts = {}
-    for variable in prob.variables():
-        circuit[variable] = fragments[variable][0]
-
     vadp_circuits = []
-    for circ in asmlib.assemble(assemble_blocks,circuit, \
-                                n_asm_frags=asm_frags):
-        vadp_circuits.append(circ)
-        if len(vadp_circuits) >= vadps:
-            break
+    while len(vadp_circuits) < vadps:
+        for variable in prob.variables():
+            circuit[variable] = random.choice(fragments[variable])
+
+        for circ in asmlib.assemble(assemble_blocks,circuit, \
+                                    n_asm_frags=asm_frags):
+            vadp_circuits.append(circ)
+            if len(vadp_circuits) >= vadps:
+                break
 
 
     print("> routing circuit")

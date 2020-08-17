@@ -11,6 +11,7 @@ class DynamicalSystemInfo:
     self.intervals = {}
 
   def set_interval(self,inst,port,ival):
+    print("%s.%s = %s" % (inst,port,ival))
     assert(isinstance(ival,ivallib.Interval))
     self.intervals[(str(inst),port)] = ival
 

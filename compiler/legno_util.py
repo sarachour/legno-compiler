@@ -63,7 +63,6 @@ def exec_lgraph(args):
 
         print("<<< writing graph >>>")
         filename = path_handler.lgraph_adp_diagram_file(indices)
-        #adp.write_graph(filename,write_png=True)
         adprender.render(board,adp,filename)
         count += 1
         if count >= args.adps:

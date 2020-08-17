@@ -59,6 +59,7 @@ def scale_cstr_to_z3_cstr(smtenv,cstr):
 
   elif isinstance(cstr,scalelib.SCIntervalCover):
     if not cstr.valid():
+      print("invalid: %s" % cstr)
       smtenv.fail("invalid: %s" % cstr)
       return
 
@@ -131,6 +132,7 @@ class LScaleSolutionGenerator:
   def get_solution(self):
     result = self.z3ctx.solve()
     if result is None:
+      print("no solution..")
       return None
 
     symtbl = self.symtbl

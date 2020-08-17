@@ -11,16 +11,22 @@ import ops.interval as ivallib
 def _generate_dsinfo_recurse(dev,dsinfo,adp):
   count = 0
   for conn in adp.conns:
-    if dsinfo.has_interval(conn.source_inst,conn.source_port) and \
-       not dsinfo.has_interval(conn.dest_inst,conn.dest_port):
-      ival = dsinfo.get_interval(conn.source_inst,conn.source_port)
-      dsinfo.set_interval(conn.dest_inst,conn.dest_port,ival)
-      count += 1
-    elif dsinfo.has_interval(conn.source_inst,conn.source_port) and \
-       not dsinfo.has_interval(conn.dest_inst,conn.dest_port):
-      ival = dsinfo.get_interval(conn.dest_inst,conn.dest_port)
-      dsinfo.set_interval(conn.source_inst,conn.source_port,ival)
-      count += 1
+    if not dsinfo.has_interval(conn.dest_inst,conn.dest_port):
+      ival = ivallib.Interval.type_infer(0,0)
+      for src_conn in \
+          list(filter(lambda c: c.same_dest(conn), adp.conns)):
+        if dsinfo.has_interval(src_conn.source_inst, \
+                               src_conn.source_port):
+          src_ival = dsinfo.get_interval(src_conn.source_inst, \
+                                         src_conn.source_port)
+          ival = ival.add(src_ival)
+        else:
+          ival = None
+          break
+
+      if not ival is None:
+        dsinfo.set_interval(conn.dest_inst,conn.dest_port,ival)
+        count += 1
 
   for cfg in adp.configs:
     blk = dev.get_block(cfg.inst.block)
@@ -48,6 +54,7 @@ def _generate_dsinfo_recurse(dev,dsinfo,adp):
   return count
 
 def generate_dynamical_system_info(dev,program,adp):
+  print("=================")
   dsinfo = scalelib.DynamicalSystemInfo()
   ds_ivals = dict(program.intervals())
   for config in adp.configs:

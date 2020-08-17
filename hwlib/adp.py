@@ -388,6 +388,11 @@ class Connection:
     return Connection(src_inst, src_port, \
                       dest_inst, dest_port)
 
+  def same_dest(self,other):
+    assert(isinstance(other,Connection))
+    return self.dest_inst == other.dest_inst and \
+      self.dest_port == other.dest_port
+
   def to_json(self):
     return {
       'source_inst': self.source_inst.to_json(),
