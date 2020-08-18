@@ -17,7 +17,8 @@ class SymbolTable:
       elif isinstance(v,scalelib.PortScaleVar) or \
          isinstance(v,scalelib.TimeScaleVar) or\
          isinstance(v,scalelib.ConstCoeffVar) or \
-         isinstance(v,scalelib.PropertyVar):
+         isinstance(v,scalelib.PropertyVar) or \
+         isinstance(v,scalelib.QualityVar):
         self.smtenv.decl(str(v),smtlib.SMTEnv.Type.REAL)
       else:
         raise Exception("unknown var: %s" % v)
@@ -110,12 +111,15 @@ def scale_cstr_to_z3_cstr(smtenv,cstr):
   else:
     raise Exception("not implemented: %s <%s>" % (cstr,cstr.__class__.__name__))
 
+def scale_objective_fun_to_z3_objective_fun(objfun):
+  return monomial_to_z3_expr(objfun)
+
 class LScaleSolutionGenerator:
 
-  def __init__(self,dev,adp,symtbl,smtenv):
+  def __init__(self,dev,adp,symtbl,smtenv,opt=None):
     assert(isinstance(symtbl,SymbolTable))
     assert(isinstance(smtenv,smtlib.SMTEnv))
-    ctx,opt = smtenv.to_z3()
+    ctx,opt = smtenv.to_z3(optimize=opt)
     self.smtenv = smtenv
     self.symtbl = symtbl
     self.z3ctx = ctx
@@ -130,28 +134,37 @@ class LScaleSolutionGenerator:
       adp = self.get_solution()
 
   def get_solution(self):
-    result = self.z3ctx.solve()
+    if self.z3opt is None:
+      result = self.z3ctx.solve()
+    else:
+      result = self.z3ctx.optimize(self.z3opt)
     if result is None:
       print("no solution..")
       return None
+    else:
+      print("found solution!")
 
     symtbl = self.symtbl
     adp = self.adp.copy(self.dev)
     for var_name,value in result.items():
       var = symtbl.get(var_name)
-      print(var,value)
       if isinstance(var,scalelib.ModeVar):
         blkcfg = adp.configs.get(var.inst.block,var.inst.loc)
         blk = self.dev.get_block(var.inst.block)
         mode = blk.modes[int(value)]
         assert(isinstance(mode,blocklib.BlockMode))
         blkcfg.modes = [mode]
+
       elif isinstance(var,scalelib.PortScaleVar):
         blkcfg = adp.configs.get(var.inst.block,var.inst.loc)
         blkcfg[var.port].scf = undo_log(value)
 
       elif isinstance(var,scalelib.TimeScaleVar):
         adp.tau = undo_log(value)
+
+      elif isinstance(var,scalelib.QualityVar):
+        val = undo_log(value)
+        print("quality: %s" % val)
       elif isinstance(var,scalelib.ConstCoeffVar) or \
            isinstance(var,scalelib.PropertyVar):
         continue
@@ -159,9 +172,12 @@ class LScaleSolutionGenerator:
         raise Exception("unimpl: %s" % var)
 
     self.z3ctx.negate_model(result)
+    input()
     return adp
 
-def solve(dev,adp,cstrs):
+
+
+def solve(dev,adp,cstrs,objective_fun):
   smtenv = smtlib.SMTEnv()
   symtbl = SymbolTable(smtenv)
   for cstr in cstrs:
@@ -171,7 +187,8 @@ def solve(dev,adp,cstrs):
   for cstr in cstrs:
     scale_cstr_to_z3_cstr(smtenv,cstr)
 
-  generator = LScaleSolutionGenerator(dev,adp,symtbl,smtenv)
+  z3_obj_fun = scale_objective_fun_to_z3_objective_fun(objective_fun)
+  generator = LScaleSolutionGenerator(dev,adp,symtbl,smtenv,opt=z3_obj_fun)
   for scaled_adp in generator.solutions():
     yield scaled_adp
 

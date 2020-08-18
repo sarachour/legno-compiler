@@ -186,11 +186,13 @@ class Interval:
     def sqrt(self):
         return self.simple_power(0.5)
 
+    def divide(self,other):
+        return self.mult(other.reciprocal())
+
     def reciprocal(self):
         if self.unbounded():
             return self
         if self.contains_zero():
-            print(self)
             corners = [1.0/self.lower, 1.0/self.upper]
             return Interval.type_infer(min(corners), float('inf'))
         else:
@@ -383,11 +385,46 @@ class IntervalCollection:
 class UnknownIntervalError(Exception):
     pass
 
+def backpropagate_intervals(expr,ival,ivals):
+    def is_conc(expr):
+        return all(map(lambda v: v in ivals, expr.vars()))
+
+    if expr.op == oplib.OpType.VAR:
+        if expr.name in ivals:
+            return {}
+
+        return {expr.name:ival}
+
+    elif expr.op == oplib.OpType.EMIT:
+        return backpropagate_intervals(expr.arg(0),ival,ivals)
+
+    elif expr.op == oplib.OpType.MULT:
+        ival0 = propagate_intervals(expr.arg(0),ivals) \
+                if is_conc(expr.arg(0)) else None
+        ival1 = propagate_intervals(expr.arg(1),ivals) \
+                if is_conc(expr.arg(1)) else None
+        if ival0 is None and ival1 is None:
+            raise UnknownIntervalError("cannot backprop through <%s>" % expr)
+
+        elif ival1 is None:
+            return backpropagate_intervals(expr.arg(1),ival.divide(ival0),ivals)
+        elif ival0 is None:
+            return backpropagate_intervals(expr.arg(0),ival.divide(ival1),ivals)
+        else:
+            return {}
+
+
+    elif expr.op == oplib.OpType.INTEG:
+        raise UnknownIntervalError("cannot backprop through <%s>" % expr)
+    else:
+        raise Exception("backprop expression: %s" % (expr))
+
 def propagate_intervals(expr,ivals):
     if expr.op == oplib.OpType.VAR:
         if not expr.name in ivals:
             raise UnknownIntervalError("unknown interval for <%s>" % expr.name)
         return ivals[expr.name]
+
     elif expr.op == oplib.OpType.EMIT:
         return propagate_intervals(expr.arg(0), \
                                    ivals)
@@ -416,5 +453,7 @@ def propagate_intervals(expr,ivals):
     elif expr.op == oplib.OpType.CONST:
         return Interval(expr.value,expr.value)
 
+    elif expr.op == oplib.OpType.INTEG:
+        raise UnknownIntervalError("cannot propagate through <%s>" % expr)
     else:
-        raise Exception("expression: %s" % (expr))
+        raise Exception("prop expression: %s" % (expr))

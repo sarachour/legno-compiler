@@ -11,7 +11,6 @@ class DynamicalSystemInfo:
     self.intervals = {}
 
   def set_interval(self,inst,port,ival):
-    print("%s.%s = %s" % (inst,port,ival))
     assert(isinstance(ival,ivallib.Interval))
     self.intervals[(str(inst),port)] = ival
 
@@ -22,6 +21,12 @@ class DynamicalSystemInfo:
     if not self.has_interval(inst,port):
       raise Exception("no interval <%s,%s>" % (inst,port))
     return self.intervals[(str(inst),port)]
+
+  def __repr__(self):
+    st = ""
+    for ((inst,port),ival) in self.intervals.items():
+      st += "%s.%s = %s\n" % (inst,port,ival)
+    return st
 
 class HardwareInfo:
 
@@ -61,6 +66,16 @@ class SCVar:
 
   def vars(self):
     return [self]
+
+class QualityVar(SCVar):
+
+  def __init__(self):
+    SCVar.__init__(self)
+
+
+  def __repr__(self):
+    return "quality()"
+
 
 class ModeVar(SCVar):
 

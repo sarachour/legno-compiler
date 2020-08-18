@@ -8,6 +8,54 @@ import compiler.lscale_pass.lscale_solver as lscale_solver
 import compiler.lscale_pass.lscale_ops as scalelib
 import ops.interval as ivallib
 
+def _get_intervals(dev,dsinfo,cfg):
+  blk = dev.get_block(cfg.inst.block)
+  bl_mode = list(cfg.modes)[0]
+  intervals = {}
+
+  for port in blk.inputs.field_names() + blk.outputs.field_names():
+    if dsinfo.has_interval(cfg.inst,port):
+      intervals[port] = dsinfo.get_interval(cfg.inst,port)
+
+  for datum in cfg.stmts_of_type(adplib.ConfigStmtType.CONSTANT):
+    intervals[datum.name] = dsinfo.get_interval(cfg.inst,datum.name)
+
+  return intervals
+
+def _generate_dsinfo_backprop(dev,dsinfo,adp):
+  count = 0
+  for conn in adp.conns:
+    if len(list(filter(lambda c: c.same_dest(conn), adp.conns))) > 1:
+        continue
+
+    if not dsinfo.has_interval(conn.source_inst,conn.source_port):
+      if dsinfo.has_interval(conn.dest_inst, \
+                             conn.dest_port):
+          source_ival = dsinfo.get_interval(conn.dest_inst, \
+                                            conn.dest_port)
+          dsinfo.set_interval(conn.source_inst,conn.source_port,source_ival)
+          count += 1
+
+  for cfg in adp.configs:
+    intervals = _get_intervals(dev,dsinfo,cfg)
+    blk = dev.get_block(cfg.inst.block)
+    bl_mode = list(cfg.modes)[0]
+
+    for out in blk.outputs:
+      if out.name in intervals:
+        rel = out.relation[bl_mode]
+        try:
+          inp_intervals = ivallib.backpropagate_intervals(rel,intervals[out.name], \
+                                                          intervals)
+        except ivallib.UnknownIntervalError as e:
+          continue
+
+        for port_name,ival in inp_intervals.items():
+          dsinfo.set_interval(cfg.inst,port_name,ival)
+          count += 1
+
+  return count
+
 def _generate_dsinfo_recurse(dev,dsinfo,adp):
   count = 0
   for conn in adp.conns:
@@ -31,13 +79,7 @@ def _generate_dsinfo_recurse(dev,dsinfo,adp):
   for cfg in adp.configs:
     blk = dev.get_block(cfg.inst.block)
     bl_mode = list(cfg.modes)[0]
-    intervals = {}
-    for port in blk.inputs.field_names() + blk.outputs.field_names():
-      if dsinfo.has_interval(cfg.inst,port):
-        intervals[port] = dsinfo.get_interval(cfg.inst,port)
-
-    for datum in cfg.stmts_of_type(adplib.ConfigStmtType.CONSTANT):
-      intervals[datum.name] = dsinfo.get_interval(cfg.inst,datum.name)
+    intervals = _get_intervals(dev,dsinfo,cfg)
 
     for out in blk.outputs:
       if dsinfo.has_interval(cfg.inst,out.name):
@@ -54,7 +96,6 @@ def _generate_dsinfo_recurse(dev,dsinfo,adp):
   return count
 
 def generate_dynamical_system_info(dev,program,adp):
-  print("=================")
   dsinfo = scalelib.DynamicalSystemInfo()
   ds_ivals = dict(program.intervals())
   for config in adp.configs:
@@ -66,6 +107,9 @@ def generate_dynamical_system_info(dev,program,adp):
     for datum in config.stmts_of_type(adplib.ConfigStmtType.CONSTANT):
       ival = ivallib.Interval.type_infer(datum.value,datum.value)
       dsinfo.set_interval(config.inst,datum.name,ival)
+
+  while _generate_dsinfo_backprop(dev,dsinfo,adp) > 0:
+    pass
 
   while _generate_dsinfo_recurse(dev,dsinfo,adp) > 0:
     pass
@@ -256,10 +300,8 @@ def templatize_and_factor_relation(hwinfo,inst,output,baseline_mode,modes):
 
     yield scalelib.SCSubsetOfModes(scalelib.ModeVar(inst),valid_modes,modes)
 
-def generate_analog_port_constraints(hwinfo, dsinfo,inst,  \
-                                     baseline_mode, modes, \
-                                     port):
-  # encode mode-dependent interval changes
+def generate_port_properties(hwinfo,dsinfo,inst, \
+                                baseline_mode, modes, port):
   oprange = hwinfo.get_op_range(inst,baseline_mode,port)
   v_mode = scalelib.ModeVar(inst)
   v_lower = scalelib.PropertyVar(scalelib.PropertyVar.Type.INTERVAL_LOWER, \
@@ -274,12 +316,48 @@ def generate_analog_port_constraints(hwinfo, dsinfo,inst,  \
     yield scalelib.SCModeImplies(v_mode,modes,mode,v_upper,uv)
 
 
+def generate_port_oprange_constraints(hwinfo, dsinfo,inst,  \
+                                             baseline_mode, modes, \
+                                             port):
+  # encode mode-dependent interval changes
+  oprange = hwinfo.get_op_range(inst,baseline_mode,port)
+  v_mode = scalelib.ModeVar(inst)
+  v_lower = scalelib.PropertyVar(scalelib.PropertyVar.Type.INTERVAL_LOWER, \
+                                 inst,port)
+  v_upper = scalelib.PropertyVar(scalelib.PropertyVar.Type.INTERVAL_UPPER, \
+                                 inst,port)
+
+  v_scalevar = scalelib.PortScaleVar(inst,port)
+
   interval = dsinfo.get_interval(inst,port)
   cstr = scalelib.SCIntervalCover(interval,oprange)
   cstr.monom.lower.add_term(v_lower)
   cstr.monom.upper.add_term(v_upper)
+  cstr.submonom.lower.add_term(v_scalevar)
+  cstr.submonom.upper.add_term(v_scalevar)
   yield cstr
 
+def generate_port_noise_constraints(hwinfo, dsinfo,inst,  \
+                                    baseline_mode, modes, \
+                                    port):
+  v_scalevar = scalelib.PortScaleVar(inst,port)
+  v_lower = scalelib.PropertyVar(scalelib.PropertyVar.Type.INTERVAL_LOWER, \
+                                 inst,port)
+  v_upper = scalelib.PropertyVar(scalelib.PropertyVar.Type.INTERVAL_UPPER, \
+                                 inst,port)
+
+  interval = dsinfo.get_interval(inst,port)
+  cstr = scalelib.SCIntervalCover(ivallib.Interval.type_infer(1,1), \
+                                  ivallib.Interval.type_infer(abs(interval.lower), \
+                                                              abs(interval.upper)))
+  cstr.monom.lower.add_term(v_scalevar)
+  cstr.monom.lower.add_term(v_lower,-1.0)
+  cstr.monom.upper.add_term(v_scalevar)
+  cstr.monom.upper.add_term(v_upper,-1.0)
+  qual = scalelib.QualityVar()
+  cstr.submonom.lower.add_term(qual)
+  cstr.submonom.upper.add_term(qual)
+  yield cstr
 
 def generate_digital_port_constraints(port):
   raise NotImplementedError
@@ -311,19 +389,36 @@ def generate_constraint_problem(dev,program,adp):
       if not adp.port_in_use(config.inst,port.name):
         continue
 
-      if port.type == blocklib.BlockSignalType.ANALOG:
-        for cstr in generate_analog_port_constraints(hwinfo, \
+      if port.type == blocklib.BlockSignalType.ANALOG or \
+         port.type == blocklib.BlockSignalType.DIGITAL:
+        for cstr in generate_port_properties(hwinfo, \
+                                             dsinfo, \
+                                             config.inst, \
+                                             config.modes[0], \
+                                             block.modes,
+                                             port.name):
+          yield cstr
+
+        for cstr in generate_port_oprange_constraints(hwinfo, \
                                                      dsinfo, \
                                                      config.inst, \
                                                      config.modes[0], \
                                                      block.modes,
                                                      port.name):
           yield cstr
-      elif port.type == blocklib.BlockSignalType.DIGITAL:
+
+
+      if port.type == blocklib.BlockSignalType.ANALOG:
+        for cstr in generate_port_noise_constraints(hwinfo, \
+                                                    dsinfo, \
+                                                    config.inst, \
+                                                    config.modes[0], \
+                                                    block.modes, port.name):
+          yield cstr
+
+      if port.type == blocklib.BlockSignalType.DIGITAL:
         for cstr in generate_digital_port_constraints(port):
           yield cstr
-      else:
-        raise Exception("unhandled")
 
     # any data-specific constraints
     for mode in block.modes:
@@ -343,11 +438,19 @@ def generate_constraint_problem(dev,program,adp):
           quantize = port.quantize[mode]
 
 
+def get_objective():
+  qual = scalelib.QualityVar()
+
+  monom = scalelib.SCMonomial()
+  monom.add_term(qual,-1.0)
+  return monom
+
 def scale(dev, program, adp):
   cstr_prob = []
   for stmt in generate_constraint_problem(dev,program,adp):
     cstr_prob.append(stmt)
 
-  for adp in lscale_solver.solve(dev,adp,cstr_prob):
+  obj = get_objective()
+  for adp in lscale_solver.solve(dev,adp,cstr_prob,obj):
     yield adp
 

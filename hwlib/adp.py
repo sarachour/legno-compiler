@@ -388,6 +388,12 @@ class Connection:
     return Connection(src_inst, src_port, \
                       dest_inst, dest_port)
 
+  def same_source(self,other):
+    assert(isinstance(other,Connection))
+    return self.source_inst == other.source_inst and \
+      self.source_port == other.source_port
+
+
   def same_dest(self,other):
     assert(isinstance(other,Connection))
     return self.dest_inst == other.dest_inst and \
