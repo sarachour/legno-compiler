@@ -25,9 +25,15 @@ class ADPSimResult:
     assert(isinstance(state_var,buildsim.ADPSim.Var))
     vals = self.values[state_var.key]
     times = self.time
-    scale_factor = self.sim.scale_factor(state_var)
-    V = np.array(vals)/scale_factor
-    T = np.array(times)/ self.sim.time_scale
+    if rectify:
+      scale_factor = self.sim.scale_factor(state_var)
+      print(scale_factor)
+      V = np.array(vals)/scale_factor
+      T = np.array(times)/ self.sim.time_scale
+    else:
+      V = vals
+      T = times
+
     return T,V
 
   def add_point(self,t,xs):
@@ -107,4 +113,3 @@ def simulate(dev,adp,plot_file):
                              sim)
   plot_adp_simulation(adp,result,plot_file)
 
-  raise NotImplementedError
