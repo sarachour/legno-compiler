@@ -421,7 +421,7 @@ class ADPMetadata:
   class Keys(Enum):
     LGRAPH_ID = "lgraph_id"
     LSCALE_ID = "lscale_id"
-    LSCALE_PHYS_MODEL = "lscale_model"
+    LSCALE_SCALE_METHOD = "lscale_method"
     LSCALE_OBJECTIVE = "lscale_objective"
     QUALITY = "quality"
     DSNAME = "dsname"

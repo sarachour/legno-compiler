@@ -42,6 +42,10 @@ lgraph_subp.add_argument('program', type=str,help='benchmark to compile')
 # lscale arguments
 lscale_subp = subparsers.add_parser('lscale', \
                                    help='scale circuit parameters.')
+lscale_subp.add_argument('--scale-method', type=str,default="ideal", \
+                       help='number of scaled adps to generate per adp.')
+lscale_subp.add_argument('--objective', type=str,default="qty", \
+                       help='number of scaled adps to generate per adp.')
 lscale_subp.add_argument('--scale-adps', type=int,default=5, \
                        help='number of scaled adps to generate per adp.')
 lscale_subp.add_argument('program', type=str,help='benchmark to compile')

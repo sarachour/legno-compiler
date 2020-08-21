@@ -1,9 +1,13 @@
 import ops.interval as ivallib
 from enum import Enum
 
-class ScaleMethod:
+class ObjectiveFun(Enum):
+  QUALITY = "qty"
+
+
+class ScaleMethod(Enum):
   IDEAL = "ideal"
-  PHYSICAL = "physical"
+  PHYSICAL = "phys"
 
 class DynamicalSystemInfo:
 

@@ -5,7 +5,7 @@ import ops.generic_op as genoplib
 import ops.opparse as opparse
 import numpy as np
 import compiler.lscale_pass.lscale_ops as scalelib
-import compieler.math_utils as mathutils
+import compiler.math_utils as mathutils
 
 import ops.interval as ivallib
 
@@ -207,7 +207,7 @@ def templatize_and_factor_relation(hwinfo,inst,output,baseline_mode,modes):
   Divide each mode relation by the baseline. If the shape doesn't match
   up, raise an exception
   '''
-  templ = canonicalize_integration_operation(hwinfo \
+  templ = mathutils.canonicalize_integration_operation(hwinfo \
                                              .get_relation(inst, \
                                                            baseline_mode, \
                                                            output))

@@ -18,6 +18,7 @@ def get_device():
 
 def exec_lscale(args):
     from compiler import lscale
+    import compiler.lscale_pass.lscale_ops as scalelib
 
     board = get_device()
     path_handler = paths.PathHandler(args.subset,args.program)
@@ -31,22 +32,23 @@ def exec_lscale(args):
                     print("===== %s =====" % (lgraph_adp_file))
                     adp = ADP.from_json(board, \
                                         json.loads(fh.read()))
+
+                obj = scalelib.ObjectiveFun(args.objective)
+                scale_method = scalelib.ScaleMethod(args.scale_method)
                 for idx,scale_adp in enumerate(lscale.scale(board, \
-                                                                program, \
-                                                                adp)):
+                                                            program, \
+                                                            adp, \
+                                                            objective=obj, \
+                                                            scale_method=scale_method)):
 
                     print("<<< writing circuit %d>>>" % idx)
-                    scale_adp.metadata.set(ADPMetadata.Keys.LSCALE_ID, \
-                                     idx)
-                    scale_adp.metadata.set(ADPMetadata.Keys.LSCALE_PHYS_MODEL, \
-                                     "unknown")
-                    scale_adp.metadata.set(ADPMetadata.Keys.LSCALE_OBJECTIVE, \
-                                     "unknown")
+                    scale_adp.metadata.set(ADPMetadata.Keys.LSCALE_ID,idx)
+
 
                     filename = path_handler.lscale_adp_file(
                         scale_adp.metadata[ADPMetadata.Keys.LGRAPH_ID],
                         scale_adp.metadata[ADPMetadata.Keys.LSCALE_ID],
-                        scale_adp.metadata[ADPMetadata.Keys.LSCALE_PHYS_MODEL],
+                        scale_adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD],
                         scale_adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE])
 
                     with open(filename,'w') as fh:
@@ -57,7 +59,7 @@ def exec_lscale(args):
                     filename = path_handler.lscale_adp_diagram_file(
                         scale_adp.metadata[ADPMetadata.Keys.LGRAPH_ID],
                         scale_adp.metadata[ADPMetadata.Keys.LSCALE_ID],
-                        scale_adp.metadata[ADPMetadata.Keys.LSCALE_PHYS_MODEL],
+                        scale_adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD],
                         scale_adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE])
 
                     adprender.render(board,scale_adp,filename)
@@ -135,7 +137,7 @@ def exec_lsim(args):
                         adp.metadata[ADPMetadata.Keys.DSNAME],
                         adp.metadata[ADPMetadata.Keys.LGRAPH_ID],
                         adp.metadata[ADPMetadata.Keys.LSCALE_ID],
-                        adp.metadata[ADPMetadata.Keys.LSCALE_PHYS_MODEL],
+                        adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD],
                         adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE])
 
 
