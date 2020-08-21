@@ -107,6 +107,9 @@ class Interval:
         else:
             return False
 
+    def is_value(self,val):
+        return self.lower == val and \
+            self.upper == val
 
     def negate(self):
         return Interval.type_infer(

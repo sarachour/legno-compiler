@@ -38,8 +38,27 @@ class HardwareInfo:
     blk = self.dev.get_block(instance.block)
     if blk.inputs.has(name):
       return blk.inputs[name]
+    elif blk.data.has(name):
+      return blk.data[name]
     else:
       return blk.outputs[name]
+
+  def get_freq(self,instance,mode,port_name):
+    assert(isinstance(port_name,str))
+    port = self._get_port(instance,port_name)
+    if hasattr(port,'freq'):
+      return port.freq[mode]
+    else:
+      return None
+
+
+  def get_quantize(self,instance,mode,port_name):
+    assert(isinstance(port_name,str))
+    port = self._get_port(instance,port_name)
+    if hasattr(port,'quantize'):
+      return port.quantize[mode]
+    else:
+      return None
 
   def get_op_range(self,instance,mode,port_name):
     assert(isinstance(port_name,str))
@@ -125,6 +144,7 @@ class PropertyVar(SCVar):
     FREQUENCY = "freq"
     INTERVAL_UPPER = "ivalU"
     INTERVAL_LOWER = "ivalL"
+    QUANTIZE = "quantize"
 
   def __init__(self,type,instance,port):
     assert(isinstance(type,PropertyVar.Type))
@@ -289,30 +309,27 @@ class SCIntervalCover:
     self.monom = SCIntervalMonomial()
 
   def valid(self):
-    if self.subinterval.upper == 0 or \
-       self.subinterval.lower == 0:
-      raise Exception("not handled: subinterval %s" % self.subinterval)
-
-    if self.interval.upper == 0 or \
-       self.interval.lower == 0:
-      raise Exception("not handled: interval %s" % self.interval)
-
     if self.subinterval.upper > 0 and \
-       self.interval.upper < 0:
+       self.interval.upper <= 0:
       return False
-    if self.subinterval.lower < 0 and \
+    if self.subinterval.lower <= 0 and \
        self.interval.lower > 0:
       return False
     return True
 
   def trivial(self):
+    assert(self.valid())
+    if self.subinterval.is_value(0.0) and \
+       self.interval.is_value(0.0):
+      return True,True
+
     upper_trivial,lower_trivial = False,False
-    if self.subinterval.upper < 0 and \
-       self.interval.upper > 0:
+    if self.subinterval.upper <= 0 and \
+       self.interval.upper >= 0:
       upper_trivial = True
 
-    if self.subinterval.lower > 0 and \
-       self.subinterval.lower < 0:
+    if self.subinterval.lower >= 0 and \
+       self.interval.lower <= 0:
       lower_trivial = True
     return (lower_trivial,upper_trivial)
 

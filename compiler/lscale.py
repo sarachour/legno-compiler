@@ -223,6 +223,41 @@ def generate_factor_constraints(inst,rel):
   else:
     raise Exception(rel)
 
+def generate_relation_coeffs(hwinfo,inst,output,baseline_mode,modes,templ):
+  valid_modes = []
+  if templ.op == baseoplib.OpType.INTEG:
+    deriv_coeff_var = scalelib.ConstCoeffVar(inst,output,0)
+    ic_coeff_var = scalelib.ConstCoeffVar(inst,output,1)
+
+    for mode in modes:
+      targ= hwinfo.get_relation(inst,mode,output)
+      canon= canonicalize_integration_operation(targ)
+      ic_succ,ic_coeff,ic_expr = templatize(templ.init_cond,canon.init_cond)
+      der_succ,der_coeff,der_expr = templatize(templ.deriv,canon.deriv)
+      if ic_succ and der_succ:
+        yield scalelib.SCModeImplies(scalelib.ModeVar(inst), \
+                                     modes,mode,deriv_coeff_var,der_coeff)
+        yield scalelib.SCModeImplies(scalelib.ModeVar(inst), \
+                                     modes,mode,ic_coeff_var,ic_coeff)
+        valid_modes.append(mode)
+
+
+  else:
+    coeff_var = scalelib.ConstCoeffVar(inst,output,0)
+    for mode in modes:
+      targ= hwinfo.get_relation(inst,mode,output)
+      succ,coeff,expr = templatize(templ,targ)
+      if succ:
+        yield scalelib.SCModeImplies(scalelib.ModeVar(inst), \
+                                     modes,mode,coeff_var,coeff)
+        valid_modes.append(mode)
+
+
+  yield scalelib.SCSubsetOfModes(scalelib.ModeVar(inst), \
+                                 valid_modes, \
+                                 modes)
+
+
 def templatize_and_factor_relation(hwinfo,inst,output,baseline_mode,modes):
   '''
   Create a relation with ConstVars instead of coefficients.
@@ -233,6 +268,10 @@ def templatize_and_factor_relation(hwinfo,inst,output,baseline_mode,modes):
                                              .get_relation(inst, \
                                                            baseline_mode, \
                                                            output))
+  for cstr in generate_relation_coeffs(hwinfo,inst,output, \
+                                       baseline_mode,modes,templ):
+    yield cstr
+
   if templ.op == baseoplib.OpType.INTEG:
     _,bl_deriv_expr = get_expr_coefficient(templ.deriv)
     _,bl_ic_expr = get_expr_coefficient(templ.init_cond)
@@ -240,12 +279,11 @@ def templatize_and_factor_relation(hwinfo,inst,output,baseline_mode,modes):
     ic_coeff_var = scalelib.ConstCoeffVar(inst,output,1)
 
     # produce necessary factor constraints
-    cstrs,bl_deriv_monom = generate_factor_constraints(inst,bl_deriv_expr)
-    for cstr in cstrs:
-      yield cstr
+    deriv_cstrs,bl_deriv_monom = generate_factor_constraints(inst, \
+                                                       bl_deriv_expr)
+    ic_cstrs,bl_ic_monom = generate_factor_constraints(inst,bl_ic_expr)
 
-    cstrs,bl_ic_monom = generate_factor_constraints(inst,bl_ic_expr)
-    for cstr in cstrs:
+    for cstr in deriv_cstrs + ic_cstrs:
       yield cstr
 
     deriv_monom = scalelib.SCMonomial()
@@ -261,20 +299,6 @@ def templatize_and_factor_relation(hwinfo,inst,output,baseline_mode,modes):
     yield scalelib.SCEq(ic_monom,scalelib.PortScaleVar(inst,output))
 
     # derive assignments for coefficients
-    valid_modes = []
-    for mode in modes:
-      targ= hwinfo.get_relation(inst,mode,output)
-      canon= canonicalize_integration_operation(targ)
-      ic_succ,ic_coeff,ic_expr = templatize(templ.init_cond,canon.init_cond)
-      der_succ,der_coeff,der_expr = templatize(templ.deriv,canon.deriv)
-      if ic_succ and der_succ:
-        yield scalelib.SCModeImplies(scalelib.ModeVar(inst), \
-                                     modes,mode,deriv_coeff_var,der_coeff)
-        yield scalelib.SCModeImplies(scalelib.ModeVar(inst), \
-                                     modes,mode,ic_coeff_var,ic_coeff)
-        valid_modes.append(mode)
-
-    yield scalelib.SCSubsetOfModes(scalelib.ModeVar(inst),valid_modes,modes)
 
   else:
     coeff_var = scalelib.ConstCoeffVar(inst,output,0)
@@ -289,32 +313,35 @@ def templatize_and_factor_relation(hwinfo,inst,output,baseline_mode,modes):
     monom.product(bl_monom)
     yield scalelib.SCEq(monom,scalelib.PortScaleVar(inst,output))
 
-    valid_modes = []
-    for mode in modes:
-      targ= hwinfo.get_relation(inst,mode,output)
-      succ,coeff,expr = templatize(templ,targ)
-      if succ:
-        yield scalelib.SCModeImplies(scalelib.ModeVar(inst), \
-                                     modes,mode,coeff_var,coeff)
-        valid_modes.append(mode)
-
-    yield scalelib.SCSubsetOfModes(scalelib.ModeVar(inst),valid_modes,modes)
-
 def generate_port_properties(hwinfo,dsinfo,inst, \
                                 baseline_mode, modes, port):
   oprange = hwinfo.get_op_range(inst,baseline_mode,port)
+  quantize = hwinfo.get_quantize(inst,baseline_mode,port)
+  freq = hwinfo.get_freq(inst,baseline_mode,port)
+
   v_mode = scalelib.ModeVar(inst)
   v_lower = scalelib.PropertyVar(scalelib.PropertyVar.Type.INTERVAL_LOWER, \
                                  inst,port)
   v_upper = scalelib.PropertyVar(scalelib.PropertyVar.Type.INTERVAL_UPPER, \
                                  inst,port)
+  v_quantize,v_freq = None,None
+  if not quantize is None:
+    v_quantize = scalelib.PropertyVar(scalelib.PropertyVar.Type.QUANTIZE, \
+                                      inst,port)
+  if not freq is None:
+    v_freq = scalelib.PropertyVar(scalelib.PropertyVar.Type.QUANTIZE, \
+                                  inst,port)
 
   for mode in modes:
     mode_oprange = hwinfo.get_op_range(inst,mode,port)
     lv,uv = mode_oprange.ratio(oprange)
     yield scalelib.SCModeImplies(v_mode,modes,mode,v_lower,lv)
     yield scalelib.SCModeImplies(v_mode,modes,mode,v_upper,uv)
-
+    if not quantize is None:
+      mode_quantize= hwinfo.get_quantize(inst,mode,port)
+      quant_ratio = mode_quantize.error(mode_oprange)/quantize.error(oprange)
+      assert(quant_ratio > 0.0)
+      yield scalelib.SCModeImplies(v_mode,modes,mode,v_quantize, quant_ratio)
 
 def generate_port_oprange_constraints(hwinfo, dsinfo,inst,  \
                                              baseline_mode, modes, \
@@ -336,6 +363,32 @@ def generate_port_oprange_constraints(hwinfo, dsinfo,inst,  \
   cstr.submonom.lower.add_term(v_scalevar)
   cstr.submonom.upper.add_term(v_scalevar)
   yield cstr
+
+def generate_port_quantize_constraints(hwinfo, dsinfo,inst,  \
+                                       baseline_mode, modes, \
+                                       port):
+  v_scalevar = scalelib.PortScaleVar(inst,port)
+  v_quantize = scalelib.PropertyVar(scalelib.PropertyVar.Type.QUANTIZE, \
+                                 inst,port)
+
+  interval = dsinfo.get_interval(inst,port)
+  oprange = hwinfo.get_op_range(inst,baseline_mode,port)
+  quantize_error = hwinfo.get_quantize(inst,baseline_mode,port) \
+                         .error(oprange)
+  cstr = scalelib.SCIntervalCover(ivallib.Interval.type_infer(quantize_error, \
+                                                              quantize_error), \
+                                  ivallib.Interval.type_infer(abs(interval.lower), \
+                                                              abs(interval.upper)))
+
+  if cstr.interval.is_value(0.0):
+    return
+
+  cstr.submonom.lower.add_term(v_quantize)
+  cstr.submonom.upper.add_term(v_quantize)
+  cstr.monom.lower.add_term(v_scalevar)
+  cstr.monom.upper.add_term(v_scalevar)
+  yield cstr
+
 
 def generate_port_noise_constraints(hwinfo, dsinfo,inst,  \
                                     baseline_mode, modes, \
@@ -359,8 +412,91 @@ def generate_port_noise_constraints(hwinfo, dsinfo,inst,  \
   cstr.submonom.upper.add_term(qual)
   yield cstr
 
-def generate_digital_port_constraints(port):
-  raise NotImplementedError
+def generate_const_data_field_constraints(hwinfo,dsinfo,inst, \
+                                          baseline_mode,modes,datafield):
+  for cstr in generate_port_properties(hwinfo, \
+                                       dsinfo, \
+                                       inst, \
+                                       baseline_mode, \
+                                       modes, \
+                                       datafield):
+    yield cstr
+
+  for cstr in generate_port_oprange_constraints(hwinfo, \
+                                                dsinfo, \
+                                                inst, \
+                                                baseline_mode, \
+                                                modes, \
+                                                datafield):
+    yield cstr
+
+  for cstr in generate_port_quantize_constraints(hwinfo, \
+                                                 dsinfo, \
+                                                 inst, \
+                                                 baseline_mode, \
+                                                 modes, \
+                                                 datafield):
+    yield cstr
+
+
+
+def generate_digital_port_constraints(hwinfo,dsinfo,inst, \
+                                      baseline_mode,modes,port):
+  for cstr in generate_port_properties(hwinfo, \
+                                       dsinfo, \
+                                       config.inst, \
+                                       config.modes[0], \
+                                       block.modes,
+                                       port.name):
+    yield cstr
+
+  for cstr in generate_port_oprange_constraints(hwinfo, \
+                                                dsinfo, \
+                                                config.inst, \
+                                                config.modes[0], \
+                                                block.modes,
+                                                port.name):
+    yield cstr
+
+  for cstr in generate_port_quantize_constraints(hwinfo, \
+                                                dsinfo, \
+                                                config.inst, \
+                                                config.modes[0], \
+                                                block.modes,
+                                                port.name):
+    yield cstr
+
+
+
+def generate_analog_port_constraints(hwinfo,dsinfo,inst, \
+                                     baseline_mode,modes,port):
+
+  for cstr in generate_port_properties(hwinfo, \
+                                       dsinfo, \
+                                       inst, \
+                                       baseline_mode, \
+                                       modes,
+                                       port):
+    yield cstr
+
+  for cstr in generate_port_oprange_constraints(hwinfo, \
+                                                dsinfo, \
+                                                inst, \
+                                                baseline_mode, \
+                                                modes,
+                                                port):
+    yield cstr
+
+  for cstr in generate_port_noise_constraints(hwinfo, \
+                                              dsinfo, \
+                                              inst, \
+                                              baseline_mode, \
+                                              modes, port):
+    yield cstr
+
+
+
+
 
 
 def generate_constraint_problem(dev,program,adp):
@@ -389,9 +525,8 @@ def generate_constraint_problem(dev,program,adp):
       if not adp.port_in_use(config.inst,port.name):
         continue
 
-      if port.type == blocklib.BlockSignalType.ANALOG or \
-         port.type == blocklib.BlockSignalType.DIGITAL:
-        for cstr in generate_port_properties(hwinfo, \
+      if port.type == blocklib.BlockSignalType.ANALOG:
+        for cstr in generate_analog_port_constraints(hwinfo, \
                                              dsinfo, \
                                              config.inst, \
                                              config.modes[0], \
@@ -399,32 +534,27 @@ def generate_constraint_problem(dev,program,adp):
                                              port.name):
           yield cstr
 
-        for cstr in generate_port_oprange_constraints(hwinfo, \
-                                                     dsinfo, \
-                                                     config.inst, \
-                                                     config.modes[0], \
-                                                     block.modes,
-                                                     port.name):
-          yield cstr
-
-
-      if port.type == blocklib.BlockSignalType.ANALOG:
-        for cstr in generate_port_noise_constraints(hwinfo, \
-                                                    dsinfo, \
-                                                    config.inst, \
-                                                    config.modes[0], \
-                                                    block.modes, port.name):
-          yield cstr
-
       if port.type == blocklib.BlockSignalType.DIGITAL:
-        for cstr in generate_digital_port_constraints(port):
+        for cstr in generate_digital_port_constraints(hwinfo, \
+                                                      dsinfo, \
+                                                      config.inst, \
+                                                      config.modes[0], \
+                                                      block.modes,  \
+                                                      port.name):
           yield cstr
 
     # any data-specific constraints
     for mode in block.modes:
       for datum in block.data:
         if datum.type == blocklib.BlockDataType.CONST:
-          pass
+          for cstr in generate_const_data_field_constraints(hwinfo, \
+                                                        dsinfo, \
+                                                        config.inst, \
+                                                        config.modes[0], \
+                                                        block.modes,  \
+                                                        datum.name):
+            yield cstr
+
         elif datum.type == blocklib.BlockDataType.EXPR:
           pass
         else:

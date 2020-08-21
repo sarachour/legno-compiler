@@ -15,6 +15,12 @@ class Quantize:
         self.n = n
         self.type = interp_type
 
+    def error(self,interval):
+        assert(self.type == QuantizeType.LINEAR)
+        val = float(interval.upper-interval.lower)/self.n
+        assert(val > 0.0)
+        return val
+
     def get_values(self,interval):
         if self.type == QuantizeType.LINEAR:
             return list(np.linspace(interval.lower,interval.upper,self.n))

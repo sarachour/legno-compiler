@@ -367,7 +367,7 @@ class BlockConfig:
 
     return st
 
-class Connection:
+class ADPConnection:
 
   def __init__(self,src_inst,src_port,dest_inst,dest_port):
     assert(isinstance(src_inst,BlockInst))
@@ -385,17 +385,17 @@ class Connection:
     src_port = obj['source_port']
     dest_inst = BlockInst.from_json(obj['dest_inst'])
     dest_port = obj['dest_port']
-    return Connection(src_inst, src_port, \
+    return ADPConnection(src_inst, src_port, \
                       dest_inst, dest_port)
 
   def same_source(self,other):
-    assert(isinstance(other,Connection))
+    assert(isinstance(other,ADPConnection))
     return self.source_inst == other.source_inst and \
       self.source_port == other.source_port
 
 
   def same_dest(self,other):
-    assert(isinstance(other,Connection))
+    assert(isinstance(other,ADPConnection))
     return self.dest_inst == other.dest_inst and \
       self.dest_port == other.dest_port
 
@@ -414,16 +414,56 @@ class Connection:
                                         self.dest_inst, \
                                         self.dest_port)
 
+class ADPMetadata:
+  class Keys(Enum):
+    LGRAPH_ID = "lgraph_id"
+    LSCALE_ID = "lscale_id"
+    LSCALE_PHYS_MODEL = "lscale_model"
+    LSCALE_OBJECTIVE = "lscale_objective"
+    QUALITY = "quality"
+
+  def __init__(self):
+    self._meta = {}
+
+  def set(self,key,val):
+    assert(isinstance(key,ADPMetadata.Keys))
+    self._meta[key] = val
+
+  def copy(self):
+    meta = ADPMetadata()
+    for k,v in self._meta.items():
+      meta.set(k,v)
+    return meta
+
+  @staticmethod
+  def from_json(obj):
+    meta  = ADPMetadata()
+    for k,v in obj['meta'].items():
+      mkey = ADPMetadata.Keys(k)
+      meta.set(mkey,v)
+    return meta
+
+  def to_json(self):
+    return {
+      'meta':dict(map(lambda tup: (tup[0].value,tup[1]), \
+                      self._meta.items()))
+    }
+
+  def __getitem__(self,k):
+    return self._meta[k]
+
 class ADP:
 
   def __init__(self):
     self.configs = BlockInstanceCollection(self)
     self.conns = []
+    self.metadata = ADPMetadata()
     self._tau = 1.0
 
   def copy(self,dev):
     adp = ADP()
     adp.tau = self.tau
+    adp.metadata = self.metadata.copy()
     for cfg in self.configs:
       blk = dev.get_block(cfg.inst.block)
       newcfg = adp.add_instance(blk,cfg.inst.loc)
@@ -470,7 +510,7 @@ class ADP:
     assert(isinstance(srcport, blocklib.BlockOutput))
     assert(isinstance(dstport, blocklib.BlockInput))
     self.conns.append(
-      Connection(
+      ADPConnection(
         src_inst,
         srcport.name,
         dest_inst,
@@ -493,8 +533,10 @@ class ADP:
   def from_json(board,jsonobj):
     adp = ADP()
     adp.tau = jsonobj['tau']
+    adp.metadata = ADPMetadata.from_json(jsonobj['metadata'])
+
     for jsonconn in jsonobj['conns']:
-      conn = Connection.from_json(jsonconn)
+      conn = ADPConnection.from_json(jsonconn)
       adp.conns.append(conn)
 
     for jsonconfig in jsonobj['configs']:
@@ -506,6 +548,7 @@ class ADP:
   def to_json(self):
     return {
       'tau':self.tau,
+      'metadata':self.metadata.to_json(),
       'conns': list(map(lambda c: c.to_json(), self.conns)),
       'configs': self.configs.to_json()
     }
@@ -516,6 +559,10 @@ class ADP:
       st.append(stmt)
 
     q('tau=%f' % self.tau)
+    q('=== metadata ===')
+    for key,value in self.metadata:
+      q("field %s = %s" % (key.value,value))
+
     q('=== connections ===')
     for conn in self.conns:
       q(str(conn))

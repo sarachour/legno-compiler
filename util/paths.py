@@ -107,6 +107,16 @@ class PathHandler:
         assert(not result is None)
         return result
 
+    def lscale_adp_diagram_file(self,graph_index,scale_index,model,opt):
+        path ="{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}.gv"
+        filepath = path.format(path=self.LSCALE_ADP_DIAG_DIR, \
+                               prog=self._prog, \
+                               lgraph=graph_index, \
+                               lscale=scale_index, \
+                               model=model, \
+                               opt=opt)
+
+ 
     def lscale_adp_file(self,graph_index,scale_index,model,opt):
         path ="{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}.adp"
         filepath = path.format(path=self.LSCALE_ADP_DIR, \

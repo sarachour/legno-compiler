@@ -24,6 +24,7 @@ parser.add_argument('--subset', default="unrestricted",
 subparsers = parser.add_subparsers(dest='subparser_name',
                                    help='compilers/compilation passes.')
 
+# lgraph arguments
 lgraph_subp = subparsers.add_parser('lgraph', help='generate circuit')
 lgraph_subp.add_argument('--vadp-fragments', type=int,default=100,
                        help='number of abs circuits to generate.')
@@ -36,36 +37,14 @@ lgraph_subp.add_argument('--asm-fragments',type=int,default=3,
 lgraph_subp.add_argument('--synth-depth',type=int,default=20,
                          help='depth of synthesis fragments that are generated')
 
-
-
 lgraph_subp.add_argument('program', type=str,help='benchmark to compile')
 
+# lscale arguments
 lscale_subp = subparsers.add_parser('lscale', \
                                    help='scale circuit parameters.')
-lscale_subp.add_argument('--model', default="naive-min_error",
-                        help='use physical models to inform constraints.')
-lscale_subp.add_argument('--ignore-model',action='append',
-                         help='don\'t use delta models for a specific type of block')
-lscale_subp.add_argument('--ignore-missing', action="store_true", \
-                         help='ignore missing delta models')
-lscale_subp.add_argument('--scale-circuits', type=int,default=5, \
-                       help='number of scaled circuits to generate.')
-lscale_subp.add_argument('--mc', type=float, default=0.80, \
-                        help='minimum coverage for digital signals.')
-lscale_subp.add_argument('--mdpe', type=float, default=0.04, \
-                        help='maximum digital percent error.')
-lscale_subp.add_argument('--mape',type=float,default=0.04, \
-                        help='maximum analog percent error.')
-lscale_subp.add_argument('--search',action="store_true")
+lscale_subp.add_argument('--scale-adps', type=int,default=5, \
+                       help='number of scaled adps to generate per adp.')
 lscale_subp.add_argument('program', type=str,help='benchmark to compile')
-
-lscale_subp.add_argument("--max-freq", type=float, \
-                         help="maximum frequency in Khz")
-
-graph_subp = subparsers.add_parser('graph', \
-                                   help='emit debugging graph.')
-graph_subp.add_argument('--circ', type=str, \
-                        help='do performance sweep.')
 
 
 gren_subp = subparsers.add_parser('srcgen', help='generate grendel script.')

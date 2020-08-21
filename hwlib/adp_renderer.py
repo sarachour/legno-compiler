@@ -1,7 +1,52 @@
 import hwlib.adp as adplib
 import graphviz
+from enum import Enum
 
-def render_config(board,graph,cfg):
+class Colors:
+    LIGHTYELLOW = "#ffeaa7"
+    LIGHTPURPLE = "#a29bfe"
+    LIGHTGREY = "#ecf0f1"
+    LIGHTPINK = "#fd79a8"
+    ORANGE = "#e17055"
+    BLUE = "#3B3B98"
+
+def render_config_info(board,graph,cfg):
+    blk = board.get_block(cfg.inst.block)
+    st = []
+    st.append("\modes: %s" % (cfg.modes))
+    for data in cfg.stmts_of_type(adplib \
+                                  .ConfigStmtType \
+                                  .CONSTANT):
+        st.append("%s=%.2f scf=%.2e" % (data.name, \
+                                        data.value, \
+                                        data.scf))
+
+    ident = "%s-config" % cfg.inst
+    graph.node(ident, "%s" % "\n".join(st), \
+               shape="note", \
+               style="filled", \
+               fillcolor=Colors.LIGHTYELLOW)
+
+    port_id = "%s:block" % (cfg.inst)
+    graph.edge(ident,port_id, \
+               penwidth="2", \
+               style="dashed", \
+               arrowhead="tee",
+               arrowtail="normal", \
+               color=Colors.ORANGE)
+    return st
+
+
+def render_instance(board,graph,cfg,scale=False,source=False):
+    def port_text(port):
+        text = "%s" % port.name
+        if scale:
+            text += "\n %.2e" % cfg[port.name].scf
+        if source and not cfg[port.name].source is None:
+            text += "\n %s" % cfg[port.name].source
+
+        return "<%s> %s" % (port.name,text)
+
     # render
     blk = board.get_block(cfg.inst.block)
     block_templ= "{inputs} |<block> {block_info}| {outputs}"
@@ -9,10 +54,10 @@ def render_config(board,graph,cfg):
     outputs = []
     graph.attr(shape='record')
     for inp in blk.inputs:
-        inputs.append("<%s> %s" % (inp.name,inp.name))
+        inputs.append(port_text(inp))
 
     for out in blk.outputs:
-        outputs.append("<%s> %s" % (out.name,out.name))
+        outputs.append(port_text(out))
 
     block_name = str(cfg.inst)
     block_text = block_templ.format(
@@ -20,40 +65,69 @@ def render_config(board,graph,cfg):
         inputs= "{%s}" % ("|".join(inputs)),
         outputs="{%s}" % ("|".join(outputs))
     )
-    graph.node(block_name, "{%s}" % block_text)
+    graph.node(block_name, "{%s}" % block_text, \
+               shape="record", \
+               style="filled", \
+               fillcolor=Colors.LIGHTGREY)
+
+def render_port_scf(board,graph,inst,stmt):
+    source_templ = "{port} scf={scf:.2f}"
+    source_text = source_templ.format(
+        scf=stmt.scf, \
+        port=stmt.name
+    )
+    source_id = "%s-%s-scf" % (inst,stmt.name)
+    graph.node(source_id, source_text, \
+               shape="trapezium", \
+               style="filled", \
+               fillcolor=Colors.LIGHTPURPLE)
+
+    port_id = "%s:%s" % (inst,stmt.name)
+    graph.edge(source_id,port_id)
 
 def render_source_label(board,graph,inst,stmt):
-    source_templ = "{dsexpr} scf={scf}"
-    graph.attr(shape='rect')
+    source_templ = "expr={dsexpr} scf={scf:.2f}"
     source_id = "%s-%s-%s" % (inst,stmt.name,stmt.source)
     source_text = source_templ.format(
         dsexpr=stmt.source, \
         scf=stmt.scf \
     )
-    graph.node(source_id,"{%s}" % source_text)
+    graph.node(source_id, source_text, \
+               shape="cds", \
+               style="filled", \
+               fillcolor=Colors.LIGHTPINK)
 
     port_id = "%s:%s" % (inst,stmt.name)
     graph.edge(source_id,port_id)
+
+def render_conn(graph,conn):
+    src_id = "%s:%s" % (conn.source_inst,conn.source_port)
+    dest_id = "%s:%s" % (conn.dest_inst,conn.dest_port)
+    graph.edge(src_id,dest_id, \
+               penwidth="4", \
+               arrowhead="box",
+               arrowtail="normal", \
+               color=Colors.BLUE)
 
 def render(board,adp,filename):
     print(graphviz.version())
     graph = graphviz.Digraph('adp-viz', \
                            filename=filename, \
                            graph_attr={
-                               "overlap":'scale', \
-                               "nodesep":'1', \
-                               "splines":'curved', \
-                           },
-                           node_attr={'shape':'record'})
+                               "overlap":'false',
+                               "splines":'true', \
+                           })
     for cfg in adp.configs:
-        render_config(board,graph,cfg)
-        for stmt in cfg.stmts_of_type(adplib.ConfigStmtType.PORT):
-            if not stmt.source is None:
-                render_source_label(board,graph,cfg.inst,stmt)
+        render_instance(board,graph,cfg,scale=True,source=True)
+        render_config_info(board,graph,cfg)
+
+        #for stmt in cfg.stmts_of_type(adplib.ConfigStmtType.PORT):
+            #if not stmt.source is None:
+            #    render_source_label(board,graph,cfg.inst,stmt)
+            #else:
+                #render_port_scf(board,graph,cfg.inst,stmt)
 
     for conn in adp.conns:
-        src_id = "%s:%s" % (conn.source_inst,conn.source_port)
-        dest_id = "%s:%s" % (conn.dest_inst,conn.dest_port)
-        graph.edge(src_id,dest_id)
+        render_conn(graph,conn)
 
     graph.render()

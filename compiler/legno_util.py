@@ -7,7 +7,7 @@ import numpy as np
 import itertools
 import util.util as util
 import util.paths as paths
-from hwlib.adp import ADP
+from hwlib.adp import ADP,ADPMetadata
 from dslang.dsprog import DSProgDB
 import json
 import hwlib.adp_renderer as adprender
@@ -29,13 +29,48 @@ def exec_lscale(args):
             if lgraph_adp_file.endswith('.adp'):
                 with open(dirname+"/"+lgraph_adp_file,'r') as fh:
                     print("===== %s =====" % (lgraph_adp_file))
-                    adp = ADP.from_json(board,json.loads(fh.read()))
-                    for idx,scaled_adp in enumerate(lscale.scale(board, \
-                                                                 program, \
-                                                                 adp)):
-                        print(scaled_adp)
-    #timer.start()
-    count = 0
+                    adp = ADP.from_json(board, \
+                                        json.loads(fh.read()))
+                for idx,scaled_adp in enumerate(lscale.scale(board, \
+                                                                program, \
+                                                                adp)):
+
+                    print("<<< writing circuit %d>>>" % idx)
+                    adp.metadata.set(ADPMetadata.Keys.LSCALE_ID, \
+                                     idx)
+                    adp.metadata.set(ADPMetadata.Keys.LSCALE_PHYS_MODEL, \
+                                     "unknown")
+                    adp.metadata.set(ADPMetadata.Keys.LSCALE_OBJECTIVE, \
+                                     "unknown")
+
+                    filename = path_handler.lscale_adp_file(
+                        adp.metadata[ADPMetadata.Keys.LGRAPH_ID],
+                        adp.metadata[ADPMetadata.Keys.LSCALE_ID],
+                        adp.metadata[ADPMetadata.Keys.LSCALE_PHYS_MODEL],
+                        adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE])
+
+                    with open(filename,'w') as fh:
+                        jsondata = adp.to_json()
+                        fh.write(json.dumps(jsondata,indent=4))
+
+                    print("<<< writing graph >>>")
+                    filename = path_handler.lscale_adp_diagram_file(
+                        adp.metadata[ADPMetadata.Keys.LGRAPH_ID],
+                        adp.metadata[ADPMetadata.Keys.LSCALE_ID],
+                        adp.metadata[ADPMetadata.Keys.LSCALE_PHYS_MODEL],
+                        adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE])
+
+                    adprender.render(board,scaled_adp,filename)
+                    if idx >= args.scale_adps:
+                        break
+                    timer.start()
+
+
+    print("<<< done >>>")
+    timer.kill()
+    print(timer)
+    timer.save()
+
 
 def exec_lgraph(args):
     from compiler import lgraph
@@ -46,7 +81,7 @@ def exec_lgraph(args):
     timer = util.Timer('lgraph',path_handler)
     timer.start()
     count = 0
-    for indices,adp in \
+    for index,adp in \
         enumerate(lgraph.compile(board,
                                  program,
                                  vadp_fragments=args.vadp_fragments,
@@ -55,15 +90,16 @@ def exec_lgraph(args):
                                  vadps=args.vadps,
                                  adps=args.adps)):
         timer.end()
-
+        adp.metadata.set(ADPMetadata.Keys.LGRAPH_ID, \
+                         int(index))
         print("<<< writing circuit>>>")
-        filename = path_handler.lgraph_adp_file(indices)
+        filename = path_handler.lgraph_adp_file(index)
         with open(filename,'w') as fh:
             jsondata = adp.to_json()
             fh.write(json.dumps(jsondata,indent=4))
 
         print("<<< writing graph >>>")
-        filename = path_handler.lgraph_adp_diagram_file(indices)
+        filename = path_handler.lgraph_adp_diagram_file(index)
         adprender.render(board,adp,filename)
         count += 1
         if count >= args.adps:

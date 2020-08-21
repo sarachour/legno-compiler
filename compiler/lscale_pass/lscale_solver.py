@@ -1,6 +1,7 @@
 import ops.smtop as smtlib
 import compiler.lscale_pass.lscale_ops as scalelib
 import hwlib.block as blocklib
+import hwlib.adp as adplib
 import math
 
 class SymbolTable:
@@ -146,6 +147,7 @@ class LScaleSolutionGenerator:
 
     symtbl = self.symtbl
     adp = self.adp.copy(self.dev)
+    quality = None
     for var_name,value in result.items():
       var = symtbl.get(var_name)
       if isinstance(var,scalelib.ModeVar):
@@ -156,15 +158,16 @@ class LScaleSolutionGenerator:
         blkcfg.modes = [mode]
 
       elif isinstance(var,scalelib.PortScaleVar):
-        blkcfg = adp.configs.get(var.inst.block,var.inst.loc)
-        blkcfg[var.port].scf = undo_log(value)
+        if not value is None:
+          blkcfg = adp.configs.get(var.inst.block,var.inst.loc)
+          blkcfg[var.port].scf = undo_log(value)
 
       elif isinstance(var,scalelib.TimeScaleVar):
         adp.tau = undo_log(value)
 
       elif isinstance(var,scalelib.QualityVar):
         val = undo_log(value)
-        print("quality: %s" % val)
+        quality = val
       elif isinstance(var,scalelib.ConstCoeffVar) or \
            isinstance(var,scalelib.PropertyVar):
         continue
@@ -172,7 +175,8 @@ class LScaleSolutionGenerator:
         raise Exception("unimpl: %s" % var)
 
     self.z3ctx.negate_model(result)
-    input()
+    adp.metadata.set(adplib.ADPMetadata.Keys.QUALITY, \
+                     quality)
     return adp
 
 
