@@ -47,6 +47,10 @@ lscale_subp.add_argument('--scale-adps', type=int,default=5, \
 lscale_subp.add_argument('program', type=str,help='benchmark to compile')
 
 
+sim_subp = subparsers.add_parser('lsim', help='simulate circuit.')
+sim_subp.add_argument('program', help='program to simulate.')
+
+'''
 gren_subp = subparsers.add_parser('srcgen', help='generate grendel script.')
 gren_subp.add_argument('--hwenv', type=str, \
                         help='hardware environment')
@@ -66,6 +70,8 @@ sim_subp.add_argument('--reference',action="store_true", \
                       help='execute reference simulation')
 sim_subp.add_argument("--mode",default="naive-min_error",
                       help='should the simulator use delta models / which ones')
+'''
+
 args = parser.parse_args()
 
 #from hwlib.hcdc.hcdcv2_4 import make_board
@@ -80,11 +86,8 @@ if args.subparser_name == "lgraph":
 elif args.subparser_name == "lscale":
     legno_util.exec_lscale(args)
 
-elif args.subparser_name == "srcgen":
-   legno_util.exec_srcgen(args)
+elif args.subparser_name == "lsim":
+   legno_util.exec_lsim(args)
 
-elif args.subparser_name == "graph":
-   legno_util.exec_graph(args)
-
-elif args.subparser_name == "simulate":
-   simulator.simulate(args)
+else:
+    raise Exception("XXX")

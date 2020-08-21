@@ -44,27 +44,6 @@ class Op:
     def op(self):
         return self._op
 
-    @property
-    def state_vars(self):
-        stvars = {}
-        for substvars in self._args():
-            for k,v in substvars.items():
-                assert(not k in stvars)
-                stvars[k] =v
-        return stvars
-
-    def handles(self):
-        handles = []
-        for arg in self._args:
-            for handle in arg.handles():
-                assert(not handle in handles)
-                handles.append(handle)
-
-        return handles
-
-    def toplevel(self):
-        return None
-
     def arg(self,idx):
         return self._args[idx]
 

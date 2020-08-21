@@ -37,6 +37,12 @@ class Quantize:
         idx = np.argmin(eps)
         return idx
 
+    def round_value(self,interval,value):
+        vals = self.get_values(interval)
+        dist = list(map(lambda v: abs(v-value), vals))
+        idx = np.argmin(dist)
+        return vals[idx]
+
 class BlockType(Enum):
     COMPUTE = "compute"
     ASSEMBLE = "assemble"
@@ -806,6 +812,12 @@ class BlockData(BlockField):
     else:
       assert(isinstance(self.n_inputs,int))
       print("[WARN] need to add quantization info")
+
+  def round_value(self,mode,value):
+      ival = self.interval[mode]
+      quant = self.quantize[mode]
+      return quant.round_value(ival,value)
+
 
 class Block:
 

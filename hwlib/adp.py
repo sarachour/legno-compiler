@@ -305,7 +305,10 @@ class BlockConfig:
 
   @property
   def mode(self):
-    assert(self.complete())
+    if not (self.complete()):
+      raise Exception("%s incomplete: %s" % (self.inst, \
+                                             self.modes))
+
     return self.modes[0]
 
   @property
@@ -421,6 +424,7 @@ class ADPMetadata:
     LSCALE_PHYS_MODEL = "lscale_model"
     LSCALE_OBJECTIVE = "lscale_objective"
     QUALITY = "quality"
+    DSNAME = "dsname"
 
   def __init__(self):
     self._meta = {}
@@ -451,6 +455,12 @@ class ADPMetadata:
 
   def __getitem__(self,k):
     return self._meta[k]
+
+  def __repr__(self):
+    st = ""
+    for k,v in self._meta.items():
+      st += "%s=%s\n" % (k.value,v)
+    return st
 
 class ADP:
 

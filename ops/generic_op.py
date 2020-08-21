@@ -3,11 +3,8 @@ import ops.interval as interval
 
 class Integ(GenericOp2):
 
-    def __init__(self,deriv,init_cond,handle):
-        assert(handle.startswith(":"))
-
+    def __init__(self,deriv,init_cond):
         GenericOp.__init__(self,OpType.INTEG,[deriv,init_cond])
-        self._handle = handle
         pass
 
     def substitute(self,bindings={}):
@@ -26,33 +23,6 @@ class Integ(GenericOp2):
     @property
     def init_cond(self):
         return self.arg2
-
-    def handles(self):
-        ch = Op.handles(self)
-        assert(not self.handle in ch and \
-               not self.handle is None)
-        ch.append(self.handle)
-        ch.append(self.ic_handle)
-        ch.append(self.deriv_handle)
-        return ch
-
-    def toplevel(self):
-        return self.handle
-
-    def infer_interval(self,intervals={}):
-      if not self.handle in intervals:
-        raise Exception("handle not in interval: %s" % self.handle)
-
-      ival = intervals[self.handle]
-      istvar = interval.IntervalCollection(ival)
-      istvar.bind(self.handle,ival)
-      return istvar
-
-    def state_vars(self):
-        stvars = Op.state_vars(self)
-        stvars[self._handle] = self
-        return
-
 
 class ExtVar(GenericOp):
 
@@ -302,3 +272,11 @@ class Call(GenericOp):
     def __repr__(self):
         pars = " ".join(map(lambda p: str(p), self._params))
         return "call %s %s" % (pars,self._func)
+
+def sum(terms):
+    if len(terms) == 0:
+        return Const(0)
+    elif len(terms) == 1:
+        return terms[0]
+    else:
+        Add(terms[0],sum(terms[1:]))

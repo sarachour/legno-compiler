@@ -4,6 +4,10 @@ import util.config as config
 import util.util as util
 import parse as parselib
 
+class PlotType(Enum):
+    SIMULATION = "sim"
+    MEASUREMENT = "meas"
+
 class PathHandler:
     def __init__(self,subset,prog,make_dirs=True):
         self.set_root_dir(subset,prog)
@@ -15,9 +19,6 @@ class PathHandler:
                 self.LSCALE_ADP_DIR,
                 self.LSCALE_ADP_DIAG_DIR,
                 self.MEAS_WAVEFORM_FILE_DIR,
-                self.GRENDEL_FILE_DIR,
-                self.REF_SIM_DIR,
-                self.ADP_SIM_DIR,
                 self.PLOT_DIR,
                 self.TIME_DIR
         ]:
@@ -60,24 +61,19 @@ class PathHandler:
         self.ADP_SIM_DIR = self.PROG_DIR + "/sim/adp"
 
 
-    def adp_sim_plot(self,lgraph,lscale,opt,model,varname):
-        dirpath = "{path}/{lgraph}_{lscale}_{opt}_{model}"
-        cdir = dirpath.format(path=self.ADP_SIM_DIR, \
-                              lgraph=lgraph, \
-                              lscale=lscale, \
-                              opt=opt, \
-                              model=model)
+    def adp_sim_plot(self,plot_type,prog,lgraph,lscale,opt,model):
+        assert(isinstance(plot_type,PlotType))
+        filepath = "{path}/{plot_type}"
+        cdir = filepath.format(path=self.PLOT_DIR, \
+                               plot_type=plot_type.value)
         util.mkdir_if_dne(cdir)
-        filename = "{dirpath}/{name}.png"
-        cfilename = filename.format(dirpath=cdir, \
-                                name=varname)
+        filepat = "{path}/{prog}_{lgraph}_{lscale}_{opt}_{model}.png"
+        cfilename = filepat.format(path=cdir, \
+                                   prog=prog, \
+                                   lgraph=lgraph, \
+                                   lscale=lscale, \
+                                   opt=opt, model=model)
         return cfilename
-
-    def ref_sim_plot(self,varname):
-        path = "{path}/{name}.png"
-        return path.format(path=self.REF_SIM_DIR, \
-                           name=varname)
-
 
     def time_file(self,name):
         path = "{path}/{name}.txt"
@@ -99,13 +95,6 @@ class PathHandler:
                            prog=self._prog,
                            lgraph=graph_index)
 
-    @staticmethod
-    def lgraph_adp_to_args(path):
-        name = path.split("/")[-1]
-        cmd = "{prog:w}_g{lgraph:w}.adp"
-        result = parselib.parse(cmd,name)
-        assert(not result is None)
-        return result
 
     def lscale_adp_diagram_file(self,graph_index,scale_index,model,opt):
         path ="{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}.gv"
@@ -128,21 +117,6 @@ class PathHandler:
 
         return filepath
 
-    @staticmethod
-    def lscale_adp_to_args(path):
-        name = path.split("/")[-1]
-        for model_cmd in util.model_format():
-            cmd = "{prog:w}_g{lgraph:w}_s{lscale:d}_%s_{opt:w}.adp"  \
-                  % model_cmd
-            result = parselib.parse(cmd,name)
-            if not result is None:
-                result = dict(result.named.items())
-                result['model']= util.pack_parsed_model(result)
-                assert(not result is None)
-                return result
-
-        raise Exception("could not parse: %s" % name)
-
     def lscale_adp_diagram_file(self,graph_index,scale_index,model,opt,tag="notag"):
         path = "{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}_{tag}.dot"
         return path.format(path=self.LSCALE_ADP_DIAG_DIR,
@@ -153,20 +127,6 @@ class PathHandler:
                            opt=opt,
                            tag=tag)
 
-
-
-    def plot(self,graph_index,scale_index,model,opt, \
-             menv_subset,henv_subset,tag):
-        path = "{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}_{dssim}_{hwenv}_{tag}.png"
-        return path.format(path=self.PLOT_DIR,
-                           prog=self._prog,
-                           lgraph=graph_index,
-                           lscale=scale_index,
-                           model=model,
-                           opt=opt,
-                           dssim=menv_subset,
-                           hwenv=henv_subset, \
-                           tag=tag)
 
 
 
