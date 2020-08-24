@@ -93,7 +93,7 @@ class BruteForcePlanner(ProfilePlanner):
       self.dynamic_iterator = None
       return None
 
-class SinglePointPlanner(BruteForcePlanner):
+class SingleDefaultPointPlanner(BruteForcePlanner):
 
   def __init__(self,block,loc,cfg,m):
     BruteForcePlanner.__init__(self,block,loc,cfg,0,m)
@@ -101,6 +101,7 @@ class SinglePointPlanner(BruteForcePlanner):
   def new_hidden(self):
     hidden = {}
     for state in filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), self.block.state):
+      print("state.name:",state.name)
       hidden[state] = self.cfg[state.name].value
 
     self.hidden_iterator = hidden
@@ -111,6 +112,24 @@ class SinglePointPlanner(BruteForcePlanner):
     self.hidden_iterator = None
     return value
 
+class SingleTargetedPointPlanner(BruteForcePlanner):
+
+  def __init__(self,block,loc,cfg,m,target_dict):
+    BruteForcePlanner.__init__(self,block,loc,cfg,0,m)
+    self.target_dict = target_dict
+
+  def new_hidden(self):
+    hidden = {}
+    for state in filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), self.block.state):
+      hidden[state] = self.target_dict[state.name]
+
+    self.hidden_iterator = hidden
+    self.dynamic_iterator = None
+
+  def next_hidden(self):
+    value = self.hidden_iterator
+    self.hidden_iterator = None
+    return value
 
 
 class SensitivityPlanner(BruteForcePlanner):

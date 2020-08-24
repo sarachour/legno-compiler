@@ -111,12 +111,17 @@ def func(x,{free_vars}):
 
 
 xdata = {x_dataset}
-
+#print("xdata:",xdata)
 
 ydata = {y_dataset}
+#print("ydata:",ydata)
+
+#print("func:",func)
 
 
 popt,pcov = curve_fit(func,xdata,ydata)
+#print("popt:",popt)
+#print("pcov:",pcov)
 lbls = [{free_var_array}]
 assigns = dict(zip(lbls,popt))
 perr = np.sqrt(np.diag(pcov))
@@ -124,9 +129,16 @@ perr = np.sqrt(np.diag(pcov))
 
 
 def fit_model(variables,expr,data):
+
+  #print("*********START OF FIT_MODEL*********")
   inputs = data['inputs']
+  #print("inputs:", inputs)
   meas_output = data['meas_mean']
+  #print("meas_output:", meas_output)
+  
   n_inputs = len(inputs.keys())
+
+
   #if phys.model.complete:
   #  return False
 
@@ -135,10 +147,14 @@ def fit_model(variables,expr,data):
   for idx,bound_var in enumerate(inputs.keys()):
     assert(len(inputs[bound_var]) == len(meas_output))
     dataset[idx] = inputs[bound_var]
+    #print("dataset[idx] is:", dataset[idx])
     repl[bound_var] = genoplib.Var("x[%d]" % idx)
+    #print("repl[bound_var]: ",repl[bound_var])
 
   conc_expr = expr.substitute(repl)
+  #print("conc_expr", conc_expr)
   _,pyexpr = lambdoplib.to_python(conc_expr)
+  #print("variables:",variables)
   fields = {
     'free_vars':",".join(variables),
     'free_var_array':",".join(map(lambda p: '"%s"' % p, variables)),
@@ -146,13 +162,18 @@ def fit_model(variables,expr,data):
     'y_dataset': str(meas_output),
     'expr':pyexpr
   }
+  #print("fields:",fields)
   snippet = FIT_PROG.format(**fields) \
                     .replace('math.','np.')
   loc = {}
   exec(snippet,globals(),loc)
   parameters = loc['lbls']
+  #print("parameters:",parameters)
   parameter_values = loc['popt']
+  #print("parameter_values:",parameter_values)
   parameter_stdevs = loc['perr']
+  #print("parameter_stdevs:",parameter_stdevs)
+  #print("*********END OF FIT_MODEL*********")
   return {
     'params': dict(zip(parameters,parameter_values)),
     'param_error': parameter_stdevs

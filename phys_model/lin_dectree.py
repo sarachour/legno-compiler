@@ -2,6 +2,7 @@ import phys_model.model_fit as fitlib
 import copy
 import ops.generic_op as genoplib
 import phys_model.region as reglib
+import ops.base_op as baselib
 import json
 
 class DecisionNode:
@@ -30,10 +31,8 @@ class DecisionNode:
   this function generates a sequence of leaf nodes in the decision tree.
   use the `yield` python feature to do this
   '''
-  def leaves(self, flat_list = []):
-    self.left.leaves(flat_list)
-    self.right.leaves(flat_list)
-    return flat_list
+  def leaves(self):
+    return self.left.leaves() + self.right.leaves()
 
   def min_sample(self):
     return self.left.min_sample() + self.left.min_sample()
@@ -129,8 +128,36 @@ class DecisionNode:
 
     return dictionary
 
-  def fit(self,inputs,output):
-    raise Exception("implement me!")
+  def fit(self,dataset,output = []):
+    hidden_codes = ['pmos', 'nmos', 'gain_cal', 'bias_in0', 'bias_in1', 'bias_out'] 
+
+    right_dataset = {}
+    right_dataset['inputs'] = {}
+    for code in hidden_codes:
+      right_dataset['inputs'][code] = []
+    right_dataset['meas_mean'] = []
+
+    left_dataset = {}
+    left_dataset['inputs'] = {}
+    for code in hidden_codes:
+      left_dataset['inputs'][code] = []
+    left_dataset['meas_mean'] = []
+
+    index = 0
+    for datapoint in dataset['inputs'][self.name]:
+      if datapoint > self.value:
+        for code in hidden_codes:
+          right_dataset['inputs'][code].append(dataset['inputs'][code][index])
+        right_dataset['meas_mean'].append(dataset['meas_mean'][index])
+      else:
+        for code in hidden_codes:
+          left_dataset['inputs'][code].append(dataset['inputs'][code][index])
+        left_dataset['meas_mean'].append(dataset['meas_mean'][index])
+      index+=1
+
+    output.append(self.left.fit(left_dataset))
+    output.append(self.right.fit(right_dataset))
+    return output
 
   def find_minimum(self,bounds):
     #reg = self.region.copy()
@@ -166,13 +193,15 @@ class RegressionLeafNode:
     self.region = region
 
 
+
+
   def pretty_print(self,indent=0):
     ind = " "*indent
     return "%sexpr %s, npts=%d, R2=%f, pars=%s\n" \
       % (ind,self.expr,self.npts,self.R2,self.params)
 
   def min_sample(self):
-    return len(self.params)
+    return len(self.params) + 1
 
   def random_sample(self, sample_list):
     for i in range(self.min_sample()):
@@ -183,9 +212,8 @@ class RegressionLeafNode:
   this function generates a sequence of leaf nodes in the decision tree.
   use the `yield` python feature to do this
   '''
-  def leaves(self, flat_list):
-    flat_list.append(self)
-    return
+  def leaves(self):
+      return [self]
 
   '''
   This function accepts a json object that was previously returned
@@ -193,11 +221,12 @@ class RegressionLeafNode:
   '''
   @staticmethod
   def from_json(dictionary):
-    expr = dictionary['expr']
+    expr = baselib.Op.from_json(dictionary['expr'])
     npts = dictionary['npts']
     R2 = dictionary['R2']
     params = dictionary['params']
-    region = dictionary['region']
+    #print("\n\n\n\nparams: ", params)
+    region = reglib.Region.from_json(dictionary['region'])
     return RegressionLeafNode(expr,npts,R2,params,region)
 
   '''
@@ -205,11 +234,11 @@ class RegressionLeafNode:
   '''
   def to_json(self,dictionary):
     dictionary['type'] = "RegressionLeafNode"
-    dictionary['expr'] = self.expr
+    dictionary['expr'] = self.expr.to_json()
     dictionary['npts'] = self.npts
     dictionary['R2'] = self.R2
     dictionary['params'] = self.params
-    dictionary['region'] = self.region
+    dictionary['region'] = self.region.to_json()
     
     return dictionary
 
@@ -220,8 +249,17 @@ class RegressionLeafNode:
   and R2 value of each leaf node. The format of the inputs and output fields
   is up to you
   '''
-  def fit(self,inputs,output):
-    raise Exception("implement me!")
+  def fit(self,inputs,output = []):
+    if not len(inputs['meas_mean']) >= self.min_sample():
+      raise Exception("Not enough datapoints to fit leaf node!")
+    else:
+      print("self.params: \n\n", self.params, "\n\n")
+      print("self.expr: \n\n", self.expr, "\n\n")
+      print("inputs: \n\n", inputs, "\n\n")
+      new_fit = fitlib.fit_model(self.params, self.expr, inputs)
+      print("NEW_FIT: \n\n", new_fit, "\n\n")
+      self.params = new_fit['params']
+    return self.params
 
   def evaluate(self,hidden_state):
     assigns = dict(list(self.params.items()) +
@@ -233,12 +271,12 @@ class RegressionLeafNode:
     sub_dict = {}
     for key,value in self.params.items():
       sub_dict[key] = genoplib.Const(value)
-    self.expr = self.expr.substitute(sub_dict)
+    concrete_expr = self.expr.substitute(sub_dict)
 
 
-    hidden_vars = self.expr.vars()
+    hidden_vars = concrete_expr.vars()
     optimal_codes = fitlib.minimize_model(hidden_vars,  \
-                                          self.expr, {}, \
+                                          concrete_expr, {}, \
                                           self.region.bounds)
     return optimal_codes['objective_val'], optimal_codes['values']
 

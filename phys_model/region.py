@@ -1,7 +1,8 @@
 import random
+import math
 
 class Region():
-  def __init__(self):
+  def __init__(self,bounds = {}):
     self.bounds = {'pmos':[0,7],\
        'nmos':[0,7],\
        'gain_cal':[0,63],\
@@ -9,6 +10,13 @@ class Region():
        'bias_in0':[0,63],\
        'bias_in1':[0,63],\
       }
+
+  def to_json(self):
+    return self.bounds
+
+  @staticmethod
+  def from_json(obj):
+    return Region(obj)
 
   def set_range(self,var,minval,maxval):
     def wnull(fn,a,b):
@@ -48,8 +56,8 @@ class Region():
   def random_code(self):
     output_code = {}
     for code in self.bounds:
-      print("lower bound is:",self.bounds[code][0], " upper bound is ",self.bounds[code][1])
-      output_code[code] = random.randint(self.bounds[code][0],self.bounds[code][1])
+      #print("lower bound is:",self.bounds[code][0], " upper bound is ",self.bounds[code][1])
+      output_code[code] = random.randint(math.ceil(self.bounds[code][0]),math.floor(self.bounds[code][1]))
     self.valid_code(output_code)
     return output_code
 
@@ -57,7 +65,7 @@ class Region():
     for code in test_code:
       if not self.bounds[code][0] <= test_code[code] <= self.bounds[code][1]:
 
-        print("Hidden code:\n",test_code[code],"\n not in range:\n",list(range(self.bounds[code][0],self.bounds[code][1])),"\n\n")
+        #print("Hidden code:\n",test_code[code],"\n not in range:\n",list(range(self.bounds[code][0],self.bounds[code][1])),"\n\n")
         raise Exception('Invalid hidden code!')
     return
 
