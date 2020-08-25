@@ -251,7 +251,7 @@ class RegressionLeafNode:
   '''
   def fit(self,inputs,output = []):
     if not len(inputs['meas_mean']) >= self.min_sample():
-      raise Exception("Not enough datapoints to fit leaf node!")
+      raise Exception("Not enough datapoints to fit leaf node! (Have: ",len(inputs['meas_mean']),", need at least: ",self.min_sample())
     else:
       print("self.params: \n\n", self.params, "\n\n")
       print("self.expr: \n\n", self.expr, "\n\n")
