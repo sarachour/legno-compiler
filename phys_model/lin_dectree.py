@@ -115,8 +115,6 @@ class RegressionLeafNode:
     self.region = region
 
 
-
-
   def pretty_print(self,indent=0):
     ind = " "*indent
     return "%sexpr %s, npts=%d, R2=%f, pars=%s\n" \
@@ -129,6 +127,7 @@ class RegressionLeafNode:
     result = []
     for i in range(self.min_sample()):
       result.append(self.region.random_code())
+    assert(len(result) == self.min_sample())
     return result
 
   '''
@@ -162,7 +161,6 @@ class RegressionLeafNode:
     dictionary['R2'] = self.R2
     dictionary['params'] = self.params
     dictionary['region'] = self.region.to_json()
-    
     return dictionary
 
   '''
@@ -184,6 +182,7 @@ class RegressionLeafNode:
         valid_dataset['meas_mean'].append(dataset['meas_mean'][idx])
         for hidden_code in hidden_codes:
           valid_dataset['inputs'][hidden_code].append(datapoint[hidden_code])
+
 
     npts_valid = len(valid_dataset['meas_mean'])
     if not npts_valid >= self.min_sample():

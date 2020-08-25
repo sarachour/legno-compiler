@@ -2,21 +2,24 @@ import random
 import math
 
 class Region():
-  def __init__(self,bounds = {}):
+  def __init__(self,bounds = None):
     self.bounds = {'pmos':[0,7],\
-       'nmos':[0,7],\
-       'gain_cal':[0,63],\
-       'bias_out':[0,63],\
-       'bias_in0':[0,63],\
-       'bias_in1':[0,63],\
-      }
+                   'nmos':[0,7],\
+                   'gain_cal':[0,63],\
+                   'bias_out':[0,63],\
+                   'bias_in0':[0,63],\
+                   'bias_in1':[0,63]}
+    if not bounds is None:
+      self.set_ranges(bounds)
 
   def to_json(self):
     return self.bounds
 
   @staticmethod
   def from_json(obj):
-    return Region(obj)
+    reg = Region(obj)
+    print(reg)
+    return reg
 
   def set_range(self,var,minval,maxval):
     def wnull(fn,a,b):
