@@ -18,7 +18,6 @@ class Region():
   @staticmethod
   def from_json(obj):
     reg = Region(obj)
-    print(reg)
     return reg
 
   def set_range(self,var,minval,maxval):
