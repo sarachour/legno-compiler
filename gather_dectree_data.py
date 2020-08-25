@@ -19,8 +19,7 @@ with open("predictions.json") as fh:
 
 
 
-sample_list = []
-dectree.random_sample(sample_list)
+sample_list = dectree.random_sample()
 
 dev = hcdclib.get_device()
 block, inst, cfg = target_block.get_block(dev)
