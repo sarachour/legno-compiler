@@ -37,10 +37,11 @@ class DecisionNode:
   def min_sample(self):
     return self.left.min_sample() + self.left.min_sample()
 
-  def random_sample(self, sample_list = []):
-    self.left.random_sample(sample_list)
-    self.right.random_sample(sample_list)
-    return sample_list
+  def random_sample(self):
+    results = []
+    results += self.left.random_sample()
+    results += self.right.random_sample()
+    return results
 
 
   '''
@@ -58,61 +59,7 @@ class DecisionNode:
     else:
       return RegressionLeafNode.from_json(parent)
 
-
-    '''
-    value = parent['value']
-    name = parent['name']
-    child_nodes_dicts = [parent['left'],parent['right']]
-    child_nodes = []
-    for node in child_nodes_dicts:
-      if node['type'] == 'DecisionNode':
-        child_nodes.append(DecisionNode.from_json(node))
-      elif node['type'] == 'RegressionLeafNode':
-        child_nodes.append(RegressionLeafNode.from_json(node))
-    return(DecisionNode(name,value,child_nodes[0],child_nodes[1]))
-    '''
-    '''
-    if left_dict['type'] == 'DecisionNode':
-      left = DecisionNode.from_json(left_dict)
-    elif left_dict['type'] == 'RegressionLeafNode':
-      left = RegressionLeafNode.from_json(left_dict)
-
-    if right_dict['type'] == 'DecisionNode':
-      right = DecisionNode.from_json(right_dict)
-    elif right_dict['type'] == 'RegressionLeafNode':
-      right = RegressionLeafNode.from_json(right_dict)
-    '''
-
-    '''
-    left_dict = dictionary['left']
-    right_dict = dictionary['right']
-    left_obj = None
-    right_obj = None
-    for side in [[left_dict,left_obj],[right_dict,right_obj]]:
-      if side[0]['type'] == 'DecisionNode':
-        side[1] = DecisionNode.from_json(side[0])
-      elif side[0]['type'] == 'RegressionLeafNode':
-        side[1] = RegressionLeafNode.from_json(side[0])
-    return(DecisionNode(name,value,left_obj,right_obj))
-    '''
-    '''
-    child_nodes = []
-    child_nodes_dicts = [parent['left'],parent['right']]
-    for child_node in child_nodes_dicts:
-      print("child_node: ", child_node)
-      if child_node['type'] == 'DecisionNode':
-        print("appending DecisionNode")
-        child_nodes.append(DecisionNode.from_json(child_node))
-      elif child_node['type'] == 'RegressionLeafNode:':
-        print("appending RegressionLeafNode")
-        child_nodes.append(RegressionLeafNode.from_json(child_node))
-    print("child_nodes: ", child_nodes)
-    return(DecisionNode(name,value,child_nodes[0],child_nodes[1]))
-
-    '''
-    
-    
-  
+ 
 
 
 
@@ -131,33 +78,8 @@ class DecisionNode:
   def fit(self,dataset,output = []):
     hidden_codes = ['pmos', 'nmos', 'gain_cal', 'bias_in0', 'bias_in1', 'bias_out'] 
 
-    right_dataset = {}
-    right_dataset['inputs'] = {}
-    for code in hidden_codes:
-      right_dataset['inputs'][code] = []
-    right_dataset['meas_mean'] = []
-
-    left_dataset = {}
-    left_dataset['inputs'] = {}
-    for code in hidden_codes:
-      left_dataset['inputs'][code] = []
-    left_dataset['meas_mean'] = []
-
-    index = 0
-    for datapoint in dataset['inputs'][self.name]:
-      if datapoint > self.value:
-        for code in hidden_codes:
-          right_dataset['inputs'][code].append(dataset['inputs'][code][index])
-        right_dataset['meas_mean'].append(dataset['meas_mean'][index])
-      else:
-        for code in hidden_codes:
-          left_dataset['inputs'][code].append(dataset['inputs'][code][index])
-        left_dataset['meas_mean'].append(dataset['meas_mean'][index])
-      index+=1
-
-    output.append(self.left.fit(left_dataset))
-    output.append(self.right.fit(right_dataset))
-    return output
+    self.left.fit(dataset)
+    self.right.fit(dataset)
 
   def find_minimum(self,bounds):
     #reg = self.region.copy()
@@ -203,10 +125,11 @@ class RegressionLeafNode:
   def min_sample(self):
     return len(self.params) + 1
 
-  def random_sample(self, sample_list):
+  def random_sample(self):
+    result = []
     for i in range(self.min_sample()):
-      sample_list.append(self.region.random_code())
-
+      result.append(self.region.random_code())
+    return result
 
   '''
   this function generates a sequence of leaf nodes in the decision tree.
@@ -249,17 +172,29 @@ class RegressionLeafNode:
   and R2 value of each leaf node. The format of the inputs and output fields
   is up to you
   '''
-  def fit(self,inputs,output = []):
-    if not len(inputs['meas_mean']) >= self.min_sample():
-      raise Exception("Not enough datapoints to fit leaf node! (Have: ",len(inputs['meas_mean']),", need at least: ",self.min_sample())
-    else:
-      print("self.params: \n\n", self.params, "\n\n")
-      print("self.expr: \n\n", self.expr, "\n\n")
-      print("inputs: \n\n", inputs, "\n\n")
-      new_fit = fitlib.fit_model(self.params, self.expr, inputs)
-      print("NEW_FIT: \n\n", new_fit, "\n\n")
-      self.params = new_fit['params']
-    return self.params
+  def fit(self,dataset,output = []):
+    valid_dataset = {}
+    hidden_codes = dataset['inputs'].keys()
+    valid_dataset['inputs'] = dict(map(lambda k : (k,[]), dataset['inputs'].keys()))
+    valid_dataset['meas_mean'] = []
+    npts = len(dataset['meas_mean'])
+    for idx in range(npts):
+      datapoint = dict(map(lambda h: (h,dataset['inputs'][h][idx]), hidden_codes))
+      if self.region.valid_code(datapoint):
+        valid_dataset['meas_mean'].append(dataset['meas_mean'][idx])
+        for hidden_code in hidden_codes:
+          valid_dataset['inputs'][hidden_code].append(datapoint[hidden_code])
+
+    npts_valid = len(valid_dataset['meas_mean'])
+    if not npts_valid >= self.min_sample():
+      print("not enough datapoints: have %d/%d points"  \
+                      % (npts_valid,self.min_sample()))
+      self.params = {}
+      return
+
+    new_fit = fitlib.fit_model(self.params, self.expr, valid_dataset)
+    self.params = new_fit['params']
+    print("FIT %d" % (npts_valid))
 
   def evaluate(self,hidden_state):
     assigns = dict(list(self.params.items()) +

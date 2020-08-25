@@ -57,21 +57,22 @@ class Region():
     output_code = {}
     for code in self.bounds:
       #print("lower bound is:",self.bounds[code][0], " upper bound is ",self.bounds[code][1])
-      output_code[code] = random.randint(math.ceil(self.bounds[code][0]),math.floor(self.bounds[code][1]))
-    if self.valid_code(output_code) == False:
-      raise Exception('Invalid hidden code!')
+      lower = math.ceil(self.bounds[code][0])
+      upper = math.floor(self.bounds[code][1])
+      output_code[code] = random.randint(lower,upper)
+      assert(self.valid_code(output_code))
     return output_code
 
   def valid_code(self, test_code):
     for code in test_code:
-      if not self.bounds[code][0] <= test_code[code] < self.bounds[code][1]:
-
-        #print("Hidden code:\n",test_code[code],"\n not in range:\n",list(range(self.bounds[code][0],self.bounds[code][1])),"\n\n")
-        #raise Exception('Invalid hidden code!')
+      lower = self.bounds[code][0]
+      upper = self.bounds[code][1]
+      assert(lower <= upper)
+      if not test_code[code] <= upper or \
+         not test_code[code] >= lower:
         return False
-      else:
-        return True
-    
+
+    return True
 
 
 
