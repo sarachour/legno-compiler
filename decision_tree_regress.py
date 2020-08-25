@@ -18,6 +18,7 @@ import time
 import numpy as np
 import phys_model.fit_lin_dectree as fit_lindectree
 import phys_model.lin_dectree as lindectree
+import json
 
 dev = hcdclib.get_device()
 
@@ -76,7 +77,7 @@ for pred,obs in zip(predictions,costs):
   print("%f %f" % (pred,obs))
   errors.append(abs(pred-obs))
 
-print(dectree.pretty_print())
+#print(dectree.pretty_print())
 print("avg error: %f" % np.mean(errors))
 print("error std: %f" % np.std(errors))
 print("obs range: [%f,%f]" % (min(costs),max(costs)))
@@ -95,17 +96,60 @@ default_bounds = {'pmos':[0,7],\
 
 dectree.update()
 min_val,min_code = dectree.find_minimum(default_bounds)
-print("\n\n",dectree.pretty_print(),"\n\n")
+#print("\n\n",dectree.pretty_print(),"\n\n")
 #print("\n\nmin_val is:%f" % min_val)
 #print("min_val occurs at: ", min_code)
 #print("leaves: ", dectree.leaves())
 serialized_dectree_dict = {}
 dectree.to_json(serialized_dectree_dict)
-print("serialized_dectree: ", serialized_dectree_dict)
+with open("dectree.json",'w') as fh:
+  json.dump(serialized_dectree_dict, fh)
+#print("serialized_dectree: ", serialized_dectree_dict)
 
 deserialized_dectree = lindectree.DecisionNode.from_json(serialized_dectree_dict)
-print(deserialized_dectree.pretty_print())
+#print(deserialized_dectree.pretty_print())
 
-print(dectree.random_sample())
+#print(dectree.random_sample())
+
+#print("\n\n\nHIDDEN CODES:",hidden_codes,"\n\n\n")
+#print("\n\n\nCOSTS:",costs,"\n\n\n")
+#print("\n\n\nINPUTS:",inputs,"\n\n\n")
+#print("\n\n\nPARAMS:",params,"\n\n\n")
+
+#print("\n\n\nlen(HIDDEN CODES):",len(hidden_codes),"\n\n\n")
+#print("\n\n\nlen(COSTS):",len(costs),"\n\n\n")
+#print("\n\n\nlen(INPUTS):",len(inputs),"\n\n\n")
+#print("\n\n\nlen(PARAMS['a']):",len(params['a']),"\n\n\n")
+inputs_with_keys = {}
+'''
+for input_code in inputs:
+  input_dict = {}
+  i = 0
+  for name in hidden_codes:
+    input_dict[name] = input_code[i]
+    i+=1
+  inputs_with_keys.append(input_dict)
+'''
+i = 0
+for name in hidden_codes:
+  inputs_with_keys[name] = inputs[:][i]
+  i+=1 
 
 
+'''want: {'pmos':[0,3,1,4,1,2], 'nmos':[0,2,5,3,24,]......}
+have hidden_codes = [pmos, nmos]
+
+inputs = [[0,1,2,3,4,5],[,6,7,8,9,1,3],[]]
+'''
+index = 0
+for name in hidden_codes:
+  inputs_with_keys[name] = []
+  for i in inputs:
+    inputs_with_keys[name].append(i[index])
+  index+=1
+
+dataset = {}
+dataset['meas_mean'] = costs
+dataset['inputs'] = inputs_with_keys
+#print("CRAFTED DATASET IS:", dataset)
+output = deserialized_dectree.fit(dataset)
