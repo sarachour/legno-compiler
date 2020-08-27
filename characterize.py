@@ -50,9 +50,18 @@ runtime = GrendelRunner()
 #planner = planlib.SensitivityPlanner(block,inst,cfg,32,10)
 #planner = planlib.CorrelationPlanner(block,inst,cfg,8,10)
 #planner = planlib.ModelBasedPlanner(block,inst,cfg,8,10)
-#planner = planlib.SingleTargetedPointPlanner(block,inst,cfg,10,)
+target_code = {
+    "nmos": 0,
+    "pmos": 2,
+    "bias_out": 63,
+    "bias_in0": 36,
+    "bias_in1": 63,
+    "gain_cal": 0
+}
 
-planner = planlib.RandomPlanner(block, inst, cfg, 8, 10, 30)
+planner = planlib.SingleTargetedPointPlanner(block,inst,cfg,10,target_code)
+
+#planner = planlib.RandomPlanner(block, inst, cfg, 8, 10, 30)
 proflib.profile_all_hidden_states(runtime, dev, planner)
 analyze_db()
 
