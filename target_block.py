@@ -6,6 +6,8 @@ import hwlib.hcdc.llenums as llenums
 import hwlib.hcdc.llcmd as llcmd
 import hwlib.hcdc.hcdcv2 as hcdclib
 
+target_mult = [0,2,2,0]
+
 def get_dac_h(dev):
   # sumsq error 0.033
   block = dev.get_block('dac')
@@ -36,7 +38,7 @@ def get_dac_m(dev):
 def get_mult_mmm(dev):
   # sumsq error 0.059
   block = dev.get_block('mult')
-  inst = devlib.Location([0,2,2,0])
+  inst = devlib.Location(target_mult)
   cfg = adplib.BlockConfig.make(block,inst)
   #cfg.modes = [['+','+','-','m']]
   cfg.modes = [block.modes.get(['m','m','m'])]
@@ -55,7 +57,7 @@ def get_mult_mmm(dev):
 def get_mult_mm(dev):
   # sumsq error 0.0169
   block = dev.get_block('mult')
-  inst = devlib.Location([0,2,2,0])
+  inst = devlib.Location(target_mult)
   #inst = devlib.Location([0,1,0,0])
   cfg = adplib.BlockConfig.make(block,inst)
   #cfg.modes = [['+','+','-','m']]
@@ -74,7 +76,7 @@ def get_mult_mm(dev):
 def get_mult_hm(dev):
   # sumsq error 0.015
   block = dev.get_block('mult')
-  inst = devlib.Location([0,2,2,0])
+  inst = devlib.Location(target_mult)
   cfg = adplib.BlockConfig.make(block,inst)
   #cfg.modes = [['+','+','-','m']]
   cfg.modes = [block.modes.get(['x','h','m'])]
@@ -94,7 +96,7 @@ def get_mult_hm(dev):
 def get_mult_mh(dev):
   # sumsq error 0.228
   block = dev.get_block('mult')
-  inst = devlib.Location([0,2,2,0])
+  inst = devlib.Location(target_mult)
   cfg = adplib.BlockConfig.make(block,inst)
   cfg.modes = [block.modes.get(['x','m','h'])]
 

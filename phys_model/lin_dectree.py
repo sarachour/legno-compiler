@@ -81,12 +81,12 @@ class DecisionNode:
     self.left.fit(dataset)
     self.right.fit(dataset)
 
-  def find_minimum(self,bounds):
+  def find_minimum(self):
     #reg = self.region.copy()
     #reg.set_ranges(bounds)
     #self.update(reg)
-    left_minimum,left_min_code = self.left.find_minimum(bounds)
-    right_minimum,right_min_code = self.right.find_minimum(bounds)
+    left_minimum,left_min_code = self.left.find_minimum()
+    right_minimum,right_min_code = self.right.find_minimum()
 
     if left_minimum < right_minimum:
       return left_minimum, left_min_code
@@ -200,7 +200,7 @@ class RegressionLeafNode:
                    list(hidden_state.items()))
     return self.expr.compute(assigns)
 
-  def find_minimum(self,bounds):
+  def find_minimum(self):
     #concretize
     sub_dict = {}
     for key,value in self.params.items():

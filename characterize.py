@@ -52,7 +52,7 @@ runtime = GrendelRunner()
 #planner = planlib.ModelBasedPlanner(block,inst,cfg,8,10)
 #planner = planlib.SingleTargetedPointPlanner(block,inst,cfg,10,)
 
-planner = planlib.RandomPlanner(block, inst, cfg, 8, 10, 1000)
+planner = planlib.RandomPlanner(block, inst, cfg, 8, 10, 30)
 proflib.profile_all_hidden_states(runtime, dev, planner)
 analyze_db()
 
