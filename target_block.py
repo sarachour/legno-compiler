@@ -6,7 +6,7 @@ import hwlib.hcdc.llenums as llenums
 import hwlib.hcdc.llcmd as llcmd
 import hwlib.hcdc.hcdcv2 as hcdclib
 
-target_mult = [0,2,2,0]
+target_mult = [0,0,2,0]
 
 def get_dac_h(dev):
   # sumsq error 0.033
