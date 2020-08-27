@@ -59,9 +59,9 @@ target_code = {
     "gain_cal": 0
 }
 
-planner = planlib.SingleTargetedPointPlanner(block,inst,cfg,10,target_code)
+#planner = planlib.SingleTargetedPointPlanner(block,inst,cfg,10,target_code)
 
-#planner = planlib.RandomPlanner(block, inst, cfg, 8, 10, 30)
+planner = planlib.RandomPlanner(block, inst, cfg, 8, 10, 1000)
 proflib.profile_all_hidden_states(runtime, dev, planner)
 analyze_db()
 
