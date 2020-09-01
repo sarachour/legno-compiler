@@ -20,8 +20,19 @@ def scale(dev, program, adp, \
     cstr_prob.append(stmt)
 
   obj = get_objective(objective)
+
+  if scale_method == scalelib.ScaleMethod.NOSCALE:
+    for cfg in adp.configs:
+      cfg.modes = [cfg.modes[0]]
+
+    adp.metadata.set(adplib.ADPMetadata.Keys.LSCALE_SCALE_METHOD, \
+                     scale_method.value)
+    adp.metadata.set(adplib.ADPMetadata.Keys.LSCALE_OBJECTIVE, \
+                           objective.value)
+    yield adp
+    return
+
   for adp in lscale_solver.solve(dev,adp,cstr_prob,obj):
-    
     adp.metadata.set(adplib.ADPMetadata.Keys.LSCALE_SCALE_METHOD, \
                      scale_method.value)
     adp.metadata.set(adplib.ADPMetadata.Keys.LSCALE_OBJECTIVE, \

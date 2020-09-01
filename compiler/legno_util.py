@@ -33,6 +33,7 @@ def exec_lscale(args):
                     adp = ADP.from_json(board, \
                                         json.loads(fh.read()))
 
+
                 obj = scalelib.ObjectiveFun(args.objective)
                 scale_method = scalelib.ScaleMethod(args.scale_method)
                 for idx,scale_adp in enumerate(lscale.scale(board, \
@@ -41,7 +42,7 @@ def exec_lscale(args):
                                                             objective=obj, \
                                                             scale_method=scale_method)):
 
-                    print("<<< writing circuit %d>>>" % idx)
+                    print("<<< writing scaled circuit %d>>>" % idx)
                     scale_adp.metadata.set(ADPMetadata.Keys.LSCALE_ID,idx)
 
 

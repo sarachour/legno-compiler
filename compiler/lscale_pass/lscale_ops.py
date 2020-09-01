@@ -8,6 +8,8 @@ class ObjectiveFun(Enum):
 class ScaleMethod(Enum):
   IDEAL = "ideal"
   PHYSICAL = "phys"
+  NOSCALE = "noscale"
+
 
 class DynamicalSystemInfo:
 
@@ -59,10 +61,10 @@ class HardwareInfo:
   def get_quantize(self,instance,mode,port_name):
     assert(isinstance(port_name,str))
     port = self._get_port(instance,port_name)
-    if hasattr(port,'quantize'):
-      return port.quantize[mode]
-    else:
+    if port.quantize is None:
       return None
+
+    return port.quantize[mode]
 
   def get_op_range(self,instance,mode,port_name):
     assert(isinstance(port_name,str))

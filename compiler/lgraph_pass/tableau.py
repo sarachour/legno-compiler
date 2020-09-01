@@ -1,5 +1,6 @@
 import hwlib.block as blocklib
 import compiler.lgraph_pass.unify as unifylib
+import compiler.lgraph_pass.rule as rulelib
 import ops.base_op as oplib
 from compiler.lgraph_pass.vadp import * 
 
@@ -17,6 +18,7 @@ class Goal:
     assert(isinstance(var,PortVar) or \
            isinstance(var,LawVar) or \
            isinstance(var,DSVar))
+    assert(isinstance(expr, oplib.Op))
     self.variable = var
     self.type = typ
     self.expr = expr
@@ -74,71 +76,53 @@ class PortRelation:
 
   def __repr__(self):
     output_type = self.port.type
-    return "rel %s(%d,%s) : %s = %s" % (self.block.name,self.ident, \
-                                        self.port.name, \
-                                        self.port.type,self.expr)
+    cstrs = ",".join(map(lambda tup: "%s=%s" % (tup[0],tup[1].value), \
+                                      self.cstrs.items()))
+    return "rel %s(%d,%s) : %s = %s [%s]" % (self.block.name,self.ident, \
+                                             self.port.name, \
+                                             self.port.type,self.expr, \
+                                             cstrs)
 
 
 class PhysicsLawRelation:
 
-  def __init__(self,law,idx,typ,expr,apply,simplify,cstr_fn):
+  def __init__(self,law,lawvar,mode,expr):
+    assert(isinstance(lawvar, LawVar))
+    assert(isinstance(law,rulelib.Rule))
+    assert(lawvar.law == law.name)
     self.law = law
-    self.ident = idx
-    self.variables = expr.vars()
+    self.target = lawvar
+    self.mode = mode
     self.expr = expr
-    self.type = typ
-    self._apply_fn = apply
-    self._simplify_fn = simplify
-    self._cstr_fn = cstr_fn
-    self.var_types = dict(map(lambda v: (v,None), self.variables))
+
+
+  def same_usage(self,v):
+    assert(isinstance(v,vaplib.LawVar))
+    return v.law == self.law and \
+      v.ident == self.ident
+
+  @property
+  def name(self):
+    return self.law
 
   def equals(self,g2):
     return str(self) == str(g2)
 
   def same_usage(self,other):
     assert(isinstance(other,PhysicsLawRelation))
-    return self.law == other.law and \
-      self.ident == other.ident
-
-
-  def constraints(self,variables):
-    return self._cstr_fn(variables)
-
-  def simplify(self,vadp):
-    simplified = True
-    while simplified:
-      simplified,vadp = self._simplify_fn(vadp,self)
-
-    return vadp
-
-
-  def apply(self,goal):
-    for stmt in self._apply_fn(goal,self):
-      yield stmt
+    return self.target == other.target
 
   def copy(self):
     rel = PhysicsLawRelation(self.law, \
-                             self.ident, \
-                             self.type, \
-                             self.expr, \
-                             self._apply_fn, \
-                             self._simplify_fn, \
-                             self._cstr_fn)
-    for v,t in self.var_types.items():
-      rel.decl_var(v,t)
-
+                             self.target.copy(),
+                             self.mode, \
+                             self.expr)
     return rel
-
-  def get_type(self,var):
-    assert(isinstance(var,str))
-    assert(var in self.variables)
-    return self.var_types[var]
-
   def typecheck(self,goal):
     assert(isinstance(goal,Goal))
     if goal.type is None:
       return True
-    return goal.type == self.type
+    return self.law.virt.typecheck(goal.type)
 
   def decl_var(self,var_name,typ):
     assert(var_name in self.variables)
@@ -147,7 +131,7 @@ class PhysicsLawRelation:
     self.var_types[var_name] = typ
 
   def __repr__(self):
-    return "%s(%d):%s = %s" % (self.law,self.ident,self.type,self.expr)
+    return "%s = %s @ %s" % (self.target,self.mode,self.expr)
 
 class Tableau:
 

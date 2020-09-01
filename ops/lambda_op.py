@@ -328,3 +328,168 @@ def Square(a):
 
 def Div(a,b):
     return genop.Mult(a,Pow(b,genop.Const(-1)))
+
+
+import sympy
+
+class FromSympyFailed(Exception):
+    pass
+
+class SympyExtvar(sympy.Function):
+    @classmethod
+    def eval(cls, x):
+        return x
+
+    def _eval_is_real(self):
+        return self.args[0].is_real
+
+    def fdiff(self, argindex=1):
+        if argindex == 1:
+            return 1.0
+        else:
+            raise ArgumentIndexError(self, argindex)
+
+
+class SympyEmit(sympy.Function):
+    @classmethod
+    def eval(cls, x):
+        return x
+
+    def _eval_is_real(self):
+        return self.args[0].is_real
+
+    def fdiff(self, argindex=1):
+        if argindex == 1:
+            return 1.0
+        else:
+            raise ArgumentIndexError(self, argindex)
+
+def to_sympy(expr,symbols={},wildcard=False,blacklist={}):
+    if expr.op == OpType.VAR:
+        if not expr.name in symbols:
+            if wildcard:
+                bl = blacklist[expr.name] if expr.name in blacklist \
+                     else None
+                symbols[expr.name] = sympy.Wild(expr.name, \
+                                                blacklist=bl)
+            else:
+                symbols[expr.name] = sympy.Symbol(expr.name)
+
+        return symbols[expr.name]
+    elif expr.op == OpType.CONST:
+        return expr.value
+    elif expr.op == OpType.ADD:
+        args0 = to_sympy(expr.args[0],symbols,wildcard)
+        args1 = to_sympy(expr.args[1],symbols,wildcard)
+        return args0+args1
+
+    elif expr.op == OpType.MULT:
+        args0 = to_sympy(expr.args[0],symbols,wildcard)
+        args1 = to_sympy(expr.args[1],symbols,wildcard)
+        return args0*args1
+    elif expr.op == OpType.EMIT:
+        args0 = to_sympy(expr.args[0],symbols,wildcard)
+        return SympyEmit(args0)
+    elif expr.op == OpType.EXTVAR:
+        args0 = to_sympy(genop.Var(expr.name),symbols,wildcard)
+        return SympyExtvar(args0)
+    elif expr.op == OpType.INTEG:
+        args0 = to_sympy(expr.args[0],symbols,wildcard)
+        args1 = to_sympy(expr.args[1],symbols,wildcard)
+        return sympy.Function("integ")(args0, \
+                                    args1)
+
+    elif expr.op == OpType.POW:
+        args0 = to_sympy(expr.args[0],symbols,wildcard)
+        args1 = to_sympy(expr.args[1],symbols,wildcard)
+        return args0**args1
+
+    elif expr.op == OpType.ABS:
+        args0 = to_sympy(expr.args[0],symbols,wildcard)
+        return sympy.Function("abs")(args0)
+
+
+    elif expr.op == OpType.SGN:
+        args0 = to_sympy(expr.args[0],symbols,wildcard)
+        return sympy.Function("sgn")(args0)
+
+
+    elif expr.op == OpType.SIN:
+        args0 = to_sympy(expr.args[0],symbols,wildcard)
+        return sympy.sin(args0)
+
+    elif expr.op == OpType.FUNC:
+        args = list(map(lambda v: to_sympy(genop.Var(v), \
+                                           symbols, \
+                                           wildcard, \
+                                           blacklist), \
+                        expr.func_args))
+        body = to_sympy(expr.expr,symbols,wildcard)
+        args.append(body)
+        return sympy.Function("func")(*args)
+
+    elif expr.op == OpType.CALL:
+        symargs = list(map(lambda v: to_sympy(v,symbols,wildcard,blacklist),
+                           expr.values))
+        symbody = to_sympy(expr.func,symbols,wildcard,blacklist)
+        args = [symbody]+symargs
+        fxn = sympy.Function("call")(*args)
+        return fxn
+    else:
+        raise Exception("unimpl: %s" % expr)
+
+def from_sympy(symexpr):
+    if isinstance(symexpr,sympy.Function):
+        if isinstance(symexpr, sympy.sin):
+            e0 = from_sympy(symexpr.args[0])
+            return Sin(e0)
+        elif symexpr.func.name == "integ":
+            assert(len(symexpr.args) == 2)
+            e1 = from_sympy(symexpr.args[0])
+            e2 = from_sympy(symexpr.args[1])
+            return genop.Integ(e1,e2)
+        elif symexpr.func.name == "abs":
+            e1 = from_sympy(symexpr.args[-1])
+            return Abs(e1)
+
+        elif symexpr.func.name == "sgn":
+            e1 = from_sympy(symexpr.args[-1])
+            return Sgn(e1)
+
+        elif symexpr.func.name == "call":
+            efn = from_sympy(symexpr.args[0])
+            args = list(map(lambda e : from_sympy(e), \
+                            symexpr.args[1:]))
+            return genop.Call(args,efn)
+
+        elif symexpr.func.name == "func":
+            ebody = from_sympy(symexpr.args[-1])
+            pars = list(map(lambda e: from_sympy(e).name, \
+                            symexpr.args[:-1]))
+            return Func(pars,ebody)
+
+        elif symexpr.func.name == "map":
+            raise FromSympyFailed("cannot convert mapping %s back to expr" % symexpr)
+
+        else:
+            raise Exception("unhandled func: %s" % symexpr.func)
+
+    elif isinstance(symexpr, sympy.Pow):
+        e1 = from_sympy(symexpr.args[0])
+        e2 = from_sympy(symexpr.args[1])
+        return Pow(e1,e2)
+
+    elif isinstance(symexpr, sympy.Symbol):
+        return genop.Var(symexpr.name)
+    elif isinstance(symexpr, sympy.Float) or \
+         isinstance(symexpr, sympy.Integer):
+        return genop.Const(float(symexpr))
+    elif isinstance(symexpr, sympy.Mul):
+        args = list(map(lambda a: from_sympy(a), symexpr.args))
+        return genop.product(args)
+    elif isinstance(symexpr, sympy.Add):
+        args = list(map(lambda a: from_sympy(a), symexpr.args))
+        return genop.sum(args)
+    else:
+        print(symexpr.func)
+        raise Exception(sympy.srepr(symexpr))

@@ -26,7 +26,7 @@ subparsers = parser.add_subparsers(dest='subparser_name',
 
 # lgraph arguments
 lgraph_subp = subparsers.add_parser('lgraph', help='generate circuit')
-lgraph_subp.add_argument('--vadp-fragments', type=int,default=100,
+lgraph_subp.add_argument('--vadp-fragments', type=int,default=5,
                        help='number of abs circuits to generate.')
 lgraph_subp.add_argument('--vadps', type=int,default=3,
                        help='number of conc circuits to generate.')

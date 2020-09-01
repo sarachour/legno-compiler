@@ -21,12 +21,16 @@ import compiler.lgraph_pass.assemble as asmlib
 import compiler.lgraph_pass.synth as synthlib
 import compiler.lgraph_pass.rule as rulelib
 import compiler.lgraph_pass.vadp as vadplib
+from compiler.lgraph_pass.rules.kirch import KirchhoffRule
+from compiler.lgraph_pass.rules.lutfuse import FuseLUTRule
 
-def get_laws():
+
+def get_laws(dev):
+    return [KirchhoffRule(), FuseLUTRule(dev)]
     return [
         {
             'name':'kirchoff',
-            'expr': parser.parse_expr('a+b'),
+            'expr': {"*": parser.parse_expr('a+b')},
             'type': blocklib.BlockSignalType.ANALOG,
             'vars': {
                 'a':blocklib.BlockSignalType.ANALOG, \
@@ -37,8 +41,28 @@ def get_laws():
             'simplify': rulelib.simplify_kirchoff
         },
         {
+            'name':'lut-fuse',
+            'expr': { \
+                      ('m','m'): parser.parse_expr('2.0*f((0.5*a))', 
+                                                   {'f':(['y'],parser.parse_expr('e'))}), \
+                      ('h','m'): parser.parse_expr('2.0*f((0.05*a))', 
+                                                   {'f':(['y'],parser.parse_expr('e'))}), \
+                      ('h','h'): parser.parse_expr('20.0*f((0.05*a))',
+                                                   {'f':(['y'],parser.parse_expr('e'))}), \
+                      ('m','h'): parser.parse_expr('20.0*f((0.5*a))',
+                                                   {'f':(['y'],parser.parse_expr('e'))}), \
+            },
+            'type': blocklib.BlockSignalType.ANALOG,
+            'vars': {
+                'a':blocklib.BlockSignalType.ANALOG
+            },
+            'cstrs': rulelib.cstrs_fuse_lut,
+            'apply': rulelib.apply_fuse_lut,
+            'simplify': rulelib.simplify_fuse_lut
+        },
+        {
             'name':'flip_sign',
-            'expr':parser.parse_expr('-a'),
+            'expr':{"*":parser.parse_expr('-a')},
             'type': blocklib.BlockSignalType.ANALOG,
             'vars': {
                 'a':blocklib.BlockSignalType.ANALOG
@@ -63,13 +87,14 @@ def compile(board,prob,
                               board.blocks))
 
     # perform synthesis
-    laws = get_laws()
+    laws = get_laws(board)
     fragments = {}
     for variable in prob.variables():
         fragments[variable] = []
         expr = prob.binding(variable)
         print("> synthesizing %s = %s" % (variable,expr))
-        for vadp in synthlib.search(compute_blocks,laws,variable,expr, \
+        for vadp in synthlib.search(board, \
+                                    compute_blocks,laws,variable,expr, \
                                     depth=synth_depth):
             if len(fragments[variable]) >= vadp_fragments:
                 break

@@ -168,21 +168,22 @@ class ExprDataConfig(ConfigStmt):
 
   @expr.setter
   def expr(self,e):
-    if expr is None:
+    if e is None:
       self._expr = None
+      return
 
     for v in e.vars():
       if not v in self.args:
         raise Exception("%s is not a valid input. Expected" \
                         % (v,self.args))
 
-    self._expr = expr
+    self._expr = e
 
   def to_json(self):
     return {
       'name':self.name,
       'expr': self.expr.to_json(),
-      'args': self.args.to_json(),
+      'args': list(map(lambda arg: arg, self.args)),
       'scfs': dict(self.scfs),
       'injs': dict(self.injs),
       'args': list(self.args)
@@ -352,9 +353,8 @@ class BlockConfig:
       if data.type == blocklib.BlockDataType.CONST:
         cfg.add(ConstDataConfig(data.name,0.0))
       else:
-        print(data)
         cfg.add(ExprDataConfig(data.name, \
-                               data.args, \
+                               data.inputs, \
                                None))
     for state in block.state:
       if isinstance(state.impl,blocklib.BCCalibImpl):

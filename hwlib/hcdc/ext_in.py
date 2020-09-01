@@ -15,7 +15,7 @@ ext_in.outputs.add(BlockOutput('z', BlockSignalType.ANALOG, \
 
 factor = 2.0
 ext_in.outputs['z'].relation.bind(["*"], \
-                               parser.parse_expr('extvar((%s*x))' % factor))
+                               parser.parse_expr('%s*extvar(x)' % factor))
 
 ext_in.inputs['x'] \
        .interval.bind(["*"],interval.Interval(-2*factor,2*factor))

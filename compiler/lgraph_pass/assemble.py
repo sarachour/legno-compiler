@@ -215,20 +215,20 @@ def assemble_circuit(stmts):
   assembled = []
   for stmt in stmts:
     if isinstance(stmt,vadplib.VADPSink):
-      if stmt.port.block.type == blocklib.BlockType.ASSEMBLE:
-        add(asm_sinks,stmt.dsexpr,stmt.port)
+      if stmt.target.block.type == blocklib.BlockType.ASSEMBLE:
+        add(asm_sinks,stmt.dsexpr,stmt.target)
       else:
-        add(compute_sinks,stmt.dsexpr,stmt.port)
+        add(compute_sinks,stmt.dsexpr,stmt.target)
 
     elif isinstance(stmt,vadplib.VADPSource):
-      if isinstance(stmt.port,vadplib.VirtualSourceVar):
-        srcs = vadplib.get_virtual_variable_sources(stmts,stmt.port)
+      if isinstance(stmt.target,vadplib.VirtualSourceVar):
+        srcs = vadplib.get_virtual_variable_sources(stmts,stmt.target)
         add(compute_sources,stmt.dsexpr, srcs)
         continue
-      elif stmt.port.block.type == blocklib.BlockType.ASSEMBLE:
-        add(asm_sources,stmt.dsexpr,[stmt.port])
+      elif stmt.target.block.type == blocklib.BlockType.ASSEMBLE:
+        add(asm_sources,stmt.dsexpr,[stmt.target])
       else:
-        add(compute_sources,stmt.dsexpr,[stmt.port])
+        add(compute_sources,stmt.dsexpr,[stmt.target])
 
       assembled.append(stmt)
 
@@ -278,11 +278,11 @@ def create_vadp_frag(hierarchy,input_var,parent_vadp,instance_map={}):
   stems = []
   for frag in hierarchy[0]:
     inst = fresh_ident(frag['block'])
-    vadp.append(vadplib.VADPConfig(frag['block'],inst,frag['modes']))
-    inp_port = vadplib.PortVar(frag['block'],inst, \
-                               list(frag['block'].inputs)[0])
+    targ = vadplib.PortVar(frag['block'],inst)
+    vadp.append(vadplib.VADPConfig(targ,frag['modes']))
+    inp_port = targ.make_port_var(list(frag['block'].inputs)[0])
     for port,expr in frag['exprs'].items():
-      out_port_var = vadplib.PortVar(frag['block'],inst,frag['block'].outputs[port])
+      out_port_var = targ.make_port_var(frag['block'].outputs[port])
       vadp.append(vadplib.VADPSource(out_port_var,expr))
 
     # inject connection

@@ -4,7 +4,7 @@ import compiler.lgraph_pass.vadp as vadplib
 
 def render_config(graph, stmt):
     # render
-    blk = stmt.block
+    blk = stmt.target.block
     block_templ = "{inputs} |<block> {block_info}| {outputs}"
     inputs = []
     outputs = []
@@ -15,8 +15,9 @@ def render_config(graph, stmt):
     for out in blk.outputs:
         outputs.append("<%s> %s" % (out.name, out.name))
 
-    block_name = "%s%s" % (stmt.block.name,stmt.ident)
-    block_text = block_templ.format(block_info="%s %s" % (blk.name,stmt.ident),
+    block_name = "%s%s" % (stmt.target.block.name,stmt.target.ident)
+    block_text = block_templ.format(block_info="%s %s" % (blk.name, \
+                                                          stmt.target.ident),
                                     inputs="{%s}" % ("|".join(inputs)),
                                     outputs="{%s}" % ("|".join(outputs)))
     graph.node(block_name, "{%s}" % block_text)
@@ -52,13 +53,13 @@ def render(vadp, filename):
           graph.edge(src_id, sink_id)
 
         elif isinstance(stmt,vadplib.VADPSink):
-          port_id = "%s%s:%s" % (stmt.port.block.name, stmt.port.ident, stmt.port.port.name)
+          port_id = "%s%s:%s" % (stmt.target.block.name, stmt.target.ident, stmt.target.port.name)
           sink_id = "sink%d" % idx
           graph.node(sink_id, "sink:" + str(stmt.dsexpr))
           graph.edge(sink_id,port_id)
 
         elif isinstance(stmt,vadplib.VADPSource):
-          port_id = "%s%s:%s" % (stmt.port.block.name, stmt.port.ident, stmt.port.port.name)
+          port_id = "%s%s:%s" % (stmt.target.block.name, stmt.target.ident, stmt.target.port.name)
           source_id = "src%d" % idx
           graph.node(source_id, "source: "+str(stmt.dsexpr))
           graph.edge(port_id,source_id)

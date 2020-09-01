@@ -190,8 +190,82 @@ class Device:
   def blocks(self):
     return self._blocks.values()
 
-def path_exists(dev,sblk,sport,dblk,dport):
-  raise NotImplementedError
+def path_exists(dev,sblk,sport,dblk,dport, \
+                num_route_blocks=4):
+  route_blocks = []
+  interim_paths = []
+  start_paths = []
+  end_paths = []
+  for blk in dev.blocks:
+    if blk.type == blocklib.BlockType.ROUTE:
+      assert(len(blk.inputs) == 1)
+      assert(len(blk.outputs) == 1)
+      route_blocks.append(blk.name)
+
+
+  for csblk,csloc,csport, \
+      cdblk,cdloc,cdport in dev.layout.connections:
+    # internal edge on path
+    if csblk in route_blocks and cdblk in route_blocks and \
+       not (csblk,cdblk) in interim_paths:
+      interim_paths.append((csblk,cdblk))
+
+    # ending edge on path
+    elif csblk in route_blocks and cdblk == dblk and \
+         cdport == dport and not (csblk,cdblk,cdport) in end_paths:
+      end_paths.append((csblk, \
+                        cdblk,cdport))
+    # starting edge on path
+    elif cdblk in route_blocks and csblk == sblk and \
+         csport == sport and not (csblk,csport,cdblk) in start_paths:
+      start_paths.append((csblk,csport, \
+                          cdblk))
+
+
+
+  # return if there's a direct connection without route blocks
+  def has_direct_connection():
+    try:
+      for sl,dl in dev.layout.get_connections(sblk,sport, \
+                                              dblk,dport):
+        return True
+      return False
+    except Exception as e:
+      return False
+
+  # walk over paths, starting from shortest
+  def walk_paths(curr_path):
+    if len(curr_path) - 2 >= num_route_blocks:
+      return
+
+    if len(curr_path) == 0:
+      if has_direct_connection():
+          yield [(sblk,sport),(dblk,dport)]
+
+      for sb,sp,db in start_paths:
+        for path in walk_paths([(sb,sp),(db)]):
+          yield path
+
+    else:
+      db = curr_path[-1]
+      for csb,cdb,cdp in end_paths:
+        if csb == db:
+          new_path = list(curr_path)
+          new_path.append((cdb,cdp))
+          yield new_path
+
+      # find
+      for csb,cdb in interim_paths:
+        if csb == db:
+          new_path = list(curr_path)
+          new_path.append((cdb))
+          for path in walk_paths(new_path):
+            yield path
+
+  # enumerate all paths
+  for path in walk_paths([]):
+    return True
+  return False
 
 
 def distinct_paths(dev,sblk,sloc,sport,dblk,dloc,dport, \

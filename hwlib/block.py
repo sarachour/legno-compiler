@@ -625,6 +625,8 @@ class BlockInput(BlockField):
           self.quantize = ModeDependentProperty("quantization", \
                                                 block.modes, \
                                                 Quantize)
+      else:
+          self.quantize = None
 
   @property
   def properties(self):
@@ -637,6 +639,9 @@ class BlockInput(BlockField):
       st = "block-input %s : %s (%s) {\n" \
            % (self.name,self.type,self.ll_identifier.value);
       for prop in [self.interval,self.freq_limit,self.quantize]:
+        if prop is None:
+            continue
+
         text = str(prop)
         if text != "":
           st += "%s%s\n" % (indent,prop.name)
@@ -776,6 +781,8 @@ class BlockOutput(BlockField):
       self.quantize = ModeDependentProperty("quantization", \
                                             block.modes, \
                                             Quantize)
+    else:
+      self.quantize = None
 
   @property
   def properties(self):
@@ -788,14 +795,12 @@ class BlockOutput(BlockField):
 
 class BlockData(BlockField):
 
-  def __init__(self,name,data_type,inputs=None):
+  def __init__(self,name,data_type,inputs=[]):
     BlockField.__init__(self,name)
     assert(isinstance(data_type, BlockDataType))
     self.type = data_type
-    self.n_inputs = inputs
-    if not inputs is None:
-        self.args = list(map(lambda i: "x%d" % i, \
-                             range(inputs)))
+    self.n_inputs = len(inputs)
+    self.inputs = inputs
 
   def initialize(self,block):
     self.block = block
@@ -830,6 +835,13 @@ class Block:
 
     self.name = name
     self.type = typ
+
+  def port(self,name):
+    if self.inputs.has(name):
+      return self.inputs[name]
+    if self.outputs.has(name):
+      return self.outputs[name]
+    raise Exception("unknown port: %s" % name)
 
   def field_collections(self):
     yield self.inputs

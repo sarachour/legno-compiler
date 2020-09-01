@@ -59,6 +59,7 @@ def run_adp_simulation(dev, \
                        sim):
   state_vars = list(sim.state_variables())
 
+  print(sim)
   def dt_func(t,vs):
     return next_state(sim,vs)
 

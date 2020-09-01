@@ -507,6 +507,6 @@ def generate_constraint_problem(dev,program,adp):
       for port in list(block.inputs) + list(block.outputs):
         interval = port.interval[mode]
         freq_lim = port.freq_limit[mode]
-        if hasattr(port,'quantize'):
+        if not port.quantize is None:
           quantize = port.quantize[mode]
 

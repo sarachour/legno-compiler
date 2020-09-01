@@ -11,12 +11,13 @@ lut.inputs.add(BlockInput('x', BlockSignalType.DIGITAL, \
 lut.outputs.add(BlockOutput('z', BlockSignalType.DIGITAL, \
                             ll_identifier=enums.PortType.NOPORT))
 
-lut.data.add(BlockData('e', BlockDataType.EXPR,inputs=1))
+lut.data.add(BlockData('e', BlockDataType.EXPR, \
+                       inputs=['y']))
 
 func_impl = parser.parse_expr('e')
 lut.outputs['z'].relation.bind(['_'], \
                                parser.parse_expr('f(x)',{
-                                 'f':(['x'],func_impl)
+                                 'f':(['y'],func_impl)
                                }))
 
 lut.state.add(BlockState('source', BlockStateType.CONNECTION, \

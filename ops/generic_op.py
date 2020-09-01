@@ -28,6 +28,7 @@ class ExtVar(GenericOp):
 
     def __init__(self,name,loc=None):
         GenericOp.__init__(self,OpType.EXTVAR,[])
+        assert(isinstance(name,str))
         self._name = name
         self._loc = loc
 
@@ -39,9 +40,6 @@ class ExtVar(GenericOp):
     def name(self):
         return self._name
 
-    def infer_interval(self,bindings={}):
-        return interval.IntervalCollection(bindings[self._name])
-
     @property
     def name(self):
         return self._name
@@ -52,6 +50,10 @@ class ExtVar(GenericOp):
     def __repr__(self):
       return "(%s %s)" % \
         (self._op.value,self._name)
+
+    def vars(self):
+        return [self._name]
+
 
     @staticmethod
     def from_json(obj):
@@ -273,10 +275,38 @@ class Call(GenericOp):
         pars = " ".join(map(lambda p: str(p), self._params))
         return "call %s %s" % (pars,self._func)
 
+def product(terms):
+    if len(terms) == 0:
+        return Const(1)
+    elif len(terms) == 1:
+        return terms[0]
+    else:
+        return Mult(terms[0],product(terms[1:]))
+
+
 def sum(terms):
     if len(terms) == 0:
         return Const(0)
     elif len(terms) == 1:
         return terms[0]
     else:
-        Add(terms[0],sum(terms[1:]))
+        return Add(terms[0],sum(terms[1:]))
+
+def factor_coefficient(expr):
+    if expr.op == OpType.CONST:
+        return expr.value,None
+    elif expr.op == OpType.VAR:
+        return 1.0,expr
+    elif expr.op == OpType.MULT:
+        c1,e1 = factor_coefficient(expr.arg(0))
+        c2,e2 = factor_coefficient(expr.arg(1))
+        res = None
+        if not e1 is None and not e2 is None:
+            res = genop.Mult(e1,e2)
+        elif not e1 is None:
+            res = e1
+        elif not e2 is None:
+            res = e2
+        return c1*c2,res
+    else:
+        raise Exception("unimpl: %s" % expr)
