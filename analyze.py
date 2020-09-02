@@ -9,11 +9,11 @@ import ops.opparse as opparse
 import time
 import target_block
 
-def analyze_db():
+def analyze_db(db_name = 'board6'):
 	dev = hcdclib.get_device()
 	block,inst,cfg = target_block.get_block(dev)
 
-	db = physdb.PhysicalDatabase('board6')
+	db = physdb.PhysicalDatabase(db_name)
 	# build up dataset
 	params = {}
 	inputs = {}
