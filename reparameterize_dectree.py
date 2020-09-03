@@ -109,6 +109,21 @@ print("inputs:",inputs)
 ###
 dectree,predictions = fit_lindectree.fit_decision_tree(hidden_codes, inputs,output, max_depth, min_size)
 
+inputs_with_keys = {}
+
+i = 0
+for name in hidden_codes:
+  inputs_with_keys[name] = inputs[:][i]
+  i+=1 
+
+index = 0
+for name in hidden_codes:
+  inputs_with_keys[name] = []
+  for i in inputs:
+    inputs_with_keys[name].append(i[index])
+  index+=1
+
+
 dataset = {}
 dataset['meas_mean'] = costs
 dataset['inputs'] = inputs_with_keys
