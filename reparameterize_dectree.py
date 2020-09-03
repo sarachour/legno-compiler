@@ -63,6 +63,8 @@ def build_dataset():
 
   db = physdb.PhysicalDatabase('reparameterize_db')
   params = {}
+  param_A = []
+  param_D = []
   inputs = []
   hidden_codes = []
   costs = []
