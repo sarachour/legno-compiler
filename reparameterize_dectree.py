@@ -16,6 +16,8 @@ import phys_model.planner as planlib
 from analyze import analyze_db
 import json
 
+
+
 with open("static_dectree.json") as fh:
   serialized_dectree_dict = json.load(fh)
 
@@ -32,6 +34,27 @@ for current_sample_dict in sample_list:
 	proflib.profile_all_hidden_states(runtime, dev, planner)
 
 analyze_db('reparameterize_db')
+
+#imports from no_refitting.py
+
+import phys_model.model_fit as fitlib
+import phys_model.visualize as vizlib
+
+import hwlib.device as devlib
+import hwlib.block as blocklib
+import hwlib.adp as adplib
+import ops.opparse as opparse
+import ops.generic_op as genoplib
+import target_block as targ
+import ops.lambda_op as lambdoplib
+import phys_model.region as reglib
+
+import time
+import matplotlib.pyplot as plt
+import random
+import time
+import numpy as np
+import phys_model.fit_lin_dectree as fit_lindectree
 
 
 
