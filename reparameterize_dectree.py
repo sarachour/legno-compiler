@@ -90,11 +90,13 @@ def build_dataset():
       entry[idx] = value
 
     inputs.append(entry)
+    param_A.append(blk.model.params["a"])
+    param_D.append(blk.model.params["d"])
     costs.append(blk.model.cost)
 
-  return hidden_codes,inputs,params,costs
+  return hidden_codes,inputs,params,costs,param_A,param_D
 
-hidden_codes,inputs,params,costs = build_dataset()
+hidden_codes,inputs,params,costs,param_A,param_D = build_dataset()
 
 np_inputs = np.array(inputs)
 np_costs = np.array(costs)
@@ -127,7 +129,6 @@ for name in hidden_codes:
 dataset = {}
 dataset['meas_mean'] = costs
 dataset['inputs'] = inputs_with_keys
-#print("CRAFTED DATASET IS:", dataset)
 output = dectree.fit(dataset)
 
 serialized_dectree_dict = {}
