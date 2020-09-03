@@ -36,7 +36,7 @@ analyze_db('reparameterize_db')
 
 
 def build_dataset():
-  block,inst,cfg = targ.get_block(dev)
+  block,inst,cfg = target_block.get_block(dev)
 
   db = physdb.PhysicalDatabase('reparameterize_db')
   params = {}
