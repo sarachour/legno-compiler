@@ -20,7 +20,7 @@ class DecisionNode:
       return self.right.evaluate(hidden_state)
 
   def pretty_print(self,indent=0):
-    ind = " "*indent
+    ind = "| "*indent
     st = "%sif %s < %f:\n" % (ind,self.name,self.value)
     st += self.left.pretty_print(indent+1)
     st += "%sif %s >= %f:\n" % (ind,self.name,self.value)
@@ -105,6 +105,14 @@ class DecisionNode:
     right_region.set_range(self.name, self.value, None)
     self.right.update(right_region)
 
+  def apply_expr_op(self,target_function,optional_arg = None):
+    new_left = self.left.apply_expr_op(target_function,optional_arg)
+    new_right = self.right.apply_expr_op(target_function,optional_arg)
+    return DecisionNode(self.name,self.value,new_left,new_right)
+
+  def concretize(self):
+    return DecisionNode(self.name,self.value,self.left.concretize(),self.right.concretize())
+
 class RegressionLeafNode:
 
   def __init__(self,expr,npts=0,R2=-1.0,params={},region = reglib.Region()):
@@ -116,7 +124,7 @@ class RegressionLeafNode:
 
 
   def pretty_print(self,indent=0):
-    ind = " "*indent
+    ind = "| "*indent
     return "%sexpr %s, npts=%d, R2=%f, pars=%s\n" \
       % (ind,self.expr,self.npts,self.R2,self.params)
 
@@ -216,6 +224,20 @@ class RegressionLeafNode:
 
   def update(self, reg):
     self.region = reg
+
+  def apply_expr_op(self,target_function, optional_arg = None):
+    expr = target_function(self.expr,optional_arg)
+    return RegressionLeafNode(expr,self.npts,self.R2,self.params,self.region)
+    
+
+  def concretize(self):
+    new_params = {}
+    sub_dict = {}
+    for key,value in self.params.items():
+      sub_dict[key] = genoplib.Const(value)
+    new_expr = self.expr.substitute(sub_dict)
+    return RegressionLeafNode(new_expr,self.npts,self.R2,new_params,self.region)
+
 
 
 

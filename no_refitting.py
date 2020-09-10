@@ -69,7 +69,8 @@ print("--- fitting decision tree (%d samples) ---" % n_samples)
 output = costs
 
 print("inputs:",inputs)
-'''dectree,predictions = fit_lindectree.fit_decision_tree(hidden_codes, inputs,output, max_depth, min_size)
+###
+dectree,predictions = fit_lindectree.fit_decision_tree(hidden_codes, inputs,output, max_depth, min_size)
 
 serialized_dectree_dict = {}
 dectree.to_json(serialized_dectree_dict)
@@ -81,7 +82,8 @@ with open("predictions.json",'w') as fh:
 with open("dectree.json",'w') as fh:
   fh.write(json.dumps(serialized_dectree_dict))
 
-'''
+
+###
 with open("dectree.json") as fh:
   serialized_dectree_dict = json.load(fh)
 

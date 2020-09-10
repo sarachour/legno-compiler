@@ -2,6 +2,7 @@ import random
 import math
 
 class Region():
+  '''
   def __init__(self,bounds = None):
     self.bounds = {'pmos':[0,7],\
                    'nmos':[0,7],\
@@ -9,6 +10,16 @@ class Region():
                    'bias_out':[0,63],\
                    'bias_in0':[0,63],\
                    'bias_in1':[0,63]}
+    if not bounds is None:
+      self.set_ranges(bounds)
+  '''
+  def __init__(self,bounds = {'pmos':[0,7],\
+                   'nmos':[0,7],\
+                   'gain_cal':[0,63],\
+                   'bias_out':[0,63],\
+                   'bias_in0':[0,63],\
+                   'bias_in1':[0,63]}):
+    self.bounds = bounds
     if not bounds is None:
       self.set_ranges(bounds)
 
@@ -76,7 +87,39 @@ class Region():
 
     return True
 
+  def overlap(self,reg):
+    bounds = {'pmos':[0,7],\
+                   'nmos':[0,7],\
+                   'gain_cal':[0,63],\
+                   'bias_out':[0,63],\
+                   'bias_in0':[0,63],\
+                   'bias_in1':[0,63]}
+    is_valid_range = True
+    for var in self.bounds:
+      lower_A = self.bounds[var][0]
+      upper_A = self.bounds[var][1]
+      lower_B = reg.bounds[var][0]
+      upper_B = reg.bounds[var][1]
+      #print("lower_A:", lower_A)
+      #print("upper_A:", upper_A)
+      #print("lower_A:", lower_A)
+      #print("upper_B:", upper_B)
+      if lower_A > lower_B:
+        target_lower = lower_A
+      else:
+        target_lower = lower_B
 
+      if upper_A < upper_B:
+        target_upper = upper_A
+      else:
+        target_upper = upper_B
+
+      if target_upper < target_lower:
+        is_valid_range = False
+
+      bounds[var] = [target_lower,target_upper]
+
+    return Region(bounds)
 
 
 
