@@ -16,30 +16,10 @@ import phys_model.planner as planlib
 from analyze import analyze_db
 import json
 
-
-
-with open("static_dectree.json") as fh:
-  serialized_dectree_dict = json.load(fh)
-
-dectree = lindectree.DecisionNode.from_json(serialized_dectree_dict)
-sample_list = dectree.random_sample()
-
-dev = hcdclib.get_device()
-block, inst, cfg = target_block.get_block(dev)
-db = physdb.PhysicalDatabase('reparameterize_db')
-runtime = GrendelRunner('reparameterize_db')
-
-for current_sample_dict in sample_list:
-	planner = planlib.SingleTargetedPointPlanner(block,inst,cfg,10,current_sample_dict)
-	proflib.profile_all_hidden_states(runtime, dev, planner)
-
-analyze_db('reparameterize_db')
-
 #imports from no_refitting.py
 
 import phys_model.model_fit as fitlib
 import phys_model.visualize as vizlib
-
 import hwlib.device as devlib
 import hwlib.block as blocklib
 import hwlib.adp as adplib
@@ -48,7 +28,6 @@ import ops.generic_op as genoplib
 import target_block as targ
 import ops.lambda_op as lambdoplib
 import phys_model.region as reglib
-
 import time
 import matplotlib.pyplot as plt
 import random
@@ -56,12 +35,29 @@ import time
 import numpy as np
 import phys_model.fit_lin_dectree as fit_lindectree
 
+TEMP_DB_NAME = 'reparameterize_db'
 
+with open("static_dectree_param_D.json") as fh:
+  serialized_dectree_dict = json.load(fh)
+
+dectree = lindectree.DecisionNode.from_json(serialized_dectree_dict)
+sample_list = dectree.random_sample()
+
+dev = hcdclib.get_device()
+block, inst, cfg = target_block.get_block(dev)
+db = physdb.PhysicalDatabase(TEMP_DB_NAME)
+runtime = GrendelRunner(TEMP_DB_NAME)
+
+for current_sample_dict in sample_list:
+	planner = planlib.SingleTargetedPointPlanner(block,inst,cfg,10,current_sample_dict)
+	proflib.profile_all_hidden_states(runtime, dev, planner)
+
+analyze_db(TEMP_DB_NAME)
 
 def build_dataset():
   block,inst,cfg = target_block.get_block(dev)
 
-  db = physdb.PhysicalDatabase('reparameterize_db')
+  db = physdb.PhysicalDatabase(TEMP_DB_NAME)
   params = {}
   param_A = []
   param_D = []
@@ -100,14 +96,15 @@ def build_dataset():
 
 hidden_codes,inputs,params,costs,param_A,param_D = build_dataset()
 
+output = param_D
 np_inputs = np.array(inputs)
-np_costs = np.array(costs)
-n_samples = len(costs)
+np_costs = np.array(output)
+n_samples = len(output)
 n_folds = 5
 max_depth = 3
 min_size = round(n_samples/20.0)
 print("--- fitting decision tree (%d samples) ---" % n_samples)
-output = costs
+
 
 print("inputs:",inputs)
 ###
@@ -129,7 +126,7 @@ for name in hidden_codes:
 
 
 dataset = {}
-dataset['meas_mean'] = costs
+dataset['meas_mean'] = output
 dataset['inputs'] = inputs_with_keys
 output = dectree.fit(dataset)
 

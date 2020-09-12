@@ -1,5 +1,6 @@
 import phys_model.model_fit as fitlib
 import copy
+import ops.lambda_op as lambdalib
 import ops.generic_op as genoplib
 import phys_model.region as reglib
 import ops.base_op as baselib
@@ -225,6 +226,7 @@ class RegressionLeafNode:
   def update(self, reg):
     self.region = reg
 
+  #remove
   def apply_expr_op(self,target_function, optional_arg = None):
     expr = target_function(self.expr,optional_arg)
     return RegressionLeafNode(expr,self.npts,self.R2,self.params,self.region)
@@ -240,7 +242,3 @@ class RegressionLeafNode:
 
   def copy(self):
     return RegressionLeafNode(self.expr,self.npts,self.R2,self.params,self.region)
-
-
-
-

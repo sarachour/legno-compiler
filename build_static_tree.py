@@ -48,7 +48,6 @@ dev = hcdclib.get_device()
 block, inst, cfg = targ.get_block(dev)
 db = physdb.PhysicalDatabase('board6')
 runtime = GrendelRunner()
-
 planner = planlib.RandomPlanner(block, inst, cfg, 8, 10, 1000)
 proflib.profile_all_hidden_states(runtime, dev, planner)
 analyze_db()
@@ -98,14 +97,14 @@ def build_dataset():
   return hidden_codes,inputs,params,costs,param_A,param_D
 
 hidden_codes,inputs,params,costs,param_A,param_D = build_dataset()
+output = param_D
 np_inputs = np.array(inputs)
-np_costs = np.array(costs)
-n_samples = len(costs)
+np_costs = np.array(output)
+n_samples = len(output)
 n_folds = 5
 max_depth = 3
 min_size = round(n_samples/20.0)
 print("--- fitting decision tree (%d samples) ---" % n_samples)
-output = costs
 dectree,predictions = fit_lindectree.fit_decision_tree(hidden_codes, \
                                                        inputs,output, \
                                                        max_depth, \
@@ -115,5 +114,5 @@ dectree.update() #is this required?
 
 serialized_dectree_dict = {}
 dectree.to_json(serialized_dectree_dict)
-with open("static_dectree.json",'w') as fh:
+with open("static_dectree_param_D.json",'w') as fh:
   json.dump(serialized_dectree_dict, fh)
