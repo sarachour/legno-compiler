@@ -238,6 +238,9 @@ class RegressionLeafNode:
     new_expr = self.expr.substitute(sub_dict)
     return RegressionLeafNode(new_expr,self.npts,self.R2,new_params,self.region)
 
+  def copy(self):
+    return RegressionLeafNode(self.expr,self.npts,self.R2,self.params,self.region)
+
 
 
 

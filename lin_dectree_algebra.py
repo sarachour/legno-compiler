@@ -3,6 +3,7 @@ import phys_model.lin_dectree as lin_dectree
 import ops.generic_op as genoplib
 import ops.lambda_op as lambdalib
 import copy
+import ops.opparse as parselib
 
 def reconstruct(leaf_node_list,boundaries_to_ignore,default_boundaries):
 
@@ -132,10 +133,13 @@ def reconstruct(leaf_node_list,boundaries_to_ignore,default_boundaries):
 	return node
 
 
-def combine(tree_A,tree_B,target_operation):
+def combine(tree_A_leaves,tree_B_leaves,target_operation):
 
-	leaf_node_list_A = tree_A.leaves() 
-	leaf_node_list_B = tree_B.leaves()
+	#leaf_node_list_A = tree_A.leaves() 
+	#leaf_node_list_B = tree_B.leaves()
+
+	leaf_node_list_A = tree_A_leaves 
+	leaf_node_list_B = tree_B_leaves
 
 	#create list of all possible new leaves
 
@@ -145,10 +149,25 @@ def combine(tree_A,tree_B,target_operation):
 			reg = leaf_A.region.overlap(leaf_B.region)
 			expr = target_operation(leaf_A.expr, leaf_B.expr)
 			new_leaf = lin_dectree.RegressionLeafNode(expr,region = reg)
-			leaf_node_list_F.append(new_leaf)
+			if is_valid_leaf(new_leaf):
+				leaf_node_list_F.append(new_leaf)
 
-
+	#leaf_node_list_F = remove_invalid_leaves(leaf_node_list_F)
 	#remove leaves with invalid regions
+
+
+	default_boundaries = {'pmos':[0,7],\
+		                'nmos':[0,7],\
+		                'gain_cal':[0,63],\
+		                'bias_out':[0,63],\
+		                'bias_in0':[0,63],\
+		                'bias_in1':[0,63]}
+
+
+	reconstructed_tree = reconstruct(leaf_node_list_F,default_boundaries,default_boundaries)
+	return reconstructed_tree
+
+def remove_invalid_leaves(leaf_node_list_F):
 	leaf_index = 0
 	leaf_indices_to_remove = []
 	for leaf_index in range(len(leaf_node_list_F)):
@@ -164,17 +183,78 @@ def combine(tree_A,tree_B,target_operation):
 	for del_index in sorted(leaf_indices_to_remove,reverse=True):	#reverse to keep indices valid after removal
 		leaf_node_list_F.pop(del_index)
 
-	default_boundaries = {'pmos':[0,7],\
-		                'nmos':[0,7],\
-		                'gain_cal':[0,63],\
-		                'bias_out':[0,63],\
-		                'bias_in0':[0,63],\
-		                'bias_in1':[0,63]}
+	return leaf_node_list_F
+
+def is_valid_leaf(leaf):
+	is_valid = True
+	for var in leaf.region.bounds:
+			lower = leaf.region.bounds[var][0]
+			upper = leaf.region.bounds[var][1]
+			if upper < lower:
+				is_valid = False
+				break
+	return is_valid
+
+def is_valid_region(region):
+	is_valid = True
+	for var in region.bounds:
+			lower = region.bounds[var][0]
+			upper = region.bounds[var][1]
+			if upper < lower:
+				is_valid = False
+				break
+	return is_valid
 
 
-	reconstructed_tree = reconstruct(leaf_node_list_F,default_boundaries,default_boundaries)
-	return reconstructed_tree
+def op_apply1(func, leaves):
+   for leaf in leaves:
+      new_leaf = leaf.copy()
+      new_leaf.expr = func(leaf.expr)
+      yield new_leaf
 
+def op_apply2(func, leaves1, leaves2):
+	for leaf1 in leaves1:
+		new_leaf1 = leaf1.copy()
+		for leaf2 in leaves2:
+			new_leaf2 = leaf2.copy()
+			reg = new_leaf1.region.overlap(new_leaf2.region)
+			expr = func(new_leaf1.expr,new_leaf2.expr)
+			if is_valid_region(reg):
+				yield lin_dectree.RegressionLeafNode(expr, region = reg)
+
+
+
+#pass in a genoplib expr
+
+
+def eval_expr(e,subs):
+	if e.op == genoplib.OpType.VAR:
+		return subs[e.name]
+	elif e.op == genoplib.OpType.PAREN:
+		return eval_expr(e.expr,subs)
+	elif e.op == genoplib.OpType.ADD:
+		leaves1 = eval_expr(e.args[0],subs)
+		leaves2 = eval_expr(e.args[1],subs)
+		return list(op_apply2(lambda a, b: genoplib.Add(a,b), leaves1, leaves2))
+	elif e.op == genoplib.OpType.MULT:
+		leaves1 = eval_expr(e.args[0],subs)
+		leaves2 = eval_expr(e.args[1],subs)
+		return list(op_apply2(lambda a, b: genoplib.Mult(a,b), leaves1, leaves2))
+	elif e.op == genoplib.OpType.POW:
+		leaves = eval_expr(e.args[0],subs)
+		return list(op_apply1(lambda e: lambdalib.Pow(e.args[0],e.args[1]), leaves))
+	else:
+		raise NotImplementedError
+
+
+default_boundaries = {'pmos':[0,7],\
+		            'nmos':[0,7],\
+		            'gain_cal':[0,63],\
+		            'bias_out':[0,63],\
+		            'bias_in0':[0,63],\
+		            'bias_in1':[0,63]}\
+
+boundaries_to_ignore = dict(default_boundaries)
 
 with open("static_dectree_param_A.json") as fh:
   serialized_dectree_dict_A = json.load(fh)
@@ -184,16 +264,22 @@ with open("static_dectree_cost.json") as fh:
   serialized_dectree_dict_B = json.load(fh)
 dectree_B = lin_dectree.DecisionNode.from_json(serialized_dectree_dict_B)
 
-A = dectree_A.concretize()
-B = dectree_B.concretize()
+A = dectree_A.concretize().leaves()
+B = dectree_B.concretize().leaves()
 
+expr = parselib.parse_expr("A+B")
+variable_bindings = {"A": A, "B": B}
+leaf_list = eval_expr(expr, variable_bindings) 
 #0.76*(A^-1)*B + B + 0.3
-tree = A
-tree = tree.apply_expr_op(lambdalib.Pow,genoplib.Const(-1))
-tree = tree.apply_expr_op(genoplib.Mult,genoplib.Const(0.76))
-tree = combine(tree,B,genoplib.Mult)
-tree = combine(tree,B,genoplib.Add)
-tree = tree.apply_expr_op(genoplib.Add,genoplib.Const(0.3))
+#print(leaf_list)
+tree = reconstruct(leaf_list,boundaries_to_ignore,default_boundaries)
+
+#tree = A
+#tree = tree.apply_expr_op(lambdalib.Pow,genoplib.Const(-1))
+#tree = tree.apply_expr_op(genoplib.Mult,genoplib.Const(0.76))
+#tree = combine(tree,B,genoplib.Mult)
+#tree = combine(tree,B,genoplib.Add)
+#tree = tree.apply_expr_op(genoplib.Add,genoplib.Const(0.3))
 
 print(tree.find_minimum())
 print(tree.pretty_print())
