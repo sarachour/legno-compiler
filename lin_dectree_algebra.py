@@ -7,22 +7,9 @@ import ops.opparse as parselib
 
 def reconstruct(leaf_node_list,boundaries_to_ignore,default_boundaries):
 
-	#if you have reached the end of a branch
-	#print("\n\n\nNEW DECISION NODE CONSTRUCTOR CALLED")
-	#print("argument len:",len(leaf_node_list))
-
-	#for leaf in leaf_node_list:
-	#	print("leaf.region.bounds: ", leaf.region.bounds)
-
-	#print("ignore: ", boundaries_to_ignore)
-
 	if len(leaf_node_list) <= 1:
-		#print("REACHED END OF BRANCH, RETURNING LEAF")
-		#print(leaf_node_list[0].region.bounds)
 		return leaf_node_list[0]
-
 	#otherwise continue
-
 
 	boundary_freq = {'pmos':{},\
 	                'nmos':{},\
@@ -50,7 +37,6 @@ def reconstruct(leaf_node_list,boundaries_to_ignore,default_boundaries):
 
 	#as janky as it is, boundaries ending in .5 are upper bounds, and so their tally should be added on to the fully rounded integer that is above them
 	#the following adds all .5 tallies to the integer above
-
 	for var in boundary_freq:
 		for boundary in boundary_freq[var]:
 			if not boundary % 1 == 0:
@@ -58,25 +44,9 @@ def reconstruct(leaf_node_list,boundaries_to_ignore,default_boundaries):
 				boundary_freq[var][boundary] = 0
 
 	#boundaries which exist in the boundaries_to_ignore dict are trivial and will have a large amount of hits, so they need to be set to 0
-
 	for var in boundary_freq:
 		for boundary in boundaries_to_ignore[var]:
 			boundary_freq[var][boundary] = 0
-			#print("boundary: ", boundary, "var: ", var)
-
-	#for readability, compress out the values that are 0
-
-	compressed_boundary_freq =  {'pmos':{},\
-	                'nmos':{},\
-	                'gain_cal':{},\
-	                'bias_out':{},\
-	                'bias_in0':{},\
-	                'bias_in1':{}}
-
-	for var in boundary_freq:
-		for boundary in boundary_freq[var]:
-			if boundary_freq[var][boundary] != 0:
-				compressed_boundary_freq[var][boundary] = boundary_freq[var][boundary]
 
 	max_freq = 0
 	max_loc = 0.0
@@ -84,16 +54,11 @@ def reconstruct(leaf_node_list,boundaries_to_ignore,default_boundaries):
 	for var in boundary_freq:
 		max_boundary_loc = max(boundary_freq[var].keys(), key=(lambda key: boundary_freq[var][key]))
 		max_boundary_val = boundary_freq[var][max_boundary_loc]
-		#print("in ",var ,"at boundary: ",max_boundary_loc," there is a value of: ", max_boundary_val)
 		if max_boundary_val > max_freq:
 			max_freq = max_boundary_val
 			max_loc = max_boundary_loc
 			max_var = var
 
-
-	#print(compressed_boundary_freq)
-
-	#print("The boundary should be at:", max_loc, " in: ", max_var, ", as ", max_freq, " leaves satisfy it")
 
 	#time to make the first decision node
 
@@ -117,10 +82,8 @@ def reconstruct(leaf_node_list,boundaries_to_ignore,default_boundaries):
 		elif leaf.region.bounds[max_var][1] <= max_loc:
 			left_leaves.append(leaf)
 
-	#print("left: ", len(left_leaves),", right: ", len(right_leaves))
-
 	boundaries_to_ignore[max_var].append(max_loc)
-	#print("boundaries to ignore:", boundaries_to_ignore)
+
 	left_boundaries_to_ignore = copy.deepcopy(boundaries_to_ignore)
 	right_boundaries_to_ignore = copy.deepcopy(boundaries_to_ignore)
 	left_branch = reconstruct(left_leaves,left_boundaries_to_ignore,default_boundaries)
@@ -131,69 +94,6 @@ def reconstruct(leaf_node_list,boundaries_to_ignore,default_boundaries):
 	node = lin_dectree.DecisionNode(max_var,max_loc,left_branch,right_branch)
 
 	return node
-
-
-def combine(tree_A_leaves,tree_B_leaves,target_operation):
-
-	#leaf_node_list_A = tree_A.leaves() 
-	#leaf_node_list_B = tree_B.leaves()
-
-	leaf_node_list_A = tree_A_leaves 
-	leaf_node_list_B = tree_B_leaves
-
-	#create list of all possible new leaves
-
-	leaf_node_list_F = []
-	for leaf_A in leaf_node_list_A:
-		for leaf_B in leaf_node_list_B:
-			reg = leaf_A.region.overlap(leaf_B.region)
-			expr = target_operation(leaf_A.expr, leaf_B.expr)
-			new_leaf = lin_dectree.RegressionLeafNode(expr,region = reg)
-			if is_valid_leaf(new_leaf):
-				leaf_node_list_F.append(new_leaf)
-
-	#leaf_node_list_F = remove_invalid_leaves(leaf_node_list_F)
-	#remove leaves with invalid regions
-
-
-	default_boundaries = {'pmos':[0,7],\
-		                'nmos':[0,7],\
-		                'gain_cal':[0,63],\
-		                'bias_out':[0,63],\
-		                'bias_in0':[0,63],\
-		                'bias_in1':[0,63]}
-
-
-	reconstructed_tree = reconstruct(leaf_node_list_F,default_boundaries,default_boundaries)
-	return reconstructed_tree
-
-def remove_invalid_leaves(leaf_node_list_F):
-	leaf_index = 0
-	leaf_indices_to_remove = []
-	for leaf_index in range(len(leaf_node_list_F)):
-		leaf = leaf_node_list_F[leaf_index]
-		for var in leaf.region.bounds:
-			lower = leaf.region.bounds[var][0]
-			upper = leaf.region.bounds[var][1]
-			if upper < lower:
-				leaf_indices_to_remove.append(leaf_index)
-				break
-		leaf_index+=1
-
-	for del_index in sorted(leaf_indices_to_remove,reverse=True):	#reverse to keep indices valid after removal
-		leaf_node_list_F.pop(del_index)
-
-	return leaf_node_list_F
-
-def is_valid_leaf(leaf):
-	is_valid = True
-	for var in leaf.region.bounds:
-			lower = leaf.region.bounds[var][0]
-			upper = leaf.region.bounds[var][1]
-			if upper < lower:
-				is_valid = False
-				break
-	return is_valid
 
 def is_valid_region(region):
 	is_valid = True
@@ -214,11 +114,9 @@ def op_apply1(func, leaves):
 
 def op_apply2(func, leaves1, leaves2):
 	for leaf1 in leaves1:
-		new_leaf1 = leaf1.copy()
 		for leaf2 in leaves2:
-			new_leaf2 = leaf2.copy()
-			reg = new_leaf1.region.overlap(new_leaf2.region)
-			expr = func(new_leaf1.expr,new_leaf2.expr)
+			reg = leaf1.region.overlap(leaf2.region)
+			expr = func(leaf1.expr,leaf2.expr)
 			if is_valid_region(reg):
 				yield lin_dectree.RegressionLeafNode(expr, region = reg)
 
@@ -242,7 +140,8 @@ def eval_expr(e,subs):
 		return list(op_apply2(lambda a, b: genoplib.Mult(a,b), leaves1, leaves2))
 	elif e.op == genoplib.OpType.POW:
 		leaves = eval_expr(e.args[0],subs)
-		return list(op_apply1(lambda e: lambdalib.Pow(e.args[0],e.args[1]), leaves))
+		power = eval_expr(e.args[1],subs)
+		return list(op_apply2(lambda base,exponent: lambdalib.Pow(base,exponent), leaves, power))
 	else:
 		raise NotImplementedError
 
@@ -267,35 +166,14 @@ dectree_B = lin_dectree.DecisionNode.from_json(serialized_dectree_dict_B)
 A = dectree_A.concretize().leaves()
 B = dectree_B.concretize().leaves()
 
-expr = parselib.parse_expr("A+B")
+expr = parselib.parse_expr("A^B")
 variable_bindings = {"A": A, "B": B}
 leaf_list = eval_expr(expr, variable_bindings) 
-#0.76*(A^-1)*B + B + 0.3
-#print(leaf_list)
-tree = reconstruct(leaf_list,boundaries_to_ignore,default_boundaries)
 
-#tree = A
-#tree = tree.apply_expr_op(lambdalib.Pow,genoplib.Const(-1))
-#tree = tree.apply_expr_op(genoplib.Mult,genoplib.Const(0.76))
-#tree = combine(tree,B,genoplib.Mult)
-#tree = combine(tree,B,genoplib.Add)
-#tree = tree.apply_expr_op(genoplib.Add,genoplib.Const(0.3))
+tree = reconstruct(leaf_list,boundaries_to_ignore,default_boundaries)
 
 print(tree.find_minimum())
 print(tree.pretty_print())
-#for leaf in leaf_node_list_F:
-#	print(leaf.region.bounds)
-
-#print(boundary_freq)
-#boundaries dictionary is a count of 
-#boundaries = {'pmos':{23:2, 25:8, 30, }}
-
-
-#for leaf in leaf_node_list_F:
-#	for variable in leaf.region.bounds:
-#		lower = variable[0]
-#		upper = variable[1]
-#		boundaries[variable]
 
 '''
 
