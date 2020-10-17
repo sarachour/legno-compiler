@@ -113,6 +113,8 @@ class ConfigStmt:
     typ = ConfigStmtType(obj['type'])
     if typ == ConfigStmtType.CONSTANT:
       return ConstDataConfig.from_json(obj)
+    elif typ == ConfigStmtType.EXPR:
+      return ExprDataConfig.from_json(obj)
     elif typ == ConfigStmtType.PORT:
       return PortConfig.from_json(obj)
     elif typ == ConfigStmtType.STATE:
@@ -179,16 +181,44 @@ class ExprDataConfig(ConfigStmt):
 
     self._expr = e
 
+  @staticmethod
+  def from_json(obj):
+    expr = baseoplib.Op.from_json(obj['expr']) \
+           if not obj['expr'] is None \
+              else None
+    args = obj['args']
+    field = obj['name']
+
+    data_op = ExprDataConfig(field=field,expr=expr,args=args)
+    for name,scf in obj['scfs'].items():
+      assert(name in data_op.scfs)
+      data_op.scfs[name] = scf
+
+    for name,inj in obj['injs'].items():
+      assert(name in data_op.injs)
+      data_op.injs[name] = inj
+
+    return data_op
+
   def to_json(self):
     return {
       'name':self.name,
+      'type': self.type.value,
       'expr': self.expr.to_json(),
-      'args': list(map(lambda arg: arg, self.args)),
       'scfs': dict(self.scfs),
       'injs': dict(self.injs),
       'args': list(self.args)
     }
 
+
+  def __repr__(self):
+    templ = "{name}({args}): {expr}\n"
+    st = templ.format(name=self.name, \
+                      args=",".join(self.args), \
+                      expr=self.expr)
+    st += "%s\n" % str(self.scfs)
+    st += "%s\n" % str(self.injs)
+    return st
 
 
 class PortConfig(ConfigStmt):

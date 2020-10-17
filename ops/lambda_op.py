@@ -112,6 +112,15 @@ class Func(Op):
         return list(filter(lambda v: not v in bound, \
                            self._expr.vars()))
 
+    def substitute(self,args):
+        subargs = {}
+        for var in filter(lambda var: var in args, \
+                          self.vars()):
+            subargs[var] = args[var]
+
+        expr = self.expr.substitute(subargs)
+        return Func(self.func_args,expr)
+
     def to_json(self):
         obj = Op.to_json(self)
         obj['expr'] = self._expr.to_json()

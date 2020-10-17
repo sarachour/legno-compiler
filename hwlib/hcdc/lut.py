@@ -20,6 +20,15 @@ lut.outputs['z'].relation.bind(['_'], \
                                  'f':(['y'],func_impl)
                                }))
 
+lut.inputs['x'] \
+    .interval.bind(['*'],interval.Interval(-1,1))
+lut.outputs['z'] \
+    .interval.bind(['*'],interval.Interval(-1,1))
+lut.inputs['x'] \
+    .quantize.bind(['*'],Quantize(256,QuantizeType.LINEAR))
+lut.outputs['z'] \
+    .quantize.bind(['*'],Quantize(256,QuantizeType.LINEAR))
+
 lut.state.add(BlockState('source', BlockStateType.CONNECTION, \
                         values=enums.LUTSourceType))
 lut.state['source'].impl.source('adc',['@','@',0,0],'x', \

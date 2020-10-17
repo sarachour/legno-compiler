@@ -1,4 +1,5 @@
 import hwlib.adp as adplib
+import ops.generic_op as genoplib
 import graphviz
 from enum import Enum
 
@@ -20,6 +21,17 @@ def render_config_info(board,graph,cfg):
         st.append("%s=%.2f scf=%.2e" % (data.name, \
                                         data.value, \
                                         data.scf))
+
+    for data in cfg.stmts_of_type(adplib \
+                                  .ConfigStmtType \
+                                  .EXPR):
+        inj_args = dict(map(lambda tup: (tup[0],  \
+                                     genoplib.Mult(genoplib.Var(tup[0]), \
+                                                   genoplib.Const(tup[1]))), \
+                        data.injs.items()))
+        subexpr = data.expr.substitute(inj_args)
+        st.append("%s=%s injs=%s scfs=%s" \
+                  % (data.name,data.expr,data.injs,data.scfs))
 
     ident = "%s-config" % cfg.inst
     graph.node(ident, "%s" % "\n".join(st), \

@@ -141,6 +141,20 @@ class ModeVar(SCVar):
   def __repr__(self):
     return "mode(%s)" % self.inst
 
+class InjectVar(SCVar):
+
+  def __init__(self,instance,field,arg):
+    SCVar.__init__(self)
+    self.inst = instance
+    self.field = field
+    self.arg = arg
+
+
+  def __repr__(self):
+    return "inj(%s,%s,%s)" \
+      % (self.inst,self.field,self.arg)
+
+
 class PortScaleVar(SCVar):
 
   def __init__(self,instance,port):

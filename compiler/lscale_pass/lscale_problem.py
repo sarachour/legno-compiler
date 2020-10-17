@@ -88,8 +88,12 @@ def _generate_dsinfo_recurse(dev,dsinfo,adp):
         continue
 
       rel = out.relation[bl_mode]
+      subs = dict(map(lambda stmt: (stmt.name,stmt.expr), \
+                      cfg.stmts_of_type(adplib.ConfigStmtType.EXPR)))
+      rel = rel.substitute(subs)
       try:
         out_interval = ivallib.propagate_intervals(rel,intervals)
+        print(out_interval)
         dsinfo.set_interval(cfg.inst,out.name,out_interval)
         count += 1
       except ivallib.UnknownIntervalError as e:
@@ -119,27 +123,15 @@ def generate_dynamical_system_info(dev,program,adp):
   return dsinfo
 
 
-'''
-try and make one expression a template for the other
-if they're not compatible, return False,_,_
-if they're compatible, return True,coeff,base_expr
-'''
-def templatize(baseline_expr,targ_expr):
-    bl_coeff,bl_expr = mathutils.get_expr_coefficient(baseline_expr)
-    t_coeff,t_expr = mathutils.get_expr_coefficient(targ_expr)
-    if np.sign(bl_coeff) == np.sign(t_coeff) and \
-       bl_expr == t_expr:
-      return True,t_coeff/bl_coeff,bl_expr
-    else:
-      return False,None,None
 
 def generate_factor_constraints(inst,rel):
+
   if rel.op == baseoplib.OpType.INTEG:
     c1,mderiv = generate_factor_constraints(inst,rel.deriv)
     c2,mic = generate_factor_constraints(inst,rel.init_cond)
     monomial = scalelib.SCMonomial()
     monomial.product(mderiv)
-    monomial.add_term(scalelib.TimeScaleVar())
+    monomial.add_term(scalelib.TimeScaleVar(),-1)
     cspeed = scalelib.SCEq(monomial,mic)
     return c1+c2+[cspeed],mic
 
@@ -169,6 +161,28 @@ def generate_factor_constraints(inst,rel):
     c,op = generate_factor_constraints(inst,rel.arg(0))
 
     return c,op
+
+  elif rel.op == baseoplib.OpType.CALL:
+    assert(rel.func.expr.op == baseoplib.OpType.VAR)
+    data_field_name = rel.func.expr.name
+
+    cstrs = []
+    # make sure each constraint is
+    assert(len(rel.func.func_args) == len(rel.values))
+    for arg_name,value in zip(rel.func.func_args,rel.values):
+      arg_inj = scalelib.InjectVar(inst,data_field_name,arg_name)
+      subcstrs,arg_scexpr = generate_factor_constraints(inst,value)
+      monom = scalelib.SCMonomial()
+      monom.product(arg_scexpr)
+      monom.add_term(arg_inj)
+      cstrs.append(scalelib.SCEq(monom,  \
+                                 scalelib.SCMonomial.make_const(1.0)))
+      cstrs += subcstrs
+
+    out_inj = scalelib.InjectVar(inst,data_field_name,None)
+    monom = scalelib.SCMonomial()
+    monom.add_term(out_inj)
+    return cstrs,monom
 
   else:
     raise Exception(rel)
@@ -280,6 +294,9 @@ def generate_port_noise_constraints(hwinfo, dsinfo,inst,  \
 
   baseline_noise = hwinfo.get_noise(inst,baseline_mode,port)
 
+  if baseline_noise is None:
+    raise Exception("no noise defined: %s" % inst)
+
   snr_term = scalelib.SCMonomial()
   snr_term.coeff = ampl_val/baseline_noise
   snr_term.add_term(v_scalevar)
@@ -324,27 +341,27 @@ def generate_digital_port_constraints(hwinfo,dsinfo,inst, \
                                       baseline_mode,modes,port):
   for cstr in generate_port_properties(hwinfo, \
                                        dsinfo, \
-                                       config.inst, \
-                                       config.modes[0], \
-                                       block.modes,
-                                       port.name):
+                                       inst, \
+                                       baseline_mode, \
+                                       modes,
+                                       port):
     yield cstr
 
   for cstr in generate_port_oprange_constraints(hwinfo, \
                                                 dsinfo, \
-                                                config.inst, \
-                                                config.modes[0], \
-                                                block.modes,
-                                                port.name):
+                                                inst, \
+                                                baseline_mode, \
+                                                modes,
+                                                port):
     yield cstr
 
   for do_lower in [True,False]:
     for cstr in generate_port_quantize_constraints(hwinfo, \
                                                  dsinfo, \
-                                                 config.inst, \
-                                                 config.modes[0], \
-                                                 block.modes,
-                                                 port.name, \
+                                                 inst, \
+                                                 baseline_mode, \
+                                                 modes,
+                                                 port, \
                                                  lower=do_lower):
       yield cstr
 

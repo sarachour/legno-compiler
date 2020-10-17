@@ -431,6 +431,12 @@ def propagate_intervals(expr,ivals):
     elif expr.op == oplib.OpType.EMIT:
         return propagate_intervals(expr.arg(0), \
                                    ivals)
+
+    elif expr.op == oplib.OpType.ADD:
+        i0 = propagate_intervals(expr.arg(0),ivals)
+        i1 = propagate_intervals(expr.arg(1),ivals)
+        return i0.add(i1)
+
     elif expr.op == oplib.OpType.MULT:
         i0 = propagate_intervals(expr.arg(0),ivals)
         i1 = propagate_intervals(expr.arg(1),ivals)
@@ -439,6 +445,9 @@ def propagate_intervals(expr,ivals):
     elif expr.op == oplib.OpType.SGN:
         i0 = propagate_intervals(expr.arg(0),ivals)
         return i0.sgn()
+
+    elif expr.op == oplib.OpType.SIN:
+        return Interval(-1,1)
 
     elif expr.op == oplib.OpType.ABS:
         i0 = propagate_intervals(expr.arg(0),ivals)
@@ -451,6 +460,7 @@ def propagate_intervals(expr,ivals):
 
     elif expr.op == oplib.OpType.CALL:
         conc_expr = expr.concretize()
+        assert(len(expr.func.vars()) == 0)
         return propagate_intervals(conc_expr,ivals)
 
     elif expr.op == oplib.OpType.CONST:

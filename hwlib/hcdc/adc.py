@@ -9,6 +9,8 @@ adc.modes.add_all([
   ['h']
 
 ])
+LOW_NOISE = 0.01
+HIGH_NOISE = 0.1
 adc.inputs.add(BlockInput('x', BlockSignalType.ANALOG, \
                           ll_identifier=enums.PortType.IN0))
 adc.outputs.add(BlockOutput('z', BlockSignalType.DIGITAL, \
@@ -19,6 +21,11 @@ adc.outputs['z'].relation.bind(['m'], \
 
 adc.outputs['z'].relation.bind(['h'], \
                                parser.parse_expr('0.05*x'))
+adc.inputs['x'] \
+     .noise.bind(['m'],LOW_NOISE)
+adc.inputs['x'] \
+     .noise.bind(['h'],HIGH_NOISE)
+
 
 
 adc.inputs['x'] \

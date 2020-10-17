@@ -37,6 +37,13 @@ dac.outputs['z'] \
 dac.outputs['z'] \
     .interval.bind(['_','m'],interval.Interval(-2,2))
 
+LOW_NOISE = 0.01
+HIGH_NOISE = 0.1
+dac.outputs['z'] \
+     .noise.bind(['_','m'],LOW_NOISE)
+dac.outputs['z'] \
+     .noise.bind(['_','h'],HIGH_NOISE)
+
 
 
 dac.data.add(BlockData('c', BlockDataType.CONST))

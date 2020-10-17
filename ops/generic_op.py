@@ -261,6 +261,13 @@ class Call(GenericOp):
         return expr
 
 
+    def substitute(self,args):
+        pars = list(map(lambda val: val.substitute(args), \
+                        self.values))
+        fxn = self.func.substitute(args)
+        return Call(pars,fxn)
+
+
     def to_json(self):
         obj = Op.to_json(self)
         pars = []
@@ -316,6 +323,9 @@ def factor_coefficient(expr):
             return c1,Integ(e1,e2)
         else:
             return 1.0,expr
+
+    elif expr.op == OpType.CALL:
+        return 1.0,expr
 
     else:
         raise Exception("unimpl: %s" % expr)

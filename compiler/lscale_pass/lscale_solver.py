@@ -19,6 +19,7 @@ class SymbolTable:
          isinstance(v,scalelib.TimeScaleVar) or\
          isinstance(v,scalelib.ConstCoeffVar) or \
          isinstance(v,scalelib.PropertyVar) or \
+         isinstance(v,scalelib.InjectVar) or \
          isinstance(v,scalelib.QualityVar):
         self.smtenv.decl(str(v),smtlib.SMTEnv.Type.REAL)
       else:
@@ -178,7 +179,12 @@ class LScaleSolutionGenerator:
 
       elif isinstance(var,scalelib.TimeScaleVar):
         adp.tau = undo_log(value)
-        print("tau = %s" % (adp.tau))
+
+      elif isinstance(var,scalelib.InjectVar):
+        val = undo_log(value)
+        blkcfg = adp.configs.get(var.inst.block,var.inst.loc)
+        inj_key = var.field if var.arg is None else var.arg
+        blkcfg[var.field].injs[inj_key] = val
 
       elif isinstance(var,scalelib.QualityVar):
         quality = scalelib.QualityMeasure(var.name)
