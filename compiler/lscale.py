@@ -4,11 +4,50 @@ import compiler.lscale_pass.lscale_solver as lscale_solver
 import hwlib.adp as adplib
 
 def get_objective(objective):
-  qual = scalelib.QualityVar()
+  aqm= scalelib.QualityVar(scalelib.QualityMeasure.AQM)
+  dqm= scalelib.QualityVar(scalelib.QualityMeasure.DQM)
+  timescale = scalelib.TimeScaleVar()
 
-  monom = scalelib.SCMonomial()
-  monom.add_term(qual,-1.0)
-  return monom
+  if scalelib.ObjectiveFun.QUALITY == objective:
+    monom = scalelib.SCMonomial()
+    monom.add_term(aqm,-1.0)
+    monom.add_term(dqm,-1.0)
+    return monom
+
+  elif scalelib.ObjectiveFun.QUALITY_SPEED == objective:
+    monom = scalelib.SCMonomial()
+    monom.add_term(aqm,-1.0)
+    monom.add_term(dqm,-1.0)
+    monom.add_term(timescale)
+    return monom
+
+  elif scalelib.ObjectiveFun.SPEED == objective:
+    monom = scalelib.SCMonomial()
+    monom.add_term(timescale)
+    return monom
+
+  else:
+    raise Exception("unknown objective: %s" % objective)
+
+def adp_summary(adp):
+  templ = ["=========", \
+           "Method: {method}", \
+           "Objective: {objective}", \
+           "AQM: {aqm}", \
+           "DQM: {dqm}", \
+           "TAU: {tau}"]
+
+  args = {
+    'tau':adp.tau,
+    'aqm':adp.metadata.get(adplib.ADPMetadata.Keys.LSCALE_AQM),
+    'dqm':adp.metadata.get(adplib.ADPMetadata.Keys.LSCALE_DQM),
+    'method':adp.metadata.get(adplib.ADPMetadata.Keys.LSCALE_SCALE_METHOD),
+    'objective':adp.metadata.get(adplib.ADPMetadata.Keys.LSCALE_OBJECTIVE),
+  }
+  st = ""
+  for stmt in templ:
+    st += "%s\n" % (stmt.format(**args))
+  return st
 
 def scale(dev, program, adp, \
           objective=scalelib.ObjectiveFun.QUALITY, \
@@ -40,5 +79,6 @@ def scale(dev, program, adp, \
     for cfg in adp.configs:
       assert(cfg.complete())
 
+    print(adp_summary(adp))
     yield adp
 

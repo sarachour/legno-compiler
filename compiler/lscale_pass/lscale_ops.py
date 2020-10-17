@@ -3,7 +3,13 @@ from enum import Enum
 
 class ObjectiveFun(Enum):
   QUALITY = "qty"
+  QUALITY_SPEED = "qtytau"
+  SPEED = "tau"
 
+class QualityMeasure(Enum):
+  AQM = "AQM"
+  DQM = "DQM"
+  DQME = "DQME"
 
 class ScaleMethod(Enum):
   IDEAL = "ideal"
@@ -39,6 +45,13 @@ class HardwareInfo:
   def __init__(self,dev,scale_method=ScaleMethod.IDEAL):
     self.dev = dev
     self.scale_method = scale_method
+    self.mode_mappings = {}
+
+  def register_modes(self,blk,modes):
+    self.mode_mappings[blk.name] = modes
+
+  def modes(self,blk_name):
+    return self.mode_mappings[blk_name]
 
   def _get_port(self,instance,name):
     blk = self.dev.get_block(instance.block)
@@ -58,6 +71,17 @@ class HardwareInfo:
       return None
 
 
+  def get_noise(self,instance,mode,port_name):
+    assert(isinstance(port_name,str))
+    port = self._get_port(instance,port_name)
+    if not hasattr(port,'noise'):
+      return None
+
+    if port.noise is None:
+      return None
+
+    return port.noise[mode]
+
   def get_quantize(self,instance,mode,port_name):
     assert(isinstance(port_name,str))
     port = self._get_port(instance,port_name)
@@ -74,15 +98,18 @@ class HardwareInfo:
       raise Exception("specification error: %s.%s has no operating range for mode %s" % (instance,port_name,mode))
     return ival
 
-  def get_relation(self,instance,mode,port):
-    out = self.dev.get_block(instance.block) \
-                  .outputs[port]
-    if self.scale_method == ScaleMethod.IDEAL:
-      assert(out.relation.has(mode))
-      return out.relation[mode]
+  def get_empirical_relation(self,instance,mode,port):
+    if self.scale_method.IDEAL:
+      return self.get_ideal_relation(instance,mode,port)
     else:
       delta = out.deltas[mode]
-      raise Exception("get_relation")
+      return delta
+
+  def get_ideal_relation(self,instance,mode,port):
+    out = self.dev.get_block(instance.block) \
+                  .outputs[port]
+    assert(out.relation.has(mode))
+    return out.relation[mode]
 
 class SCVar:
 
@@ -94,19 +121,22 @@ class SCVar:
 
 class QualityVar(SCVar):
 
-  def __init__(self):
+  def __init__(self,name):
     SCVar.__init__(self)
+    assert(isinstance(name,QualityMeasure))
+    self.name = name
 
 
   def __repr__(self):
-    return "quality()"
+    return "quality(%s)" % self.name.value
 
 
 class ModeVar(SCVar):
 
-  def __init__(self,instance):
+  def __init__(self,instance,modes):
     SCVar.__init__(self)
     self.inst = instance
+    self.modes = modes
 
   def __repr__(self):
     return "mode(%s)" % self.inst
@@ -135,14 +165,12 @@ class TimeScaleVar(SCVar):
 
 class ConstCoeffVar(SCVar):
 
-  def __init__(self,instance,port,index):
+  def __init__(self,instance,index):
     self.inst = instance
-    self.port = port
     self.index = index
 
   def __repr__(self):
-    return "coeff(%s,%s).%d" % (self.inst, \
-                                self.port, \
+    return "coeff(%s).%d" % (self.inst, \
                                 self.index)
 
 class PropertyVar(SCVar):
@@ -151,6 +179,7 @@ class PropertyVar(SCVar):
     INTERVAL_UPPER = "ivalU"
     INTERVAL_LOWER = "ivalL"
     QUANTIZE = "quantize"
+    NOISE = "noise"
 
   def __init__(self,type,instance,port):
     assert(isinstance(type,PropertyVar.Type))
@@ -198,7 +227,7 @@ class SCMonomial:
 
   def add_term(self,term,expo=1.0):
     assert(isinstance(term,SCVar))
-    assert(isinstance(expo,float))
+    assert(isinstance(expo,float) or isinstance(expo,int))
     self._terms.append(term)
     self._expos.append(expo)
 
@@ -251,6 +280,29 @@ class SCSubsetEq:
     for var in self.rhs_expr.vars():
       yield var
 
+
+
+class SCLTE:
+
+  def __init__(self,lhs,rhs):
+    assert(isinstance(lhs,SCMonomial) or \
+           isinstance(lhs,SCVar))
+    assert(isinstance(rhs,SCMonomial) or \
+           isinstance(rhs,SCVar))
+
+    self.lhs = lhs
+    self.rhs = rhs
+
+  def vars(self):
+    for var in self.lhs.vars():
+      yield var
+
+    for var in self.rhs.vars():
+      yield var
+
+
+  def __repr__(self):
+    return "%s <= %s" % (self.lhs,self.rhs)
 
 
 class SCEq:
@@ -354,29 +406,31 @@ class SCIntervalCover:
     return st
 
 class SCSubsetOfModes:
-  def __init__(self,modevar,modes,all_modes):
+  def __init__(self,modevar,modes):
     assert(isinstance(modevar,ModeVar))
+    for mode in modes:
+      if not mode in modevar.modes:
+        raise Exception("%s not a subset of %s" \
+                        % (str(modes),str(all_modes)))
     self.mode_var = modevar
-    self.modes = list(all_modes)
     self.valid_modes = list(modes)
 
   def vars(self):
     yield self.mode_var
 
   def __repr__(self):
-    return "%s IN %s SUBSET %s"  \
-      % (self.mode_var,self.valid_modes,self.modes)
+    return "%s IN %s"  \
+      % (self.mode_var,self.valid_modes)
 
 class SCModeImplies:
 
-  def __init__(self,modevar,all_modes,mode,dep_var,value):
+  def __init__(self,modevar,mode,dep_var,value):
     assert(isinstance(modevar,ModeVar))
     assert(isinstance(value,float))
     assert(isinstance(dep_var,ConstCoeffVar) or \
            isinstance(dep_var,PropertyVar))
     self.mode_var = modevar
     self.mode = mode
-    self.modes = list(all_modes)
     self.dep_var = dep_var
     self.value = value
 

@@ -423,7 +423,8 @@ class ADPMetadata:
     LSCALE_ID = "lscale_id"
     LSCALE_SCALE_METHOD = "lscale_method"
     LSCALE_OBJECTIVE = "lscale_objective"
-    QUALITY = "quality"
+    LSCALE_AQM = "aqm"
+    LSCALE_DQM = "dqm"
     DSNAME = "dsname"
 
   def __init__(self):
@@ -452,6 +453,9 @@ class ADPMetadata:
       'meta':dict(map(lambda tup: (tup[0].value,tup[1]), \
                       self._meta.items()))
     }
+
+  def get(self,key):
+    return self[key]
 
   def __getitem__(self,k):
     return self._meta[k]

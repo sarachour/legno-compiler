@@ -2,20 +2,41 @@ from enum import Enum
 import z3
 import math
 
+def unbox_z3_value(value):
+  if value is None:
+    unboxed = None
+  elif isinstance(value,z3.IntNumRef):
+    unboxed = value.as_long()
+  elif isinstance(value,z3.BoolRef):
+    if str(value) == 'True':
+      unboxed = True
+    else:
+      unboxed = False
+  elif isinstance(value,z3.RatNumRef):
+    fltstr = value.as_decimal(12).split('?')[0]
+    unboxed = float(str(fltstr))
+  else:
+    raise Exception("unknown class <%s> " % (model[v].__class__.__name__))
+
+  return unboxed
+
 class Z3Ctx:
-  def __init__(self,env,optimize):
+  def __init__(self,env,optimize=False):
     if optimize:
       self._solver = z3.Optimize()
     else:
       self._solver = z3.Solver()
-
-    self._optimize = optimize
+    self._do_optimize = False
     self._z3vars = {}
     self._smtvars = {}
     self._smtenv = env
     self._sat = None
     self._model = None
 
+  def set_objective(self,objfun):
+    self._objective_fun = objfun
+    self._do_optimize = True
+ 
   def sat(self):
     return self._sat
 
@@ -62,39 +83,22 @@ class Z3Ctx:
     for v in self._z3vars.values():
       smtvar = self._smtvars[v]
       value = model[v]
-      if value is None:
-        unboxed = None
-      elif isinstance(value,z3.IntNumRef):
-        unboxed = value.as_long()
-      elif isinstance(value,z3.BoolRef):
-        if str(value) == 'True':
-          unboxed = True
-        else:
-          unboxed = False
-      elif isinstance(value,z3.RatNumRef):
-        fltstr = value.as_decimal(12).split('?')[0]
-        unboxed = float(str(fltstr))
-      else:
-        raise Exception("unknown class <%s> " % (model[v].__class__.__name__))
-
+      unboxed = unbox_z3_value(value)
       assigns[smtvar] = unboxed
 
     return assigns
 
-  def optimize(self,z3expr,minimize=True):
+  def optimize(self):
     rmap = {
       'unsat': False,
       'unknown': False,
       'sat': True
     }
-    assert(self._optimize)
-    h = self._solver.minimize(z3expr)
+    assert(self._do_optimize)
+    handle = self._solver.minimize(self._objective_fun)
     result = self._solver.check()
     self._sat = rmap[str(result)]
     if self.sat():
-      minval = self._solver.lower(h)
-      fltstr = minval.as_decimal(12).split('?')[0]
-      unboxed = float(str(fltstr))
       m = self._solver.model()
       self._model = m
       return self.translate(m)
@@ -114,6 +118,19 @@ class Z3Ctx:
       m = self._solver.model()
       self._model = m
       return self.translate(m)
+
+  def solutions(self):
+    def solve_once():
+      if self._do_optimize:
+        return self.optimize()
+      else:
+        return self.solve()
+
+    sln = solve_once()
+    while not sln is None:
+      yield sln
+      self.next_solution()
+      sln = solve_once()
 
   def negate_model(self,model):
     clauses = []
@@ -173,9 +190,14 @@ class SMTEnv:
     self._cstrs.append(SMTAssert(c))
 
   def to_z3(self,optimize=None):
-    ctx = Z3Ctx(self,optimize=not optimize is None)
+    do_optimize = True if not optimize is None else False
+    ctx = Z3Ctx(self,optimize=do_optimize)
+
     for decl in self._decls:
       decl.to_z3(ctx)
+
+    if not optimize is None:
+      ctx.set_objective(optimize.to_z3(ctx))
 
     for cstr in self._cstrs:
       cstr.to_z3(ctx)

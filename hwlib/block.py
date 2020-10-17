@@ -621,6 +621,7 @@ class BlockInput(BlockField):
       self.interval = ModeDependentProperty("interval",block.modes,interval.Interval)
       self.freq_limit = ModeDependentProperty("max_frequency",block.modes, \
                                               float)
+      self.noise = ModeDependentProperty("noise",block.modes,float)
       if self.type == BlockSignalType.DIGITAL:
           self.quantize = ModeDependentProperty("quantization", \
                                                 block.modes, \
@@ -774,6 +775,7 @@ class BlockOutput(BlockField):
   def initialize(self,block):
     self.block = block
     self.interval = ModeDependentProperty("interval",block.modes,interval.Interval)
+    self.noise = ModeDependentProperty("noise",block.modes,float)
     self.freq_limit = ModeDependentProperty("max_frequency",block.modes,float)
     self.relation = ModeDependentProperty("relation",block.modes,oplib.Op)
     self.deltas = ModeDependentProperty("delta_model",block.modes,DeltaSpec)

@@ -30,6 +30,9 @@ mult.modes.add_all([
   ['m','h','h'],
   ['h','m','h']
 ])
+LOW_NOISE = 0.02
+HIGH_NOISE = 0.2
+
 
 mult.inputs.add(BlockInput('x',BlockSignalType.ANALOG, \
                            ll_identifier=enums.PortType.IN0))
@@ -37,6 +40,11 @@ mult.inputs['x'] \
     .interval.bind(['_','m','_'],interval.Interval(-2,2))
 mult.inputs['x'] \
     .interval.bind(['_','h','_'],interval.Interval(-20,20))
+mult.inputs['x'] \
+     .noise.bind(['_','m','_'],LOW_NOISE)
+mult.inputs['x'] \
+     .noise.bind(['_','h','_'],HIGH_NOISE)
+
 
 mult.inputs.add(BlockInput('y',BlockSignalType.ANALOG, \
                            ll_identifier=enums.PortType.IN1))
@@ -46,6 +54,11 @@ mult.inputs['y'] \
     .interval.bind(['x','_','_'],interval.Interval(-2,2))
 mult.inputs['y'] \
     .interval.bind(['h','_','_'],interval.Interval(-20,20))
+mult.inputs['y'] \
+     .noise.bind(['m','_','_'],LOW_NOISE)
+mult.inputs['y'] \
+     .noise.bind(['h','_','_'],HIGH_NOISE)
+
 
 
 mult.outputs.add(BlockOutput('z',BlockSignalType.ANALOG, \
@@ -54,6 +67,11 @@ mult.outputs['z'] \
     .interval.bind(['_','_','m'],interval.Interval(-2,2))
 mult.outputs['z'] \
     .interval.bind(['_','_','h'],interval.Interval(-20,20))
+mult.outputs['z'] \
+     .noise.bind(['_','_','m'],LOW_NOISE)
+mult.outputs['z'] \
+     .noise.bind(['_','_','h'],HIGH_NOISE)
+
 
 
 

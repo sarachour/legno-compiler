@@ -59,6 +59,12 @@ def scale_cstr_to_z3_cstr(smtenv,cstr):
     z3_rhs = monomial_to_z3_expr(cstr.rhs)
     smtenv.eq(z3_lhs,z3_rhs)
 
+  elif isinstance(cstr,scalelib.SCLTE):
+    z3_lhs = monomial_to_z3_expr(cstr.lhs)
+    z3_rhs = monomial_to_z3_expr(cstr.rhs)
+    smtenv.lte(z3_lhs,z3_rhs)
+
+
   elif isinstance(cstr,scalelib.SCIntervalCover):
     if not cstr.valid():
       print("invalid: %s" % cstr)
@@ -88,7 +94,8 @@ def scale_cstr_to_z3_cstr(smtenv,cstr):
 
 
   elif isinstance(cstr,scalelib.SCModeImplies):
-    mode_index = cstr.modes.index(cstr.mode)
+    modes = list(cstr.mode_var.modes)
+    mode_index = modes.index(cstr.mode)
     logval = var_value_to_logval(cstr.dep_var,cstr.value)
     mode_eq = smtlib.SMTEq(smtlib.SMTVar(str(cstr.mode_var)), \
                            smtlib.SMTConst(mode_index))
@@ -99,16 +106,22 @@ def scale_cstr_to_z3_cstr(smtenv,cstr):
     smtenv.cstr(implies)
 
   elif isinstance(cstr,scalelib.SCSubsetOfModes):
-    clauses = list(map(lambda m:
-                           smtlib.SMTEq(smtlib.SMTVar(str(cstr.mode_var)),
-                                        smtlib.SMTConst(cstr.modes.index(m))), \
-                      cstr.valid_modes))
+    modes = list(cstr.mode_var.modes)
+    clauses = []
+    for m in cstr.valid_modes:
+      if not m in modes:
+        raise Exception("mode <%s> not in %s" % (str(m),str(cstr.modes)))
+      index = modes.index(m)
+      clauses.append(smtlib.SMTEq(smtlib.SMTVar(str(cstr.mode_var)), \
+                                  smtlib.SMTConst(index)))
+
     assert(len(clauses) > 0)
     cstr = clauses[0]
     for mode_cstr in clauses[1:]:
       cstr = smtlib.SMTOr(cstr,mode_cstr)
 
     smtenv.cstr(cstr)
+
   else:
     raise Exception("not implemented: %s <%s>" % (cstr,cstr.__class__.__name__))
 
@@ -138,7 +151,8 @@ class LScaleSolutionGenerator:
     if self.z3opt is None:
       result = self.z3ctx.solve()
     else:
-      result = self.z3ctx.optimize(self.z3opt)
+      self.z3ctx.set_objective(self.z3opt)
+      result = self.z3ctx.optimize()
     if result is None:
       print("no solution..")
       return None
@@ -164,10 +178,18 @@ class LScaleSolutionGenerator:
 
       elif isinstance(var,scalelib.TimeScaleVar):
         adp.tau = undo_log(value)
+        print("tau = %s" % (adp.tau))
 
       elif isinstance(var,scalelib.QualityVar):
+        quality = scalelib.QualityMeasure(var.name)
         val = undo_log(value)
-        quality = val
+        if quality == scalelib.QualityMeasure.AQM:
+          adp.metadata.set(adplib.ADPMetadata.Keys.LSCALE_AQM, val)
+        elif quality == scalelib.QualityMeasure.DQM:
+          adp.metadata.set(adplib.ADPMetadata.Keys.LSCALE_DQM, val)
+        else:
+          raise Exception("unknown quality measure: %s" % quality)
+
       elif isinstance(var,scalelib.ConstCoeffVar) or \
            isinstance(var,scalelib.PropertyVar):
         continue
@@ -175,8 +197,6 @@ class LScaleSolutionGenerator:
         raise Exception("unimpl: %s" % var)
 
     self.z3ctx.negate_model(result)
-    adp.metadata.set(adplib.ADPMetadata.Keys.QUALITY, \
-                     quality)
     return adp
 
 
@@ -192,7 +212,8 @@ def solve(dev,adp,cstrs,objective_fun):
     scale_cstr_to_z3_cstr(smtenv,cstr)
 
   z3_obj_fun = scale_objective_fun_to_z3_objective_fun(objective_fun)
-  generator = LScaleSolutionGenerator(dev,adp,symtbl,smtenv,opt=z3_obj_fun)
+  generator = LScaleSolutionGenerator(dev,adp,symtbl,smtenv, \
+                                      opt=z3_obj_fun)
   for scaled_adp in generator.solutions():
     yield scaled_adp
 

@@ -292,21 +292,30 @@ def sum(terms):
     else:
         return Add(terms[0],sum(terms[1:]))
 
+def factor_positive_coefficient(expr):
+    coeff,base_expr = factor_coefficient(expr)
+    if coeff > 0:
+        return coeff,base_expr
+    else:
+        return abs(coeff),Mult(Const(-1.0),base_expr)
+
 def factor_coefficient(expr):
     if expr.op == OpType.CONST:
-        return expr.value,None
+        return expr.value,Const(1.0)
     elif expr.op == OpType.VAR:
         return 1.0,expr
     elif expr.op == OpType.MULT:
         c1,e1 = factor_coefficient(expr.arg(0))
         c2,e2 = factor_coefficient(expr.arg(1))
-        res = None
-        if not e1 is None and not e2 is None:
-            res = genop.Mult(e1,e2)
-        elif not e1 is None:
-            res = e1
-        elif not e2 is None:
-            res = e2
+        res = Mult(e1,e2)
         return c1*c2,res
+    elif expr.op == OpType.INTEG:
+        c1,e1 = factor_coefficient(expr.arg(0))
+        c2,e2 = factor_coefficient(expr.arg(1))
+        if c1 == c2:
+            return c1,Integ(e1,e2)
+        else:
+            return 1.0,expr
+
     else:
         raise Exception("unimpl: %s" % expr)

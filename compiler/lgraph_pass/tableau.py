@@ -1,6 +1,5 @@
 import hwlib.block as blocklib
 import compiler.lgraph_pass.unify as unifylib
-import compiler.lgraph_pass.rule as rulelib
 import ops.base_op as oplib
 from compiler.lgraph_pass.vadp import * 
 
@@ -88,7 +87,6 @@ class PhysicsLawRelation:
 
   def __init__(self,law,lawvar,mode,expr):
     assert(isinstance(lawvar, LawVar))
-    assert(isinstance(law,rulelib.Rule))
     assert(lawvar.law == law.name)
     self.law = law
     self.target = lawvar

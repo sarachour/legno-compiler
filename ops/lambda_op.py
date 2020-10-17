@@ -493,3 +493,10 @@ def from_sympy(symexpr):
     else:
         print(symexpr.func)
         raise Exception(sympy.srepr(symexpr))
+
+def equivalent(expr1,expr2):
+    e1_syms,e2_syms = {},{}
+    se1 = to_sympy(expr1,e1_syms)
+    se2 = to_sympy(expr2,e2_syms)
+    is_equal = se1 - se2 == 0
+    return is_equal
