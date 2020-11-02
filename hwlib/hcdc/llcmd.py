@@ -29,9 +29,15 @@ def from_block_loc_t(dict_):
 
 def make_block_loc_t(blk,loc):
   assert(len(loc) == 4)
+  if isinstance(blk,str):
+      block_name = blk
+  else:
+      block_name = blk.name
+
+
   addr = loc.address
   loc = {
-    'block':llenums.BlockType(blk.name).name,
+    'block':llenums.BlockType(block_name).name,
     'chip':addr[0],
     'tile':addr[1],
     'slice':addr[2],
@@ -40,13 +46,25 @@ def make_block_loc_t(blk,loc):
   return llstructs.block_loc_t(),loc
 
 def make_port_loc(blk,loc,port):
-  assert(isinstance(ctx,BuildContext))
   assert(len(loc) == 4)
-  loc = { \
-          'inst':build_block_loc(blk,loc), \
-          'port':PortType(port).name}
+  if isinstance(blk,str):
+      block_name = blk
+  else:
+      block_name = blk.name
 
-  return port_loc_t(),loc
+  addr = loc.address
+  loc = {
+    'block':llenums.BlockType(block_name).name,
+    'chip':addr[0],
+    'tile':addr[1],
+    'slice':addr[2],
+    'idx':addr[3]
+  }
+  loc = { \
+          'loc':loc, \
+          'port':llenums.PortType(port).name}
+
+  return llstructs.port_loc_t(),loc
 
 
 def make_circ_cmd(cmdtype,cmddata):
@@ -198,6 +216,21 @@ def set_state(runtime,blk,loc,cfg):
     state_data = {'inst':loc_d, 'state':state_t}
     cmd_t,cmd_data = make_circ_cmd(llenums.CircCmdType.SET_STATE, \
                                        state_data)
+    cmd = cmd_t.build(cmd_data,debug=True)
+    runtime.execute(cmd)
+    return _unpack_response(runtime.result())
+
+def set_conn(runtime,src_blk,src_loc,src_port, \
+             dest_blk,dest_loc,dest_port):
+    ident = src_blk.outputs[src_port].ll_identifier
+    sloc_t,sloc_d = make_port_loc(src_blk,src_loc,ident)
+
+    ident = src_blk.inputs[dest_port].ll_identifier
+    dloc_t,dloc_d = make_port_loc(dest_blk,dest_loc, \
+                                  ident)
+    conn_data = {"src":sloc_d, "dest":dloc_d}
+    cmd_t,cmd_data = make_circ_cmd(llenums.CircCmdType.CONNECT, \
+                                   conn_data)
     cmd = cmd_t.build(cmd_data,debug=True)
     runtime.execute(cmd)
     return _unpack_response(runtime.result())

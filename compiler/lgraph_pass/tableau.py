@@ -95,9 +95,8 @@ class PhysicsLawRelation:
 
 
   def same_usage(self,v):
-    assert(isinstance(v,vaplib.LawVar))
-    return v.law == self.law and \
-      v.ident == self.ident
+    assert(isinstance(v,PhysicsLawRelation))
+    return self.target.same_usage(v.target)
 
   @property
   def name(self):
@@ -105,10 +104,6 @@ class PhysicsLawRelation:
 
   def equals(self,g2):
     return str(self) == str(g2)
-
-  def same_usage(self,other):
-    assert(isinstance(other,PhysicsLawRelation))
-    return self.target == other.target
 
   def copy(self):
     rel = PhysicsLawRelation(self.law, \

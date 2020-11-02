@@ -86,15 +86,17 @@ class Rule:
     return vadp
 
 
-  def get_usage(self,stmt):
+  def get_usage(self,stmt,target=None):
     if isinstance(stmt, tablib.VADPConn) and \
        isinstance(stmt.source, tablib.LawVar) and \
-       stmt.source.law == self.name:
+       stmt.source.law == self.name and \
+       (target is None or target.same_usage(stmt.source)):
       return Rule.Usage.VADP_CONN_SOURCE
 
     elif isinstance(stmt, tablib.VADPConn) and \
          isinstance(stmt.sink, tablib.LawVar) and \
-         stmt.sink.law == self.name:
+         stmt.sink.law == self.name and \
+         (target is None or target.same_usage(stmt.sink)):
       return Rule.Usage.VADP_CONN_SINK
 
     elif isinstance(stmt,tablib.VADPConfig) and \
@@ -104,23 +106,21 @@ class Rule:
 
     elif isinstance(stmt,tablib.VADPSource) and \
          isinstance(stmt.target, tablib.LawVar) and \
-         stmt.target.law == self.name:
+         stmt.target.law == self.name and \
+         (target is None or target.same_usage(stmt.target)):
       return Rule.Usage.VADP_SOURCE
 
     elif isinstance(stmt,tablib.VADPSink) and \
          isinstance(stmt.target, tablib.LawVar) and \
-         stmt.target.law == self.name:
+         stmt.target.law == self.name and \
+         (target is None or target.same_usage(stmt.target)):
       return Rule.Usage.VADP_SINK
 
     return None
 
   def is_same_usage(self,vadpst,rulevar):
-    lawvar = self.get_law_var(vadpst)
-    if lawvar is None:
-      return False
-
-    return rulevar.same_usage(lawvar)
-
+    usage = self.get_usage(vadpst,rulevar)
+    return not usage is None
 
   def get_law_var(self,vadpst):
     usage = self.get_usage(vadpst)

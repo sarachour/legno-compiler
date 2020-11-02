@@ -68,7 +68,9 @@ def use_route_blocks(dev,used_route_blocks,conn_assign):
 
       new_path[1+idx]= (route_block,inst)
       used_route_blocks.append((route_block,inst))
-      stmt = vadplib.VADPConfig(blk,devlib.Location(inst),blk.modes)
+      target_port = vadplib.PortVar(blk,devlib.Location(inst))
+      stmt = vadplib.VADPConfig(target_port,blk.modes)
+      stmt.target.ident = devlib.Location(inst)
       vadpstmts.append(stmt)
     except StopIteration as e:
       raise Exception("no instances for route block <%s>" % route_block)

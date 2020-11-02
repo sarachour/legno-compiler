@@ -54,28 +54,6 @@ lscale_subp.add_argument('program', type=str,help='benchmark to compile')
 sim_subp = subparsers.add_parser('lsim', help='simulate circuit.')
 sim_subp.add_argument('program', help='program to simulate.')
 
-'''
-gren_subp = subparsers.add_parser('srcgen', help='generate grendel script.')
-gren_subp.add_argument('--hwenv', type=str, \
-                        help='hardware environment')
-gren_subp.add_argument('--recompute', action='store_true',
-                       help='recompute.')
-gren_subp.add_argument('--trials', type=int, default=1,
-                       help='compute trials.')
-gren_subp.add_argument('program', type=str,help='benchmark to compile')
-
-
-sim_subp = subparsers.add_parser('simulate', help='simulate circuit.')
-sim_subp.add_argument('program', help='program to simulate.')
-sim_subp.add_argument('--adp',help='analog device program to simulate')
-sim_subp.add_argument('--runtime',action="store_true", \
-        help='only measure runtime performance')
-sim_subp.add_argument('--reference',action="store_true", \
-                      help='execute reference simulation')
-sim_subp.add_argument("--mode",default="naive-min_error",
-                      help='should the simulator use delta models / which ones')
-'''
-
 args = parser.parse_args()
 
 #from hwlib.hcdc.hcdcv2_4 import make_board

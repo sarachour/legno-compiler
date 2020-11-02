@@ -162,6 +162,9 @@ class Interval:
         new_upper = min(self.upper,other.upper)
         return Interval.type_infer(new_lower,new_upper)
 
+    def sin(self):
+        return Interval.type_infer(-1,1)
+
     def sgn(self):
         if self.crosses_zero():
             return Interval.type_infer(-1,1)
@@ -447,7 +450,8 @@ def propagate_intervals(expr,ivals):
         return i0.sgn()
 
     elif expr.op == oplib.OpType.SIN:
-        return Interval(-1,1)
+        i0 = propagate_intervals(expr.arg(0),ivals)
+        return i0.sin()
 
     elif expr.op == oplib.OpType.ABS:
         i0 = propagate_intervals(expr.arg(0),ivals)

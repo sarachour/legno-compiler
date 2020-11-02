@@ -51,7 +51,7 @@ class KirchhoffRule(rulelib.Rule):
     sink_dsexprs = []
     for st in vadp:
       if self.is_same_usage(st,lawvar):
-        usage = self.get_usage(st)
+        usage = self.get_usage(st,target=lawvar)
         if usage == rulelib.Rule.Usage.VADP_CONN_SINK:
           sources.append(st.source)
 

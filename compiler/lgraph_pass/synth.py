@@ -178,9 +178,9 @@ def derive_tableau_from_phys_rel(tableau,goal,rel,unif):
                               law.virt.get_type(law_var),e))
 
   for curr_rel in new_tableau.relations:
-      if isinstance(curr_rel,PhysicsLawRelation) and \
-          curr_rel.same_usage(rel):
-        curr_rel.ident += 1
+    if isinstance(curr_rel,PhysicsLawRelation) and \
+       curr_rel.same_usage(rel):
+      curr_rel.target.ident += 1
 
 
   return new_tableau
