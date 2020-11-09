@@ -2,8 +2,15 @@ import hwlib.block as blocklib
 import hwlib.hcdc.hcdcv2 as hcdclib
 import hwlib.hcdc.llenums as llenums
 import hwlib.hcdc.llstructs as llstructs
+import util.paths as pathlib
+import hwlib.physdb as physlib
 
 import lab_bench.grendel_util as grendel_util
+
+def open_physical_db(board):
+    if board.physdb is None:
+        board.physdb = physlib.PhysicalDatabase(board.name, \
+                                                  pathlib.PathHandler.DEVICE_STATE_DIR)
 
 def get_by_ll_identifier(collection,ident):
     for port in collection:

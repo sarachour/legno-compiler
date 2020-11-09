@@ -18,7 +18,7 @@ def calibrate(runtime,blk,loc,adp, \
     # execute set state command
     print("-> setting state")
     runtime.execute(cmd)
-    resp = _unpack_response(runtime.result())
+    resp = unpack_response(runtime.result())
 
     cmd_t, cmd_data = make_circ_cmd(llenums.CircCmdType.GET_STATE,
                              set_state_data)
@@ -33,8 +33,8 @@ def calibrate(runtime,blk,loc,adp, \
     print("-> calibrating block")
     cmd = cmd_t.build(cmd_data,debug=True)
     runtime.execute(cmd)
-    
-    resp = _unpack_response(runtime.result())
+ 
+    resp = unpack_response(runtime.result())
     state = resp[blk.name]
     new_adp= adplib.ADP()
     new_adp.add_instance(blk,loc)

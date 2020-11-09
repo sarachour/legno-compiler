@@ -747,6 +747,11 @@ def get_blocks(db,dev):
 
   return blocks.values()
 
+class NotCalibratedException(Exception):
+
+  def __init__(self):
+    Exception.__init__(self)
+
 def get_best_configured_physical_block(db,dev,blk,inst,cfg):
   static_cfg = ExpCfgBlock.get_static_cfg(blk,cfg)
   where_clause = {'block':blk.name, \
@@ -756,7 +761,8 @@ def get_best_configured_physical_block(db,dev,blk,inst,cfg):
   by_hidden_cfg = {}
   hidden_cfg_costs = {}
   # compute costs
-  for row in db.select(where_clause):
+  for row in db.select(PhysicalDatabase.DB.PHYSICAL_MODELS, \
+                       where_clause):
     phys = ExpCfgBlock.from_json(db,dev,row)
     if not phys.hidden_cfg in by_hidden_cfg:
       by_hidden_cfg[phys.hidden_cfg] = []
@@ -771,7 +777,9 @@ def get_best_configured_physical_block(db,dev,blk,inst,cfg):
       best_hidden_cfg = hidden_cfg
       best_cost = cost
 
-  assert(not best_hidden_cfg is None)
+  if best_hidden_cfg is None:
+    raise NotCalibratedException()
+
   for physblk in by_hidden_cfg[best_hidden_cfg]:
     yield physblk
 
