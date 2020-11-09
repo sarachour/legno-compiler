@@ -113,8 +113,11 @@ fan.state['range'] \
 fan.state.add(BlockState('third', \
                         state_type=BlockStateType.CONNECTION, \
                         values=enums.BoolType))
-fan.state['third'].impl.sink('z2','_',['_','_','_','_','_'], \
-                             enums.BoolType.TRUE)
+fan.state['third'].impl.outgoing(source_port='z2', \
+                                 sink_block='_', \
+                                 sink_loc=['_','_','_','_'], \
+                                 sink_port='_', \
+                                 value=enums.BoolType.TRUE)
 fan.state['third'].impl.set_default(enums.BoolType.FALSE)
 
 fan.state.add(BlockState('enable',

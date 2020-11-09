@@ -250,11 +250,11 @@ class BlockStateCollection(BlockFieldCollection):
         state.lift(cfg,self._block,loc,data)
 
     # turn this configuration into a low level spec
-    def concretize(self,cfg,loc):
+    def concretize(self,adp,loc):
       data = {}
       arrays = []
       for state in self:
-        value = state.impl.apply(cfg,self._block.name,loc)
+        value = state.impl.apply(adp,self._block.name,loc)
         if state.array is None:
           assert(not state.variable in data)
           data[state.variable] = value
@@ -476,23 +476,26 @@ class BCCalibImpl:
 class BCConnImpl:
   def __init__(self,state):
       self.state = state
-      self._sources= {}
-      self._sinks= {}
+      self._incoming = []
+      self._outgoing= []
       self._default = None
 
-  def sink(self,source_port,block,sink,value):
+  def outgoing(self,source_port, \
+               sink_block,sink_loc,sink_port,value):
       self.state.valid(value)
-      if not source_port in self._sinks:
-          self._sinks[source_port] = []
+      assert(isinstance(source_port,str))
 
-      self._sinks[source_port].append((block,sink,value))
+      data = (source_port,sink_block,sink_loc,sink_port,value)
+      self._outgoing.append(data)
 
-  def source(self,block,source,sink_port,value):
+  def incoming(self,sink_port, \
+             source_block,source_loc,source_port,value):
       self.state.valid(value)
-      if not sink_port in self._sources:
-          self._sources[sink_port] = []
 
-      self._sources[sink_port].append((block,source,value))
+      data = (sink_port,source_block, \
+              source_loc,source_port,value)
+
+      self._incoming.append(data)
 
 
   @property
@@ -505,15 +508,20 @@ class BCConnImpl:
       self._default = value
 
   def apply(self,adp,block_name,loc):
-    '''
-    sink_conns = adp.conns.incoming(block_name,loc)
-    for src_loc,sink_loc in sink_conns:
-        pass
-    source_conns = adp.conns.outgoing(block_name,loc)
-    for src_loc,sink_loc in sink_conns:
-        pass
-    '''
-    print("TODO: actually apply connection impl")
+    for (source_port,sink_block,sink_loc,sink_port,value) in \
+        self._outgoing:
+        outgoing_conns = adp.outgoing_conns(block_name,loc,source_port)
+        for conn in outgoing_conns:
+            if conn.is_dest(sink_block,sink_loc,sink_port):
+                return value
+
+    for (sink_port,source_block,source_loc,source_port,value) in \
+        self._incoming:
+        incoming_conns = adp.incoming_conns(block_name,loc,sink_port)
+        for conn in incoming_conns:
+            if conn.is_source(source_block,source_loc,source_port):
+                return value
+
     return self._default
 
   def lift(self,adp,block,loc,data):

@@ -401,6 +401,7 @@ class BlockConfig:
     return st
 
 class ADPConnection:
+  WILDCARD = "_"
 
   def __init__(self,src_inst,src_port,dest_inst,dest_port):
     assert(isinstance(src_inst,BlockInst))
@@ -420,6 +421,33 @@ class ADPConnection:
     dest_port = obj['dest_port']
     return ADPConnection(src_inst, src_port, \
                       dest_inst, dest_port)
+
+  @staticmethod
+  def test_str(st,test_st):
+    assert(isinstance(st,str))
+    return test_st == ADPConnection.WILDCARD or \
+      st == test_st
+
+  def test_addr(loc,addr):
+    assert(len(loc) == len(addr))
+    for a1,a2 in zip(loc.address,addr):
+      if a2 != ADPConnection.WILDCARD and \
+         a1 != a2:
+        return False
+    return True
+
+
+  def dest_match(self,block_name,loc,port):
+    assert(isinstance(block_name,str))
+    return ADPConnection.test_str(self.dest_inst.block,block_name) and \
+      ADPConnection.test_str(self.dest_port,port) and \
+      ADPConnection.test_addr(self.dest_inst.loc,loc)
+
+  def source_match(self,block_name,loc,port):
+    assert(isinstance(block_name,str))
+    return ADPConnection.test_str(self.source_inst.block,block_name) and \
+      ADPConnection.test_str(self.source_port,port) and \
+      ADPConnection.test_addr(self.source_inst.loc,loc)
 
   def same_source(self,other):
     assert(isinstance(other,ADPConnection))
@@ -523,6 +551,19 @@ class ADP:
                    conn.dest_inst.loc,
                    dblk.inputs[conn.dest_port])
     return adp
+
+
+  def outgoing_conns(self,block_name,loc,port):
+    for conn in self.conns:
+      if conn.source_match(block_name,loc,port):
+        yield conn
+
+
+  def incoming_conns(self,block_name,loc,port):
+    for conn in conns:
+      if conn.dest_match(block_name,loc,port):
+        yield conn
+
 
   @property
   def tau(self):

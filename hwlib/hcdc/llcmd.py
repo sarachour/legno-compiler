@@ -210,8 +210,9 @@ def profile(runtime,blk,loc,adp,output_port, \
 
     return blkcfg
 
-def set_state(runtime,blk,loc,cfg):
-    state_t = {blk.name:blk.state.concretize(cfg,loc)}
+def set_state(runtime,blk,loc,adp):
+    assert(isinstance(adp,adplib.ADP))
+    state_t = {blk.name:blk.state.concretize(adp,loc)}
     loc_t,loc_d = make_block_loc_t(blk,loc)
     state_data = {'inst':loc_d, 'state':state_t}
     cmd_t,cmd_data = make_circ_cmd(llenums.CircCmdType.SET_STATE, \
@@ -234,6 +235,22 @@ def set_conn(runtime,src_blk,src_loc,src_port, \
     cmd = cmd_t.build(cmd_data,debug=True)
     runtime.execute(cmd)
     return _unpack_response(runtime.result())
+
+
+def execute_simulation(runtime,adp,dsprog,osc=None):
+    def dispatch(cmd_type,data):
+        cmd_t,cmd_data = make_exp_cmd(cmd_type,data)
+        cmd = cmd_t.build(cmd_data,debug=True)
+        runtime.execute(cmd)
+        return _unpack_response(runtime.result())
+
+    dispatch(llenums.CircCmdType.USE_ANALOG_CHIP,data)
+    if osc:
+        dispatch(llenums.CircCmdType.USE_OSC,data)
+
+    dispatch(llenums.CircCmdType.SET_SIM_TIME,data)
+    dispatch(llenums.CircCmdType.RUN,data)
+
 
 def disable(runtime,blk,loc):
     loc_t,loc_d = make_block_loc_t(blk,loc)

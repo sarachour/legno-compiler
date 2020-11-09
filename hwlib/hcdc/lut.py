@@ -31,10 +31,18 @@ lut.outputs['z'] \
 
 lut.state.add(BlockState('source', BlockStateType.CONNECTION, \
                         values=enums.LUTSourceType))
-lut.state['source'].impl.source('adc',['@','@',0,0],'x', \
-                           enums.LUTSourceType.ADC0)
-lut.state['source'].impl.source('adc',['@','@',2,0],'x', \
-                           enums.LUTSourceType.ADC1)
+lut.state['source'].impl.incoming(sink_port="x", \
+                                  source_block='adc', \
+                                  source_loc=['_','_',0,0], \
+                                  source_port='z', \
+                                  value=enums.LUTSourceType.ADC0)
+
+lut.state['source'].impl.incoming(sink_port="x", \
+                                  source_block='adc', \
+                                  source_loc=['_','_',2,0], \
+                                  source_port='x', \
+                                  value=enums.LUTSourceType.ADC1)
+
 lut.state['source'].impl.set_default(enums.LUTSourceType.EXTERN)
 
 
