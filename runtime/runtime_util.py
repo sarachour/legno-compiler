@@ -25,7 +25,12 @@ def exec_adp(args):
 
     prog_name = adp.metadata.get(ADPMetadata.Keys.DSNAME)
     program = dsproglib.DSProgDB.get_prog(prog_name)
+    osc = None
     print(program)
+
+    sim_time= None
+    if args.runtime:
+        sim_time= args.runtime
 
     runtime = GrendelRunner()
     runtime.initialize()
@@ -44,5 +49,7 @@ def exec_adp(args):
                                cfg.inst.loc, \
                                adp)
 
-    llcmd.execute_simulation(runtime,adp,program)
+    llcmd.execute_simulation(runtime,adp,program, \
+                             sim_time=sim_time, \
+                             osc=osc)
     runtime.close()

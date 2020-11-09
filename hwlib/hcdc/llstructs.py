@@ -165,6 +165,30 @@ def integ_state_t():
     )
 
 
+def exp_cmd_type():
+    kwargs = {
+        llenums.ExpCmdType.RESET.name:0,
+        llenums.ExpCmdType.USE_ANALOG_CHIP.name:1,
+        llenums.ExpCmdType.SET_SIM_TIME.name:2,
+        llenums.ExpCmdType.USE_OSC.name:3,
+        llenums.ExpCmdType.RUN.name:4
+    }
+    return cstruct.Enum(cstruct.Int8ul,
+                        **kwargs)
+
+def exp_args_t():
+    return cstruct.Union(None,
+        "floats" / cstruct.Array(3,cstruct.Float32l),
+        "ints" / cstruct.Array(3,cstruct.Int32ul)
+    )
+
+def exp_cmd_t():
+    return cstruct.Struct(
+        "type" / exp_cmd_type(),
+        "args" / exp_args_t(),
+        "flag" / cstruct.Int8ul
+    )
+
 def circ_cmd_type():
     kwargs = {
         llenums.CircCmdType.NULLCMD.name:0,
@@ -304,6 +328,9 @@ def circ_cmd_t():
         "circ_cmd_data" / circ_cmd_data()
     )
 
+def flush_cmd_t():
+    return cstruct.Int8ul
+
 def cmd_data():
     kwargs = {
         llenums.CmdType.NULL_CMD.value: cstruct.Int8ul,
@@ -322,13 +349,6 @@ def cmd_type():
     }
     return cstruct.Enum(cstruct.Int8ul,
                         **kwargs)
-def flush_cmd_t():
-    return cstruct.Int8ul
-
-
-def exp_cmd_t():
-    return cstruct.Int8ul
-
 
 def cmd_t():
     return cstruct.Struct(

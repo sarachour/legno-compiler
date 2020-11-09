@@ -20,6 +20,7 @@ subparsers = parser.add_subparsers(dest='subparser_name',
 
 exec_subp = subparsers.add_parser('exec', help='execute benchmark')
 exec_subp.add_argument('adp', type=str,help='benchmark to compile')
+exec_subp.add_argument('--runtime',type=float,help='runtime in simulation units')
 
 args = parser.parse_args()
 

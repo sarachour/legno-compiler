@@ -66,6 +66,21 @@ def make_port_loc(blk,loc,port):
 
   return llstructs.port_loc_t(),loc
 
+def make_exp_cmd(cmdtype,args,flag):
+    assert(isinstance(cmdtype,llenums.ExpCmdType))
+    assert('ints' in args or 'floats' in args)
+    cmd_d = {
+        "cmd_type": llenums.CmdType.EXPERIMENT_CMD.name,
+        "cmd_data":{
+            "exper_cmd": {
+                'type': cmdtype.name,
+                'args': args,
+                'flag': flag
+            }
+        }
+    }
+    return llstructs.cmd_t(),cmd_d
+
 
 def make_circ_cmd(cmdtype,cmddata):
     assert(isinstance(cmdtype,llenums.CircCmdType))
@@ -237,19 +252,33 @@ def set_conn(runtime,src_blk,src_loc,src_port, \
     return _unpack_response(runtime.result())
 
 
-def execute_simulation(runtime,adp,dsprog,osc=None):
-    def dispatch(cmd_type,data):
-        cmd_t,cmd_data = make_exp_cmd(cmd_type,data)
+def execute_simulation(runtime,adp,dsprog,sim_time=None,osc=None):
+    def dispatch(cmd_type,data,flag):
+        cmd_t,cmd_data = make_exp_cmd(cmd_type,data,flag)
         cmd = cmd_t.build(cmd_data,debug=True)
         runtime.execute(cmd)
         return _unpack_response(runtime.result())
 
-    dispatch(llenums.CircCmdType.USE_ANALOG_CHIP,data)
-    if osc:
-        dispatch(llenums.CircCmdType.USE_OSC,data)
+    noargs = {'ints':[0,0,0]}
 
-    dispatch(llenums.CircCmdType.SET_SIM_TIME,data)
-    dispatch(llenums.CircCmdType.RUN,data)
+    dispatch(llenums.ExpCmdType.USE_ANALOG_CHIP,noargs,0)
+    if osc:
+        dispatch(llenums.ExpCmdType.USE_OSC,noargs,0)
+
+
+    if sim_time is None:
+        sim_time = dsprog.max_time
+
+    if dsprog.max_time < sim_time:
+        raise Exception("cannot execute simulation: maximum runtime is %s" % dsprog.max_time)
+
+    time_us = sim_time*adp.tau
+    print("runtime=%s" % time_us)
+
+    simargs = {'floats':[time_us,0.0,0.0]}
+    dispatch(llenums.ExpCmdType.SET_SIM_TIME,simargs,0)
+
+    dispatch(llenums.ExpCmdType.RUN,noargs,0)
 
 
 def disable(runtime,blk,loc):
