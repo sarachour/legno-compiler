@@ -227,7 +227,9 @@ def profile(runtime,blk,loc,adp,output_port, \
 
 def set_state(runtime,blk,loc,adp):
     assert(isinstance(adp,adplib.ADP))
-    state_t = {blk.name:blk.state.concretize(adp,loc)}
+    block_state = blk.state.concretize(adp,loc)
+    print("state: %s" % block_state)
+    state_t = {blk.name:block_state}
     loc_t,loc_d = make_block_loc_t(blk,loc)
     state_data = {'inst':loc_d, 'state':state_t}
     cmd_t,cmd_data = make_circ_cmd(llenums.CircCmdType.SET_STATE, \
