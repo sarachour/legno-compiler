@@ -117,55 +117,22 @@ class PathHandler:
 
         return filepath
 
-    def lscale_adp_diagram_file(self,graph_index,scale_index,model,opt,tag="notag"):
-        path = "{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}_{tag}.dot"
+    def lscale_adp_diagram_file(self,graph_index,scale_index,model,opt):
+        path = "{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}.dot"
         return path.format(path=self.LSCALE_ADP_DIAG_DIR,
                            prog=self._prog, \
                            lgraph=graph_index, \
                            lscale=scale_index, \
                            model=model, \
-                           opt=opt,
-                           tag=tag)
+                           opt=opt)
 
-
-
-
-    def grendel_file(self,graph_index,scale_index,model,opt, \
-                     menv_subset,henv_subset):
-        path = "{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}_{dssim}_{hwenv}.grendel"
-        return path.format(path=self.GRENDEL_FILE_DIR,
-                           prog=self._prog,
-                           lgraph=graph_index,
-                           lscale=scale_index,
-                           model=model,
-                           opt=opt,
-                           dssim=menv_subset,
-                           hwenv=henv_subset)
-
-
-    @staticmethod
-    def grendel_file_to_args(path):
-        name = path.split("/")[-1]
-        for model_cmd in util.model_format():
-            cmd = "{prog:w}_g{lgraph:w}_s{lscale:d}_%s_{opt:w}_{dssim:w}_{hwenv:w}.grendel" % \
-                   model_cmd
-            result = parselib.parse(cmd,name)
-            if not result is None:
-                result = dict(result.named.items())
-                result['model'] = util.pack_parsed_model(result)
-                assert(not result is None)
-                return result
-
-        raise Exception("could not parse: %s" % name)
 
 
     def measured_waveform_file(self,graph_index,scale_index, \
                                model,opt,\
-                               dssim, \
-                               hwenv, \
                                variable,trial):
         path = "{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}"
-        path += "_{dssim}_{hwenv}_{var}_{trial}.json"
+        path += "_{var}_{trial}.json"
 
         return path.format(path=self.MEAS_WAVEFORM_FILE_DIR,
                            prog=self._prog,
@@ -173,8 +140,6 @@ class PathHandler:
                            lscale=scale_index,
                            model=model,
                            opt=opt,
-                           dssim=dssim,
-                           hwenv=hwenv,
                            var=variable,
                            trial=trial)
 

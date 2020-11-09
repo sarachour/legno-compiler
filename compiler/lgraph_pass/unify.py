@@ -223,12 +223,18 @@ def sympy_unify_rewrite(pat_expr,targ_expr,cstrs,blacklist={}):
     pat_symexpr = lambdoplib.to_sympy(pat_expr,pat_syms,wildcard=True, \
                                     blacklist=blacklist)
     targ_symexpr = lambdoplib.to_sympy(targ_expr,targ_syms)
+    print(pat_symexpr)
+    print(targ_symexpr)
     if isinstance(targ_symexpr,float):
-        result = sympy_solve(targ_symexpr - pat_symexpr, \
-                             symbols=list(pat_syms.values()),
-                             dict=True)[0] \
-                             if len(pat_syms) == 1 else None
         deterministic = True
+        try:
+            result = sympy_solve(targ_symexpr - pat_symexpr, \
+                                symbols=list(pat_syms.values()),
+                                dict=True)[0] \
+                                if len(pat_syms) == 1 else None
+        except NotImplementedError:
+            result = None
+
     else:
         result = targ_symexpr.match(pat_symexpr)
     if result is None:
@@ -292,4 +298,5 @@ def unify(pat_expr,targ_expr,cstrs):
         pat_expr = new_pat_expr
 
     for result in sympy_unify_rewrite(pat_expr,targ_expr,cstrs):
+        print(pat_expr,targ_expr,result)
         yield result

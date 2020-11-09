@@ -21,6 +21,7 @@ def dsprog(prob):
   prob.decl_stvar("P","V","{P0}",params)
   prob.emit("P","Position")
   prob.interval("P",-1.0,1.0)
+  prob.interval("Position",-1.0,1.0)
   prob.interval("V",-1.0,1.0)
   prob.check()
   return prob

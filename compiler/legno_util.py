@@ -95,6 +95,9 @@ def exec_lgraph(args):
         timer.end()
         adp.metadata.set(ADPMetadata.Keys.DSNAME, \
                          args.program)
+        adp.metadata.set(ADPMetadata.Keys.FEATURE_SUBSET, \
+                         args.subset)
+
         adp.metadata.set(ADPMetadata.Keys.LGRAPH_ID, \
                          int(index))
         print("<<< writing circuit>>>")

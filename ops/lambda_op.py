@@ -345,9 +345,14 @@ class FromSympyFailed(Exception):
     pass
 
 class SympyExtvar(sympy.Function):
+
+    @classmethod
+    def name(self):
+        return "extvar"
+
     @classmethod
     def eval(cls, x):
-        return x
+        return None
 
     def _eval_is_real(self):
         return self.args[0].is_real
@@ -360,9 +365,16 @@ class SympyExtvar(sympy.Function):
 
 
 class SympyEmit(sympy.Function):
+
+
+    @classmethod
+    def name(self):
+        return "emit"
+
+
     @classmethod
     def eval(cls, x):
-        return x
+        return None
 
     def _eval_is_real(self):
         return self.args[0].is_real
@@ -398,10 +410,12 @@ def to_sympy(expr,symbols={},wildcard=False,blacklist={}):
         return args0*args1
     elif expr.op == OpType.EMIT:
         args0 = to_sympy(expr.args[0],symbols,wildcard)
-        return SympyEmit(args0)
+        return sympy.Function("emit")(args0)
+
     elif expr.op == OpType.EXTVAR:
         args0 = to_sympy(genop.Var(expr.name),symbols,wildcard)
-        return SympyExtvar(args0)
+        return sympy.Function("extvar")(args0)
+
     elif expr.op == OpType.INTEG:
         args0 = to_sympy(expr.args[0],symbols,wildcard)
         args1 = to_sympy(expr.args[1],symbols,wildcard)
@@ -457,6 +471,7 @@ def from_sympy(symexpr):
             e1 = from_sympy(symexpr.args[0])
             e2 = from_sympy(symexpr.args[1])
             return genop.Integ(e1,e2)
+
         elif symexpr.func.name == "abs":
             e1 = from_sympy(symexpr.args[-1])
             return Abs(e1)
@@ -477,11 +492,23 @@ def from_sympy(symexpr):
                             symexpr.args[:-1]))
             return Func(pars,ebody)
 
+        elif symexpr.func.name == "extvar":
+            e1 = from_sympy(symexpr.args[-1])
+            print(symexpr.args)
+            print(e1.__class__.__name__)
+            assert(isinstance(e1,genop.Var))
+            return genop.ExtVar(e1.name)
+
+
+        elif symexpr.func.name == "emit":
+            e1 = from_sympy(symexpr.args[-1])
+            return genop.Emit(e1)
+
         elif symexpr.func.name == "map":
             raise FromSympyFailed("cannot convert mapping %s back to expr" % symexpr)
 
         else:
-            raise Exception("unhandled func: %s" % symexpr.func)
+            raise Exception("unhandled func: %s" % (symexpr.func))
 
     elif isinstance(symexpr, sympy.Pow):
         e1 = from_sympy(symexpr.args[0])
@@ -490,9 +517,11 @@ def from_sympy(symexpr):
 
     elif isinstance(symexpr, sympy.Symbol):
         return genop.Var(symexpr.name)
+
     elif isinstance(symexpr, sympy.Float) or \
          isinstance(symexpr, sympy.Integer):
         return genop.Const(float(symexpr))
+
     elif isinstance(symexpr, sympy.Mul):
         args = list(map(lambda a: from_sympy(a), symexpr.args))
         return genop.product(args)

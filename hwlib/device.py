@@ -170,12 +170,40 @@ class Layout:
     assert(locname in self._views)
     self._locs[locname] = indices
 
-class Device:
+class PinInfo:
 
+  def __init__(self,pin,block,loc,port,chan):
+    self.channel = chan
+    self.block = block
+    self.port = port
+    self.pin = pin
+    self.loc = loc
+
+  def match(self,block,loc,port):
+    if block.name == self.block.name and \
+       loc == self.loc and \
+       port == self.port:
+      return True
+    return False
+
+
+class Device:
+  
   def __init__(self):
     self._blocks = {}
     self.layout = Layout(self)
+    self._pins = {}
     self.time_constant = 1.0
+
+  def set_external_pin(self,pin_id,block,loc,port,chan):
+    assert(not pin_id in self._pins)
+    assert(block.name in self._blocks)
+    self._pins[pin_id] = PinInfo(pin_id,block,loc,port,chan)
+
+  def get_external_pins(self,block,loc,port):
+    for pin in self._pins.values():
+      if pin.match(block,loc,port):
+        yield pin
 
   def add_block(self,blk):
     assert(isinstance(blk,blocklib.Block))

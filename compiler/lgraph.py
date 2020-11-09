@@ -92,7 +92,7 @@ def compile(board,prob,
     for variable in prob.variables():
         fragments[variable] = []
         expr = prob.binding(variable)
-        print("> synthesizing %s = %s" % (variable,expr))
+        print("> SYNTH %s = %s" % (variable,expr))
         for vadp in synthlib.search(board, \
                                     compute_blocks,laws,variable,expr, \
                                     depth=synth_depth):
@@ -100,8 +100,10 @@ def compile(board,prob,
                 break
             fragments[variable].append(vadp)
 
-        print("var %s: %d fragments"  \
+        print("VAR %s: %d fragments"  \
               % (variable,len(fragments[variable])))
+        if len(fragments[variable]) == 0:
+            raise Exception("could not synthesize any fragments for <%s>" % variable)
 
     print("> assembling circuit")
     # insert copier blocks when necessary

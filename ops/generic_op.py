@@ -311,6 +311,9 @@ def factor_coefficient(expr):
         return expr.value,Const(1.0)
     elif expr.op == OpType.VAR:
         return 1.0,expr
+    elif expr.op == OpType.EMIT:
+        c1,e1 = factor_coefficient(expr.arg(0))
+        return c1,Emit(e1)
     elif expr.op == OpType.MULT:
         c1,e1 = factor_coefficient(expr.arg(0))
         c2,e2 = factor_coefficient(expr.arg(1))

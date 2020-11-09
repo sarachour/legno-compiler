@@ -34,4 +34,18 @@ def get_device(layout=False):
     if layout:
         hcdc_layout.make(hcdcv2)
 
+    hcdcv2.set_external_pin(llenums.ExternalPins.OUT0, \
+                            hwlib.hcdc.ext_out.ext_out, \
+                            devlib.Location([0,3,2,0]), \
+                            'z', \
+                            llenums.Channels.POS)
+
+    hcdcv2.set_external_pin(llenums.ExternalPins.OUT1, \
+                            hwlib.hcdc.ext_out.ext_out, \
+                            devlib.Location([0,3,2,0]), \
+                            'z', \
+                            llenums.Channels.NEG)
+    
+
+
     return hcdcv2

@@ -4,6 +4,11 @@ import ops.generic_op as oplib
 import hwlib.exceptions as exceptions
 import numpy as np
 
+class ExternalPins(Enum):
+    NONE = "NONE"
+    IN0_IN1 = "IN0_IN1"
+    OUT0_OUT1 = "OUT0_OUT1"
+
 class QuantizeType(Enum):
     LINEAR = "linear"
 
@@ -779,7 +784,6 @@ class BlockOutput(BlockField):
     self.type = sig_type
     self.ll_identifier = ll_identifier
 
-
   def initialize(self,block):
     self.block = block
     self.interval = ModeDependentProperty("interval",block.modes,interval.Interval)
@@ -843,7 +847,9 @@ class Block:
     self.state = BlockStateCollection(self)
     self.modes = BlockModeset(mode_spec)
 
+
     self.name = name
+    self.ll_name = name
     self.type = typ
 
   def port(self,name):

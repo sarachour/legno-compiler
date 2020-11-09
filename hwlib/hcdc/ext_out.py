@@ -4,7 +4,7 @@ import ops.opparse as parser
 
 ext_out = Block('extout',BlockType.COMPUTE, \
             [enums.NoModeType])
-
+ext_out.ll_name = "chip_output"
 ext_out.modes.add_all([["*"]])
 ext_out.inputs.add(BlockInput('x', BlockSignalType.ANALOG, \
                               ll_identifier=enums.PortType.IN0))

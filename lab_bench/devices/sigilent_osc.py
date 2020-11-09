@@ -156,6 +156,128 @@ class TriggerModeType(Enum):
     SINGLE = "SINGLE";
     STOP = "STOP"
 
+class DummySigilent1020XEOscilloscope:
+
+    def __init__(self):
+        self._analog_channels = [
+            Sigilent1020XEOscilloscope.Channels.ACHAN1,
+            Sigilent1020XEOscilloscope.Channels.ACHAN2,
+        ]
+        self._digital_channels = [
+            Sigilent1020XEOscilloscope.Channels.EXT
+        ]
+        self._channels = self._analog_channels + self._digital_channels
+        self._prop_cache = None
+        self.TIME_DIVISIONS = 14
+        self.VALUE_DIVISIONS = 8
+        self.trigger = None
+
+    def waveform(self,chan):
+        return [0],[0]
+
+    def analog_channel(self,idx):
+        if isinstance(idx,Sigilent1020XEOscilloscope.Channels):
+            return idx
+
+        if idx == 0:
+            return Sigilent1020XEOscilloscope.Channels.ACHAN1
+        elif idx == 1:
+            return Sigilent1020XEOscilloscope.Channels.ACHAN2
+
+        else:
+            raise Exception("unknown analog channel: %s" % idx)
+
+
+    def set_volts_per_division(self,channel,volts_per_div):
+        assert(channel in self._channels)
+        cmd = '%s:VDIV %fV' % (channel.value,volts_per_div)
+        print(cmd)
+        return cmd
+
+    def set_voltage_offset(self,channel,volts_offset):
+        assert(channel in self._channels)
+        cmd = "%s:OFST %fV" % (channel.value,volts_offset)
+        print(cmd)
+        return cmd
+
+
+    def closest_seconds_per_division(self,time_s,round_mode=util.RoundMode.UP):
+        times = []
+        for scale in [1e-9,1e-6,1e-3]:
+            for val in [1,2,5,10,20,50,100,200,500]:
+                times.append(val*scale)
+
+        for val in [1,2,5,10,20,50,100]:
+            times.append(val)
+
+        _,time_s = util.find_closest(times,time_s,round_mode)
+        return time_s
+
+    def set_seconds_per_division(self,time_s,round_mode=util.RoundMode.UP):
+        time_s = self.closest_seconds_per_division(time_s,round_mode)
+        unit = None
+        if time_s >= 1.0:
+            time = time_s
+            unit = "S"
+        elif time_s >= 1.0e-3:
+            time = time_s*1.0e3
+            unit = "MS"
+        elif time_s > 1e-6:
+            time = time_s*1.0e6
+            unit = "US"
+        elif time_s > 1e-9:
+            time = time_s*1.0e9
+            unit = "NS"
+
+        cmd = "TDIV %s%s" % (time,unit)
+        print(cmd)
+        return cmd
+
+
+    def set_trigger_delay(self,time_s):
+        if time_s >= 1.0 or time_s == 0:
+            time = time_s
+            unit = "S"
+        elif time_s >= 1.0e-3:
+            time = time_s*1.0e3
+            unit = "MS"
+        elif time_s > 1e-6:
+            time = time_s*1.0e6
+            unit = "US"
+        elif time_s > 1e-9:
+            time = time_s*1.0e9
+            unit = "NS"
+        else:
+            raise Exception("time <%s> unsupportd" % time_s)
+
+        cmd = "TRDL %s%s" % (time,unit)
+        print(cmd)
+        return cmd
+
+
+    def ext_channel(self):
+        return Sigilent1020XEOscilloscope.Channels.EXT
+
+
+    def set_trigger(self,trigger):
+        assert(isinstance(trigger,Trigger))
+        self.trigger = trigger
+        for cmd in trigger.to_cmds():
+            print(cmd)
+            yield cmd
+
+
+    def get_trigger(self):
+        return self.trigger
+
+    def set_trigger_mode(self,mode):
+        cmd = "TRMD %s" % mode.value
+        print(cmd)
+        return cmd
+
+    def get_properties(self):
+        return {}
+
 class Sigilent1020XEOscilloscope(SICPDevice):
     class Channels(Enum):
         ACHAN1 = "C1"
@@ -191,13 +313,16 @@ class Sigilent1020XEOscilloscope(SICPDevice):
         self._prop_cache = None
 
     def analog_channel(self,idx):
+        if isinstance(idx,Sigilent1020XEOscilloscope.Channels):
+            return idx
+
         if idx == 0:
             return Sigilent1020XEOscilloscope.Channels.ACHAN1
         elif idx == 1:
             return Sigilent1020XEOscilloscope.Channels.ACHAN2
 
         else:
-            raise Exception("unknown analog channel.")
+            raise Exception("unknown analog channel: %s" % idx)
 
     def get_trigger(self):
         cmd = "TRSE?"

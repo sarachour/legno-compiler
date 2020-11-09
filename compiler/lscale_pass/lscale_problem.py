@@ -295,7 +295,8 @@ def generate_port_noise_constraints(hwinfo, dsinfo,inst,  \
   baseline_noise = hwinfo.get_noise(inst,baseline_mode,port)
 
   if baseline_noise is None:
-    raise Exception("no noise defined: %s" % inst)
+    print("[WARN] no noise defined: %s" % inst)
+    return
 
   snr_term = scalelib.SCMonomial()
   snr_term.coeff = ampl_val/baseline_noise

@@ -484,6 +484,7 @@ class ADPMetadata:
     LSCALE_AQM = "aqm"
     LSCALE_DQM = "dqm"
     DSNAME = "dsname"
+    FEATURE_SUBSET = "subset"
 
   def __init__(self):
     self._meta = {}

@@ -3,6 +3,7 @@ from lab_bench.grendel_runner import GrendelRunner
 import hwlib.hcdc.llenums as llenums
 import hwlib.hcdc.llcmd as llcmd
 import dslang.dsprog as dsproglib
+import lab_bench.devices.sigilent_osc as osclib
 import json
 
 def get_device():
@@ -25,8 +26,7 @@ def exec_adp(args):
 
     prog_name = adp.metadata.get(ADPMetadata.Keys.DSNAME)
     program = dsproglib.DSProgDB.get_prog(prog_name)
-    osc = None
-    print(program)
+    osc = osclib.DummySigilent1020XEOscilloscope()
 
     sim_time= None
     if args.runtime:
