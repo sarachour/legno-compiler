@@ -175,6 +175,7 @@ class Device:
   def __init__(self):
     self._blocks = {}
     self.layout = Layout(self)
+    self.time_constant = 1.0
 
   def add_block(self,blk):
     assert(isinstance(blk,blocklib.Block))

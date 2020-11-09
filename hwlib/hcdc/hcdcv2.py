@@ -26,6 +26,8 @@ def get_device(layout=False):
     hcdcv2.add_block(hwlib.hcdc.routeblocks.cout)
     hcdcv2.add_block(hwlib.hcdc.ext_in.ext_in)
 
+    # hwtime/wall clock time
+    hcdcv2.time_constant = 1.0/126000
     # profiling operations
     hcdcv2.profile_status_type = llenums.ProfileStatus
     hcdcv2.profile_op_type = llenums.ProfileOpType

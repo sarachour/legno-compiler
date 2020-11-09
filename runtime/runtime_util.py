@@ -49,7 +49,9 @@ def exec_adp(args):
                                cfg.inst.loc, \
                                adp)
 
-    llcmd.execute_simulation(runtime,adp,program, \
+    llcmd.execute_simulation(runtime,board, \
+                             program, adp,\
                              sim_time=sim_time, \
-                             osc=osc)
+                             osc=osc, \
+                             manual=False)
     runtime.close()

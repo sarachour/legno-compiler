@@ -185,6 +185,7 @@ def exp_args_t():
 def exp_cmd_t():
     return cstruct.Struct(
         "type" / exp_cmd_type(),
+        cstruct.Padding(3),
         "args" / exp_args_t(),
         "flag" / cstruct.Int8ul
     )

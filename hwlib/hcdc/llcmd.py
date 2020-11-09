@@ -253,20 +253,88 @@ def set_conn(runtime,src_blk,src_loc,src_port, \
     runtime.execute(cmd)
     return _unpack_response(runtime.result())
 
+def get_external_outputs(board,adp):
+  for cfg in adp.configs:
+    block_inst = cfg.inst
+    blk = board.get_block(cfg.inst.block)
+    print(cfg.inst)
+  raise Exception("unimpl")
 
-def execute_simulation(runtime,adp,dsprog,sim_time=None,osc=None):
+
+def to_volt_ranges(board,dsprog,adp):
+  '''  
+  def scale(scf,lb,ub,slack=1.1):
+    rng = (ub-lb)*scf/2
+    midpoint = (ub+lb)/2.0
+    slb = max((midpoint-rng*slack),lb)
+    sub = min((midpoint+rng*slack),ub)
+    return slb,sub
+
+
+  extern_outs = get_external_outputs(board,adp)
+
+  for handle, info in adcs_in_use.items():
+    out_no = hwenv.adc(handle)
+    pin_mode = hwenv.oscilloscope.output(handle)
+    if isinstance(pin_mode,DiffPinMode):
+      llb,lub  = hwenv.oscilloscope.chan_range(pin_mode.low)
+      hlb,hub  = hwenv.oscilloscope.chan_range(pin_mode.high)
+      sig_range = info['scf']*info['interval'].bound
+      hw_range = max(abs(hub-llb),abs(hlb-lub))
+      scf = sig_range/hw_range
+      slb,sub = scale(scf,llb,lub)
+      yield pin_mode.low,slb,sub
+      slb,sub = scale(scf,hlb,hub)
+      yield pin_mode.high,slb,sub
+
+    else:
+      raise Exception("None")
+  '''  
+  raise Exception("Adapt voltage range statements")
+
+def get_sim_time(board,dsprog,adp):
+    if sim_time is None:
+        sim_time = dsprog.max_time
+
+    if dsprog.max_time < sim_time:
+        raise Exception("cannot execute simulation: maximum runtime is %s" % dsprog.max_time)
+
+    hwtime = board.time_constant
+    time_us = sim_time*adp.tau*hwtime
+    return time_us
+
+
+def configure_oscilloscope(osc,board,dsprog,adp):
+    '''
+    for chan,lb,ub in to_volt_ranges(board, \
+                                     dsprog, \
+                                     adp):
+       cmd = "osc_set_volt_range %d %f %f" \
+             % (chan,lb,ub)
+       gren.add(parse(cmd))
+       cmd = "osc_set_sim_time %.3e" % \
+             (scaled_sim_time*osc_slack)
+       gren.add(parse(cmd))
+
+    gren.add(parse('osc_setup_trigger'))
+    '''
+    raise Exception("TODO: adapt oscilloscope configuration statements")
+
+def execute_simulation(runtime,board,dsprog,adp,sim_time=None,osc=None,manual=False):
     def dispatch(cmd_type,data,flag):
         cmd_t,cmd_data = make_exp_cmd(cmd_type,data,flag)
         cmd = cmd_t.build(cmd_data,debug=True)
         runtime.execute(cmd)
         return _unpack_response(runtime.result())
 
+    osc = "DUMMY"
     noargs = {'ints':[0,0,0]}
-
+    print("=== enabling flags ===")
     dispatch(llenums.ExpCmdType.USE_ANALOG_CHIP,noargs,0)
-    if osc:
+    if not osc is None:
+        print("=== configuring scope ===")
         dispatch(llenums.ExpCmdType.USE_OSC,noargs,0)
-
+        configure_oscilloscope(osc,board,dsprog,adp)
 
     if sim_time is None:
         sim_time = dsprog.max_time
@@ -274,14 +342,19 @@ def execute_simulation(runtime,adp,dsprog,sim_time=None,osc=None):
     if dsprog.max_time < sim_time:
         raise Exception("cannot execute simulation: maximum runtime is %s" % dsprog.max_time)
 
-    time_us = sim_time*adp.tau
-    print("runtime=%s" % time_us)
-
+    print("=== writing simulation time ===")
+    time_us = get_sim_time(board,dsprog,adp)
     simargs = {'floats':[time_us,0.0,0.0]}
     dispatch(llenums.ExpCmdType.SET_SIM_TIME,simargs,0)
 
+
+    if manual:
+        input("waiting for input:")
+
     dispatch(llenums.ExpCmdType.RUN,noargs,0)
 
+    if not osc is None:
+        print("=== retrieving data ===")
 
 def disable(runtime,blk,loc):
     loc_t,loc_d = make_block_loc_t(blk,loc)
