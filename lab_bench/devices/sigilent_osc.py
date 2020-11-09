@@ -5,7 +5,7 @@ import struct
 import datetime
 from enum import Enum
 from lab_bench.devices.sicp_device import SICPDevice
-import lab_bench.lib.util as util
+import lab_bench.generic_util as util
 
 logging.basicConfig()
 
