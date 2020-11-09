@@ -25,11 +25,18 @@ def calibrate_adp(args):
     method = llenums.CalibrateObjective(args.method)
     for cfg in adp.configs:
         blk = board.get_block(cfg.inst.block)
-        resp = llcmd.calibrate(runtime, \
-                               blk, \
-                               cfg.inst.loc,\
-                               adp, \
-                               method=method)
+        cfg_modes = cfg.modes
+        for mode in cfg_modes:
+            print(mode)
+            cfg.modes = [mode]
+            print(cfg)
+
+            upd_cfg = llcmd.calibrate(runtime, \
+                                      blk, \
+                                      cfg.inst.loc,\
+                                      adp, \
+                                      method=method)
+            print(upd_cfg)
 
 
 

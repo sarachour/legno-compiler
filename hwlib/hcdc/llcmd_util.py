@@ -95,7 +95,7 @@ def make_circ_cmd(cmdtype,cmddata):
 def unpack_response(resp):
   if isinstance(resp,grendel_util.HeaderArduinoResponse):
     if resp.num_args == 1:
-      return _unpack_response(resp.data(0))
+      return unpack_response(resp.data(0))
     elif resp.num_args == 0:
       return resp.message
     else:
@@ -103,7 +103,7 @@ def unpack_response(resp):
 
   elif isinstance(resp,grendel_util.DataArduinoResponse):
     assert(isinstance(resp.value,grendel_util.PayloadArduinoResponse))
-    return _unpack_response(resp.value)
+    return unpack_response(resp.value)
 
   elif isinstance(resp,grendel_util.PayloadArduinoResponse):
     payload_type = llstructs.parse(llstructs.response_type_t(), \

@@ -1,5 +1,6 @@
 import hwlib.hcdc.hcdcv2 as hcdclib
 import hwlib.hcdc.llenums as llenums
+import hwlib.adp as adplib
 
 from hwlib.hcdc.llcmd_util import *
 
@@ -36,6 +37,8 @@ def calibrate(runtime,blk,loc,adp, \
  
     resp = unpack_response(runtime.result())
     state = resp[blk.name]
+    print("response: %s" % str(state))
+
     new_adp= adplib.ADP()
     new_adp.add_instance(blk,loc)
     blk.state.lift(new_adp,loc,dict(state))

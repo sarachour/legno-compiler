@@ -435,7 +435,10 @@ class BCDataImpl:
 
   def lift(self,adp,block,loc,data):
       blkcfg = adp.configs.get(block.name,loc)
-      assert(blkcfg.complete())
+      if not (blkcfg.complete()):
+          print(blkcfg)
+          raise Exception("configuration not complete!")
+
       data_field = self.state.block.data[self.variable]
       interval = data_field.interval[blkcfg.mode]
       value = block.data[self.variable] \
