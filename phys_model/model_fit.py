@@ -165,7 +165,12 @@ def fit_model(variables,expr,data):
   #print("fields:",fields)
   snippet = FIT_PROG.format(**fields) \
                     .replace('math.','np.')
+
   loc = {}
+  if len(data['meas_mean']) == 0:
+    print("DATASET: %s" % data)
+    raise Exception("fit_model: cannot fit empty dataset")
+
   exec(snippet,globals(),loc)
   parameters = loc['lbls']
   #print("parameters:",parameters)
@@ -203,8 +208,9 @@ def fit_delta_model(phys,data):
     return
 
   phys.model.clear()
+
   for par,val in result['params'].items():
-    phys.model.bind(par,val)
+    phys.delta_model.bind(par,val)
 
   inputs = data['inputs']
   meas_output = data['meas_mean']
@@ -214,9 +220,9 @@ def fit_delta_model(phys,data):
   #print("sumsq error: %s" % phys.model.cost)
   phys.update()
 
-def analyze_physical_output(phys_output,operation=llenums.ProfileOpType.INPUT_OUTPUT):
+def fit_delta_model(phys_output,operation=llenums.ProfileOpType.INPUT_OUTPUT):
   dataset = phys_output.dataset
-  fit_delta_model(phys_output, \
+  fit_delta_model_to_data(phys_output, \
                   phys_output.dataset.get_data( \
                                                 llenums.ProfileStatus.SUCCESS, \
                                                 operation))

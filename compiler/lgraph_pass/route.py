@@ -29,8 +29,8 @@ def routing_problem(board,view,vadp,assignments):
   prob = RoutingProblem(board,view,assignments)
   for vadpstmt in vadp:
     if isinstance(vadpstmt, vadplib.VADPConfig):
-      prob.add_virtual_instance(vadpstmt.block, \
-                                vadpstmt.ident)
+      prob.add_virtual_instance(vadpstmt.target.block, \
+                                vadpstmt.target.ident)
 
   for vadpstmt in vadp:
     if isinstance(vadpstmt, vadplib.VADPConn):
@@ -68,7 +68,9 @@ def use_route_blocks(dev,used_route_blocks,conn_assign):
 
       new_path[1+idx]= (route_block,inst)
       used_route_blocks.append((route_block,inst))
-      stmt = vadplib.VADPConfig(blk,devlib.Location(inst),blk.modes)
+      target_port = vadplib.PortVar(blk,devlib.Location(inst))
+      stmt = vadplib.VADPConfig(target_port,blk.modes)
+      stmt.target.ident = devlib.Location(inst)
       vadpstmts.append(stmt)
     except StopIteration as e:
       raise Exception("no instances for route block <%s>" % route_block)
@@ -118,17 +120,17 @@ def finalize(board,vadp,assigns):
   route_block_instances = []
   for stmt in vadp:
     if isinstance(stmt,vadplib.VADPConfig):
-      assign = assigns.get(stmt.block,stmt.ident)
+      assign = assigns.get(stmt.target.block,stmt.target.ident)
       new_stmt = stmt.copy()
-      new_stmt.ident = assign.loc
-      assert(isinstance(new_stmt.ident,devlib.Location))
+      new_stmt.target.ident = assign.loc
+      assert(isinstance(new_stmt.target.ident,devlib.Location))
       new_vadp.append(new_stmt)
 
     elif isinstance(stmt,vadplib.VADPSource):
-      assign = assigns.get(stmt.port.block,stmt.port.ident)
+      assign = assigns.get(stmt.target.block,stmt.target.ident)
       new_stmt = stmt.copy()
-      new_stmt.port.ident = assign.loc
-      assert(isinstance(new_stmt.port.ident,devlib.Location))
+      new_stmt.target.ident = assign.loc
+      assert(isinstance(new_stmt.target.ident,devlib.Location))
       new_vadp.append(new_stmt)
 
   for stmt in vadp:

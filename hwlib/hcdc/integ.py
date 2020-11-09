@@ -20,20 +20,32 @@ integ.modes.add_all([
   ['h','h','-']
 
 ])
+LOW_NOISE = 0.01
+HIGH_NOISE = 0.1
 
 integ.inputs.add(BlockInput('x',BlockSignalType.ANALOG, \
                            ll_identifier=enums.PortType.IN0))
 integ.inputs['x'] \
     .interval.bind(['m','_','_'],interval.Interval(-2,2))
 integ.inputs['x'] \
+     .noise.bind(['m','_','_'],LOW_NOISE)
+
+integ.inputs['x'] \
     .interval.bind(['h','_','_'],interval.Interval(-20,20))
+integ.inputs['x'] \
+     .noise.bind(['h','_','_'],HIGH_NOISE)
 
 integ.outputs.add(BlockOutput('z',BlockSignalType.ANALOG, \
                              ll_identifier=enums.PortType.OUT0))
 integ.outputs['z'] \
     .interval.bind(['_','m','_'],interval.Interval(-2,2))
 integ.outputs['z'] \
+     .noise.bind(['_','m','_'],LOW_NOISE)
+
+integ.outputs['z'] \
     .interval.bind(['_','h','_'],interval.Interval(-20,20))
+integ.outputs['z'] \
+     .noise.bind(['_','h','_'],HIGH_NOISE)
 
 
 integ.data.add(BlockData('z0',BlockDataType.CONST))

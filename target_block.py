@@ -69,6 +69,7 @@ def get_mult_mm(dev):
   cfg['bias_in0'].value = 31
   cfg['bias_in1'].value = 32
   cfg['bias_out'].value = 15
+  print(block.state['nmos'].values)
 
   npts = -1
   return block,inst,cfg

@@ -83,7 +83,6 @@ class DSProg:
         self.__order = None
         self.__order_integs = None
         self.__types = None
-        self.__handles = 0
 
 
     def speed(self,tmin,tmax):
@@ -158,9 +157,7 @@ class DSProg:
     def decl_stvar(self,var,deriv,ic="0.0",params={}):
         deriv = opparse.parse(self,deriv.format(**params))
         ic = opparse.parse(self,ic.format(**params))
-        handle = ":h%d" % self.__handles
-        expr = op.Integ(deriv,ic,handle=handle)
-        self.__handles += 1
+        expr = op.Integ(deriv,ic)
         self._bind(var,expr)
 
     def decl_var(self,var,expr,params={}):

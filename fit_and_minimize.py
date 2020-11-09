@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 import random
 import time
 
+
 def investigate_model(param):
 
   dev = hcdclib.get_device()
@@ -182,5 +183,3 @@ def investigate_model(param):
 
   #return error, result['params']
   return phys_model,optimal_codes['values']
-
-#investigate_model("D")

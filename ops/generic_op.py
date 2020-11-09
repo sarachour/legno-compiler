@@ -3,11 +3,8 @@ import ops.interval as interval
 
 class Integ(GenericOp2):
 
-    def __init__(self,deriv,init_cond,handle):
-        assert(handle.startswith(":"))
-
+    def __init__(self,deriv,init_cond):
         GenericOp.__init__(self,OpType.INTEG,[deriv,init_cond])
-        self._handle = handle
         pass
 
     def substitute(self,bindings={}):
@@ -27,51 +24,13 @@ class Integ(GenericOp2):
     def init_cond(self):
         return self.arg2
 
-    def coefficient(self):
-        return self.deriv.coefficient()
-
-    def handles(self):
-        ch = Op.handles(self)
-        assert(not self.handle in ch and \
-               not self.handle is None)
-        ch.append(self.handle)
-        ch.append(self.ic_handle)
-        ch.append(self.deriv_handle)
-        return ch
-
-    def toplevel(self):
-        return self.handle
-
-    def infer_interval(self,intervals={}):
-      if not self.handle in intervals:
-        raise Exception("handle not in interval: %s" % self.handle)
-
-      ival = intervals[self.handle]
-      istvar = interval.IntervalCollection(ival)
-      istvar.bind(self.handle,ival)
-      return istvar
-
-    def state_vars(self):
-        stvars = Op.state_vars(self)
-        stvars[self._handle] = self
-        return
-
-
 class ExtVar(GenericOp):
 
     def __init__(self,name,loc=None):
         GenericOp.__init__(self,OpType.EXTVAR,[])
+        assert(isinstance(name,str))
         self._name = name
         self._loc = loc
-
-    def coefficient(self):
-        return 1.0
-
-    def sum_terms(self):
-        return [self]
-
-    def prod_terms(self):
-        return [self]
 
     @property
     def loc(self):
@@ -80,9 +39,6 @@ class ExtVar(GenericOp):
     @property
     def name(self):
         return self._name
-
-    def infer_interval(self,bindings={}):
-        return interval.IntervalCollection(bindings[self._name])
 
     @property
     def name(self):
@@ -94,6 +50,10 @@ class ExtVar(GenericOp):
     def __repr__(self):
       return "(%s %s)" % \
         (self._op.value,self._name)
+
+    def vars(self):
+        return [self._name]
+
 
     @staticmethod
     def from_json(obj):
@@ -168,9 +128,6 @@ class Const(GenericOp):
     def from_json(obj):
         return Const(obj['value'])
 
-
-    def prod_terms(self):
-        return []
 
     def compute(self,bindings={}):
         return self._value
@@ -262,7 +219,7 @@ class Add(GenericOp2):
                    Op.from_json(obj['args'][1]))
 
 
-   
+
     def substitute(self,args):
         return Add(
             self.arg(0).substitute(args),
@@ -304,6 +261,13 @@ class Call(GenericOp):
         return expr
 
 
+    def substitute(self,args):
+        pars = list(map(lambda val: val.substitute(args), \
+                        self.values))
+        fxn = self.func.substitute(args)
+        return Call(pars,fxn)
+
+
     def to_json(self):
         obj = Op.to_json(self)
         pars = []
@@ -317,3 +281,54 @@ class Call(GenericOp):
     def __repr__(self):
         pars = " ".join(map(lambda p: str(p), self._params))
         return "call %s %s" % (pars,self._func)
+
+def product(terms):
+    if len(terms) == 0:
+        return Const(1)
+    elif len(terms) == 1:
+        return terms[0]
+    else:
+        return Mult(terms[0],product(terms[1:]))
+
+
+def sum(terms):
+    if len(terms) == 0:
+        return Const(0)
+    elif len(terms) == 1:
+        return terms[0]
+    else:
+        return Add(terms[0],sum(terms[1:]))
+
+def factor_positive_coefficient(expr):
+    coeff,base_expr = factor_coefficient(expr)
+    if coeff > 0:
+        return coeff,base_expr
+    else:
+        return abs(coeff),Mult(Const(-1.0),base_expr)
+
+def factor_coefficient(expr):
+    if expr.op == OpType.CONST:
+        return expr.value,Const(1.0)
+    elif expr.op == OpType.VAR:
+        return 1.0,expr
+    elif expr.op == OpType.EMIT:
+        c1,e1 = factor_coefficient(expr.arg(0))
+        return c1,Emit(e1)
+    elif expr.op == OpType.MULT:
+        c1,e1 = factor_coefficient(expr.arg(0))
+        c2,e2 = factor_coefficient(expr.arg(1))
+        res = Mult(e1,e2)
+        return c1*c2,res
+    elif expr.op == OpType.INTEG:
+        c1,e1 = factor_coefficient(expr.arg(0))
+        c2,e2 = factor_coefficient(expr.arg(1))
+        if c1 == c2:
+            return c1,Integ(e1,e2)
+        else:
+            return 1.0,expr
+
+    elif expr.op == OpType.CALL:
+        return 1.0,expr
+
+    else:
+        raise Exception("unimpl: %s" % expr)

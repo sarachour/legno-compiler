@@ -3,6 +3,8 @@ import ops.base_op as oplib
 import ops.generic_op as genoplib
 import ops.lambda_op as lambdoplib
 from itertools import chain, combinations
+import sympy
+import random
 
 def powerset(iterable):
     "powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)"
@@ -18,10 +20,20 @@ class Unification:
   def assignments(self):
     return self._assignments.values()
 
+  def set_by_name(self,v,e):
+    assert(isinstance(v,str))
+    self._assignments[v] = (v,e)
+
+
   def add(self,v,e):
     assert(not v.name in self._assignments)
     assert(v.op == oplib.OpType.VAR)
     self._assignments[v.name] = (v,e)
+
+  def get_by_name(self,name):
+      assert(isinstance(name,str))
+      v,e = self._assignments[name]
+      return (v,e)
 
   def compatible(self,unif2):
     for v in filter(lambda v: v in unif2._assignments, \
@@ -39,7 +51,10 @@ class Unification:
     return u
 
   def __repr__(self):
-    return str(self._assignments.values())
+    st = ""
+    for v,e in self._assignments.values():
+        st += "%s=%s\n" % (v,e)
+    return st
 
 class UnifyConstraint(Enum):
   CONSTANT = "const"
@@ -162,185 +177,126 @@ def canonicalize_call(expr):
   else:
     return None
 
-def canonicalize_sum(expr):
-  args_const,args_expr= separate(oplib.OpType.CONST,
-                                get_assoc(oplib.OpType.ADD,expr))
-  const_val = 0.0
-  for arg in args_const:
-    const_val += arg.value
+from sympy.solvers import solve as sympy_solve
 
-  return const_val,args_expr
+def sympy_unify_const(pat_expr,targ_expr):
+    assert(len(pat_expr.vars()) <= 1)
+    assert(len(targ_expr.vars()) == 0)
+    targ_syms,pat_syms= {},{}
+    pat_symexpr = lambdoplib.to_sympy(pat_expr,pat_syms)
+    targ_symexpr = lambdoplib.to_sympy(targ_expr,targ_syms)
+    symbols = list(targ_syms.values()) + list(pat_syms.values())
+    try:
+        result = sympy_solve(targ_symexpr - pat_symexpr, \
+                             symbols,dict=True)
+    except Exception as e:
+        return False,None,None
 
-def canonicalize_mult(expr):
-  args_const,args_expr= separate(oplib.OpType.CONST,
-                                get_assoc(oplib.OpType.MULT,expr))
-  const_val = 1.0
-  for arg in args_const:
-    const_val *= arg.value
+    assign = result[0]
+    if len(pat_expr.vars()) == 1:
+        pat_var = pat_expr.vars()[0]
+        const_val = genoplib.Const(assign[pat_syms[pat_var]])
+        return True,genoplib.Var(pat_var),const_val
+    else:
+        print(assign)
+        raise NotImplementedError
 
-  return const_val,args_expr
+def sympy_equals(e1,e2):
+    syms = {}
+    e1_symexpr = lambdoplib.to_sympy(e1,syms)
+    e2_symexpr = lambdoplib.to_sympy(e2,syms)
+    result = sympy.simplify(e1_symexpr - e2_symexpr)
+    return result == 0
 
-def mkadd(args):
-  if len(args) >= 2:
-    return genoplib.Add(args[0],mkadd(args[1:]))
-  elif len(args) == 1:
-    return args[0]
-  else:
-    raise Exception("not implemented")
+def sympy_unify_rewrite(pat_expr,targ_expr,cstrs,blacklist={}):
+    updated_blacklist = False
+    deterministic = False
+    def add_to_bl(wildvar,expr):
+        assert(isinstance(wildvar,sympy.Wild))
+        if not var.name in blacklist:
+            blacklist[var.name] = []
+        if not symexpr in blacklist[var.name]:
+            blacklist[var.name].append(symexpr)
+            updated_blacklist = True
 
+    targ_syms,pat_syms= {},{}
+    pat_symexpr = lambdoplib.to_sympy(pat_expr,pat_syms,wildcard=True, \
+                                    blacklist=blacklist)
+    targ_symexpr = lambdoplib.to_sympy(targ_expr,targ_syms)
+    print(pat_symexpr)
+    print(targ_symexpr)
+    if isinstance(targ_symexpr,float):
+        deterministic = True
+        try:
+            result = sympy_solve(targ_symexpr - pat_symexpr, \
+                                symbols=list(pat_syms.values()),
+                                dict=True)[0] \
+                                if len(pat_syms) == 1 else None
+        except NotImplementedError:
+            result = None
 
-def mkmult(args):
-  if len(args) >= 2:
-    return genoplib.Mult(args[0],mkmult(args[1:]))
-  elif len(args) == 1:
-    return args[0]
-  else:
-    raise Exception("not implemented")
+    else:
+        result = targ_symexpr.match(pat_symexpr)
+    if result is None:
+        return
 
-def unify_sum(pat_expr,targ_expr,cstrs):
-  targ_offset,targ_args = canonicalize_sum(targ_expr)
-  pat_offset,pat_args = canonicalize_sum(pat_expr)
+    valid = True
+    unif = Unification()
+    for var,symexpr in result.items():
+        try:
+            expr = lambdoplib.from_sympy(sympy.simplify(symexpr))
+            unif.add(genoplib.Var(var.name), expr)
+        except lambdoplib.FromSympyFailed as e:
+            add_to_bl(var,symexpr)
+            valid = False
+            continue
 
-  offset = targ_offset-pat_offset
-  if offset != 0.0:
-    targ_args.append(genoplib.Const(offset))
+        cstr = cstrs[var.name] if var.name in cstrs else \
+               UnifyConstraint.NONE
 
-  table = UnifyTable(pat_args,targ_args,associative=True)
-  for pat_arg,targ_args,unifs in table.iterate():
-    targ_expr = mkadd(targ_args)
-    for unif in (unify(pat_arg,targ_expr,cstrs)):
-      unifs.append(unif)
+        if cstr == UnifyConstraint.CONSTANT \
+            and expr.op != oplib.OpType.CONST:
+            add_to_bl(var,symexpr)
+            valid = False
+        if cstr == UnifyConstraint.VARIABLE \
+           and expr.op != oplib.OpType.VAR:
+            add_to_bl(var,symexpr)
+            valid = False
+        if cstr == UnifyConstraint.SAMEVAR:
+            raise NotImplementedError
 
-  for unif in table.solutions():
-    yield unif
+    wildvar,symexpr = random.choice(list(result.items()))
+    if valid:
+        yield unif
+        add_to_bl(wildvar,symexpr)
 
-
-def unify_mult(pat_expr,targ_expr,cstrs):
-  targ_coeff,targ_args = canonicalize_mult(targ_expr)
-  pat_coeff,pat_args = canonicalize_mult(pat_expr)
-
-  ratio = targ_coeff/pat_coeff
-  if ratio != 1:
-    targ_args.append(genoplib.Const(ratio))
-
-  table = UnifyTable(pat_args,targ_args,associative=True)
-  for pat_arg,targ_args,unifs in table.iterate():
-    targ_expr = mkmult(targ_args)
-    for unif in (unify(pat_arg,targ_expr,cstrs)):
-      unifs.append(unif)
-
-  for unif in table.solutions():
-    yield unif
-
+    if updated_blacklist and not deterministic:
+        for unif in sympy_unify_rewrite(pat_expr,targ_expr,cstrs,blacklist):
+            yield unif
 
 
 def unify(pat_expr,targ_expr,cstrs):
-  #print("---")
-  #print("pattern: %s" % pat_expr)
-  #print("target: %s" % targ_expr)
-  #print("cstrs: %s" % cstrs)
+    def targ_exact_match(op):
+        if op == oplib.OpType.EMIT or \
+           op == oplib.OpType.INTEG:
+            return True
+        else:
+            return False
 
-  funcs = []
-  if pat_expr.op == oplib.OpType.VAR:
-    var_cstr = cstrs[pat_expr.name]
-    if var_cstr == UnifyConstraint.NONE:
-      unif = Unification()
-      unif.add(pat_expr,targ_expr)
-      yield unif
+    def pat_exact_match(op):
+        if op == oplib.OpType.INTEG:
+            return True
+        else:
+            return False
 
-    elif var_cstr == UnifyConstraint.CONSTANT and \
-         targ_expr.op == oplib.OpType.CONST:
-      unif = Unification()
-      unif.add(pat_expr,targ_expr)
-      yield unif
+    new_targ_expr = canonicalize_call(targ_expr)
+    if not new_targ_expr is None:
+        targ_expr = new_targ_expr
 
-    elif var_cstr == UnifyConstraint.FUNCTION:
-      unif = Unification()
-      unif.add(pat_expr,targ_expr)
-      yield unif
+    new_pat_expr = canonicalize_call(pat_expr)
+    if not new_pat_expr is None:
+        pat_expr = new_pat_expr
 
-    elif var_cstr == UnifyConstraint.VARIABLE and \
-         targ_expr.op == oplib.OpType.VAR:
-      unif = Unification()
-      unif.add(pat_expr,targ_expr)
-      yield unif
-
-    elif var_cstr == UnifyConstraint.SAMEVAR and \
-         targ_expr.op == oplib.OpType.VAR and \
-         targ_expr.name == pat_expr.name:
-      unif = Unification()
-      yield unif
-
-    return
-
-  elif pat_expr.op == oplib.OpType.MULT:
-    pass
-  elif pat_expr.op == oplib.OpType.CALL:
-    targ_expr = canonicalize_call(targ_expr)
-    if targ_expr is None:
-      return
-
-  elif not pat_expr.op == targ_expr.op:
-    return
-
-  if pat_expr.op == oplib.OpType.EMIT:
-    for result in unify(pat_expr.arg(0), \
-                        targ_expr.arg(0), \
-                        cstrs):
-      yield result
-
-  elif pat_expr.op == oplib.OpType.INTEG:
-    results = []
-
-    table = UnifyTable(pat_expr.args, \
-                       targ_expr.args, \
-                       associative=False)
-    for pat_arg,targ_args,unifs in table.iterate():
-      assert(len(targ_args) == 1)
-      for unif in unify(pat_arg,targ_args[0],cstrs):
-        unifs.append(unif)
-
-    for unif in table.solutions():
-      yield unif
-
-
-  elif pat_expr.op == oplib.OpType.ADD:
-    for unif in unify_sum(pat_expr,targ_expr,cstrs):
-      yield unif
-
-  elif pat_expr.op == oplib.OpType.MULT:
-    for unif in unify_mult(pat_expr,targ_expr,cstrs):
-      yield unif
-
-  elif pat_expr.op == oplib.OpType.CALL:
-    if len(pat_expr.values) != len(targ_expr.values):
-      return
-
-    table = UnifyTable(pat_expr.values + [pat_expr.func], \
-                       targ_expr.values + [targ_expr.func], \
-                       associative=False)
-    for pat_arg,targ_args,unifs in table.iterate():
-      assert(len(targ_args) == 1)
-      for unif in unify(pat_arg,targ_args[0],cstrs):
-        unifs.append(unif)
-
-    for unif in table.solutions():
-      yield unif
-
-
-  elif pat_expr.op == oplib.OpType.FUNC:
-    if len(pat_expr.func_args) != len(targ_expr.func_args):
-      return
-
-    # make replacement dictionary
-    repl = dict(map(lambda repl: (repl[0],genoplib.Var(repl[1])), \
-                zip(targ_expr.func_args,pat_expr.func_args)))
-    new_impl = targ_expr.expr.substitute(repl)
-    for result in unify(pat_expr.expr, \
-                        new_impl, \
-                        cstrs):
-      yield result
-
-
-  else:
-    raise Exception("unhandled: %s" % pat_expr)
+    for result in sympy_unify_rewrite(pat_expr,targ_expr,cstrs):
+        print(pat_expr,targ_expr,result)
+        yield result

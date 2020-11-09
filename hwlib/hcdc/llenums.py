@@ -1,5 +1,21 @@
 from enum import Enum
 
+class Channels(Enum):
+    POS = "POS"
+    NEG = "NEG"
+
+class ExternalPins(Enum):
+    OUT0 = "pinOut0"
+    OUT1 = "pinOut1"
+    OUT2 = "pinOut2"
+    OUT3 = "pinOut3"
+
+    IN0 = "pinIn0"
+    IN1 = "pinIn1"
+
+
+
+
 class CalibrateObjective(Enum):
     MINIMIZE_ERROR = "minimize_error"
     MAXIMIZE_FIT = "maximize_fit"
@@ -99,6 +115,16 @@ class BlockType(str,Enum):
           return BlockType._member_map_[name]
 
       raise Exception("unknown block type: %s" % name)
+
+    def has_state(self):
+        if self == BlockType.DAC or \
+           self == BlockType.ADC or \
+           self == BlockType.MULT or \
+           self == BlockType.INTEG or \
+           self == BlockType.FANOUT or \
+           self == BlockType.LUT:
+            return True
+        return False
 
     def code(self):
         mapping = {

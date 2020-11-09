@@ -15,10 +15,19 @@ class VirtualSourceVar:
 class LawVar:
   APPLY = "app"
 
-  def __init__(self,law,idx,var):
+  def __init__(self,law,idx,var=None):
+    assert(isinstance(law,str))
     self.law =law
     self.ident = idx
     self.var = var
+
+  def copy(self):
+    return LawVar(self.law,self.ident,self.var)
+
+
+  def make_law_var(self,name):
+    return LawVar(self.law,self.ident,name)
+
 
   def same_usage(self,other):
     assert(isinstance(other,LawVar))
@@ -26,23 +35,36 @@ class LawVar:
       other.law == self.law
 
   def __repr__(self):
-    return "%s[%s].%s" % (self.law,self.ident,self.var)
-
+    if not self.var is None:
+      return "%s[%s].%s" % (self.law,self.ident,self.var)
+    else:
+      return "%s[%s]" % (self.law,self.ident)
 
 
 class PortVar:
 
-  def __init__(self,block,idx,port):
+  def __init__(self,block,idx,port=None):
     assert(not isinstance(port,str))
     self.block = block
     self.ident = idx
     self.port = port
 
+  def make_port_var(self,name):
+    if isinstance(name,str):
+      port = self.block.port(name)
+    else:
+      port = self.block.port(name.name)
+
+    return PortVar(self.block,self.ident,port)
+
   def copy(self):
     return PortVar(self.block,self.ident,self.port)
 
   def __repr__(self):
-    return "%s[%s].%s" % (self.block.name,self.ident,self.port.name)
+    if not self.port is None:
+      return "%s[%s].%s" % (self.block.name,self.ident,self.port.name)
+    else:
+      return "%s[%s]" % (self.block.name,self.ident)
 
 class VADPStmt:
 
@@ -69,56 +91,58 @@ class VADPConn(VADPStmt):
 
 class VADPSink(VADPStmt):
 
-  def __init__(self,port,expr):
+  def __init__(self,target,expr):
     VADPStmt.__init__(self)
-    assert(isinstance(port,PortVar))
+    assert(isinstance(target,PortVar) or \
+           isinstance(target,LawVar))
     self.dsexpr = expr
-    self.port = port
+    self.target = target
 
   def copy(self):
-    return VADPSink(self.port.copy(),self.dsexpr)
+    return VADPSink(self.target.copy(),self.dsexpr)
 
   def __repr__(self):
-    return "sink(%s,%s)" % (self.port,self.dsexpr)
+    return "sink(%s,%s)" % (self.target,self.dsexpr)
 
 class VADPSource(VADPStmt):
 
-  def __init__(self,port,expr):
+  def __init__(self,target,expr):
     VADPStmt.__init__(self)
-    if not (isinstance(port,PortVar)) and \
-       not (isinstance(port,LawVar)) and \
-       not (isinstance(port,VirtualSourceVar)):
-      raise Exception("unexpected port: %s"  \
-                      % port.__class__.__name__)
+    if not (isinstance(target,PortVar)) and \
+       not (isinstance(target,LawVar)) and \
+       not (isinstance(target,VirtualSourceVar)):
+      raise Exception("unexpected target: %s"  \
+                      % target.__class__.__name__)
     self.dsexpr = expr
-    self.port = port
+    self.target = target
 
   def copy(self):
-    return VADPSource(self.port.copy(),self.dsexpr)
+    return VADPSource(self.target.copy(),self.dsexpr)
 
   def __repr__(self):
-    return "source(%s,%s)" % (self.port,self.dsexpr)
+    return "source(%s,%s)" % (self.target,self.dsexpr)
 
 
 
 class VADPConfig(VADPStmt):
 
-  def __init__(self,block,ident,mode):
+  def __init__(self,target,mode):
     VADPStmt.__init__(self)
-    self.block = block
-    self.ident = ident
+    assert(isinstance(target,PortVar) or \
+           isinstance(target,LawVar))
+    self.target = target
     self.mode = mode
     self.assigns = {}
 
   def copy(self):
-    cfg = VADPConfig(self.block,self.ident,self.mode)
+    cfg = VADPConfig(self.target.copy(),self.mode)
     for v,e in self.assigns.items():
       cfg.bind(v,e)
     return cfg
 
-  def same_block(self,other):
+  def same_target(self,other):
     assert(isinstance(other,VADPConfig))
-    return self.block == other.block and \
+    return self.target == other.target and \
       self.ident == other.ident
 
   def bind(self,var,value):
@@ -127,8 +151,8 @@ class VADPConfig(VADPStmt):
     self.assigns[var] = value
 
   def __repr__(self):
-    return "config(%s,%s)[%s]%s" % (self.block.name, \
-                                    self.ident,\
+    return "config(%s,%s)[%s]%s" % (self.target, \
+                                    self.target.ident,\
                                     self.mode, \
                                     self.assigns)
 
@@ -143,10 +167,10 @@ def is_concrete_vadp(vadp,allow_virtual=False):
 
   for stmt in vadp:
     if isinstance(stmt,VADPSource):
-      if not is_concrete_node(stmt.port):
+      if not is_concrete_node(stmt.target):
         return False
     elif isinstance(stmt,VADPSink):
-      if not isinstance(stmt.port,PortVar):
+      if not isinstance(stmt.target,PortVar):
         return False
     elif isinstance(stmt,VADPConn):
       if not isinstance(stmt.source,PortVar):
@@ -155,6 +179,8 @@ def is_concrete_vadp(vadp,allow_virtual=False):
         return False
 
     elif isinstance(stmt,VADPConfig):
+      if not is_concrete_node(stmt.target):
+        return False
       pass
     else:
       raise Exception("unhandled: %s" % stmt)
@@ -190,15 +216,15 @@ def remap_vadp_identifiers(insts,fragment):
     if isinstance(stmt,VADPSource) or \
        isinstance(stmt,VADPSink):
       new_stmt = stmt.copy()
-      if isinstance(stmt.port,PortVar):
-        new_stmt.port.ident = get_identifier(stmt.port.block, \
-                                             stmt.port.ident)
+      if isinstance(stmt.target,PortVar):
+        new_stmt.target.ident = get_identifier(stmt.target.block, \
+                                               stmt.target.ident)
       yield new_stmt
 
     elif isinstance(stmt,VADPSink):
       new_stmt = stmt.copy()
-      new_stmt.port.ident = get_identifier(stmt.port.block, \
-                                           stmt.port.ident)
+      new_stmt.target.ident = get_identifier(stmt.target.block, \
+                                           stmt.target.ident)
       yield new_stmt
 
     elif isinstance(stmt,VADPConn):
@@ -212,8 +238,8 @@ def remap_vadp_identifiers(insts,fragment):
 
     elif isinstance(stmt,VADPConfig):
         new_stmt = stmt.copy()
-        new_stmt.ident = get_identifier(stmt.block, \
-                                   stmt.ident)
+        new_stmt.target.ident = get_identifier(stmt.target.block, \
+                                               stmt.target.ident)
         yield new_stmt
 
     else:
@@ -232,14 +258,15 @@ def to_adp(vadps):
   adp = adplib.ADP()
   for stmt in vadps:
     if isinstance(stmt,VADPConfig):
-      block = stmt.block
-      loc = stmt.ident
+      block = stmt.target.block
+      loc = stmt.target.ident
       adp.add_instance(block,loc)
       cfg = adp.configs.get(block.name,loc)
       cfg.modes = stmt.mode
       for datafield,value in stmt.assigns.items():
         if(isinstance(cfg[datafield], adplib.ExprDataConfig)):
-          raise NotImplementedError
+          cfg[datafield].expr = value
+
         elif(isinstance(cfg[datafield], adplib.ConstDataConfig)):
           cfg[datafield].value = value.compute()
         else:
@@ -256,9 +283,9 @@ def to_adp(vadps):
 
   for stmt in vadps:
     if isinstance(stmt,VADPSource):
-      block = stmt.port.block
-      loc = stmt.port.ident
-      port = stmt.port.port
+      block = stmt.target.block
+      loc = stmt.target.ident
+      port = stmt.target.port
       dsexpr = stmt.dsexpr
       adp.add_source(block,loc,port,dsexpr)
 

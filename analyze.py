@@ -22,11 +22,11 @@ def analyze_db(db_name = 'board6'):
 	return
 
 dev = hcdclib.get_device()
-block,inst,cfg = target_block.get_block(dev)
+block, inst, cfg = target_block.get_block(dev)
 
 db = physdb.PhysicalDatabase('board6')
 # build up dataset
 params = {}
 inputs = {}
-for blk in physdb.get_by_block_instance(db, dev,block,inst,cfg=cfg):
-  	fitlib.analyze_physical_output(blk)
+for blk in physdb.get_by_block_instance(db, dev, block, inst, cfg=cfg):
+    fitlib.fit_delta_model(blk)

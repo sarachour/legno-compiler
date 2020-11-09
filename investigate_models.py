@@ -4,6 +4,7 @@ import phys_model.visualize as vizlib
 import hwlib.hcdc.hcdcv2 as hcdclib
 import hwlib.device as devlib
 import hwlib.block as blocklib
+import hwlib.physdb as physdb
 import hwlib.adp as adplib
 import ops.opparse as opparse
 import time
@@ -68,10 +69,10 @@ def investigate_model(terms, param):
     dataset = {'inputs':inputs, 'meas_mean':costs}
   # fit model
   #
-  
-  #
-  
 
+  # physically fit
+  phys_model = get_physical_model(db,dev,block,inst,cfg)
+  #
   '''
   number_of_datapoints = 500
   #print(len(dataset['meas_mean']))
@@ -103,7 +104,6 @@ def investigate_model(terms, param):
 
 
 
-           
 
   variables = list(map(lambda i: "c%d" % i, range(0,len(terms)))) \
               + ['offset']
@@ -236,4 +236,4 @@ min_terms = terms
 
 #plt.plot(error)
 #plt.show()
-
+'''

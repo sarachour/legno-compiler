@@ -4,6 +4,11 @@ import ops.generic_op as oplib
 import hwlib.exceptions as exceptions
 import numpy as np
 
+class ExternalPins(Enum):
+    NONE = "NONE"
+    IN0_IN1 = "IN0_IN1"
+    OUT0_OUT1 = "OUT0_OUT1"
+
 class QuantizeType(Enum):
     LINEAR = "linear"
 
@@ -14,6 +19,12 @@ class Quantize:
         assert(isinstance(interp_type,QuantizeType))
         self.n = n
         self.type = interp_type
+
+    def error(self,interval):
+        assert(self.type == QuantizeType.LINEAR)
+        val = float(interval.upper-interval.lower)/self.n
+        assert(val > 0.0)
+        return val
 
     def get_values(self,interval):
         if self.type == QuantizeType.LINEAR:
@@ -30,6 +41,12 @@ class Quantize:
         eps = list(map(lambda v: abs(v-value), vals))
         idx = np.argmin(eps)
         return idx
+
+    def round_value(self,interval,value):
+        vals = self.get_values(interval)
+        dist = list(map(lambda v: abs(v-value), vals))
+        idx = np.argmin(dist)
+        return vals[idx]
 
 class BlockType(Enum):
     COMPUTE = "compute"
@@ -142,6 +159,7 @@ class BlockModeset:
   def __init__(self,type_spec):
     self._type = type_spec
     self._modes = {}
+    self._order = []
 
   def matches(self,pattern):
     for mode in self:
@@ -155,6 +173,7 @@ class BlockModeset:
     mode_d = BlockMode(mode,self._type)
     assert(not mode_d.key in self._modes)
     self._modes[mode_d.key] = mode_d
+    self._order.append(mode_d.key)
 
   def add_all(self,modes):
     for mode in modes:
@@ -172,11 +191,17 @@ class BlockModeset:
       return len(self._modes.keys())
 
   def __getitem__(self,m):
+    if isinstance(m,int):
+      return self._modes[self._order[m]]
+    else:
       return self.get(m)
 
   def __iter__(self):
-    for mode in self._modes.values():
-      yield mode
+    for mode_key in self._order:
+        yield self._modes[mode_key]
+
+  def __repr__(self):
+    return str(self._modes.values())
 
 class BlockField:
 
@@ -230,11 +255,11 @@ class BlockStateCollection(BlockFieldCollection):
         state.lift(cfg,self._block,loc,data)
 
     # turn this configuration into a low level spec
-    def concretize(self,cfg,loc):
+    def concretize(self,adp,loc):
       data = {}
       arrays = []
       for state in self:
-        value = state.impl.apply(cfg,self._block.name,loc)
+        value = state.impl.apply(adp,self._block.name,loc)
         if state.array is None:
           assert(not state.variable in data)
           data[state.variable] = value
@@ -456,23 +481,26 @@ class BCCalibImpl:
 class BCConnImpl:
   def __init__(self,state):
       self.state = state
-      self._sources= {}
-      self._sinks= {}
+      self._incoming = []
+      self._outgoing= []
       self._default = None
 
-  def sink(self,source_port,block,sink,value):
+  def outgoing(self,source_port, \
+               sink_block,sink_loc,sink_port,value):
       self.state.valid(value)
-      if not source_port in self._sinks:
-          self._sinks[source_port] = []
+      assert(isinstance(source_port,str))
 
-      self._sinks[source_port].append((block,sink,value))
+      data = (source_port,sink_block,sink_loc,sink_port,value)
+      self._outgoing.append(data)
 
-  def source(self,block,source,sink_port,value):
+  def incoming(self,sink_port, \
+             source_block,source_loc,source_port,value):
       self.state.valid(value)
-      if not sink_port in self._sources:
-          self._sources[sink_port] = []
 
-      self._sources[sink_port].append((block,source,value))
+      data = (sink_port,source_block, \
+              source_loc,source_port,value)
+
+      self._incoming.append(data)
 
 
   @property
@@ -485,15 +513,20 @@ class BCConnImpl:
       self._default = value
 
   def apply(self,adp,block_name,loc):
-    '''
-    sink_conns = adp.conns.incoming(block_name,loc)
-    for src_loc,sink_loc in sink_conns:
-        pass
-    source_conns = adp.conns.outgoing(block_name,loc)
-    for src_loc,sink_loc in sink_conns:
-        pass
-    '''
-    print("TODO: actually apply connection impl")
+    for (source_port,sink_block,sink_loc,sink_port,value) in \
+        self._outgoing:
+        outgoing_conns = adp.outgoing_conns(block_name,loc,source_port)
+        for conn in outgoing_conns:
+            if conn.is_dest(sink_block,sink_loc,sink_port):
+                return value
+
+    for (sink_port,source_block,source_loc,source_port,value) in \
+        self._incoming:
+        incoming_conns = adp.incoming_conns(block_name,loc,sink_port)
+        for conn in incoming_conns:
+            if conn.is_source(source_block,source_loc,source_port):
+                return value
+
     return self._default
 
   def lift(self,adp,block,loc,data):
@@ -566,7 +599,6 @@ class BlockState(BlockField):
           return True
       return False
 
-  # add the 
   def lift(self,adp,block,loc,data):
     if not self.array is None:
         arr_idx = self.index.code()
@@ -602,8 +634,13 @@ class BlockInput(BlockField):
       self.interval = ModeDependentProperty("interval",block.modes,interval.Interval)
       self.freq_limit = ModeDependentProperty("max_frequency",block.modes, \
                                               float)
-      self.quantize = ModeDependentProperty("quantization",block.modes, \
-                                            Quantize)
+      self.noise = ModeDependentProperty("noise",block.modes,float)
+      if self.type == BlockSignalType.DIGITAL:
+          self.quantize = ModeDependentProperty("quantization", \
+                                                block.modes, \
+                                                Quantize)
+      else:
+          self.quantize = None
 
   @property
   def properties(self):
@@ -616,6 +653,9 @@ class BlockInput(BlockField):
       st = "block-input %s : %s (%s) {\n" \
            % (self.name,self.type,self.ll_identifier.value);
       for prop in [self.interval,self.freq_limit,self.quantize]:
+        if prop is None:
+            continue
+
         text = str(prop)
         if text != "":
           st += "%s%s\n" % (indent,prop.name)
@@ -625,13 +665,76 @@ class BlockInput(BlockField):
       return st
 
 
+class PhysicalModelSpec:
+
+    def __init__(self,relation,parameters,hidden_state):
+        # sanity check
+        all_vars = relation.vars()
+        for v in all_vars:
+           if not v in parameters and not v in hidden_state:
+               raise Exception("variable <%s> is not a parameter or hidden code" % v)
+        for v in parameters + hidden_state:
+            if not v in all_vars:
+                raise Exception("parameter or hidden state <%s> not in relation "% v)
+
+        self.relation = relation
+        self.params = parameters
+        self.hidden_state = hidden_state
+
+    @staticmethod
+    def make(block,relation):
+        all_hidden_vars = set(map(lambda st: st.name, \
+                                filter(lambda st: isinstance(st.impl,BCCalibImpl), \
+                                       block.state)))
+        variables = set(relation.vars())
+        hidden_state = list(variables.intersection(all_hidden_vars))
+        model_pars = list(variables.difference(all_hidden_vars))
+        return PhysicalModelSpec(relation,model_pars,hidden_state)
+
+    def get_model(self,assigns):
+        repls = dict(map(lambda tup: (tup[0],oplib.Const(tup[1])), \
+                         params.items()))
+        return self.relation.substitute(repls)
+
+    def __repr__(self):
+        return "{hidden-state:%s, params:%s, expr:%s}" % (self.hidden_state, \
+                                                          self.params, \
+                                                          self.relation)
 class DeltaSpec:
+
+    class Parameter:
+
+        def __init__(self,name,typ,ideal_value,model=None):
+            self.typ = typ
+            self.name = name
+            self.val = ideal_value
+            assert(model is None \
+                   or isinstance(model,PhysicalModelSpec))
+            self._model = model
+
+        @property
+        def model(self):
+            return self._model
+
+        def __repr__(self):
+            return "%s : %s = %s / model=%s" % (self.name, \
+                                           self.typ.value, \
+                                           self.val, \
+                                           self._model)
 
     def __init__(self,rel):
         assert(isinstance(rel,oplib.Op))
-        self.relation = rel
         self._params = {}
-        self.ideal_values = {}
+        self.relation = rel
+        self._model_error = None
+
+    @property
+    def model_error(self):
+        return self._model_error
+
+    @model_error.setter
+    def model_error(self,v):
+        self._model_error = v
 
     def get_model(self,params):
         repls = dict(map(lambda tup: (tup[0],oplib.Const(tup[1])), \
@@ -641,9 +744,9 @@ class DeltaSpec:
     def get_correctable_model(self,params):
         pdict = dict(params)
         for par in params.keys():
-            if self._params[par]  \
+            if self._params[par].typ  \
                != DeltaParamType.CORRECTABLE:
-                pdict[par] = self.ideal_values[par]
+                pdict[par] = par.val
 
         return self.get_model(pdict)
 
@@ -651,22 +754,24 @@ class DeltaSpec:
     def params(self):
         return list(self._params.keys())
 
-    def param(self,param_name,param_type,ideal):
+    def param(self,param_name,param_type,ideal,model=None):
         assert(not param_name in self._params)
-        self._params[param_name] = param_type
-        self.ideal_values[param_name] = ideal
+        self._params[param_name] = DeltaSpec.Parameter(param_name,\
+                                                       param_type,\
+                                                       ideal,\
+                                                       model)
+
 
     def __getitem__(self,par):
-        type_ = self._params[par]
-        val = self.ideal_values[par]
-        return type_,val
+        par_ = self._params[par]
+        return par_
 
     def __repr__(self):
         st = "delta {\n"
         indent = "  "
-        for par_name,typ_ in self._params.items():
-            val = self.ideal_values[par_name]
-            st += "%spar %s: %s = %s\n" % (indent,par_name,typ_,val)
+        for par_name,par in self._params.items():
+            st += "%spar %s\n" % par
+
         st += "%srel %s\n" % (indent,self.relation)
         st += "}\n"
         return st
@@ -679,10 +784,10 @@ class BlockOutput(BlockField):
     self.type = sig_type
     self.ll_identifier = ll_identifier
 
-
   def initialize(self,block):
     self.block = block
     self.interval = ModeDependentProperty("interval",block.modes,interval.Interval)
+    self.noise = ModeDependentProperty("noise",block.modes,float)
     self.freq_limit = ModeDependentProperty("max_frequency",block.modes,float)
     self.relation = ModeDependentProperty("relation",block.modes,oplib.Op)
     self.deltas = ModeDependentProperty("delta_model",block.modes,DeltaSpec)
@@ -690,6 +795,8 @@ class BlockOutput(BlockField):
       self.quantize = ModeDependentProperty("quantization", \
                                             block.modes, \
                                             Quantize)
+    else:
+      self.quantize = None
 
   @property
   def properties(self):
@@ -702,14 +809,12 @@ class BlockOutput(BlockField):
 
 class BlockData(BlockField):
 
-  def __init__(self,name,data_type,inputs=None):
+  def __init__(self,name,data_type,inputs=[]):
     BlockField.__init__(self,name)
     assert(isinstance(data_type, BlockDataType))
     self.type = data_type
-    self.n_inputs = inputs
-    if not inputs is None:
-        self.args = list(map(lambda i: "x%d" % i, \
-                             range(inputs)))
+    self.n_inputs = len(inputs)
+    self.inputs = inputs
 
   def initialize(self,block):
     self.block = block
@@ -727,6 +832,12 @@ class BlockData(BlockField):
       assert(isinstance(self.n_inputs,int))
       print("[WARN] need to add quantization info")
 
+  def round_value(self,mode,value):
+      ival = self.interval[mode]
+      quant = self.quantize[mode]
+      return quant.round_value(ival,value)
+
+
 class Block:
 
   def __init__(self,name,typ,mode_spec):
@@ -736,8 +847,17 @@ class Block:
     self.state = BlockStateCollection(self)
     self.modes = BlockModeset(mode_spec)
 
+
     self.name = name
+    self.ll_name = name
     self.type = typ
+
+  def port(self,name):
+    if self.inputs.has(name):
+      return self.inputs[name]
+    if self.outputs.has(name):
+      return self.outputs[name]
+    raise Exception("unknown port: %s" % name)
 
   def field_collections(self):
     yield self.inputs

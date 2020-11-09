@@ -1,5 +1,7 @@
 import hwlib.block as blocklib
+import hwlib.device as devlib
 import compiler.lgraph_pass.unify as unifylib
+import compiler.lgraph_pass.vadp as vadplib
 from compiler.lgraph_pass.tableau import *
 import ops.base_op as oplib
 import ops.generic_op as genoplib
@@ -14,17 +16,12 @@ def make_initial_tableau(blocks,laws,variable,expr):
         rel = PortRelation(block,0,modes,output,expr)
         tab.add_relation(rel)
 
-  for law_data in laws:
-    law = PhysicsLawRelation(law_data['name'],0, \
-                             law_data['type'], \
-                             law_data['expr'], \
-                             law_data['apply'], \
-                             law_data['simplify'], \
-                             law_data['cstrs'])
-    for var,typ in law_data['vars'].items():
-      law.decl_var(var,typ)
+  for law in laws:
+    for mode,expr in law.virt.relations:
+      lawvar = vadplib.LawVar(law.name, 0)
+      rel = PhysicsLawRelation(law,lawvar,mode,expr)
 
-    tab.add_relation(law)
+    tab.add_relation(rel)
 
   return tab
 
@@ -61,8 +58,8 @@ def derive_tableau_from_port_rel(tableau,goal,rel,unif):
                                     genoplib.Var(goal.variable.var)))
   elif isinstance(goal.variable,PortVar):
     in_port = PortVar(goal.variable.block, \
-                          goal.variable.ident, \
-                          goal.variable.port)
+                      goal.variable.ident, \
+                      goal.variable.port)
     new_tableau.add_stmt(VADPConn(out_port,in_port))
   elif isinstance(goal.variable,LawVar):
     in_port = LawVar(goal.variable.law, \
@@ -73,15 +70,36 @@ def derive_tableau_from_port_rel(tableau,goal,rel,unif):
   else:
     raise Exception("TODO: vadp should find/replace laws.")
 
-  vadp_cfg = VADPConfig(rel.block,rel.ident,rel.modes)
+  block_var = vadplib.PortVar(rel.block,rel.ident)
+  vadp_cfg = VADPConfig(block_var,rel.modes)
   for stmt in tableau.vadp:
     if isinstance(stmt,VADPConfig) and \
-       stmt.same_block(vadp_cfg):
+       stmt.same_target(vadp_cfg):
       stmt.merge(vadp_cfg)
       vadp_cfg = stmt
 
-  # translate assignments to goals
+  data_vars = []
   for vop,e in unif.assignments:
+    if rel.block.data.has(vop.name):
+       dat = rel.block.data[vop.name]
+       data_vars += [vop.name] + dat.inputs
+       if dat.type == blocklib.BlockDataType.EXPR:
+         repl = {}
+         for block_var, ds_var in map(lambda inp: unif.get_by_name(inp), \
+                                      dat.inputs):
+           assert(ds_var.op == genoplib.OpType.VAR)
+           repl[ds_var.name] = block_var
+
+         assert(set(e.vars()) == set(repl.keys()))
+         expr = e.substitute(repl)
+         vadp_cfg.bind(vop.name,expr)
+       else:
+         vadp_cfg.bind(vop.name,e)
+
+
+  # translate assignments to goals
+  for vop,e in filter(lambda asgn: not asgn[0].name in data_vars, \
+                      unif.assignments):
     v = vop.name
     # binding input port assignment
     if rel.block.inputs.has(v):
@@ -90,9 +108,9 @@ def derive_tableau_from_port_rel(tableau,goal,rel,unif):
                                         rel.ident, \
                                         rel.block.inputs[v]), \
                                 sig_type,e))
-    elif rel.block.data.has(v):
-      vadp_cfg.bind(v,e)
-    elif rel.cstrs[v] == unifylib.UnifyConstraint.SAMEVAR:
+
+    elif v in rel.cstrs and \
+         rel.cstrs[v] == unifylib.UnifyConstraint.SAMEVAR:
       pass
     else:
       print(rel)
@@ -146,45 +164,68 @@ def derive_tableau_from_phys_rel(tableau,goal,rel,unif):
   new_tableau = tableau.copy()
   new_tableau.remove_goal(goal)
 
-
-  app_var = LawVar(rel.law,rel.ident,LawVar.APPLY)
-  for stmt in rel.apply(goal):
+  law = rel.law
+  app_var = rel.target.make_law_var(law.virt.output.name)
+  new_unif,stmts = law.apply(goal,rel,unif)
+  for stmt in stmts:
     new_tableau.add_stmt(stmt)
 
-  for law_var,e in unif.assignments:
-    new_tableau.add_goal(Goal(LawVar(rel.law, \
-                                     rel.ident, \
+  for law_var in law.virt.inputs:
+    _,e = new_unif.get_by_name(law_var)
+    new_tableau.add_goal(Goal(LawVar(rel.target.law, \
+                                     rel.target.ident, \
                                      law_var), \
-                              rel.get_type(law_var.name),e))
+                              law.virt.get_type(law_var),e))
 
   for curr_rel in new_tableau.relations:
-      if isinstance(curr_rel,PhysicsLawRelation) and \
-          curr_rel.same_usage(rel):
-        curr_rel.ident += 1
+    if isinstance(curr_rel,PhysicsLawRelation) and \
+       curr_rel.same_usage(rel):
+      curr_rel.target.ident += 1
 
 
   return new_tableau
 
+def compatible_relation(dev,goal,rel):
+  goalvar = goal.variable
 
-def derive_tableaus(tableau,goal):
+  if not rel.typecheck(goal):
+    return False
+
+  if isinstance(rel,PortRelation):
+    # cannot use relation from the same block.
+    if rel.same_block(goal.variable):
+      return False
+
+    if isinstance(goalvar,DSVar) and \
+      not rel.port.type == blocklib.BlockSignalType.ANALOG:
+      return False
+
+    if isinstance(goalvar,PortVar) and \
+       not devlib.path_exists(dev,rel.block.name,rel.port.name, \
+                           goalvar.block.name,goalvar.port.name):
+      return False
+
+  return True
+
+def derive_tableaus(dev,tableau,goal):
   for rel in tableau.relations:
-    if rel.typecheck(goal):
-      if isinstance(rel,PortRelation):
-        if rel.same_block(goal.variable):
-          continue
+    if not compatible_relation(dev,goal,rel):
+      continue
+    if isinstance(rel,PortRelation):
+      for unif in unifylib.unify(rel.expr,goal.expr,rel.cstrs):
+        new_tableau = derive_tableau_from_port_rel(tableau,goal,rel,unif)
+        yield new_tableau
 
-        for unif in unifylib.unify(rel.expr,goal.expr,rel.cstrs):
-          new_tableau = derive_tableau_from_port_rel(tableau,goal,rel,unif)
-          yield new_tableau
+    elif isinstance(rel,PhysicsLawRelation):
+      cstrs = rel.law.virt.unify_cstrs()
+      print(rel.expr)
+      for unif in unifylib.unify(rel.expr,goal.expr,cstrs):
+        new_tableau = derive_tableau_from_phys_rel(tableau,goal,rel,unif)
+        yield new_tableau
 
-      elif isinstance(rel,PhysicsLawRelation):
-        cstrs = rel.constraints(rel.variables)
-        for unif in unifylib.unify(rel.expr,goal.expr,cstrs):
-          new_tableau = derive_tableau_from_phys_rel(tableau,goal,rel,unif)
-          yield new_tableau
+    else:
+      raise Exception("unknown relation")
 
-      else:
-        raise Exception("unknown relation")
 
 def get_valid_tableaus(frontier,depth):
   for tab,idx in frontier:
@@ -195,11 +236,12 @@ def get_valid_tableaus(frontier,depth):
 def tableau_complexity(tableau,depth):
   cost = 0.0
   for goal in tableau.goals:
-    cost = max(cost,goal.expr.nodes())
-  return cost + depth
+    #cost += goal.expr.count()
+    cost = max(goal.expr.count(),cost)
+  return cost + len(tableau.goals) + depth
 
 def goal_complexity(goal):
-  return goal.expr.nodes()
+  return goal.expr.count()
 
 def select_tableau(frontier,complexity):
   penalty = list(map(lambda tab: complexity(*tab), frontier))
@@ -224,8 +266,10 @@ def simplify_tableau(tableau,simplify_laws=False):
 
   # replace trivial goals of the form port=var with sinks
   for goal in tableau.goals:
-    if isinstance(goal.variable, PortVar) and \
-       goal.expr.op == oplib.OpType.VAR:
+    if (isinstance(goal.variable, PortVar) or \
+        isinstance(goal.variable, LawVar)) and \
+       goal.expr.op == oplib.OpType.VAR and \
+       goal.type == blocklib.BlockSignalType.ANALOG:
       new_tableau.remove_goal(goal)
       new_tableau.add_stmt(VADPSink(goal.variable, \
                                     goal.expr))
@@ -234,12 +278,12 @@ def simplify_tableau(tableau,simplify_laws=False):
   if simplify_laws:
     for rel in new_tableau.relations:
       if isinstance(rel,PhysicsLawRelation):
-        new_vadp = rel.simplify(new_tableau.vadp)
+        new_vadp = rel.law.simplify(new_tableau.vadp)
         new_tableau.vadp = new_vadp
 
   return new_tableau
 
-def search(blocks,laws,variable,expr,depth=20):
+def search(dev,blocks,laws,variable,expr,depth=20):
   tableau = make_initial_tableau(blocks,laws, \
                                  variable,expr)
 
@@ -254,11 +298,13 @@ def search(blocks,laws,variable,expr,depth=20):
     next_frontier = other_tableaus
     goal,other_goals = select_goal(tableau.goals, \
                        goal_complexity)
+    print(">> %s" % goal)
+    for g in other_goals:
+      print("   %s" % g)
+    print("------")
 
-    derived = 0
-    for new_tableau in derive_tableaus(tableau,goal):
+    for new_tableau in derive_tableaus(dev,tableau,goal):
       simpl_tableau = simplify_tableau(new_tableau)
-      derived += 1
       if simpl_tableau.success():
         simpl_tableau = simplify_tableau(new_tableau, \
                                          simplify_laws=True)
@@ -269,11 +315,14 @@ def search(blocks,laws,variable,expr,depth=20):
           raise Exception("vadp tableau is not concrete!")
 
         yield simpl_tableau.vadp
+        print(simpl_tableau)
+        print("SUCCESS")
         solutions += 1
       else:
         next_frontier.append((simpl_tableau,tab_depth + 1))
 
     valid_tableaus = list(get_valid_tableaus(next_frontier,depth))
+    print("number tableaus: %d" % len(valid_tableaus))
 
   print("Solutions for <%s=%s>: %d" % (variable,expr,solutions))
 

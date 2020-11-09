@@ -19,11 +19,9 @@ def dsprog(prob):
     'one':0.9999
   }
   prob.decl_lambda("ident","sgn(X)*sqrt(abs(X))")
-  prob.decl_stvar("V","(-P)","{V0}",params)
-  prob.decl_stvar("P","V","{P0}",params)
-  prob.emit("ident(P)","Position",params)
+  prob.decl_var("Q","emit(ident(P))")
+  prob.decl_extvar("P","A0")
   prob.interval("P",-1.0,1.0)
-  prob.interval("V",-1.0,1.0)
   prob.check()
   return prob
 

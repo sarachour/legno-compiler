@@ -51,7 +51,8 @@ def function_to_ast(name,arguments,lambda_impl,handle_enumerator,ignore_missing_
     return op.Emit(arguments[0])
   elif name == "extvar":
     report(n == 1, "expected 1 argument to extvar function")
-    return op.ExtVar(arguments[0])
+    assert(arguments[0].op == op.OpType.VAR)
+    return op.ExtVar(arguments[0].name)
   elif name == "sgn":
     report(n == 1, "expected 1 argument to sgn function")
     return op.Sgn(arguments[0])
@@ -63,8 +64,7 @@ def function_to_ast(name,arguments,lambda_impl,handle_enumerator,ignore_missing_
     return op.Abs(arguments[0])
   elif name == "integ":
     report(n == 2, "expected 2 arguments to integ function")
-    return op.Integ(arguments[0],arguments[1], \
-                    handle=":x%d" % handle_enumerator.index)
+    return op.Integ(arguments[0],arguments[1])
   elif name == "max":
     report(n == 2, "expected 2 arguments to max function")
     return op.Max(arguments[0],arguments[1])

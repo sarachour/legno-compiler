@@ -44,27 +44,6 @@ class Op:
     def op(self):
         return self._op
 
-    @property
-    def state_vars(self):
-        stvars = {}
-        for substvars in self._args():
-            for k,v in substvars.items():
-                assert(not k in stvars)
-                stvars[k] =v
-        return stvars
-
-    def handles(self):
-        handles = []
-        for arg in self._args:
-            for handle in arg.handles():
-                assert(not handle in handles)
-                handles.append(handle)
-
-        return handles
-
-    def toplevel(self):
-        return None
-
     def arg(self,idx):
         return self._args[idx]
 
@@ -73,7 +52,15 @@ class Op:
         return self._args
 
     def nodes(self):
-        child_nodes = sum(map(lambda a: a.nodes(), self._args))
+        child_nodes = [self]
+        for nodes in map(lambda a: a.nodes(), self._args):
+          child_nodes += nodes
+
+        return child_nodes
+
+
+    def count(self):
+        child_nodes = sum(map(lambda a: a.count(), self._args))
         return 1 + child_nodes
 
     def depth(self):

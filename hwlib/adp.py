@@ -1,5 +1,6 @@
 import hwlib.block as blocklib
 import hwlib.device as devlib
+import ops.base_op as baseoplib
 from enum import Enum
 
 class BlockInst:
@@ -24,6 +25,11 @@ class BlockInst:
   def __repr__(self):
     return "%s_%s" % (self.block,"_".join(map(lambda a: str(a), \
                                               self.loc.address)))
+
+  def __eq__(self,other):
+    assert(isinstance(other,BlockInst))
+    return self.block == other.block and \
+      self.loc == other.loc
 
 class BlockInstanceCollection:
 
@@ -107,6 +113,8 @@ class ConfigStmt:
     typ = ConfigStmtType(obj['type'])
     if typ == ConfigStmtType.CONSTANT:
       return ConstDataConfig.from_json(obj)
+    elif typ == ConfigStmtType.EXPR:
+      return ExprDataConfig.from_json(obj)
     elif typ == ConfigStmtType.PORT:
       return PortConfig.from_json(obj)
     elif typ == ConfigStmtType.STATE:
@@ -146,7 +154,7 @@ class ConstDataConfig(ConfigStmt):
 
 class ExprDataConfig(ConfigStmt):
 
-  def __init__(self,field,args,expr):
+  def __init__(self,field,args,expr=None):
     ConfigStmt.__init__(self,ConfigStmtType.EXPR,field)
     self.args = args
     self.scfs = {}
@@ -156,17 +164,84 @@ class ExprDataConfig(ConfigStmt):
       self.scfs[key] = 1.0
       self.injs[key] = 1.0
 
+  @property
+  def expr(self):
+    return self._expr
+
+  @expr.setter
+  def expr(self,e):
+    if e is None:
+      self._expr = None
+      return
+
+    for v in e.vars():
+      if not v in self.args:
+        raise Exception("%s is not a valid input. Expected" \
+                        % (v,self.args))
+
+    self._expr = e
+
+  @staticmethod
+  def from_json(obj):
+    expr = baseoplib.Op.from_json(obj['expr']) \
+           if not obj['expr'] is None \
+              else None
+    args = obj['args']
+    field = obj['name']
+
+    data_op = ExprDataConfig(field=field,expr=expr,args=args)
+    for name,scf in obj['scfs'].items():
+      assert(name in data_op.scfs)
+      data_op.scfs[name] = scf
+
+    for name,inj in obj['injs'].items():
+      assert(name in data_op.injs)
+      data_op.injs[name] = inj
+
+    return data_op
+
+  def to_json(self):
+    return {
+      'name':self.name,
+      'type': self.type.value,
+      'expr': self.expr.to_json(),
+      'scfs': dict(self.scfs),
+      'injs': dict(self.injs),
+      'args': list(self.args)
+    }
+
+
+  def __repr__(self):
+    templ = "{name}({args}): {expr}\n"
+    st = templ.format(name=self.name, \
+                      args=",".join(self.args), \
+                      expr=self.expr)
+    st += "%s\n" % str(self.scfs)
+    st += "%s\n" % str(self.injs)
+    return st
 
 
 class PortConfig(ConfigStmt):
 
   def __init__(self,name):
     ConfigStmt.__init__(self,ConfigStmtType.PORT,name)
-    self.scf = 1.0
+    self._scf = 1.0
     self.source = None
 
+  @property
+  def scf(self):
+    return self._scf
+
+  @scf.setter
+  def scf(self,v):
+    assert(v > 0)
+    self._scf = v
+
   def pretty_print(self):
-    return "scf=%f" % (self.scf)
+    st = "scf=%f" % (self.scf)
+    if not self.source is None:
+      st += " src=%s" % self.source
+    return st
 
   def to_json(self):
     return {
@@ -181,6 +256,8 @@ class PortConfig(ConfigStmt):
   def from_json(obj):
     cfg = PortConfig(obj['name'])
     cfg.scf = obj['scf']
+    if not obj['source'] is None:
+      cfg.source = baseoplib.Op.from_json(obj['source'])
     return cfg
 
 
@@ -259,7 +336,10 @@ class BlockConfig:
 
   @property
   def mode(self):
-    assert(self.complete())
+    if not (self.complete()):
+      raise Exception("%s incomplete: %s" % (self.inst, \
+                                             self.modes))
+
     return self.modes[0]
 
   @property
@@ -304,7 +384,8 @@ class BlockConfig:
         cfg.add(ConstDataConfig(data.name,0.0))
       else:
         cfg.add(ExprDataConfig(data.name, \
-                               data.args))
+                               data.inputs, \
+                               None))
     for state in block.state:
       if isinstance(state.impl,blocklib.BCCalibImpl):
         cfg.add(StateConfig(state.name, state.impl.default))
@@ -319,7 +400,8 @@ class BlockConfig:
 
     return st
 
-class Connection:
+class ADPConnection:
+  WILDCARD = "_"
 
   def __init__(self,src_inst,src_port,dest_inst,dest_port):
     assert(isinstance(src_inst,BlockInst))
@@ -337,8 +419,46 @@ class Connection:
     src_port = obj['source_port']
     dest_inst = BlockInst.from_json(obj['dest_inst'])
     dest_port = obj['dest_port']
-    return Connection(src_inst, src_port, \
+    return ADPConnection(src_inst, src_port, \
                       dest_inst, dest_port)
+
+  @staticmethod
+  def test_str(st,test_st):
+    assert(isinstance(st,str))
+    return test_st == ADPConnection.WILDCARD or \
+      st == test_st
+
+  def test_addr(loc,addr):
+    assert(len(loc) == len(addr))
+    for a1,a2 in zip(loc.address,addr):
+      if a2 != ADPConnection.WILDCARD and \
+         a1 != a2:
+        return False
+    return True
+
+
+  def dest_match(self,block_name,loc,port):
+    assert(isinstance(block_name,str))
+    return ADPConnection.test_str(self.dest_inst.block,block_name) and \
+      ADPConnection.test_str(self.dest_port,port) and \
+      ADPConnection.test_addr(self.dest_inst.loc,loc)
+
+  def source_match(self,block_name,loc,port):
+    assert(isinstance(block_name,str))
+    return ADPConnection.test_str(self.source_inst.block,block_name) and \
+      ADPConnection.test_str(self.source_port,port) and \
+      ADPConnection.test_addr(self.source_inst.loc,loc)
+
+  def same_source(self,other):
+    assert(isinstance(other,ADPConnection))
+    return self.source_inst == other.source_inst and \
+      self.source_port == other.source_port
+
+
+  def same_dest(self,other):
+    assert(isinstance(other,ADPConnection))
+    return self.dest_inst == other.dest_inst and \
+      self.dest_port == other.dest_port
 
   def to_json(self):
     return {
@@ -355,12 +475,105 @@ class Connection:
                                         self.dest_inst, \
                                         self.dest_port)
 
+class ADPMetadata:
+  class Keys(Enum):
+    LGRAPH_ID = "lgraph_id"
+    LSCALE_ID = "lscale_id"
+    LSCALE_SCALE_METHOD = "lscale_method"
+    LSCALE_OBJECTIVE = "lscale_objective"
+    LSCALE_AQM = "aqm"
+    LSCALE_DQM = "dqm"
+    DSNAME = "dsname"
+    FEATURE_SUBSET = "subset"
+
+  def __init__(self):
+    self._meta = {}
+
+  def set(self,key,val):
+    assert(isinstance(key,ADPMetadata.Keys))
+    self._meta[key] = val
+
+  def copy(self):
+    meta = ADPMetadata()
+    for k,v in self._meta.items():
+      meta.set(k,v)
+    return meta
+
+  @staticmethod
+  def from_json(obj):
+    meta  = ADPMetadata()
+    for k,v in obj['meta'].items():
+      mkey = ADPMetadata.Keys(k)
+      meta.set(mkey,v)
+    return meta
+
+  def to_json(self):
+    return {
+      'meta':dict(map(lambda tup: (tup[0].value,tup[1]), \
+                      self._meta.items()))
+    }
+
+  def get(self,key):
+    return self[key]
+
+  def __getitem__(self,k):
+    return self._meta[k]
+
+  def __repr__(self):
+    st = ""
+    for k,v in self._meta.items():
+      st += "%s=%s\n" % (k.value,v)
+    return st
+
 class ADP:
 
   def __init__(self):
     self.configs = BlockInstanceCollection(self)
     self.conns = []
-    self.tau = 1.0
+    self.metadata = ADPMetadata()
+    self._tau = 1.0
+
+  def copy(self,dev):
+    adp = ADP()
+    adp.tau = self.tau
+    adp.metadata = self.metadata.copy()
+    for cfg in self.configs:
+      blk = dev.get_block(cfg.inst.block)
+      newcfg = adp.add_instance(blk,cfg.inst.loc)
+      newcfg.set_config(cfg)
+
+    for conn in self.conns:
+      sblk = dev.get_block(conn.source_inst.block)
+      dblk = dev.get_block(conn.dest_inst.block)
+      adp.add_conn(sblk,
+                   conn.source_inst.loc,
+                   sblk.outputs[conn.source_port],
+                   dblk,
+                   conn.dest_inst.loc,
+                   dblk.inputs[conn.dest_port])
+    return adp
+
+
+  def outgoing_conns(self,block_name,loc,port):
+    for conn in self.conns:
+      if conn.source_match(block_name,loc,port):
+        yield conn
+
+
+  def incoming_conns(self,block_name,loc,port):
+    for conn in conns:
+      if conn.dest_match(block_name,loc,port):
+        yield conn
+
+
+  @property
+  def tau(self):
+    return self._tau
+
+  @tau.setter
+  def tau(self,v):
+    assert(v > 0)
+    self._tau = v
 
   def add_source(self,block,loc,port,expr):
     self.configs.get(block.name,loc)[port.name].source = expr
@@ -368,7 +581,9 @@ class ADP:
   def add_instance(self,block,loc):
     assert(isinstance(block,blocklib.Block))
     assert(isinstance(loc,devlib.Location))
-    self.configs.add(BlockConfig.make(block,loc))
+    cfg = BlockConfig.make(block,loc)
+    self.configs.add(cfg)
+    return cfg
 
   def add_conn(self,srcblk,srcloc,srcport, \
                dstblk,dstloc,dstport):
@@ -381,7 +596,7 @@ class ADP:
     assert(isinstance(srcport, blocklib.BlockOutput))
     assert(isinstance(dstport, blocklib.BlockInput))
     self.conns.append(
-      Connection(
+      ADPConnection(
         src_inst,
         srcport.name,
         dest_inst,
@@ -389,12 +604,25 @@ class ADP:
       )
     )
 
+  def port_in_use(self,inst,port):
+    for conn in self.conns:
+      if conn.source_inst == inst and \
+         conn.source_port == port:
+        return True
+      if conn.dest_inst == inst and \
+         conn.dest_port == port:
+        return True
+
+    return False
+
   @staticmethod
   def from_json(board,jsonobj):
     adp = ADP()
     adp.tau = jsonobj['tau']
+    adp.metadata = ADPMetadata.from_json(jsonobj['metadata'])
+
     for jsonconn in jsonobj['conns']:
-      conn = Connection.from_json(jsonconn)
+      conn = ADPConnection.from_json(jsonconn)
       adp.conns.append(conn)
 
     for jsonconfig in jsonobj['configs']:
@@ -406,6 +634,7 @@ class ADP:
   def to_json(self):
     return {
       'tau':self.tau,
+      'metadata':self.metadata.to_json(),
       'conns': list(map(lambda c: c.to_json(), self.conns)),
       'configs': self.configs.to_json()
     }
@@ -416,6 +645,10 @@ class ADP:
       st.append(stmt)
 
     q('tau=%f' % self.tau)
+    q('=== metadata ===')
+    for key,value in self.metadata:
+      q("field %s = %s" % (key.value,value))
+
     q('=== connections ===')
     for conn in self.conns:
       q(str(conn))

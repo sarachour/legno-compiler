@@ -21,12 +21,16 @@ import compiler.lgraph_pass.assemble as asmlib
 import compiler.lgraph_pass.synth as synthlib
 import compiler.lgraph_pass.rule as rulelib
 import compiler.lgraph_pass.vadp as vadplib
+from compiler.lgraph_pass.rules.kirch import KirchhoffRule
+from compiler.lgraph_pass.rules.lutfuse import FuseLUTRule
 
-def get_laws():
+
+def get_laws(dev):
+    return [KirchhoffRule(), FuseLUTRule(dev)]
     return [
         {
             'name':'kirchoff',
-            'expr': parser.parse_expr('a+b'),
+            'expr': {"*": parser.parse_expr('a+b')},
             'type': blocklib.BlockSignalType.ANALOG,
             'vars': {
                 'a':blocklib.BlockSignalType.ANALOG, \
@@ -37,8 +41,28 @@ def get_laws():
             'simplify': rulelib.simplify_kirchoff
         },
         {
+            'name':'lut-fuse',
+            'expr': { \
+                      ('m','m'): parser.parse_expr('2.0*f((0.5*a))', 
+                                                   {'f':(['y'],parser.parse_expr('e'))}), \
+                      ('h','m'): parser.parse_expr('2.0*f((0.05*a))', 
+                                                   {'f':(['y'],parser.parse_expr('e'))}), \
+                      ('h','h'): parser.parse_expr('20.0*f((0.05*a))',
+                                                   {'f':(['y'],parser.parse_expr('e'))}), \
+                      ('m','h'): parser.parse_expr('20.0*f((0.5*a))',
+                                                   {'f':(['y'],parser.parse_expr('e'))}), \
+            },
+            'type': blocklib.BlockSignalType.ANALOG,
+            'vars': {
+                'a':blocklib.BlockSignalType.ANALOG
+            },
+            'cstrs': rulelib.cstrs_fuse_lut,
+            'apply': rulelib.apply_fuse_lut,
+            'simplify': rulelib.simplify_fuse_lut
+        },
+        {
             'name':'flip_sign',
-            'expr':parser.parse_expr('-a'),
+            'expr':{"*":parser.parse_expr('-a')},
             'type': blocklib.BlockSignalType.ANALOG,
             'vars': {
                 'a':blocklib.BlockSignalType.ANALOG
@@ -50,10 +74,10 @@ def get_laws():
     ]
 
 
-def compile(board,prob,depth=12, \
+def compile(board,prob,
             vadp_fragments=100, \
-            assembly_num_copiers=10, \
-            assembly_depth=3, \
+            synth_depth=12, \
+            asm_frags=10, \
             vadps=1, \
             adps=1):
 
@@ -63,20 +87,23 @@ def compile(board,prob,depth=12, \
                               board.blocks))
 
     # perform synthesis
-    laws = get_laws()
+    laws = get_laws(board)
     fragments = {}
     for variable in prob.variables():
         fragments[variable] = []
         expr = prob.binding(variable)
-        print("> synthesizing %s = %s" % (variable,expr))
-        for vadp in synthlib.search(compute_blocks,laws,variable,expr, \
-                                    depth=depth):
+        print("> SYNTH %s = %s" % (variable,expr))
+        for vadp in synthlib.search(board, \
+                                    compute_blocks,laws,variable,expr, \
+                                    depth=synth_depth):
             if len(fragments[variable]) >= vadp_fragments:
                 break
             fragments[variable].append(vadp)
 
-        print("var %s: %d fragments"  \
+        print("VAR %s: %d fragments"  \
               % (variable,len(fragments[variable])))
+        if len(fragments[variable]) == 0:
+            raise Exception("could not synthesize any fragments for <%s>" % variable)
 
     print("> assembling circuit")
     # insert copier blocks when necessary
@@ -86,14 +113,16 @@ def compile(board,prob,depth=12, \
 
     circuit = {}
     block_counts = {}
-    for variable in prob.variables():
-        circuit[variable] = fragments[variable][0]
-
     vadp_circuits = []
-    for circ in asmlib.assemble(assemble_blocks,circuit):
-        vadp_circuits.append(circ)
-        if len(vadp_circuits) >= vadps:
-            break
+    while len(vadp_circuits) < vadps:
+        for variable in prob.variables():
+            circuit[variable] = random.choice(fragments[variable])
+
+        for circ in asmlib.assemble(assemble_blocks,circuit, \
+                                    n_asm_frags=asm_frags):
+            vadp_circuits.append(circ)
+            if len(vadp_circuits) >= vadps:
+                break
 
 
     print("> routing circuit")

@@ -37,6 +37,13 @@ dac.outputs['z'] \
 dac.outputs['z'] \
     .interval.bind(['_','m'],interval.Interval(-2,2))
 
+LOW_NOISE = 0.01
+HIGH_NOISE = 0.1
+dac.outputs['z'] \
+     .noise.bind(['_','m'],LOW_NOISE)
+dac.outputs['z'] \
+     .noise.bind(['_','h'],HIGH_NOISE)
+
 
 
 dac.data.add(BlockData('c', BlockDataType.CONST))
@@ -85,10 +92,17 @@ dac.state['range'] \
 
 dac.state.add(BlockState('source', BlockStateType.CONNECTION, \
                         values=enums.DACSourceType))
-dac.state['source'].impl.source('lut',['@','@',0,0],'x', \
-                                enums.DACSourceType.LUT0)
-dac.state['source'].impl.source('lut',['@','@',2,0],'x', \
-                                enums.DACSourceType.LUT1)
+dac.state['source'].impl.incoming(sink_port="x", \
+                                  source_block='lut', \
+                                  source_loc=['_','_',0,0], \
+                                  source_port='x', \
+                                  value=enums.DACSourceType.LUT0)
+
+dac.state['source'].impl.incoming(sink_port="x", \
+                                  source_block='lut', \
+                                  source_loc=['_','_',2,0], \
+                                  source_port='x', \
+                                  value=enums.DACSourceType.LUT1)
 dac.state['source'].impl.set_default(enums.DACSourceType.MEM)
 
 

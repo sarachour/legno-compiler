@@ -23,6 +23,9 @@ fan.modes.add_all([
   ['-','-','+','h'],
   ['-','-','-','h']
 ])
+LOW_NOISE = 0.02
+HIGH_NOISE = 0.04
+
 
 p_in = fan.inputs.add(BlockInput('x',BlockSignalType.ANALOG, \
                           ll_identifier=enums.PortType.IN0))
@@ -37,6 +40,10 @@ for port in [p_in,p_out0,p_out1,p_out2]:
                      interval.Interval(-2,2))
   port.interval.bind(['_','_','_','h'],  \
                      interval.Interval(-20,20))
+  port.noise.bind(['_','_','_','m'],  \
+                     LOW_NOISE)
+  port.noise.bind(['_','_','_','h'],  \
+                     HIGH_NOISE)
 
 for idx,port in enumerate([p_out0,p_out1,p_out2]):
   pat = ['_','_','_','_']
@@ -106,8 +113,11 @@ fan.state['range'] \
 fan.state.add(BlockState('third', \
                         state_type=BlockStateType.CONNECTION, \
                         values=enums.BoolType))
-fan.state['third'].impl.sink('z2','_',['_','_','_','_','_'], \
-                             enums.BoolType.TRUE)
+fan.state['third'].impl.outgoing(source_port='z2', \
+                                 sink_block='_', \
+                                 sink_loc=['_','_','_','_'], \
+                                 sink_port='_', \
+                                 value=enums.BoolType.TRUE)
 fan.state['third'].impl.set_default(enums.BoolType.FALSE)
 
 fan.state.add(BlockState('enable',
