@@ -1,5 +1,6 @@
 import hwlib.hcdc.hcdcv2 as hcdclib
 import hwlib.hcdc.llenums as llenums
+import hwlib.adp as adplib
 
 from hwlib.hcdc.llcmd_util import *
 
@@ -18,7 +19,7 @@ def calibrate(runtime,blk,loc,adp, \
     # execute set state command
     print("-> setting state")
     runtime.execute(cmd)
-    resp = _unpack_response(runtime.result())
+    resp = unpack_response(runtime.result())
 
     cmd_t, cmd_data = make_circ_cmd(llenums.CircCmdType.GET_STATE,
                              set_state_data)
@@ -33,9 +34,11 @@ def calibrate(runtime,blk,loc,adp, \
     print("-> calibrating block")
     cmd = cmd_t.build(cmd_data,debug=True)
     runtime.execute(cmd)
-    
-    resp = _unpack_response(runtime.result())
+ 
+    resp = unpack_response(runtime.result())
     state = resp[blk.name]
+    print("response: %s" % str(state))
+
     new_adp= adplib.ADP()
     new_adp.add_instance(blk,loc)
     blk.state.lift(new_adp,loc,dict(state))

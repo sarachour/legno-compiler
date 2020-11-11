@@ -103,7 +103,7 @@ for field in ['enable','exception']:
   integ.state[field].impl.bind(enums.BoolType.TRUE)
 
 bcarr = BlockStateArray('cal_enable', \
-                        indices=list(range(0,3)), \
+                        indices=enums.IntegCalEnIndex, \
                         values=enums.BoolType, \
                         length=3,\
                         default=enums.BoolType.FALSE)
@@ -114,7 +114,7 @@ for en_number in range(0,3):
   integ.state.add(BlockState(field,
                              values=enums.BoolType, \
                              array=bcarr,
-                             index=en_number,
+                             index=enums.IntegCalEnIndex.from_index(en_number),
                              state_type=BlockStateType.CONSTANT))
   integ.state[field].impl.bind(enums.BoolType.FALSE)
 

@@ -251,7 +251,13 @@ class BlockStateCollection(BlockFieldCollection):
     def lift(self,cfg,loc,data):
       blkcfg = cfg.configs.get(self._block.name,loc)
       blkcfg.modes = list(self._block.modes)
-      for state in self:
+
+      for state in filter(lambda st: isinstance(st.impl, BCModeImpl), \
+                          self):
+        state.lift(cfg,self._block,loc,data)
+
+      for state in filter(lambda st: not isinstance(st.impl, BCModeImpl), \
+                          self):
         state.lift(cfg,self._block,loc,data)
 
     # turn this configuration into a low level spec
@@ -435,7 +441,10 @@ class BCDataImpl:
 
   def lift(self,adp,block,loc,data):
       blkcfg = adp.configs.get(block.name,loc)
-      assert(blkcfg.complete())
+      if not (blkcfg.complete()):
+          print(blkcfg)
+          raise Exception("configuration not complete!")
+
       data_field = self.state.block.data[self.variable]
       interval = data_field.interval[blkcfg.mode]
       value = block.data[self.variable] \
@@ -569,6 +578,7 @@ class BlockState(BlockField):
                array=None, \
                index=None):
     BlockField.__init__(self,name)
+    assert(hasattr(index,'code') or array is None)
     assert(isinstance(state_type, BlockStateType))
     self.type = state_type
     self.index = index

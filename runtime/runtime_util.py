@@ -14,8 +14,31 @@ def get_device():
 def characterize_adp():
     raise NotImplementedError
 
-def calibrate_adp():
-    raise NotImplementedError
+def calibrate_adp(args):
+    board = get_device()
+    with open(args.adp,'r') as fh:
+        adp = ADP.from_json(board, \
+                            json.loads(fh.read()))
+
+    runtime = GrendelRunner()
+    runtime.initialize()
+    method = llenums.CalibrateObjective(args.method)
+    for cfg in adp.configs:
+        blk = board.get_block(cfg.inst.block)
+        cfg_modes = cfg.modes
+        for mode in cfg_modes:
+            cfg.modes = [mode]
+            upd_cfg = llcmd.calibrate(runtime, \
+                                      blk, \
+                                      cfg.inst.loc,\
+                                      adp, \
+                                      method=method)
+            #exp = ExpCfgBlock(db,blk,loc,output_port,upd_cfg, \
+            #                  status_type=None, \
+            #                  method_type=None)
+            #print(upd_cfg)
+
+            raise NotImplementedError
 
 def exec_adp(args):
     board = get_device()
@@ -45,6 +68,7 @@ def exec_adp(args):
     for cfg in adp.configs:
         blk = board.get_block(cfg.inst.block)
         resp = llcmd.set_state(runtime, \
+                               board,
                                blk, \
                                cfg.inst.loc, \
                                adp)

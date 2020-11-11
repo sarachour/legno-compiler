@@ -189,11 +189,13 @@ class PinInfo:
 
 class Device:
   
-  def __init__(self):
+  def __init__(self,name):
+    self.name = name
     self._blocks = {}
     self.layout = Layout(self)
     self._pins = {}
     self.time_constant = 1.0
+    self.physdb = None
 
   def set_external_pin(self,pin_id,block,loc,port,chan):
     assert(not pin_id in self._pins)

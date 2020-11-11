@@ -9,6 +9,8 @@ class PlotType(Enum):
     MEASUREMENT = "meas"
 
 class PathHandler:
+    DEVICE_STATE_DIR = "device-state"
+
     def __init__(self,subset,prog,make_dirs=True):
         self.set_root_dir(subset,prog)
         for path in [
@@ -59,7 +61,6 @@ class PathHandler:
         self.TIME_DIR = self.PROG_DIR + "/times"
         self.REF_SIM_DIR = self.PROG_DIR + "/sim/ref"
         self.ADP_SIM_DIR = self.PROG_DIR + "/sim/adp"
-
 
     def adp_sim_plot(self,plot_type,prog,lgraph,lscale,opt,model):
         assert(isinstance(plot_type,PlotType))

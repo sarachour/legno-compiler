@@ -12,7 +12,7 @@ import hwlib.hcdc.llenums as llenums
 import hwlib.hcdc.layout as hcdc_layout
 
 def get_device(layout=False):
-    hcdcv2 = devlib.Device()
+    hcdcv2 = devlib.Device('hcdcv2')
     hcdcv2.add_block(hwlib.hcdc.fanout.fan)
     hcdcv2.add_block(hwlib.hcdc.mult.mult)
     hcdcv2.add_block(hwlib.hcdc.integ.integ)

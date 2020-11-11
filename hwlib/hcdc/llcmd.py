@@ -6,3 +6,4 @@ import hwlib.hcdc.llcmd_config as llcmd_config
 set_conn = llcmd_config.set_conn
 set_state = llcmd_config.set_state
 execute_simulation = llcmd_sim.execute_simulation
+calibrate = llcmd_calibrate.calibrate

@@ -2,8 +2,15 @@ import hwlib.block as blocklib
 import hwlib.hcdc.hcdcv2 as hcdclib
 import hwlib.hcdc.llenums as llenums
 import hwlib.hcdc.llstructs as llstructs
+import util.paths as pathlib
+import hwlib.physdb as physlib
 
 import lab_bench.grendel_util as grendel_util
+
+def open_physical_db(board):
+    if board.physdb is None:
+        board.physdb = physlib.PhysicalDatabase(board.name, \
+                                                  pathlib.PathHandler.DEVICE_STATE_DIR)
 
 def get_by_ll_identifier(collection,ident):
     for port in collection:
@@ -88,7 +95,7 @@ def make_circ_cmd(cmdtype,cmddata):
 def unpack_response(resp):
   if isinstance(resp,grendel_util.HeaderArduinoResponse):
     if resp.num_args == 1:
-      return _unpack_response(resp.data(0))
+      return unpack_response(resp.data(0))
     elif resp.num_args == 0:
       return resp.message
     else:
@@ -96,7 +103,7 @@ def unpack_response(resp):
 
   elif isinstance(resp,grendel_util.DataArduinoResponse):
     assert(isinstance(resp.value,grendel_util.PayloadArduinoResponse))
-    return _unpack_response(resp.value)
+    return unpack_response(resp.value)
 
   elif isinstance(resp,grendel_util.PayloadArduinoResponse):
     payload_type = llstructs.parse(llstructs.response_type_t(), \
