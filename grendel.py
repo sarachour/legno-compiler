@@ -39,9 +39,12 @@ args = parser.parse_args()
 
 if args.subparser_name == "exec":
     grendel_util.exec_adp(args)
-if args.subparser_name == "cal":
+elif args.subparser_name == "cal":
     grendel_util.calibrate_adp(args)
-
+elif args.subparser_name == "fastcal":
+    grendel_util.fast_calibrate_adp(args)
+elif args.subparser_name == "characterize":
+    grendel_util.characterize_adp(args)
 else:
     raise Exception("unknown subcommand <%s>" % args.subparser_name)
 

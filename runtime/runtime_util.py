@@ -27,20 +27,18 @@ def calibrate_adp(args):
         blk = board.get_block(cfg.inst.block)
         cfg_modes = cfg.modes
         for mode in cfg_modes:
-            print(mode)
             cfg.modes = [mode]
-            print(cfg)
-
             upd_cfg = llcmd.calibrate(runtime, \
                                       blk, \
                                       cfg.inst.loc,\
                                       adp, \
                                       method=method)
-            print(upd_cfg)
+            #exp = ExpCfgBlock(db,blk,loc,output_port,upd_cfg, \
+            #                  status_type=None, \
+            #                  method_type=None)
+            #print(upd_cfg)
 
-
-
-    raise NotImplementedError
+            raise NotImplementedError
 
 def exec_adp(args):
     board = get_device()

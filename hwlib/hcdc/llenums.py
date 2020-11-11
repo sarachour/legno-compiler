@@ -138,6 +138,31 @@ class BlockType(str,Enum):
         }
         return mapping[self]
 
+class IntegCalEnIndex(str,Enum):
+    CAL0 = 'cal0'
+    CAL1 = 'cal1'
+    CAL2 = 'cal2'
+    CAL3 = "cal3"
+
+    def code(self):
+        if self == IntegCalEnIndex.CAL0:
+            return 0
+        elif self == IntegCalEnIndex.CAL1:
+            return 1
+        elif self == IntegCalEnIndex.CAL2:
+            return 2
+        elif self == IntegCalEnIndex.CAL3:
+            return 3
+
+    @staticmethod
+    def from_index(idx):
+        for en in IntegCalEnIndex:
+            if en.code() == idx:
+                return en
+        raise Exception("no IntegCalEnIndex instance for <%d>" % idx)
+
+
+
 class BoolType(str,Enum):
     TRUE = 'true'
     FALSE = 'false'
