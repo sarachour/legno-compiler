@@ -475,7 +475,9 @@ class BCCalibImpl:
     if blkcfg.has(self.state.name):
         stmt = blkcfg[self.state.name]
         value = stmt.value
-        assert(self.state.valid(value))
+        if not (self.state.valid(value)):
+            raise Exception("invalid value <%s> for state field <%s>" \
+                            % (value,self.state.name))
     else:
         value = self.default
 
@@ -540,7 +542,7 @@ class BCConnImpl:
 
   def lift(self,adp,block,loc,data):
     cfg = adp.configs.get(block.name,loc)
-    blkcfg.get(self.state.name).value = data
+    #cfg.get(self.state.name).value = data
 
 class BlockStateArray:
 

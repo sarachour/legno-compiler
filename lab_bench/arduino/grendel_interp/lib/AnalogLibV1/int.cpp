@@ -6,7 +6,7 @@
 
 float Fabric::Chip::Tile::Slice::Integrator::computeInitCond(integ_state_t& state){
   float sign = state.inv ? -1.0 : 1.0;
-  float rng = util::range_to_coeff(state.range[out0Id]);
+  float rng = util::range_to_coeff(state.range[out0Id])*2.0;
   float ic = (state.ic_code-128.0)/128.0;
   return rng*sign*ic;
 }

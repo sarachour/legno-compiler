@@ -212,7 +212,7 @@ def fit_delta_model_to_data(phys,relation,data):
       phys.delta_model.bind(par,val)
 
 
-def compute_delta_model_error(phys):
+def compute_delta_model_error(phys,data):
   inputs = data['inputs']
   meas_output = data['meas_mean']
   sumsq = phys.delta_model.error(inputs,meas_output)
@@ -248,8 +248,7 @@ def fit_delta_model_integrator(phys):
 
 
 
-def fit_delta_model(phys,operation):
-  assert(isinstance(operation,llenums.ProfileOpType))
+def fit_delta_model(phys):
   delta_spec = phys.delta_model.spec
   assert(isinstance(delta_spec,blocklib.DeltaSpec))
   phys.delta_model.clear()
@@ -257,7 +256,7 @@ def fit_delta_model(phys,operation):
     fit_delta_model_integrator(phys)
   else:
     dataset = phys.dataset.get_data( \
-                                            llenums.ProfileStatus.SUCCESS, \
-                                            llenums.ProfileOpType.INPUT_OUTPUT)
+                                     llenums.ProfileStatus.SUCCESS, \
+                                     llenums.ProfileOpType.INPUT_OUTPUT)
     fit_delta_model_to_data(phys, delta_spec.relation, dataset)
-    compute_delta_model_error(phys)
+    compute_delta_model_error(phys,dataset)

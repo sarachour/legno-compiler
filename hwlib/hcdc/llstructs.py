@@ -135,7 +135,7 @@ def fanout_state_t():
         "pmos" / cstruct.Int8ul,
         "nmos" / cstruct.Int8ul,
         "range" / range_t(),
-        "port_cal" / cstruct.Array(5,range_t()),
+        "port_cal" / cstruct.Array(5,cstruct.Int8ul),
         "inv" / cstruct.Array(5,sign_t()),
         "enable" / bool_t(),
         "third" / bool_t()

@@ -137,7 +137,7 @@ fan.state['nmos'].impl.set_default(3)
 calarr = BlockStateArray('port_cal', \
                          indices=enums.PortType, \
                          values=range(0,64), \
-                         length=len(enums.PortType.ports()),\
+                         length=5,\
                          default=32)
 
 
@@ -146,8 +146,8 @@ fan.state.add(BlockState('bias0',
                         index=enums.PortType.OUT0, \
                         array=calarr, \
                         state_type=BlockStateType.CALIBRATE))
-
 fan.state['bias0'].impl.set_default(32)
+
 fan.state.add(BlockState('bias1',
                         values=range(0,64), \
                         index=enums.PortType.OUT1, \

@@ -812,6 +812,19 @@ class NotCalibratedException(Exception):
   def __init__(self):
     Exception.__init__(self)
 
+def get_configured_physical_block(db,dev,blk,inst,cfg):
+  static_cfg = ExpCfgBlock.get_static_cfg(blk,cfg)
+  where_clause = {'block':blk.name, \
+                  'loc':str(inst), \
+                  'static_config':static_cfg}
+
+  # compute costs
+  for row in db.select(PhysicalDatabase.DB.DELTA_MODELS, \
+                       where_clause):
+    phys = ExpCfgBlock.from_json(db,dev,row)
+    yield phys
+
+
 def get_calibrated_configured_physical_block(db,dev,blk,inst,cfg,label):
   assert(isinstance(label,DeltaModelLabel))
   static_cfg = ExpCfgBlock.get_static_cfg(blk,cfg)

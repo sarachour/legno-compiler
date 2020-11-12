@@ -29,7 +29,7 @@ def characterize(runtime,board,block,cfg,grid_size=7,  \
     planner = planlib.RandomPlanner(block, loc, cfg,
                                     n=grid_size,
                                     m=grid_size,
-                                    num_codes=num_codes)
+                                    num_codes=num_hidden_codes)
     proflib.profile_all_hidden_states(runtime, board, planner)
     print(" -> analyzing")
     physdblib.get_by_block_instance(board.physdb, \

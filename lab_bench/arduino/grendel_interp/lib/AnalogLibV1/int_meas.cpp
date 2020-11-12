@@ -31,7 +31,7 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measure(profile_spec_t spec){
     output = 0.0;
     break;
   case INTEG_DERIVATIVE_GAIN:
-    output = Fabric::Chip::Tile::Slice::Integrator::computeTimeConstant(spec.state.integ)/126000.0;
+    output = 1.0;
     break;
   case INTEG_DERIVATIVE_BIAS:
     output = 0.0;
