@@ -30,7 +30,7 @@ def calibrate(dev,runtime,block,inst,cfg):
 
 
 
-def profile_hidden_state(dev,runtime,planner,hidden):
+def profile_hidden_state(runtime,dev,planner,hidden):
   # make new config for profiling operation
   new_adp= adplib.ADP()
   new_adp.add_instance(planner.block,planner.loc)
@@ -40,7 +40,7 @@ def profile_hidden_state(dev,runtime,planner,hidden):
 
   # set hidden state
   for state_var,value in hidden.items():
-    stmt = config.get(state_var.name)
+    stmt = config.get(state_var)
     assert(isinstance(stmt,adplib.StateConfig))
     stmt.value = value
 
@@ -49,27 +49,28 @@ def profile_hidden_state(dev,runtime,planner,hidden):
   dynamic = planner.next_dynamic()
   while not dynamic is None:
     input_vals = {}
-    for st,value in dynamic.items():
-      if isinstance(st,blocklib.BlockData):
-        assert(isinstance(config[st.name],  \
+    for name,value in dynamic.items():
+      if planner.block.data.has(name):
+        assert(isinstance(config[name],  \
                           adplib.ConstDataConfig))
-        config[st.name].value = value
+        config[name].value = value
       else:
+        st = planner.block.inputs[name]
         input_vals[st.ll_identifier] = value
 
+    print("-> input %s" % str(dynamic))
     for output in planner.block.outputs:
       if phys_util.is_integration_op(output.relation[config.mode]):
         methods = [llenums.ProfileOpType.INTEG_INITIAL_COND, \
                    llenums.ProfileOpType.INTEG_DERIVATIVE_STABLE, \
                    llenums.ProfileOpType.INTEG_DERIVATIVE_BIAS, \
                    llenums.ProfileOpType.INTEG_DERIVATIVE_GAIN]
-        input()
-        raise NotImplementedError
       else:
         methods = [llenums.ProfileOpType.INPUT_OUTPUT]
 
       for method in methods:
         llcmd.profile(runtime, \
+                      dev, \
                       planner.block, \
                       planner.loc, \
                       new_adp, \
@@ -80,10 +81,9 @@ def profile_hidden_state(dev,runtime,planner,hidden):
     dynamic = planner.next_dynamic()
 
 def profile_all_hidden_states(runtime,dev,planner):
-  runtime.initialize()
-
   planner.new_hidden()
   hidden_state = planner.next_hidden()
   while not hidden_state is None:
-    profile_hidden_state(dev,runtime,planner,hidden_state)
+    print(hidden_state)
+    profile_hidden_state(runtime,dev,planner,hidden_state)
     hidden_state = planner.next_hidden()

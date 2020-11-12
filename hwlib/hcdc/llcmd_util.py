@@ -1,4 +1,5 @@
 import hwlib.block as blocklib
+import hwlib.device as devlib
 import hwlib.hcdc.hcdcv2 as hcdclib
 import hwlib.hcdc.llenums as llenums
 import hwlib.hcdc.llstructs as llstructs
@@ -6,11 +7,12 @@ import util.paths as pathlib
 import hwlib.physdb as physlib
 
 import lab_bench.grendel_util as grendel_util
+import random
 
-def open_physical_db(board):
-    if board.physdb is None:
-        board.physdb = physlib.PhysicalDatabase(board.name, \
-                                                  pathlib.PathHandler.DEVICE_STATE_DIR)
+def random_locs(board,block,num_locs):
+    insts = list(board.layout.instances(block.name))
+    for addr in random.sample(insts,num_locs):
+        yield devlib.Location(addr)
 
 def get_by_ll_identifier(collection,ident):
     for port in collection:
@@ -18,8 +20,7 @@ def get_by_ll_identifier(collection,ident):
             return port
 
 
-def from_block_loc_t(dict_):
-    dev = hcdclib.get_device()
+def from_block_loc_t(dev,dict_):
     chip = dict_['chip']
     tile = dict_['tile']
     slice_ = dict_['slice']

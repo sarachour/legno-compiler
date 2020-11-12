@@ -1,4 +1,6 @@
 import hwlib.block as blocklib
+import util.paths as pathlib
+import hwlib.physdb as physlib
 import itertools
 
 class Location:
@@ -149,7 +151,10 @@ class Layout:
 
 
   def instances(self,block_name):
-    assert(block_name in self._blocks)
+    if not block_name in self._blocks:
+      print(self._blocks.keys())
+      raise Exception("no instances of block <%s>" % block_name)
+
     for loc in self._blocks[block_name]:
       yield loc
 
@@ -189,13 +194,22 @@ class PinInfo:
 
 class Device:
   
-  def __init__(self,name):
+  def __init__(self,name,model_number):
     self.name = name
+    self.model_number = model_number
     self._blocks = {}
     self.layout = Layout(self)
     self._pins = {}
     self.time_constant = 1.0
-    self.physdb = None
+    self._physdb = None
+    self._paths = pathlib.DeviceStatePathHandler(self.name,self.model_number)
+
+  @property
+  def physdb(self):
+    if self._physdb is None:
+      self._physdb = physlib.PhysicalDatabase(self._paths.DATABASE)
+
+    return self._physdb
 
   def set_external_pin(self,pin_id,block,loc,port,chan):
     assert(not pin_id in self._pins)

@@ -12,15 +12,15 @@ from dslang.dsprog import DSProgDB
 import json
 import hwlib.adp_renderer as adprender
 
-def get_device():
+def get_device(model_number):
     import hwlib.hcdc.hcdcv2 as hcdclib
-    return hcdclib.get_device(layout=True)
+    return hcdclib.get_device(model_number,layout=True)
 
 def exec_lscale(args):
     from compiler import lscale
     import compiler.lscale_pass.lscale_ops as scalelib
 
-    board = get_device()
+    board = get_device(args.model_number)
     path_handler = paths.PathHandler(args.subset,args.program)
     program = DSProgDB.get_prog(args.program)
     timer = util.Timer('lscale',path_handler)
@@ -78,7 +78,7 @@ def exec_lscale(args):
 def exec_lgraph(args):
     from compiler import lgraph
 
-    board = get_device()
+    board = get_device(args.model_number)
     path_handler = paths.PathHandler(args.subset,args.program)
     program = DSProgDB.get_prog(args.program)
     timer = util.Timer('lgraph',path_handler)

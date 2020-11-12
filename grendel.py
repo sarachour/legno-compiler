@@ -22,8 +22,19 @@ exec_subp = subparsers.add_parser('exec', help='execute benchmark')
 exec_subp.add_argument('adp', type=str,help='benchmark to compile')
 exec_subp.add_argument('--runtime',type=float,help='runtime in simulation units')
 
-char_subp = subparsers.add_parser('characterize', help='characterize blocks fast calibraiton')
+char_subp = subparsers.add_parser('characterize', help='characterize blocks for fast calibration. This takes a really long time')
 char_subp.add_argument('adp', type=str,help='adp to characterize')
+char_subp.add_argument('--model-number',type=str,help='model number')
+char_subp.add_argument('--grid-size',type=int,default=5, \
+                       help="number of inputs to sample along each axis")
+char_subp.add_argument('--num-hidden-codes',type=int,default=200, \
+                       help="number of hidden codes to sample")
+
+
+dectree_subp = subparsers.add_parser('mktree', help='Use characterization data to build calibration decision tree.')
+dectree_subp.add_argument('adp', type=str,help='adp to characterize')
+dectree_subp.add_argument('--model-number',type=str,help='model number')
+
 
 calib_subp = subparsers.add_parser('cal', help='calibrate blocks in configuration')
 calib_subp.add_argument('adp', type=str,help='adp to characterize')
@@ -45,6 +56,8 @@ elif args.subparser_name == "fastcal":
     grendel_util.fast_calibrate_adp(args)
 elif args.subparser_name == "characterize":
     grendel_util.characterize_adp(args)
+elif args.subparser_name == "mktree":
+    grendel_util.mktree_adp(args)
 else:
     raise Exception("unknown subcommand <%s>" % args.subparser_name)
 

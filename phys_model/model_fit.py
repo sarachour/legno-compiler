@@ -7,6 +7,7 @@ import hwlib.hcdc.llenums as llenums
 import phys_model.phys_util as phys_util
 import ops.generic_op as genoplib
 import ops.lambda_op as lambdoplib
+import ops.op as oplib
 import itertools
 import math
 import numpy as np
@@ -168,7 +169,6 @@ def fit_model(variables,expr,data):
 
   loc = {}
   if len(data['meas_mean']) == 0:
-    print("DATASET: %s" % data)
     raise Exception("fit_model: cannot fit empty dataset")
 
   exec(snippet,globals(),loc)
@@ -199,30 +199,65 @@ def predict_output(variable_assigns,expr,data):
 
   return pred
 
-def fit_delta_model(phys,data):
-  model = phys.model.delta_model
+def fit_delta_model_to_data(phys,relation,data):
   try:
-    result = fit_model(model.params,model.relation,data)
+    result = fit_model(phys.delta_model.spec.params,relation,data)
   except TypeError as e:
     print("insufficient data: %d points" % (len(data['meas_mean'])))
     return
 
-  phys.model.clear()
 
   for par,val in result['params'].items():
-    phys.delta_model.bind(par,val)
+    if par in relation.vars():
+      phys.delta_model.bind(par,val)
 
+
+def compute_delta_model_error(phys):
   inputs = data['inputs']
   meas_output = data['meas_mean']
-  sumsq = phys.model.error(inputs,meas_output)
-  phys.model.cost = sumsq
-  #print(result)
-  #print("sumsq error: %s" % phys.model.cost)
+  sumsq = phys.delta_model.error(inputs,meas_output)
+  phys.delta_model.model_error = sumsq
   phys.update()
 
-def fit_delta_model(phys_output,operation=llenums.ProfileOpType.INPUT_OUTPUT):
-  dataset = phys_output.dataset
-  fit_delta_model_to_data(phys_output, \
-                  phys_output.dataset.get_data( \
-                                                llenums.ProfileStatus.SUCCESS, \
-                                                operation))
+def fit_delta_model_integrator(phys):
+  relation = phys.delta_model.spec.relation
+
+  ic_dataset = phys.dataset.get_data( \
+                                   llenums.ProfileStatus.SUCCESS, \
+                                   llenums.ProfileOpType.INTEG_INITIAL_COND)
+  if len(ic_dataset['meas_mean']) == 0:
+    return
+
+  result = fit_delta_model_to_data(phys,relation.init_cond, ic_dataset)
+
+  deriv_dataset = phys.dataset.get_data( \
+                                         llenums.ProfileStatus.SUCCESS, \
+                                         llenums.ProfileOpType.INTEG_DERIVATIVE_GAIN)
+
+  if len(deriv_dataset['meas_mean']) == 0:
+    return
+
+  result = fit_delta_model_to_data(phys,relation.deriv,deriv_dataset)
+
+  sumsq = phys.delta_model.error(ic_dataset['inputs'], \
+                                 ic_dataset['meas_mean'], \
+                                 init_cond=True)
+
+  phys.delta_model.model_error = sumsq
+  phys.update()
+
+
+
+def fit_delta_model(phys,operation):
+  assert(isinstance(operation,llenums.ProfileOpType))
+  delta_spec = phys.delta_model.spec
+  assert(isinstance(delta_spec,blocklib.DeltaSpec))
+  phys.delta_model.clear()
+  if delta_spec.relation.op == oplib.OpType.INTEG:
+    fit_delta_model_integrator(phys)
+  else:
+    dataset = phys.dataset.get_data( \
+                                            llenums.ProfileStatus.SUCCESS, \
+                                            llenums.ProfileOpType.INPUT_OUTPUT)
+    fit_delta_model_to_data(phys, delta_spec.relation, dataset)
+    compute_delta_model_error(phys)

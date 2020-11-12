@@ -41,7 +41,6 @@ class BruteForcePlanner(ProfilePlanner):
     self.m = m					#resolution (linspace) of search space
     self.block = block
     self.loc = loc
-    self.cfg = cfg
 
   def new_hidden(self):				#hidden code is a particular set of nmos,pmos, etc
     #print(self.config["nmos"].value)
@@ -60,8 +59,7 @@ class BruteForcePlanner(ProfilePlanner):
   def next_hidden(self):
     try:
       values = next(self.hidden_iterator)
-      #print("values are ", values)
-      return dict(zip(self._hidden_fields,values))
+      return values
     except StopIteration:
       return None
 
@@ -75,10 +73,13 @@ class BruteForcePlanner(ProfilePlanner):
 
     dynamic = {}
     for inp in filter(lambda inp: inp.name in variables, blk.inputs):
-      dynamic[inp] = phys_util.select_from_interval(inp.interval[self.config.mode],self.m)
+      dynamic[inp.name] = phys_util.select_from_interval(inp.interval[self.config.mode],self.m)
 
     for data in filter(lambda dat: dat.name in variables, blk.data):
-      dynamic[data] = phys_util.select_from_quantized_interval(data.interval[self.config.mode], data.quantize[self.config.mode], self.m)
+      dynamic[data.name] = phys_util.select_from_quantized_interval(data.interval[self.config.mode],  \
+                                                                    data.quantize[self.config.mode], \
+                                                                    self.m)
+
 
     self._dynamic_fields = list(dynamic.keys())
     dynamic_values = list(map(lambda k :dynamic[k], self._dynamic_fields))
@@ -319,52 +320,42 @@ class GenericHiddenCodeIterator:
     return output_values
 
 class RandomCodeIterator:
-  def __init__(self,default_code,num_codes):
-    random.seed()
-    self.default_code = default_code
-    self.code_index = 0
-    self.codes_to_generate = num_codes
+  def __init__(self,block,loc,config,num_codes):
+    self.block = block
+    self.loc = loc
+    self.config = config
+
+    self.index = num_codes
 
 
   def __iter__(self):
     return self
 
   def __next__(self):
-    self.dev = hcdclib.get_device()
-    self.blk = self.dev.get_block('mult')
-    if self.code_index < self.codes_to_generate:
-      current_output = {}
-      for code in self.default_code:
-        current_output[code] = random.randint(0,max(self.blk.state[code.name].values))
-      _output_fields = list(current_output.keys())
-      output_values = list(map(lambda k :current_output[k], _output_fields))
+    if self.index >= 0:
+      hidden_codes = {}
+      for state in filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), self.block.state):
+        hidden_codes[state.name] = random.choice(state.values)
 
-      self.code_index += 1
-      return output_values
+      self.index -= 1
+      return hidden_codes
+
     else:
       raise StopIteration
-    
+
 class RandomPlanner(BruteForcePlanner):
   def __init__(self,block,loc,cfg,n,m,num_codes):
     ProfilePlanner.__init__(self,block,loc,cfg)
     self.n = n          #outer dimensions of search space
     self.m = m          #resolution (linspace) of search space
-    self.block = block
-    self.loc = loc
-    self.cfg = cfg
     self.num_codes = num_codes
 
   def new_hidden(self):
 
-    default_code = {}
-    hidden = {}
-    for state in filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), self.block.state):
-      default_code[state] = self.config[state.name].value
-      hidden[state] = phys_util.select_from_array(state.values,self.n)
-
-    self._hidden_fields = list(hidden.keys())
-
-    self.hidden_iterator = RandomCodeIterator(default_code, self.num_codes)
+    self.hidden_iterator = RandomCodeIterator(self.block, \
+                                              self.loc, \
+                                              self.config, \
+                                              self.num_codes)
     self.dynamic_iterator = None
 
 

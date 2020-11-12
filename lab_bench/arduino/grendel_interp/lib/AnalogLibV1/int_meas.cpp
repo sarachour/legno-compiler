@@ -31,14 +31,17 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measure(profile_spec_t spec){
     output = 0.0;
     break;
   case INTEG_DERIVATIVE_GAIN:
-    output = Fabric::Chip::Tile::Slice::Integrator::computeTimeConstant(spec.state.integ);
+    output = Fabric::Chip::Tile::Slice::Integrator::computeTimeConstant(spec.state.integ)/126000.0;
+    break;
   case INTEG_DERIVATIVE_BIAS:
     output = 0.0;
+    break;
   default:
     error("not expected");
   }
   float std;
-  float result = emulator::draw(model,*input0,0.0,output,std);
+  //float result = emulator::draw(model,*input0,1.0,output,std);
+  float result = output;
   sprintf(FMTBUF,"output=%f result=%f\n", output,result);
   print_info(FMTBUF);
   profile_t prof = prof::make_profile(spec, result,

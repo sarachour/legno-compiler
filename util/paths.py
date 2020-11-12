@@ -8,8 +8,32 @@ class PlotType(Enum):
     SIMULATION = "sim"
     MEASUREMENT = "meas"
 
-class PathHandler:
+class DeviceStatePathHandler:
     DEVICE_STATE_DIR = "device-state"
+
+    def __init__(self,board,model,make_dirs=True):
+        self.board = board
+        self.model = model
+        self.set_root_dir(DeviceStatePathHandler.DEVICE_STATE_DIR + "/%s/%s"  \
+                          % (board,model))
+        for path in [
+                self.ROOT_DIR,
+                self.PHYS_MODEL_DIR,
+                self.SRC_DIR,
+                self.VISUALIZATIONS
+        ]:
+            if make_dirs:
+                util.mkdir_if_dne(path)
+
+
+    def set_root_dir(self,root):
+        self.ROOT_DIR = root
+        self.DATABASE = self.ROOT_DIR + "/%s-%s.db" % (self.board,self.model)
+        self.PHYS_MODEL_DIR = self.ROOT_DIR + "/models"
+        self.SRC_DIR = self.ROOT_DIR + "/models-src"
+        self.VISUALIZATIONS = self.ROOT_DIR + "/viz"
+
+class PathHandler:
 
     def __init__(self,subset,prog,make_dirs=True):
         self.set_root_dir(subset,prog)

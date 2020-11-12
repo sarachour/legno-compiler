@@ -80,12 +80,18 @@ integ.outputs['z'].relation \
 integ.outputs['z'].relation \
                  .bind(['h','m','-'],parser.parse_expr('-integ((0.1*x),(0.2*z0))'))
 
-spec = DeltaSpec(parser.parse_expr('integ((a*x+d),(b*y+c))'))
+spec = DeltaSpec(parser.parse_expr('integ((a*x),(2.0*(b*z0+c)))'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('b',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('c',DeltaParamType.CORRECTABLE,ideal=0.0)
-spec.param('d',DeltaParamType.CORRECTABLE,ideal=0.0)
 integ.outputs['z'].deltas.bind(['m','m','+'],spec)
+
+
+spec = DeltaSpec(parser.parse_expr('integ((a*x),(20.0*(b*z0+c)))'))
+spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
+spec.param('b',DeltaParamType.CORRECTABLE,ideal=1.0)
+spec.param('c',DeltaParamType.CORRECTABLE,ideal=0.0)
+integ.outputs['z'].deltas.bind(['h','h','+'],spec)
 
 
 integ.state.add(BlockState('ic_code',

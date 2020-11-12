@@ -10,7 +10,7 @@ class Integ(GenericOp2):
     def substitute(self,bindings={}):
         inp = self.arg(0).substitute(bindings)
         ic = self.arg(1).substitute(bindings)
-        return Integ(inp,ic,self._handle)
+        return Integ(inp,ic)
 
     @property
     def handle(self):

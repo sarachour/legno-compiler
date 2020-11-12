@@ -19,6 +19,9 @@ import compiler.legno_util as legno_util
 parser = argparse.ArgumentParser(description='Legno compiler.')
 parser.add_argument('--subset', default="unrestricted",
                     help='component subset to use for compilation')
+parser.add_argument('--model-number',
+                    help='model number of chip to use')
+
 
 
 subparsers = parser.add_subparsers(dest='subparser_name',

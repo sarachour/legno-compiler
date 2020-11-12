@@ -3,12 +3,22 @@ import hwlib.device as devlib
 import hwlib.block as blocklib
 import hwlib.adp as adplib
 import hwlib.hcdc.llenums as llenums
-import ops.generic_op as ops
+import ops.generic_op as genoplib
+import ops.op as oplib
+
 import base64
 import json
 import numpy as np
 import phys_model.phys_util as phys_util
 from enum import Enum
+
+class DeltaModelLabel(Enum):
+  MIN_ERROR = "min_error"
+  MAX_FIT = "max_fit"
+  LEGACY_MIN_ERROR = "legacy_min_error"
+  LEGACY_MAX_FIT = "legacy_max_fit"
+  NONE = "none"
+
 
 CREATE_DELTA_TABLE = '''
 CREATE TABLE IF NOT EXISTS delta_models (
@@ -20,7 +30,8 @@ hidden_config text,
 config text,
 dataset text,
 delta_model text,
-cost real,
+model_error real,
+label text,
 primary key (block,loc,output,static_config,hidden_config)
 );
 '''
@@ -31,6 +42,7 @@ loc text,
 output text,
 static_config text,
 phys_model text,
+label text,
 primary key (block,loc,output,static_config)
 );
 '''
@@ -60,27 +72,27 @@ class PhysicalDatabase:
     DELTA_MODELS = "delta_models"
     PHYSICAL_MODELS = "physical_models"
 
-  def __init__(self,board_name,path=""):
-    self.board = board_name
-    self.filename = path+"%s.db" % self.board
+  def __init__(self,filename):
+    self.filename = filename
+
     self.conn = sqlite3.connect(self.filename)
     self.curs = self.conn.cursor()
     self.curs.execute(CREATE_PHYS_TABLE)
     self.curs.execute(CREATE_DELTA_TABLE)
     self.conn.commit()
     self.phys_keys = ['block','loc','output','static_config', \
-                      'phys_model']
+                      'phys_model','label']
     self.delta_keys = ['block','loc','output','static_config','hidden_config', \
-            'config','dataset','delta_model','cost']
+                       'config','dataset','delta_model','model_error','label']
 
   def insert(self,db,_fields):
     assert(isinstance(db,PhysicalDatabase.DB))
     if db == PhysicalDatabase.DB.DELTA_MODELS:
-      INSERT = '''INSERT INTO {db} (block,loc,output,static_config,hidden_config,config,dataset,delta_model,cost)
-      VALUES ('{block}','{loc}','{output}','{static_config}','{hidden_config}','{config}','{dataset}','{delta_model}',{cost});'''
+      INSERT = '''INSERT INTO {db} (block,loc,output,static_config,hidden_config,config,dataset,delta_model,model_error,label)
+      VALUES ('{block}','{loc}','{output}','{static_config}','{hidden_config}','{config}','{dataset}','{delta_model}',{model_error},'{label}');'''
     elif db == PhysicalDatabase.DB.PHYSICAL_MODELS:
-      INSERT = '''INSERT INTO {db} (block,loc,output,static_config,phys_model)
-      VALUES ('{block}','{loc}','{output}','{static_config}','{phys_model}');'''
+      INSERT = '''INSERT INTO {db} (block,loc,output,static_config,phys_model,label)
+      VALUES ('{block}','{loc}','{output}','{static_config}','{phys_model}','{label}');'''
 
     fields = dict(_fields)
     fields['db'] = db.value
@@ -108,7 +120,7 @@ class PhysicalDatabase:
     where_clause_frag = self._where_clause(db,where_clause)
     assert(len(where_clause_frag) > 0)
     if db == PhysicalDatabase.DB.DELTA_MODELS:
-      UPDATE = "UPDATE {db} SET dataset='{dataset}',delta_model='{delta_model}',cost={cost} "
+      UPDATE = "UPDATE {db} SET dataset='{dataset}',delta_model='{delta_model}',model_error={model_error},label='{label}'"
     else:
       UPDATE = "UPDATE {db} SET phys_model='{phys_model}' "
 
@@ -165,6 +177,17 @@ class PhysicalDatabase:
 
 
 class ExpDataset:
+
+  def _populate_integral_operation(self):
+    expr = self.relation[llenums.ProfileOpType.INPUT_OUTPUT]
+    if expr.op == oplib.OpType.INTEG:
+      self.relation[llenums.ProfileOpType.INTEG_INITIAL_COND] = expr.init_cond
+      self.relation[llenums.ProfileOpType.INTEG_DERIVATIVE_GAIN] = genoplib.Const(1.0)
+      self.relation[llenums.ProfileOpType.INTEG_DERIVATIVE_BIAS] = genoplib.Const(0.0)
+      self.relation[llenums.ProfileOpType.INTEG_DERIVATIVE_STABLE] = genoplib.Const(0.0)
+
+
+
   def __init__(self,physblk):
     assert(isinstance(physblk, ExpCfgBlock))
     self.phys = physblk
@@ -186,6 +209,8 @@ class ExpDataset:
     self.relation[llenums.ProfileOpType.INPUT_OUTPUT]  \
       = self.output_port.relation[self.mode]
 
+    self._populate_integral_operation()
+
     variables = self.relation[llenums.ProfileOpType.INPUT_OUTPUT].vars()
     for input_port in self.phys.block.inputs:
       if input_port.name in variables:
@@ -199,6 +224,9 @@ class ExpDataset:
     for v in variables:
       if not v in assigned:
         raise Exception("unknown variable: %s" % v)
+
+  def __len__(self):
+    return len(self.output)
 
   def get_data(self,status,method):
     def valid_data_point(idx):
@@ -283,7 +311,7 @@ class ExpDataset:
         'status': list(map(lambda v: v.value, self.meas_status))
       }
     }
-
+'''
 class ExpPhysModel:
 
   def __init__(self,physmodelcoll,physical_model):
@@ -343,7 +371,7 @@ class ExpPhysModel:
 
   def clear(self):
     self.params = {}
-    self.cost = ExpDeltaModel.MAX_COST
+    self.model_error = ExpDeltaModel.MAX_MODEL_ERROR
 
   def bind(self,par,value):
     if not (par in self.spec.params):
@@ -367,10 +395,8 @@ class ExpPhysModelCollection:
         self._delta_params[par] = ExpPhysModel(self, \
                                                self.delta_model[par].model)
 
-    if not self.delta_model.model_error is None:
-      self.model_error = ExpPhysModel(self, \
-                                      self.delta_model.model_error)
-
+    self.model_error = ExpPhysModel(self, \
+                                    self.delta_model.model_error)
 
   @property
   def complete(self):
@@ -420,15 +446,18 @@ class ExpPhysModelCollection:
     st += "model-error = %s\n" % (self.model_error)
     return st
 
+'''
+
 class ExpDeltaModel:
-  MAX_COST = 9999
+  MAX_MODEL_ERROR = 9999
 
   def __init__(self,physblk):
     self.phys = physblk
     self.spec = self.phys.output \
-                                .deltas[self.phys.cfg.mode]
+                         .deltas[self.phys.cfg.mode]
     self.params = {}
-    self.cost = ExpDeltaModel.MAX_COST
+    self.model_error = ExpDeltaModel.MAX_MODEL_ERROR
+    self.label = DeltaModelLabel.NONE
 
   @property
   def complete(self):
@@ -439,7 +468,7 @@ class ExpDeltaModel:
 
   def clear(self):
     self.params = {}
-    self.cost = ExpDeltaModel.MAX_COST
+    self.model_error = ExpDeltaModel.MAX_MODEL_ERROR
 
   def bind(self,par,value):
     assert(not par in self.params)
@@ -449,17 +478,21 @@ class ExpDeltaModel:
 
     self.params[par] = value
 
-  def error(self,inputs,meas_outputs):
-    pred_outputs = self.predict(inputs)
-    cost = 0
+  def error(self,inputs,meas_outputs,init_cond=False):
+    pred_outputs = self.predict(inputs, \
+                                init_cond=init_cond)
+    model_error = 0
     n = 0
     for pred,meas in zip(pred_outputs,meas_outputs):
-      cost += pow(pred-meas,2)
+      model_error += pow(pred-meas,2)
       n += 1
 
-    return np.sqrt(cost/n)
+    return np.sqrt(model_error/n)
 
-  def predict(self,inputs,correctable_only=False):
+
+  def predict(self,inputs, \
+              init_cond=False,
+              correctable_only=False):
     input_fields = list(inputs.keys())
     input_value_set = list(inputs.values())
     n = len(input_value_set[0])
@@ -474,7 +507,13 @@ class ExpDeltaModel:
     for values in zip(*input_value_set):
       inp_map = dict(list(zip(input_fields,values)) + \
                      list(params.items()))
-      output = rel.compute(inp_map)
+      if rel.op == oplib.OpType.INTEG:
+        if init_cond:
+          output = rel.init_cond.compute(inp_map)
+        else:
+          output = rel.deriv.compute(inp_map)
+      else:
+        output = rel.compute(inp_map)
       outputs.append(output)
 
     return outputs
@@ -487,14 +526,21 @@ class ExpDeltaModel:
 
     for par,value in obj['params'].items():
       model.bind(par,value)
-    model.cost = obj['cost']
+    model.model_error = obj['model_error']
+    model.label = DeltaModelLabel(obj['label'])
     return model
 
   def to_json(self):
     return {
       'params': self.params,
-      'cost': self.cost
+      'model_error': self.model_error,
+      'label':self.label.value
     }
+
+  def __repr__(self):
+    return "empirical-delta-model(%s,model_err=%s) :%s" % (self.params, \
+                                           self.model_error, \
+                                           self.label.value)
 
 class ExpCfgBlock:
 
@@ -511,7 +557,7 @@ class ExpCfgBlock:
     self.cfg = blkcfg
     self.db = db
     self.delta_model = ExpDeltaModel(self)
-    self.phys_models = ExpPhysModelCollection(self)
+    #self.phys_models = ExpPhysModelCollection(self)
 
     self.status_type = status_type
     self.method_type = method_type
@@ -588,9 +634,9 @@ class ExpCfgBlock:
       'config': self.cfg.to_json(),
       'dataset':self.dataset.to_json(),
       'delta_model': self.delta_model.to_json(),
-      'phys_model': self.phys_models.to_json(),
-      'cost':self.delta_model.cost
+      'model_error':self.delta_model.model_error
     }
+  #'phys_model': self.phys_models.to_json(),
 
   def get_bounds(self):
     bounds = {}
@@ -623,14 +669,16 @@ class ExpCfgBlock:
     fields['config'] = encode_dict(fields['config'])
     fields['dataset'] = encode_dict(fields['dataset'])
     fields['delta_model'] = encode_dict(fields['delta_model'])
-    fields['phys_model'] = encode_dict(fields['phys_model'])
+    fields['label'] = self.delta_model.label.value
+    #fields['phys_model'] = encode_dict(fields['phys_model'])
     where_clause = {
       'block': self.block.name,
       'loc': str(self.loc),
       'output': self.output.name,
       'static_config': self.static_cfg,
-      'hidden_config': self.hidden_cfg,
+      'hidden_config': self.hidden_cfg
     }
+
     matches = list(self.db.select(PhysicalDatabase.DB.DELTA_MODELS,where_clause))
     if len(matches) == 0:
       self.db.insert(PhysicalDatabase.DB.DELTA_MODELS,fields)
@@ -638,13 +686,14 @@ class ExpCfgBlock:
       self.db.update(PhysicalDatabase.DB.DELTA_MODELS, \
                      where_clause,fields)
 
+    '''
     matches = list(self.db.select(PhysicalDatabase.DB.PHYSICAL_MODELS,where_clause))
     if len(matches) == 0:
       self.db.insert(PhysicalDatabase.DB.PHYSICAL_MODELS,fields)
     elif len(matches) == 1:
       self.db.update(PhysicalDatabase.DB.PHYSICAL_MODELS, \
                      where_clause,fields)
-
+    '''
 
   def load(self):
     where_clause = {
@@ -666,6 +715,7 @@ class ExpCfgBlock:
     else:
       raise Exception("can only have one match")
 
+    '''
     matches = list(self.db.select(PhysicalDatabase.DB.PHYSICAL_MODELS,
                                   where_clause))
     if len(matches) == 1:
@@ -676,6 +726,7 @@ class ExpCfgBlock:
       pass
     else:
       raise Exception("can only have one match")
+  '''
 
   def add_datapoint(self,cfg,inputs,method,status,mean,std):
     # test that this is the same block usage
@@ -782,6 +833,22 @@ def get_best_configured_physical_block(db,dev,blk,inst,cfg):
 
   for physblk in by_hidden_cfg[best_hidden_cfg]:
     yield physblk
+
+def get_by_block_configuration(db,dev,blk,cfg,hidden=False):
+  where_clause = {'block':blk.name, \
+  }
+
+  if not cfg is None:
+    static_cfg = ExpCfgBlock.get_static_cfg(blk,cfg)
+    where_clause['static_config'] = static_cfg
+    if hidden:
+      hidden_cfg = PhysCfgBlock.get_hidden_cfg(blk,cfg)
+      where_clause['hidden_config'] = hidden_cfg
+
+
+  for row in db.select(PhysicalDatabase.DB.DELTA_MODELS, where_clause):
+    yield ExpCfgBlock.from_json(db,dev,row)
+
 
 def get_by_block_instance(db,dev,blk,inst,cfg=None,hidden=False):
   where_clause = {'block':blk.name, \

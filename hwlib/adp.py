@@ -580,7 +580,9 @@ class ADP:
 
   def add_instance(self,block,loc):
     assert(isinstance(block,blocklib.Block))
-    assert(isinstance(loc,devlib.Location))
+    if not isinstance(loc,devlib.Location):
+      raise Exception("not a location: <%s>" % str(loc))
+
     cfg = BlockConfig.make(block,loc)
     self.configs.add(cfg)
     return cfg
