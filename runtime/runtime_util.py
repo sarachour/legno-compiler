@@ -5,10 +5,13 @@ import hwlib.hcdc.llcmd as llcmd
 import dslang.dsprog as dsproglib
 import lab_bench.devices.sigilent_osc as osclib
 import phys_model.model_fit as fitlib
+import phys_model.planner as planlib
+import phys_model.profiler as proflib
 import hwlib.physdb as physdblib
 import json
 
 def get_device(model_no,layout=False):
+    assert(not model_no is None)
     import hwlib.hcdc.hcdcv2 as hcdclib
     return hcdclib.get_device(model_no,layout=layout)
 
@@ -93,7 +96,10 @@ def characterize_adp(args):
             upd_cfg = llcmd.characterize(runtime, \
                                          board, \
                                          blk, \
-                                         cfg)
+                                         cfg, \
+                                         grid_size=args.grid_size, \
+                                         num_locs=args.num_locs, \
+                                         num_hidden_codes=args.num_hidden_codes)
             #exp = ExpCfgBlock(db,blk,loc,output_port,upd_cfg, \
             #                  status_type=None, \
             #                  method_type=None)
@@ -104,6 +110,50 @@ def characterize_adp(args):
 
     raise NotImplementedError
 
+
+def profile_adp(args):
+    board = get_device(args.model_number)
+    with open(args.adp,'r') as fh:
+        adp = ADP.from_json(board, \
+                            json.loads(fh.read()))
+
+    runtime = GrendelRunner()
+    runtime.initialize()
+    label = physdblib.DeltaModelLabel(args.method)
+    for cfg in adp.configs:
+        blk = board.get_block(cfg.inst.block)
+        cfg_modes = cfg.modes
+        for mode in cfg_modes:
+            cfg.modes = [mode]
+            for expmodel in physdblib.get_calibrated_configured_physical_block(board.physdb, \
+                                                                               board, \
+                                                                               blk, \
+                                                                               cfg.inst.loc, \
+                                                                               cfg, \
+                                                                               label):
+                if len(expmodel.dataset) >= args.max_points:
+                    continue
+
+                print("==== profile %s[%s] %s (npts=%d)"\
+                      % (blk.name,cfg.inst.loc,mode,len(expmodel.dataset)))
+                print(expmodel.cfg)
+                planner = planlib.SingleDefaultPointPlanner(blk, cfg.inst.loc, expmodel.cfg,
+                                                            n=args.grid_size,
+                                                            m=args.grid_size)
+                proflib.profile_all_hidden_states(runtime, board, planner)
+
+
+def is_calibrated(board,blk,loc,cfg,label):
+    for it in physdblib.get_calibrated_configured_physical_block(board.physdb, \
+                                                                 board, \
+                                                                 blk, \
+                                                                 loc, \
+                                                                 cfg, \
+                                                                 label):
+        return True
+
+    return False
+
 def calibrate_adp(args):
     board = get_device(args.model_number)
     with open(args.adp,'r') as fh:
@@ -113,22 +163,42 @@ def calibrate_adp(args):
     runtime = GrendelRunner()
     runtime.initialize()
     method = llenums.CalibrateObjective(args.method)
+    delta_model_label = physdblib.DeltaModelLabel \
+                                 .from_calibration_objective(method, \
+                                                             legacy=True)
     for cfg in adp.configs:
         blk = board.get_block(cfg.inst.block)
+
+
         cfg_modes = cfg.modes
         for mode in cfg_modes:
             cfg.modes = [mode]
+            if not blk.requires_calibration():
+                continue
+
+            print("%s" % (cfg.inst))
+            print(cfg)
+            print('----')
+
+            if is_calibrated(board,blk,cfg.inst.loc, \
+                             cfg,delta_model_label):
+                print("-> already calibrated")
+                continue
+
             upd_cfg = llcmd.calibrate(runtime, \
+                                      board, \
                                       blk, \
                                       cfg.inst.loc,\
                                       adp, \
                                       method=method)
             for output in blk.outputs:
-                exp = physdblib.ExpCfgBlock(db,blk,loc,output,cfg, \
-                                            status_type=dev.profile_status_type, \
-                                            method_type=dev.profile_op_type)
-                exp.delta_model.label = physdblib.DeltaModelLabel \
-                                                 .from_calibration_objective(method)
+                exp = physdblib.ExpCfgBlock(board.physdb, \
+                                            blk, \
+                                            cfg.inst.loc,output, \
+                                            upd_cfg, \
+                                            status_type=board.profile_status_type, \
+                                            method_type=board.profile_op_type)
+                exp.delta_model.label = delta_model_label
                 exp.update()
 
 def exec_adp(args):

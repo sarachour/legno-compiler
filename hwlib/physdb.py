@@ -19,6 +19,15 @@ class DeltaModelLabel(Enum):
   LEGACY_MAX_FIT = "legacy_max_fit"
   NONE = "none"
 
+  def from_calibration_objective(method,legacy=True):
+    assert(isinstance(method,llenums.CalibrateObjective))
+    if method == llenums.CalibrateObjective.MAXIMIZE_FIT:
+      return (DeltaModelLabel.LEGACY_MAX_FIT if legacy \
+        else DeltaModel.MAX_FIT)
+    else:
+      return (DeltaModelLabel.LEGACY_MIN_ERROR if legacy \
+        else DeltaModel.MIN_ERROR)
+
 
 CREATE_DELTA_TABLE = '''
 CREATE TABLE IF NOT EXISTS delta_models (
@@ -803,36 +812,19 @@ class NotCalibratedException(Exception):
   def __init__(self):
     Exception.__init__(self)
 
-def get_best_configured_physical_block(db,dev,blk,inst,cfg):
+def get_calibrated_configured_physical_block(db,dev,blk,inst,cfg,label):
+  assert(isinstance(label,DeltaModelLabel))
   static_cfg = ExpCfgBlock.get_static_cfg(blk,cfg)
   where_clause = {'block':blk.name, \
                   'loc':str(inst), \
-                  'static_config':static_cfg}
+                  'static_config':static_cfg, \
+                  'label':label.value}
 
-  by_hidden_cfg = {}
-  hidden_cfg_costs = {}
   # compute costs
-  for row in db.select(PhysicalDatabase.DB.PHYSICAL_MODELS, \
+  for row in db.select(PhysicalDatabase.DB.DELTA_MODELS, \
                        where_clause):
     phys = ExpCfgBlock.from_json(db,dev,row)
-    if not phys.hidden_cfg in by_hidden_cfg:
-      by_hidden_cfg[phys.hidden_cfg] = []
-
-    by_hidden_cfg[phys.hidden_cfg].append(phys)
-
-  best_hidden_cfg = None
-  best_cost = None
-  for hidden_cfg,physblocks in by_hidden_cfg.items():
-    cost = max(map(lambda blk: blk.model.cost, physblocks))
-    if best_hidden_cfg is None or best_cost > cost:
-      best_hidden_cfg = hidden_cfg
-      best_cost = cost
-
-  if best_hidden_cfg is None:
-    raise NotCalibratedException()
-
-  for physblk in by_hidden_cfg[best_hidden_cfg]:
-    yield physblk
+    yield phys
 
 def get_by_block_configuration(db,dev,blk,cfg,hidden=False):
   where_clause = {'block':blk.name, \

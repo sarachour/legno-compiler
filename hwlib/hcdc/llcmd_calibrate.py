@@ -5,9 +5,8 @@ import hwlib.adp as adplib
 from hwlib.hcdc.llcmd_util import *
 
 
-def calibrate(runtime,blk,loc,adp, \
+def calibrate(runtime,dev,blk,loc,adp, \
               method=llenums.CalibrateObjective.MAXIMIZE_FIT):
-    dev = hcdclib.get_device()
     state_t = {blk.name:blk.state.concretize(adp,loc)}
     # build set state command
     loc_t,loc_d = make_block_loc_t(blk,loc)

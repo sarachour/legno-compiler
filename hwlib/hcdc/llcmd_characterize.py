@@ -15,16 +15,21 @@ def analyze_db(board):
 	return
 
 
-def characterize(runtime,board,block,cfg):
-  locs = llutil.random_locs(board,block,10)
+def characterize(runtime,board,block,cfg,grid_size=7,  \
+                 num_hidden_codes=200, \
+                 num_locs=5):
+  locs = llutil.random_locs(board,block,num_locs)
   print("=> characterizing %s" % block.name)
   for loc in locs:
     print("=== %s.%s ===" % (block.name,loc))
     print(cfg)
+    print("grid-size: %d / num-codes: %d / num-locs: %d" % (grid_size, \
+                                                            num_hidden_codes, \
+                                                            num_locs))
     planner = planlib.RandomPlanner(block, loc, cfg,
-                                    n=8,
-                                    m=10,
-                                    num_codes=1000)
+                                    n=grid_size,
+                                    m=grid_size,
+                                    num_codes=num_codes)
     proflib.profile_all_hidden_states(runtime, board, planner)
     print(" -> analyzing")
     physdblib.get_by_block_instance(board.physdb, \

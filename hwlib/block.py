@@ -540,8 +540,7 @@ class BCConnImpl:
 
   def lift(self,adp,block,loc,data):
     cfg = adp.configs.get(block.name,loc)
-    print("TODO: actually apply connection impl")
-    return self._default
+    blkcfg.get(self.state.name).value = data
 
 class BlockStateArray:
 
@@ -861,6 +860,13 @@ class Block:
     self.name = name
     self.ll_name = name
     self.type = typ
+
+  def requires_calibration(self):
+      for _ in filter(lambda st : isinstance(st.impl,BCCalibImpl) , \
+                    self.state):
+          return True
+      return False
+
 
   def port(self,name):
     if self.inputs.has(name):

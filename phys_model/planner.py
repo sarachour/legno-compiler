@@ -5,7 +5,7 @@ import hwlib.adp as adplib
 import hwlib.hcdc.hcdcv2 as hcdclib
 import phys_model.phys_util as phys_util
 import phys_model.model_fit as model_fit
-import target_block
+#import target_block
 import random
 import itertools
 from fit_and_minimize import investigate_model
@@ -96,14 +96,14 @@ class BruteForcePlanner(ProfilePlanner):
 
 class SingleDefaultPointPlanner(BruteForcePlanner):
 
-  def __init__(self,block,loc,cfg,m):
-    BruteForcePlanner.__init__(self,block,loc,cfg,0,m)
+  def __init__(self,block,loc,cfg,n,m):
+    BruteForcePlanner.__init__(self,block,loc,cfg,n,m)
 
   def new_hidden(self):
     hidden = {}
-    for state in filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), self.block.state):
-      print("state.name:",state.name)
-      hidden[state] = self.cfg[state.name].value
+    for state in filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), \
+                        self.block.state):
+      hidden[state.name] = self.config[state.name].value
 
     self.hidden_iterator = hidden
     self.dynamic_iterator = None

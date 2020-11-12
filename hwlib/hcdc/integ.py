@@ -169,14 +169,14 @@ integ.state['range_out'] \
 
 bcarr = BlockStateArray('port_cal', \
                         indices=enums.PortType, \
-                        values=range(0,32), \
+                        values=range(0,64), \
                         length=3,\
                         default=16)
 
 
 integ.state.add(BlockState('port_cal_in',  \
                            state_type= BlockStateType.CALIBRATE, \
-                           values=range(0,32), \
+                           values=range(0,64), \
                            array=bcarr, \
                            index=enums.PortType.IN0))
 integ.state['port_cal_in'].impl.set_default(16)
@@ -184,13 +184,13 @@ integ.state['port_cal_in'].impl.set_default(16)
 
 integ.state.add(BlockState('port_cal_out',  \
                            state_type= BlockStateType.CALIBRATE, \
-                           values=range(0,32), \
+                           values=range(0,64), \
                            array=bcarr, \
                            index=enums.PortType.OUT0))
 integ.state['port_cal_out'].impl.set_default(16)
 
 integ.state.add(BlockState('ic_cal',
-                        values=range(0,32), \
+                        values=range(0,64), \
                         state_type=BlockStateType.CALIBRATE))
 integ.state['ic_cal'].impl.set_default(16)
 

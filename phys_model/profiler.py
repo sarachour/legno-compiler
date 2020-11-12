@@ -3,7 +3,8 @@ import hwlib.block as blocklib
 import hwlib.adp as adplib
 import hwlib.hcdc.llstructs as llstructs
 import hwlib.hcdc.llenums as llenums
-import hwlib.hcdc.llcmd as llcmd
+from hwlib.hcdc.llcmd_calibrate import calibrate
+from hwlib.hcdc.llcmd_profile import profile
 import hwlib.hcdc.hcdcv2 as hcdclib
 import itertools
 import ops.op as oplib
@@ -23,7 +24,7 @@ def calibrate(dev,runtime,block,inst,cfg):
   config = new_adp.configs.get(block.name, \
                                inst)
   config.set_config(cfg)
-  all_codes = llcmd.calibrate(runtime,block,inst, \
+  all_codes = calibrate(runtime,block,inst, \
                               new_adp, \
                               method=llenums.CalibrateObjective.MAXIMIZE_FIT)
   print(all_codes)
@@ -69,7 +70,7 @@ def profile_hidden_state(runtime,dev,planner,hidden):
         methods = [llenums.ProfileOpType.INPUT_OUTPUT]
 
       for method in methods:
-        llcmd.profile(runtime, \
+        profile(runtime, \
                       dev, \
                       planner.block, \
                       planner.loc, \
