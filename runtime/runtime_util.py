@@ -169,7 +169,7 @@ def characterize_adp(args):
             if curr_hidden_codes >= args.num_hidden_codes:
                 continue
 
-            new_codes_to_sample = curr_hidden_codes - args.num_hidden_codes
+            new_codes_to_sample = args.num_hidden_codes - curr_hidden_codes
             upd_cfg = llcmd.characterize(runtime, \
                                          board, \
                                          blk, \
