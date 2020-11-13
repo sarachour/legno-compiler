@@ -200,7 +200,7 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measureOpenLoopCircuit(profile_
   switch(spec.type){
   case INTEG_DERIVATIVE_GAIN:
     result = prof::make_profile(spec,
-                                tc_stats.tc,
+                                tc_stats.tc/target_tc,
                                 sqrt(tc_stats.R2_k));
     break;
   case INTEG_DERIVATIVE_BIAS:
