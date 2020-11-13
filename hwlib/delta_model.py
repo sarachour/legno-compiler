@@ -8,6 +8,9 @@ import hwlib.hcdc.llenums as llenums
 import ops.op as oplib
 import ops.generic_op as genoplib
 
+import phys_model.phys_util as phys_util
+import numpy as np
+
 class ExpDataset:
 
   def _populate_integral_operation(self):
