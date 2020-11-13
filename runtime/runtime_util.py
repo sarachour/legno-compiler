@@ -259,6 +259,7 @@ def calibrate_adp(args):
                                       method=method)
             for output in blk.outputs:
                 exp = deltalib.ExpCfgBlock(board.physdb, \
+                                           board, \
                                            blk, \
                                            cfg.inst.loc,output, \
                                            upd_cfg, \

@@ -327,11 +327,11 @@ class ExpCfgBlock:
 
   def update(self):
     fields = self.to_json()
-    fields['config'] = encode_dict(fields['config'])
-    fields['dataset'] = encode_dict(fields['dataset'])
-    fields['delta_model'] = encode_dict(fields['delta_model'])
+    fields['config'] = physutil.encode_dict(fields['config'])
+    fields['dataset'] = physutil.encode_dict(fields['dataset'])
+    fields['delta_model'] = physutil.encode_dict(fields['delta_model'])
     fields['label'] = self.delta_model.label.value
-    #fields['phys_model'] = encode_dict(fields['phys_model'])
+    #fields['phys_model'] = phys_util.encode_dict(fields['phys_model'])
     where_clause = {
       'block': self.block.name,
       'loc': str(self.loc),
