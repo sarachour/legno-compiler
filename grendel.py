@@ -37,6 +37,11 @@ char_subp.add_argument('--num-locs',type=int,default=2, \
 dectree_subp = subparsers.add_parser('mktree', help='Use characterization data to build calibration decision tree.')
 dectree_subp.add_argument('adp', type=str,help='adp to characterize')
 dectree_subp.add_argument('--model-number',type=str,help='model number')
+dectree_subp.add_argument('--max-depth',type=int,default=3,\
+                          help='maximum depth')
+dectree_subp.add_argument('--num-leaves',type=int,default=10,\
+                          help='number of leaves')
+
 
 
 calib_subp = subparsers.add_parser('cal', help='calibrate blocks in configuration')

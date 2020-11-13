@@ -67,13 +67,13 @@ class DecisionNode:
   '''
   This function serializes the decision tree into a json data structure.
   '''
-  def to_json(self, dictionary):
+  def to_json(self):
+    dictionary = {}
     dictionary['type'] = "DecisionNode"
     dictionary['value'] = self.value
     dictionary['name'] = self.name
-    dictionary['left'] = self.left.to_json({})
-    dictionary['right'] = self.right.to_json({})
-
+    dictionary['left'] = self.left.to_json()
+    dictionary['right'] = self.right.to_json()
     return dictionary
 
   def fit(self,dataset,output = []):
@@ -163,7 +163,8 @@ class RegressionLeafNode:
   '''
   This function serializes the decision tree into a json data structure.
   '''
-  def to_json(self,dictionary):
+  def to_json(self):
+    dictionary = {}
     dictionary['type'] = "RegressionLeafNode"
     dictionary['expr'] = self.expr.to_json()
     dictionary['npts'] = self.npts

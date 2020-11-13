@@ -7,7 +7,12 @@ import lab_bench.devices.sigilent_osc as osclib
 import phys_model.model_fit as fitlib
 import phys_model.planner as planlib
 import phys_model.profiler as proflib
+import phys_model.fit_lin_dectree as fit_lindectree
+
 import hwlib.physdb as physdblib
+import hwlib.physdb_api as physapi
+import hwlib.phys_model as physlib
+import hwlib.delta_model as deltalib
 import json
 
 def get_device(model_no,layout=False):
@@ -16,14 +21,19 @@ def get_device(model_no,layout=False):
     return hcdclib.get_device(model_no,layout=layout)
 
 def update_dectree_data(blk,loc,exp_mdl, \
-                        params, model_errors, \
+                        metadata, \
+                        params, \
+                        model_errors, \
+                        hidden_code_fields, \
                         hidden_codes):
 
-    key = (blk.name,loc)
+    key = (blk.name,exp_mdl.static_cfg)
     if not key in params:
         params[key] = {}
+        metadata[key] = (blk,exp_mdl.cfg)
         model_errors[key] = []
-        hidden_codes[key] = {}
+        hidden_codes[key] = []
+        hidden_code_fields[key] = []
 
     for par,value in exp_mdl.delta_model.params.items():
         if not par in params[key]:
@@ -31,13 +41,17 @@ def update_dectree_data(blk,loc,exp_mdl, \
 
         params[key][par].append(value)
 
+    for hidden_code,_ in exp_mdl.hidden_codes():
+        if not hidden_code in hidden_code_fields[key]:
+            hidden_code_fields[key].append(hidden_code)
+
+    entry = [0]*len(hidden_code_fields[key])
     for hidden_code,value in exp_mdl.hidden_codes():
-        if not hidden_code in hidden_codes[key]:
-            hidden_codes[key][hidden_code] = []
-        hidden_codes[key][hidden_code].append(value)
+        idx = hidden_code_fields[key].index(hidden_code)
+        entry[idx] = value
 
+    hidden_codes[key].append(entry)
     model_errors[key].append(exp_mdl.delta_model.model_error)
-
 
 def mktree_adp(args):
     dev = get_device(args.model_number,layout=True)
@@ -51,33 +65,60 @@ def mktree_adp(args):
             cfg.modes = [mode]
 
             params = {}
+            metadata = {}
             hidden_codes = {}
+            hidden_code_fields = {}
             model_errors = {}
-            for exp_mdl in physdblib.get_by_block_configuration(dev.physdb, \
+            for exp_mdl in physapi.get_by_block_configuration(dev.physdb, \
                                                             dev, blk, cfg):
                 if len(exp_mdl.dataset) == 0:
                     continue
 
-                fitlib.fit_delta_model(exp_mdl,operation=llenums.ProfileOpType.INTEG_INITIAL_COND)
+                if not exp_mdl.delta_model.complete:
+                    fitlib.fit_delta_model(exp_mdl)
+
                 if not exp_mdl.delta_model.complete:
                     print("[WARN] incomplete delta model!")
                     continue
 
                 update_dectree_data(blk,exp_mdl.loc,exp_mdl, \
-                                    params,model_errors, \
+                                    metadata,params,model_errors, \
+                                    hidden_code_fields, \
                                     hidden_codes)
 
-            print("collected data")
-            for blk,loc in model_errors.keys():
+            for key in model_errors.keys():
+                blk,cfg = metadata[key]
+                n_samples = len(model_errors[key])
+                min_size = round(n_samples/args.num_leaves)
                 print("--- fitting decision tree (%d samples) ---" % n_samples)
-                output = costs
-                dectree,predictions = fit_lindectree.fit_decision_tree(hidden_codes, \
-                                                                       inputs,output, \
-                                                                       max_depth, \
-                                                                       min_size)
+                hidden_code_fields_ = hidden_code_fields[key]
+                hidden_codes_ = hidden_codes[key]
+                model_errors_ = model_errors[key]
+
+                model = physlib.ExpPhysModel(dev.physdb,dev,blk,cfg)
+                model.num_samples = n_samples
+
+                dectree,predictions = fit_lindectree.fit_decision_tree(hidden_code_fields_, \
+                                                                       hidden_codes_, \
+                                                                       model_errors_, \
+                                                                       max_depth=args.max_depth, \
+                                                                       min_size=min_size)
+                model.set_param(physlib.ExpPhysModel.MODEL_ERROR, \
+                                dectree)
+
+                for param,param_values in params[key].items():
+                    print("==== PARAM <%s> ===" % param)
+                    assert(len(param_values) == n_samples)
+                    dectree,predictions = fit_lindectree.fit_decision_tree(hidden_code_fields_, \
+                                                                           hidden_codes_, \
+                                                                           param_values, \
+                                                                           max_depth=args.max_depth, \
+                                                                           min_size=min_size)
+                    model.set_param(param, dectree)
+
+                model.update()
 
 
-            input()
 
 def characterize_adp(args):
     board = get_device(args.model_number,layout=True)
@@ -100,15 +141,9 @@ def characterize_adp(args):
                                          grid_size=args.grid_size, \
                                          num_locs=args.num_locs, \
                                          num_hidden_codes=args.num_hidden_codes)
-            #exp = ExpCfgBlock(db,blk,loc,output_port,upd_cfg, \
-            #                  status_type=None, \
-            #                  method_type=None)
-            #print(upd_cfg)
-
-            raise NotImplementedError
 
 
-    raise NotImplementedError
+
 
 
 def profile_adp(args):
@@ -149,14 +184,12 @@ def derive_delta_models_adp(args):
         adp = ADP.from_json(board, \
                             json.loads(fh.read()))
 
-    runtime = GrendelRunner()
-    runtime.initialize()
     for cfg in adp.configs:
         blk = board.get_block(cfg.inst.block)
         cfg_modes = cfg.modes
         for mode in cfg_modes:
             cfg.modes = [mode]
-            for expmodel in physdblib.get_configured_physical_block(board.physdb, \
+            for expmodel in physapi.get_configured_physical_block(board.physdb, \
                                                                     board, \
                                                                     blk, \
                                                                     cfg.inst.loc, \

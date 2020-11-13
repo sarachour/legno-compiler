@@ -148,8 +148,7 @@ def predict(node, row):
 def finalize_tree(input_names,node):
   if not 'left' in node and not 'right' in node:
     indices = list(range(len(node['model'].coef_)))
-    print(node['model'].coef_)
-    print(input_names)
+    assert(len(input_names) >= len(indices))
     terms = list(map(lambda idx: "c%d*%s" % (idx+1,input_names[idx]), indices))
     terms.append("c0")
     expr_str = "+".join(terms)
