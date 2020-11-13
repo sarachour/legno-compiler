@@ -172,7 +172,6 @@ def deviation_(blk,output_file, \
                relative=False):
   data = blk.dataset.get_data(llenums.ProfileStatus.SUCCESS, \
                               operation)
-  print(data)
 
   if baseline == ReferenceType.MODEL_PREDICTION:
     ref = blk.delta_model.predict(data['inputs'], \
@@ -192,7 +191,7 @@ def deviation_(blk,output_file, \
     for var in data['inputs']:
       inps[var] = data['inputs'][var][idx]
     obs = data['meas_mean'][idx]
-    print("inputs=%s pred=%s obs=%s" % (inps,pred,obs))
+    #print("inputs=%s pred=%s obs=%s" % (inps,pred,obs))
     #input("continue")
 
   errors = []

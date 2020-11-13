@@ -37,7 +37,6 @@ char_subp.add_argument('--num-locs',type=int,default=2, \
 char_subp = subparsers.add_parser('fastcal_srcgen', help='generate c sources for fast calibration routine')
 
 dectree_subp = subparsers.add_parser('mktree', help='Use characterization data to build calibration decision tree.')
-dectree_subp.add_argument('adp', type=str,help='adp to characterize')
 dectree_subp.add_argument('--model-number',type=str,help='model number')
 dectree_subp.add_argument('--max-depth',type=int,default=3,\
                           help='maximum depth')
@@ -97,7 +96,7 @@ elif args.subparser_name == "fastcal":
 elif args.subparser_name == "characterize":
     grendel_util.characterize_adp(args)
 elif args.subparser_name == "mktree":
-    grendel_util.mktree_adp(args)
+    grendel_util.mktree(args)
 elif args.subparser_name == "vis-delta":
     grendel_util.visualize(args)
 else:
