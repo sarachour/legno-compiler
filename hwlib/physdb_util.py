@@ -1,6 +1,7 @@
 from enum import Enum
 import hwlib.adp as adplib
 import hwlib.block as blocklib
+import hwlib.hcdc.llenums as llenums
 import base64
 import json
 

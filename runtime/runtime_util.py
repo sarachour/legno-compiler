@@ -11,6 +11,7 @@ import phys_model.fit_lin_dectree as fit_lindectree
 
 import hwlib.physdb as physdblib
 import hwlib.physdb_api as physapi
+import hwlib.physdb_util as physutil
 import hwlib.phys_model as physlib
 import hwlib.delta_model as deltalib
 import json
@@ -120,6 +121,16 @@ def mktree_adp(args):
 
 
 
+def fastcal_srcgen_adp(args):
+    board = get_device(args.model_number,layout=True)
+    raise Exception("not implemented! need to generate embedded systems sources which will be linked into firmware")
+
+
+def fastcal_adp(args):
+    board = get_device(args.model_number,layout=True)
+    raise Exception("not implemented! need implement fast calibration routine")
+
+
 def characterize_adp(args):
     board = get_device(args.model_number,layout=True)
     with open(args.adp,'r') as fh:
@@ -154,7 +165,7 @@ def profile_adp(args):
 
     runtime = GrendelRunner()
     runtime.initialize()
-    label = physdblib.DeltaModelLabel(args.method)
+    label = physutil.DeltaModelLabel(args.method)
     for cfg in adp.configs:
         blk = board.get_block(cfg.inst.block)
         cfg_modes = cfg.modes
@@ -199,7 +210,7 @@ def derive_delta_models_adp(args):
                     fitlib.fit_delta_model(expmodel)
 
 def is_calibrated(board,blk,loc,cfg,label):
-    for it in physdblib.get_calibrated_configured_physical_block(board.physdb, \
+    for it in physapi.get_calibrated_configured_physical_block(board.physdb, \
                                                                  board, \
                                                                  blk, \
                                                                  loc, \
@@ -218,7 +229,7 @@ def calibrate_adp(args):
     runtime = GrendelRunner()
     runtime.initialize()
     method = llenums.CalibrateObjective(args.method)
-    delta_model_label = physdblib.DeltaModelLabel \
+    delta_model_label = physutil.DeltaModelLabel \
                                  .from_calibration_objective(method, \
                                                              legacy=True)
     for cfg in adp.configs:

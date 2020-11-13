@@ -34,6 +34,8 @@ char_subp.add_argument('--num-locs',type=int,default=2, \
 
 
 
+char_subp = subparsers.add_parser('fastcal_srcgen', help='generate c sources for fast calibration routine')
+
 dectree_subp = subparsers.add_parser('mktree', help='Use characterization data to build calibration decision tree.')
 dectree_subp.add_argument('adp', type=str,help='adp to characterize')
 dectree_subp.add_argument('--model-number',type=str,help='model number')
@@ -41,6 +43,14 @@ dectree_subp.add_argument('--max-depth',type=int,default=3,\
                           help='maximum depth')
 dectree_subp.add_argument('--num-leaves',type=int,default=10,\
                           help='number of leaves')
+
+
+
+fastcal_subp = subparsers.add_parser('fastcal', help='fastcalrate blocks in configuration')
+fastcal_subp.add_argument('adp', type=str,help='adp to characterize')
+fastcal_subp.add_argument('method', type=str,help='fast calibration objective function (minimize_error/maximize_fit)')
+fastcal_subp.add_argument('--model-number',type=str,help='model number')
+fastcal_subp.add_argument('--on-firmware',type=str,help='execute fast calibration routine resident on firmware')
 
 
 

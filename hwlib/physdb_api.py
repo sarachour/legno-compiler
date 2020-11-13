@@ -22,7 +22,7 @@ def get_configured_physical_block(db,dev,blk,inst,cfg):
 
 
 def get_calibrated_configured_physical_block(db,dev,blk,inst,cfg,label):
-  assert(isinstance(label,DeltaModelLabel))
+  assert(isinstance(label,physutil.DeltaModelLabel))
   static_cfg = physutil.get_static_cfg(blk,cfg)
   where_clause = {'block':blk.name, \
                   'loc':str(inst), \
