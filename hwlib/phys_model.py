@@ -18,6 +18,10 @@ class ExpPhysModel:
     if load_db:
       self.load()
 
+  @property
+  def params(self):
+    return dict(self._delta_params)
+
   def set_param(self,par,delta):
     self._delta_params[par] = delta
 
