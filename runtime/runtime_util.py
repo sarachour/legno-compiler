@@ -1,15 +1,17 @@
-from hwlib.adp import ADP,ADPMetadata
-from lab_bench.grendel_runner import GrendelRunner
-import hwlib.hcdc.llenums as llenums
-import hwlib.hcdc.llcmd as llcmd
 import dslang.dsprog as dsproglib
+
 import lab_bench.devices.sigilent_osc as osclib
+from lab_bench.grendel_runner import GrendelRunner
+
 import phys_model.model_fit as fitlib
 import phys_model.planner as planlib
 import phys_model.profiler as proflib
 import phys_model.fit_lin_dectree as fit_lindectree
 import phys_model.visualize as vizlib
 
+from hwlib.adp import ADP,ADPMetadata
+import hwlib.hcdc.llenums as llenums
+import hwlib.hcdc.llcmd as llcmd
 import hwlib.physdb as physdblib
 import hwlib.physdb_api as physapi
 import hwlib.physdb_util as physutil
@@ -17,7 +19,9 @@ import hwlib.phys_model as physlib
 import hwlib.delta_model as deltalib
 import util.paths as paths
 
+import compiler.lscale_pass.lscale_widening as widenlib
 import json
+import numpy as np
 
 def get_device(model_no,layout=False):
     assert(not model_no is None)
@@ -93,16 +97,23 @@ def mktree(args):
         model = physlib.ExpPhysModel(dev.physdb,dev,blk,cfg)
         model.num_samples = n_samples
 
+        print(cfg)
         dectree,predictions = fit_lindectree.fit_decision_tree(hidden_code_fields_, \
                                                                 hidden_codes_, \
                                                                 model_errors_, \
                                                                 max_depth=args.max_depth, \
                                                                 min_size=min_size)
+        err = fit_lindectree.model_error(predictions,model_errors_)
+        pct_err = err/max(np.abs(model_errors_))*100.0
+        print("<<dectree>>: [[Model-Err]] err=%f pct-err=%f param-range=[%f,%f]" \
+              % (err, pct_err, \
+                 min(model_errors_), \
+                 max(model_errors_)))
+
         model.set_param(physlib.ExpPhysModel.MODEL_ERROR, \
                         dectree)
 
         for param,param_values in params[key].items():
-            print("==== PARAM <%s> ===" % param)
             assert(len(param_values) == n_samples)
             dectree,predictions = fit_lindectree.fit_decision_tree(hidden_code_fields_, \
                                                                     hidden_codes_, \
@@ -110,6 +121,13 @@ def mktree(args):
                                                                     max_depth=args.max_depth, \
                                                                     min_size=min_size)
             model.set_param(param, dectree)
+
+            err = fit_lindectree.model_error(predictions,param_values)
+            pct_err = err/max(np.abs(model_errors_))*100.0
+            print("<<dectree>>: [[Param:%s]] err=%f pct-err=%f param-range=[%f,%f]" \
+                  % (param, err, pct_err, \
+                     min(param_values), \
+                     max(param_values)))
 
         model.update()
 
@@ -137,6 +155,7 @@ def visualize(args):
                                         str(expmodel.loc), \
                                         str(expmodel.output.name), \
                                         str(expmodel.static_cfg), \
+                                        str(expmodel.hidden_cfg), \
                                         expmodel.delta_model.label)
             vizlib.deviation(expmodel, \
                              png_file, \
@@ -151,6 +170,7 @@ def get_num_characterized_codes(board,blk,cfg):
                                                        blk, \
                                                        cfg)))
 
+
 def characterize_adp(args):
     board = get_device(args.model_number,layout=True)
     with open(args.adp,'r') as fh:
@@ -159,24 +179,26 @@ def characterize_adp(args):
 
     runtime = GrendelRunner()
     runtime.initialize()
-    print("TODO: don't characterize the same configured block multiple times")
     for cfg in adp.configs:
         blk = board.get_block(cfg.inst.block)
         cfg_modes = cfg.modes
         for mode in cfg_modes:
             cfg.modes = [mode]
             curr_hidden_codes = get_num_characterized_codes(board,blk,cfg)
-            if curr_hidden_codes >= args.num_hidden_codes:
+            if curr_hidden_codes >= args.num_hidden_codes*args.num_locs:
                 continue
 
-            new_codes_to_sample = args.num_hidden_codes - curr_hidden_codes
+            curr_num_locs = math.floor(curr_hidden_codes/args.num_hidden_codes)
+            num_new_locs = args.num_locs - curr_num_locs
+            assert(curr_num_locs > 0)
+
             upd_cfg = llcmd.characterize(runtime, \
                                          board, \
                                          blk, \
                                          cfg, \
                                          grid_size=args.grid_size, \
                                          num_locs=args.num_locs, \
-                                         num_hidden_codes=new_codes_to_sample)
+                                         num_hidden_codes=args.num_hidden_codes)
 
 
 
@@ -236,14 +258,96 @@ def derive_delta_models_adp(args):
 
 def is_calibrated(board,blk,loc,cfg,label):
     for it in physapi.get_calibrated_configured_physical_block(board.physdb, \
-                                                                 board, \
-                                                                 blk, \
-                                                                 loc, \
-                                                                 cfg, \
-                                                                 label):
+                                                               board, \
+                                                               blk, \
+                                                               loc, \
+                                                               cfg, \
+                                                               label):
         return True
 
     return False
+
+def fast_calibrate_adp(args):
+    board = get_device(args.model_number)
+    char_board = get_device(args.char_data)
+    with open(args.adp,'r') as fh:
+        adp = ADP.from_json(board, \
+                            json.loads(fh.read()))
+
+    runtime = GrendelRunner()
+    #runtime.initialize()
+    method = llenums.CalibrateObjective(args.method)
+    delta_model_label = physutil.DeltaModelLabel \
+                                 .from_calibration_objective(method, \
+                                                             legacy=False)
+    for cfg in adp.configs:
+        blk = board.get_block(cfg.inst.block)
+
+
+        cfg_modes = cfg.modes
+        for mode in widenlib.widen_modes(blk,cfg):
+            cfg.modes = [mode]
+            if not blk.requires_calibration():
+                continue
+
+            print("%s" % (cfg.inst))
+            print(cfg)
+            print('----')
+
+            if is_calibrated(board,blk,cfg.inst.loc, \
+                             cfg,delta_model_label):
+                print("-> already calibrated")
+                continue
+
+            phys_model = physapi.get_physical_model(char_board.physdb, \
+                                                    board, \
+                                                    blk, \
+                                                    cfg=cfg)
+            if phys_model is None:
+                print("-> no physical model available!")
+                continue
+
+            print("---> Bootstrapping model")
+            samples = phys_model.random_sample()
+            print("# samples: %s" % len(samples))
+            for sample in samples:
+                planner = planlib.SingleTargetedPointPlanner(blk,cfg.inst.loc,cfg, \
+                                                             n=args.grid_size, \
+                                                             m=args.grid_size, \
+                                                             hidden_codes=sample)
+                proflib.profile_all_hidden_states(runtime,board,planner)
+                #TODO: analyze collected data to get delta model
+
+            print("---> fitting this physical model to the specific block")
+            physapi.fit_physical_model_to_block(board.physdb, phys_model, \
+                                                blk, \
+                                                cfg.inst.loc, \
+                                                cfg)
+
+
+            objmodel = phys_model.objective_dectree
+
+            input()
+            '''
+            upd_cfg = llcmd.fast_calibrate(runtime, \
+                                           char_board, \
+                                           board, \
+                                           blk, \
+                                           cfg.inst.loc,\
+                                           adp, \
+                                           method=method)
+            '''
+            for output in blk.outputs:
+                exp = deltalib.ExpCfgBlock(board.physdb, \
+                                           board, \
+                                           blk, \
+                                           cfg.inst.loc,output, \
+                                           upd_cfg, \
+                                           status_type=board.profile_status_type, \
+                                           method_type=board.profile_op_type)
+                exp.delta_model.label = delta_model_label
+                exp.update()
+
 
 def calibrate_adp(args):
     board = get_device(args.model_number)
@@ -262,7 +366,7 @@ def calibrate_adp(args):
 
 
         cfg_modes = cfg.modes
-        for mode in cfg_modes:
+        for mode in widenlib.widen_modes(blk,cfg):
             cfg.modes = [mode]
             if not blk.requires_calibration():
                 continue
@@ -284,6 +388,7 @@ def calibrate_adp(args):
                                       method=method)
             for output in blk.outputs:
                 exp = deltalib.ExpCfgBlock(board.physdb, \
+                                           board, \
                                            blk, \
                                            cfg.inst.loc,output, \
                                            upd_cfg, \

@@ -38,9 +38,9 @@ char_subp = subparsers.add_parser('fastcal_srcgen', help='generate c sources for
 
 dectree_subp = subparsers.add_parser('mktree', help='Use characterization data to build calibration decision tree.')
 dectree_subp.add_argument('--model-number',type=str,help='model number')
-dectree_subp.add_argument('--max-depth',type=int,default=3,\
+dectree_subp.add_argument('--max-depth',type=int,default=2,\
                           help='maximum depth')
-dectree_subp.add_argument('--num-leaves',type=int,default=10,\
+dectree_subp.add_argument('--num-leaves',type=int,default=3,\
                           help='number of leaves')
 
 
@@ -48,7 +48,9 @@ dectree_subp.add_argument('--num-leaves',type=int,default=10,\
 fastcal_subp = subparsers.add_parser('fastcal', help='fastcalrate blocks in configuration')
 fastcal_subp.add_argument('adp', type=str,help='adp to characterize')
 fastcal_subp.add_argument('method', type=str,help='fast calibration objective function (minimize_error/maximize_fit)')
+fastcal_subp.add_argument('--char-data',type=str,help='model number for characterization data')
 fastcal_subp.add_argument('--model-number',type=str,help='model number')
+fastcal_subp.add_argument('--grid-size',type=int,default=5,help='grid size')
 fastcal_subp.add_argument('--on-firmware',type=str,help='execute fast calibration routine resident on firmware')
 
 
@@ -57,9 +59,6 @@ calib_subp = subparsers.add_parser('cal', help='calibrate blocks in configuratio
 calib_subp.add_argument('adp', type=str,help='adp to characterize')
 calib_subp.add_argument('method', type=str,help='calibration objective function (minimize_error/maximize_fit)')
 calib_subp.add_argument('--model-number',type=str,help='model number')
-
-fastcalib_subp = subparsers.add_parser('fastcal', help='fast calibrate blocks in configuration')
-fastcalib_subp.add_argument('adp', type=str,help='adp to fast-calibrate')
 
 
 prof_subp = subparsers.add_parser('prof', help='profile calibrated blocks')

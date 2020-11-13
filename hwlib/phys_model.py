@@ -1,6 +1,7 @@
 import hwlib.physdb as physdb
 import hwlib.physdb_util as physutil
 import hwlib.adp as adplib
+import phys_model.lin_dectree as dectreelib
 
 class ExpPhysModel:
   MODEL_ERROR = "modelError"
@@ -23,6 +24,12 @@ class ExpPhysModel:
   def set_optimize_func(self,func):
     self._optimize_expr = func
 
+  def random_sample(self):
+    samples = []
+    for par,dectree in self._delta_params.items():
+      samples += dectree.random_sample(samples)
+
+    return samples
 
   @property
   def static_cfg(self):
@@ -45,6 +52,16 @@ class ExpPhysModel:
     }
   #'phys_model': self.phys_models.to_json(),
 
+
+  def __repr__(self):
+    st = "%s\n" % self.cfg
+    st += "num-samples: %d\n" % self.num_samples
+    st += "opt-expr: %s\n" % self._optimize_expr
+    for par,dectree in self._delta_params.items():
+      st += "===== %s =====\n" % par
+      st += str(dectree.pretty_print())
+
+    return st
 
   def update(self):
     fields = self.to_json()
@@ -96,7 +113,8 @@ class ExpPhysModel:
     cfg = adplib.BlockConfig.from_json(dev,cfg_obj)
 
     mdl = ExpPhysModel(db,dev,blk,cfg,load_db=False)
-    mdl._delta_params = physutil.decode_dict(obj['params'])
+    for par,subobj in physutil.decode_dict(obj['params']).items():
+      mdl._delta_params[par] = dectreelib.DecisionNode.from_json(subobj)
     mdl.label = physutil.PhysModelLabel(obj['label'])
     mdl.num_samples = obj['num_samples']
     mdl.optimize_expr = None

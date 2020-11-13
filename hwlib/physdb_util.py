@@ -23,7 +23,7 @@ class DeltaModelLabel(Enum):
         else DeltaModel.MAX_FIT)
     else:
       return (DeltaModelLabel.LEGACY_MIN_ERROR if legacy \
-        else DeltaModel.MIN_ERROR)
+        else DeltaModelLabel.MIN_ERROR)
 
 def encode_dict(data):
   text = json.dumps(data)

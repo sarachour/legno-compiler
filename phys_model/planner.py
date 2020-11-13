@@ -115,14 +115,14 @@ class SingleDefaultPointPlanner(BruteForcePlanner):
 
 class SingleTargetedPointPlanner(BruteForcePlanner):
 
-  def __init__(self,block,loc,cfg,m,target_dict):
-    BruteForcePlanner.__init__(self,block,loc,cfg,0,m)
-    self.target_dict = target_dict
+  def __init__(self,block,loc,cfg,n,m,hidden_codes):
+    BruteForcePlanner.__init__(self,block,loc,cfg,n,m)
+    self.hidden_codes = hidden_codes
 
   def new_hidden(self):
     hidden = {}
     for state in filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), self.block.state):
-      hidden[state] = self.target_dict[state.name]
+      hidden[state] = self.hidden_codes[state.name]
 
     self.hidden_iterator = hidden
     self.dynamic_iterator = None

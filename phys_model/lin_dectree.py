@@ -38,10 +38,10 @@ class DecisionNode:
   def min_sample(self):
     return self.left.min_sample() + self.left.min_sample()
 
-  def random_sample(self):
+  def random_sample(self,samples=[]):
     results = []
-    results += self.left.random_sample()
-    results += self.right.random_sample()
+    results += self.left.random_sample(samples)
+    results += self.right.random_sample(samples)
     return results
 
 
@@ -132,9 +132,16 @@ class RegressionLeafNode:
   def min_sample(self):
     return len(self.params) + 1
 
-  def random_sample(self):
+  def random_sample(self,samples):
     result = []
-    for i in range(self.min_sample()):
+    # count number of already valid samples
+    n_valid_samples = len(list(filter(lambda samp: self.region.valid_code(samp), \
+                                    samples)))
+
+    if n_valid_samples >= self.min_sample():
+      return result
+
+    for i in range(self.min_sample()-n_valid_samples):
       result.append(self.region.random_code())
     assert(len(result) == self.min_sample())
     return result

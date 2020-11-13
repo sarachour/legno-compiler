@@ -1,4 +1,5 @@
 from hwlib.delta_model import ExpCfgBlock
+from hwlib.phys_model import ExpPhysModel
 import hwlib.physdb_util as physutil
 import hwlib.physdb as physdb
 
@@ -73,15 +74,11 @@ def get_all(db,dev):
     yield ExpCfgBlock.from_json(db,dev,row)
 
 # get concretization of physical model
-def get_physical_models(db,dev,blk,inst,cfg=None):
-  where_clause = {'block':blk.name, \
-                  'loc':str(inst) \
-  }
+def get_physical_model(db,dev,blk,cfg):
+  where_clause = {'block':blk.name}
+  static_cfg = physutil.get_static_cfg(blk,cfg)
+  where_clause['static_config'] = static_cfg
 
-  if not cfg is None:
-    static_cfg = ExpCfgBlock.get_static_cfg(blk,cfg)
-    where_clause['static_config'] = static_cfg
-
-  for row in db.select(physdb.PhysicalDatabase.DB.DELTA_MODELS, where_clause):
-    return ExpCfgBlock.from_json(db,dev,row).phys_models
+  for row in db.select(physdb.PhysicalDatabase.DB.PHYS_MODELS, where_clause):
+    return ExpPhysModel.from_json(db,dev,row)
 

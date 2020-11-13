@@ -13,12 +13,7 @@ class Region():
     if not bounds is None:
       self.set_ranges(bounds)
   '''
-  def __init__(self,bounds = {'pmos':[0,7],\
-                   'nmos':[0,7],\
-                   'gain_cal':[0,63],\
-                   'bias_out':[0,63],\
-                   'bias_in0':[0,63],\
-                   'bias_in1':[0,63]}):
+  def __init__(self,bounds = {}):
     self.bounds = bounds
     if not bounds is None:
       self.set_ranges(bounds)
@@ -88,6 +83,7 @@ class Region():
     return True
 
   def overlap(self,reg):
+    raise Exception("too specialized")
     bounds = {'pmos':[0,7],\
                    'nmos':[0,7],\
                    'gain_cal':[0,63],\

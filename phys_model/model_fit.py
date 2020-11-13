@@ -204,13 +204,14 @@ def fit_delta_model_to_data(phys,relation,data):
     result = fit_model(phys.delta_model.spec.params,relation,data)
   except TypeError as e:
     print("insufficient data: %d points" % (len(data['meas_mean'])))
-    return
+    return False
 
 
   for par,val in result['params'].items():
     if par in relation.vars():
       phys.delta_model.bind(par,val)
 
+  return True
 
 def compute_delta_model_error(phys,data):
   inputs = data['inputs']
@@ -237,7 +238,8 @@ def fit_delta_model_integrator(phys):
   if len(deriv_dataset['meas_mean']) == 0:
     return
 
-  result = fit_delta_model_to_data(phys,relation.deriv,deriv_dataset)
+  if not fit_delta_model_to_data(phys,relation.deriv,deriv_dataset):
+    return
 
   sumsq = phys.delta_model.error(ic_dataset['inputs'], \
                                  ic_dataset['meas_mean'], \
@@ -258,5 +260,7 @@ def fit_delta_model(phys):
     dataset = phys.dataset.get_data( \
                                      llenums.ProfileStatus.SUCCESS, \
                                      llenums.ProfileOpType.INPUT_OUTPUT)
-    fit_delta_model_to_data(phys, delta_spec.relation, dataset)
+    if not fit_delta_model_to_data(phys, delta_spec.relation, dataset):
+      return
+
     compute_delta_model_error(phys,dataset)

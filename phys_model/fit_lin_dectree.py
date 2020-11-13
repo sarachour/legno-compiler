@@ -4,10 +4,14 @@ from csv import reader
 from sklearn.linear_model import LinearRegression
 import ops.opparse as opparse
 import phys_model.lin_dectree as lindectree
-
+import numpy as np
+import warnings
 def gini_score(inputs,output):
   reg = LinearRegression().fit(inputs, output)
-  R2_score = reg.score(inputs, output)
+  if len(output) >= 2:
+    R2_score = reg.score(inputs, output)
+  else:
+    R2_score = 0.0
   return R2_score
 
 # Calculate the Gini index for a split dataset
@@ -178,4 +182,14 @@ def fit_decision_tree(input_names,inputs, output, max_depth, min_size):
     for idx in range(len(inputs)):
       predictions.append(clstree.evaluate(dict(zip(input_names,inputs[idx]))))
     return clstree,predictions
+
+
+def model_error(predictions,outputs):
+    model_error = 0
+    n = 0
+    for pred,meas in zip(predictions,outputs):
+      model_error += pow(pred-meas,2)
+      n += 1
+
+    return np.sqrt(model_error/n)
 
