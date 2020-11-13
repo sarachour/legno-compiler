@@ -159,6 +159,11 @@ class ExpDeltaModel:
     self.label = physutil.DeltaModelLabel.NONE
 
   @property
+  def integration_op(self):
+    rel = self.spec.get_model(self.params)
+    return rel.op == oplib.OpType.INTEG
+
+  @property
   def complete(self):
     for par in self.spec.params:
       if not par in self.params:
@@ -206,7 +211,7 @@ class ExpDeltaModel:
     for values in zip(*input_value_set):
       inp_map = dict(list(zip(input_fields,values)) + \
                      list(params.items()))
-      if rel.op == oplib.OpType.INTEG:
+      if self.integration_op:
         if init_cond:
           output = rel.init_cond.compute(inp_map)
         else:
