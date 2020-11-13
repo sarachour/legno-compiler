@@ -48,7 +48,7 @@ int measure_seq_single(Fabric* fab,
     codes[index] = micros();
   }
   fab->execStop();
-  const float thresh = 1.0;
+  const float thresh = 2.0;
   assert(n <= SAMPLES);
   int oob_idx = n;
   for(unsigned int index = 0; index < n; index++){
