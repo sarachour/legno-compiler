@@ -280,6 +280,19 @@ def is_calibrated(board,blk,loc,cfg,label):
 
     return False
 
+def fit_phys_model(board,blk,loc,cfg,phys_model):
+    for expmodel in physapi.get_by_block_instance(board.physdb,board,blk, \
+                                                          cfg.inst.loc, cfg, hidden=False):
+        if not expmodel.delta_model.complete:
+            fitlib.fit_delta_model(expmodel)
+
+        if not expmodel.delta_model.complete:
+            continue
+
+        print(expmodel)
+    input()
+
+
 def fast_calibrate_adp(args):
     board = get_device(args.model_number)
     char_board = get_device(args.char_data)
@@ -326,7 +339,10 @@ def fast_calibrate_adp(args):
             print("minimization objective: %s" % obj_fun)
             dectree = lindectreelib.RegressionNodeCollection(lindectree_eval \
                                                              .eval_expr(obj_fun, phys_model.params))
-            
+
+            #concrete physical model
+            #fit_phys_model(board,blk,cfg.inst.loc,cfg,phys_model)
+
             print("---> Bootstrapping model")
             samples = dectree.random_sample()
             print("# samples: %s" % len(samples))
@@ -338,6 +354,7 @@ def fast_calibrate_adp(args):
                                                              hidden_codes=sample)
                 proflib.profile_all_hidden_states(runtime,board,planner)
 
+            
 
 
 
