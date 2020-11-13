@@ -320,20 +320,25 @@ def fast_calibrate_adp(args):
             samples = phys_model.random_sample()
             print("# samples: %s" % len(samples))
             for sample in samples:
-                print(sample)
                 planner = planlib.SingleTargetedPointPlanner(blk,cfg.inst.loc,cfg, \
                                                              n=args.grid_size, \
                                                              m=args.grid_size, \
                                                              hidden_codes=sample)
-                proflib.profile_all_hidden_states(runtime,board,planner)
+                #proflib.profile_all_hidden_states(runtime,board,planner)
                 #TODO: analyze collected data to get delta model
 
             print("---> fitting this physical model to the specific block")
+            for expmodel in physapi.get_by_block_instance(board.physdb, board, \
+                                                      blk,cfg.inst.loc,cfg,hidden=False):
+                print("   -> entry %s" % cfg)
+
+            '''
             physapi.fit_physical_model_to_block(board.physdb, phys_model, \
                                                 blk, \
                                                 cfg.inst.loc, \
                                                 cfg)
 
+            '''
 
             objmodel = phys_model.objective_dectree
 
