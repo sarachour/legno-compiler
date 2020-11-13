@@ -69,7 +69,7 @@ def get_by_block_instance(db,dev,blk,inst,cfg=None,hidden=False):
 
 
 def get_all(db,dev):
-  for row in db.select({}):
+  for row in db.select(physdb.PhysicalDatabase.DB.DELTA_MODELS,{}):
     yield ExpCfgBlock.from_json(db,dev,row)
 
 # get concretization of physical model

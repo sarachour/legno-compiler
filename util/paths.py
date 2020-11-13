@@ -26,6 +26,11 @@ class DeviceStatePathHandler:
                 util.mkdir_if_dne(path)
 
 
+    def get_delta_vis(self,block,output,loc,static_cfg,label):
+        rel_path = "%s/%s/%s/" % (self.VISUALIZATIONS,block,static_cfg)
+        util.mkdir_if_dne(rel_path)
+        return "%s/%s_%s_%s.png" % (rel_path,loc,output,label.value)
+
     def set_root_dir(self,root):
         self.ROOT_DIR = root
         self.DATABASE = self.ROOT_DIR + "/%s-%s.db" % (self.board,self.model)

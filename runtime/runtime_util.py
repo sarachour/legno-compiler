@@ -8,12 +8,15 @@ import phys_model.model_fit as fitlib
 import phys_model.planner as planlib
 import phys_model.profiler as proflib
 import phys_model.fit_lin_dectree as fit_lindectree
+import phys_model.visualize as vizlib
 
 import hwlib.physdb as physdblib
 import hwlib.physdb_api as physapi
 import hwlib.physdb_util as physutil
 import hwlib.phys_model as physlib
 import hwlib.delta_model as deltalib
+import util.paths as paths
+
 import json
 
 def get_device(model_no,layout=False):
@@ -131,6 +134,27 @@ def fastcal_adp(args):
     raise Exception("not implemented! need implement fast calibration routine")
 
 
+def visualize(args):
+    board = get_device(args.model_number,layout=True)
+    label = physutil.DeltaModelLabel(args.method)
+    ph = paths.DeviceStatePathHandler(board.name, \
+                                      board.model_number,make_dirs=True)
+
+    for expmodel in physapi.get_all(board.physdb,board):
+        if expmodel.delta_model.complete:
+            png_file = ph.get_delta_vis(expmodel.block.name, \
+                                        str(expmodel.loc), \
+                                        str(expmodel.output.name), \
+                                        str(expmodel.static_cfg), \
+                                        expmodel.delta_model.label)
+            vizlib.deviation(expmodel, \
+                             png_file, \
+                             baseline=vizlib.ReferenceType.MODEL_PREDICTION, \
+                             num_bins=10, \
+                             amplitude=None, \
+                             relative=True)
+
+
 def characterize_adp(args):
     board = get_device(args.model_number,layout=True)
     with open(args.adp,'r') as fh:
@@ -201,10 +225,10 @@ def derive_delta_models_adp(args):
         for mode in cfg_modes:
             cfg.modes = [mode]
             for expmodel in physapi.get_configured_physical_block(board.physdb, \
-                                                                    board, \
-                                                                    blk, \
-                                                                    cfg.inst.loc, \
-                                                                    cfg):
+                                                                  board, \
+                                                                  blk, \
+                                                                  cfg.inst.loc, \
+                                                                  cfg):
                 if len(expmodel.dataset) >= args.min_points and \
                    not expmodel.delta_model.complete:
                     fitlib.fit_delta_model(expmodel)
@@ -259,7 +283,6 @@ def calibrate_adp(args):
                                       method=method)
             for output in blk.outputs:
                 exp = deltalib.ExpCfgBlock(board.physdb, \
-                                           board, \
                                            blk, \
                                            cfg.inst.loc,output, \
                                            upd_cfg, \

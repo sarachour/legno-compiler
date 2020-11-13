@@ -90,11 +90,20 @@ def heatmap(physblk,output_file,inputs,output,n,amplitude=None):
   bounds = physblk.get_bounds()
   surf = ParametricSurface(n)
   colormap_name = "coolwarm"
-  for var in inputs.keys():
-    surf.add_variable(var,ivallib.Interval(bounds[var][0], \
-                                           bounds[var][1]))
+  if len(output) == 0:
+    return
 
-  assert(len(surf.variables) <= 2)
+  for var in inputs.keys():
+    ival = ivallib.Interval(bounds[var][0], \
+                            bounds[var][1])
+    # there is some variation
+    dynamic_range = max(inputs[var]) - min(inputs[var])
+    if dynamic_range > 1e-5:
+      surf.add_variable(var,ival)
+
+  if not (len(surf.variables) <= 2):
+    raise Exception("expected 1 or 2 variables. Received %s inputs" \
+                    % str(inputs.keys()))
   if len(surf.variables) == 2:
     data = np.zeros((surf.num_patches,surf.num_patches));
     variables = list(surf.variables)
@@ -154,20 +163,24 @@ def heatmap(physblk,output_file,inputs,output,n,amplitude=None):
   else:
     raise Exception("unimplemented")
 
-def deviation(blk,output_file, \
-              operation=llenums.ProfileOpType.INPUT_OUTPUT, \
-              baseline=ReferenceType.MODEL_PREDICTION, \
-              num_bins=10,
-              amplitude=None,
-              relative=False):
+def deviation_(blk,output_file, \
+               baseline=ReferenceType.MODEL_PREDICTION, \
+               operation=llenums.ProfileOpType.INPUT_OUTPUT, \
+               init_cond=False, \
+               num_bins=10,
+               amplitude=None,
+               relative=False):
   data = blk.dataset.get_data(llenums.ProfileStatus.SUCCESS, \
                               operation)
+  print(data)
 
   if baseline == ReferenceType.MODEL_PREDICTION:
-    ref = blk.model.predict(data['inputs'])
+    ref = blk.delta_model.predict(data['inputs'], \
+                                  init_cond=init_cond)
   elif baseline == ReferenceType.CORRECTABLE_MODEL_PREDICTION:
-    ref = blk.model.predict(data['inputs'], \
-                            correctable_only=True)
+    ref = blk.delta_model.predict(data['inputs'], \
+                                  correctable_only=True, \
+                                  init_cond=init_cond)
   else:
     raise Exception("unimplemented")
 
@@ -183,9 +196,33 @@ def deviation(blk,output_file, \
     #input("continue")
 
   errors = []
-  ampl = max(np.abs(ref)) if relative else 1.0
+  ampl = max(np.abs(ref)) if relative and len(ref) > 0 else 1.0
   for pred,meas in zip(ref, data['meas_mean']):
     errors.append((meas-pred)/ampl)
 
   heatmap(blk,output_file,data['inputs'],errors,n=num_bins, \
           amplitude=amplitude)
+
+def deviation(blk,output_file, \
+              baseline=ReferenceType.MODEL_PREDICTION, \
+              num_bins=10,
+              amplitude=None,
+              relative=False):
+  if blk.delta_model.integration_op:
+    deviation_(blk,output_file, \
+               operation=llenums.ProfileOpType.INTEG_INITIAL_COND, \
+               init_cond=True, \
+               num_bins=num_bins, \
+               baseline=baseline, \
+               amplitude=amplitude, \
+               relative=relative)
+  else:
+    deviation_(blk,output_file, \
+               operation=llenums.ProfileOpType.INPUT_OUTPUT, \
+               init_cond=False, \
+               num_bins=num_bins, \
+               baseline=baseline, \
+               amplitude=amplitude, \
+               relative=relative)
+
+

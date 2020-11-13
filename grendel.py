@@ -73,6 +73,11 @@ prof_subp.add_argument('--max-points',type=int,default=50, \
                        help="maximum number of dataset points")
 
 
+vis_subp = subparsers.add_parser('vis-delta', help='build delta model visualizations')
+vis_subp.add_argument('method', type=str, \
+                       help='vis label to profile (legacy_min_error/legacy_max_fit/min_error/max_fit)')
+vis_subp.add_argument('--model-number',type=str,help='model number')
+
 delta_subp = subparsers.add_parser('delta', help='build delta models from profile information')
 delta_subp.add_argument('adp', type=str,help='adp to profile')
 delta_subp.add_argument('--model-number',type=str,help='model number')
@@ -93,6 +98,8 @@ elif args.subparser_name == "characterize":
     grendel_util.characterize_adp(args)
 elif args.subparser_name == "mktree":
     grendel_util.mktree_adp(args)
+elif args.subparser_name == "vis-delta":
+    grendel_util.visualize(args)
 else:
     raise Exception("unknown subcommand <%s>" % args.subparser_name)
 
