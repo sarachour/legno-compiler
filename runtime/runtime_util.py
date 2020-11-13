@@ -258,12 +258,12 @@ def calibrate_adp(args):
                                       adp, \
                                       method=method)
             for output in blk.outputs:
-                exp = physdblib.ExpCfgBlock(board.physdb, \
-                                            blk, \
-                                            cfg.inst.loc,output, \
-                                            upd_cfg, \
-                                            status_type=board.profile_status_type, \
-                                            method_type=board.profile_op_type)
+                exp = deltalib.ExpCfgBlock(board.physdb, \
+                                           blk, \
+                                           cfg.inst.loc,output, \
+                                           upd_cfg, \
+                                           status_type=board.profile_status_type, \
+                                           method_type=board.profile_op_type)
                 exp.delta_model.label = delta_model_label
                 exp.update()
 
