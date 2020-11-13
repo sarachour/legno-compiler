@@ -561,7 +561,7 @@ class ADP:
 
 
   def incoming_conns(self,block_name,loc,port):
-    for conn in conns:
+    for conn in self.conns:
       if conn.dest_match(block_name,loc,port):
         yield conn
 
