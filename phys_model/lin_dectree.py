@@ -62,8 +62,6 @@ class DecisionNode:
 
  
 
-
-
   '''
   This function serializes the decision tree into a json data structure.
   '''
@@ -94,10 +92,7 @@ class DecisionNode:
     else:
       return right_minimum, right_min_code
 
-  def update(self, region=None):
-    if region is None:
-      region = reglib.Region()
-
+  def update(self, region):
     eps = 0.5
     left_region = region.copy()
     left_region.set_range(self.name,None,self.value-eps)
@@ -116,13 +111,12 @@ class DecisionNode:
 
 class RegressionLeafNode:
 
-  def __init__(self,expr,npts=0,R2=-1.0,params={},region = reglib.Region()):
+  def __init__(self,expr,npts=0,R2=-1.0,params={}):
     self.expr = expr
     self.npts = npts
     self.R2 = R2
     self.params = params
-    self.region = region
-
+    self.region = reglib.Region()
 
   def pretty_print(self,indent=0):
     ind = "| "*indent
@@ -143,7 +137,7 @@ class RegressionLeafNode:
 
     for i in range(self.min_sample()-n_valid_samples):
       result.append(self.region.random_code())
-    assert(len(result) == self.min_sample())
+
     return result
 
   '''
@@ -165,7 +159,9 @@ class RegressionLeafNode:
     params = dictionary['params']
     #print("\n\n\n\nparams: ", params)
     region = reglib.Region.from_json(dictionary['region'])
-    return RegressionLeafNode(expr,npts,R2,params,region)
+    node = RegressionLeafNode(expr,npts,R2,params)
+    node.region = region
+    return node
 
   '''
   This function serializes the decision tree into a json data structure.

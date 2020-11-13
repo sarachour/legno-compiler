@@ -4,8 +4,10 @@ from csv import reader
 from sklearn.linear_model import LinearRegression
 import ops.opparse as opparse
 import phys_model.lin_dectree as lindectree
+import phys_model.region as reglib
 import numpy as np
 import warnings
+
 def gini_score(inputs,output):
   reg = LinearRegression().fit(inputs, output)
   if len(output) >= 2:
@@ -175,9 +177,10 @@ def finalize_tree(input_names,node):
 
 
 # Classification and Regression Tree Algorithm
-def fit_decision_tree(input_names,inputs, output, max_depth, min_size):
+def fit_decision_tree(input_names,inputs, output, bounds, max_depth, min_size):
     tree = build_tree(inputs, output, max_depth, min_size)
     clstree = finalize_tree(input_names,tree)
+    clstree.update(reglib.Region(bounds))
     predictions = list()
     for idx in range(len(inputs)):
       predictions.append(clstree.evaluate(dict(zip(input_names,inputs[idx]))))

@@ -33,6 +33,7 @@ def update_dectree_data(blk,loc,exp_mdl, \
                         params, \
                         model_errors, \
                         hidden_code_fields, \
+                        hidden_code_bounds, \
                         hidden_codes):
 
     key = (blk.name,exp_mdl.static_cfg)
@@ -42,6 +43,7 @@ def update_dectree_data(blk,loc,exp_mdl, \
         model_errors[key] = []
         hidden_codes[key] = []
         hidden_code_fields[key] = []
+        hidden_code_bounds[key] = {}
 
     for par,value in exp_mdl.delta_model.params.items():
         if not par in params[key]:
@@ -51,6 +53,8 @@ def update_dectree_data(blk,loc,exp_mdl, \
 
     for hidden_code,_ in exp_mdl.hidden_codes():
         if not hidden_code in hidden_code_fields[key]:
+            hidden_code_bounds[key][hidden_code] = (blk.state[hidden_code].min_value, \
+                                                    blk.state[hidden_code].max_value)
             hidden_code_fields[key].append(hidden_code)
 
     entry = [0]*len(hidden_code_fields[key])
@@ -67,6 +71,7 @@ def mktree(args):
     metadata = {}
     hidden_codes = {}
     hidden_code_fields = {}
+    hidden_code_bounds = {}
     model_errors = {}
     for exp_mdl in physapi.get_all(dev.physdb,dev):
         blk = exp_mdl.block
@@ -83,6 +88,7 @@ def mktree(args):
         update_dectree_data(blk,exp_mdl.loc,exp_mdl, \
                             metadata,params,model_errors, \
                             hidden_code_fields, \
+                            hidden_code_bounds, \
                             hidden_codes)
 
     for key in model_errors.keys():
@@ -91,6 +97,7 @@ def mktree(args):
         min_size = round(n_samples/args.num_leaves)
         print("--- fitting decision tree (%d samples) ---" % n_samples)
         hidden_code_fields_ = hidden_code_fields[key]
+        hidden_code_bounds_ = hidden_code_bounds[key]
         hidden_codes_ = hidden_codes[key]
         model_errors_ = model_errors[key]
 
@@ -99,10 +106,11 @@ def mktree(args):
 
         print(cfg)
         dectree,predictions = fit_lindectree.fit_decision_tree(hidden_code_fields_, \
-                                                                hidden_codes_, \
-                                                                model_errors_, \
-                                                                max_depth=args.max_depth, \
-                                                                min_size=min_size)
+                                                               hidden_codes_, \
+                                                               model_errors_, \
+                                                               bounds=hidden_code_bounds_, \
+                                                               max_depth=args.max_depth, \
+                                                               min_size=min_size)
         err = fit_lindectree.model_error(predictions,model_errors_)
         pct_err = err/max(np.abs(model_errors_))*100.0
         print("<<dectree>>: [[Model-Err]] err=%f pct-err=%f param-range=[%f,%f]" \
@@ -116,10 +124,11 @@ def mktree(args):
         for param,param_values in params[key].items():
             assert(len(param_values) == n_samples)
             dectree,predictions = fit_lindectree.fit_decision_tree(hidden_code_fields_, \
-                                                                    hidden_codes_, \
-                                                                    param_values, \
-                                                                    max_depth=args.max_depth, \
-                                                                    min_size=min_size)
+                                                                   hidden_codes_, \
+                                                                   param_values, \
+                                                                   bounds=hidden_code_bounds_, \
+                                                                   max_depth=args.max_depth, \
+                                                                   min_size=min_size)
             model.set_param(param, dectree)
 
             err = fit_lindectree.model_error(predictions,param_values)
@@ -275,7 +284,7 @@ def fast_calibrate_adp(args):
                             json.loads(fh.read()))
 
     runtime = GrendelRunner()
-    #runtime.initialize()
+    runtime.initialize()
     method = llenums.CalibrateObjective(args.method)
     delta_model_label = physutil.DeltaModelLabel \
                                  .from_calibration_objective(method, \
@@ -311,6 +320,7 @@ def fast_calibrate_adp(args):
             samples = phys_model.random_sample()
             print("# samples: %s" % len(samples))
             for sample in samples:
+                print(sample)
                 planner = planlib.SingleTargetedPointPlanner(blk,cfg.inst.loc,cfg, \
                                                              n=args.grid_size, \
                                                              m=args.grid_size, \

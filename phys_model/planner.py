@@ -122,7 +122,7 @@ class SingleTargetedPointPlanner(BruteForcePlanner):
   def new_hidden(self):
     hidden = {}
     for state in filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), self.block.state):
-      hidden[state] = self.hidden_codes[state.name]
+      hidden[state.name] = self.hidden_codes[state.name]
 
     self.hidden_iterator = hidden
     self.dynamic_iterator = None

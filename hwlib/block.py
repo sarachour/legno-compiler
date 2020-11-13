@@ -610,6 +610,15 @@ class BlockState(BlockField):
           return True
       return False
 
+  @property
+  def min_value(self):
+      return min(self.values)
+
+  @property
+  def max_value(self):
+      return max(self.values)
+
+
   def lift(self,adp,block,loc,data):
     if not self.array is None:
         arr_idx = self.index.code()

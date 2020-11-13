@@ -13,8 +13,8 @@ class Region():
     if not bounds is None:
       self.set_ranges(bounds)
   '''
-  def __init__(self,bounds = {}):
-    self.bounds = bounds
+  def __init__(self,bounds=None):
+    self.bounds = {}
     if not bounds is None:
       self.set_ranges(bounds)
 
@@ -27,6 +27,7 @@ class Region():
     return reg
 
   def set_range(self,var,minval,maxval):
+    assert(isinstance(var,str))
     def wnull(fn,a,b):
       if a is None:
         return b
@@ -46,8 +47,7 @@ class Region():
       self.set_range(k,l,u)
 
   def copy(self):
-    reg = Region()
-    reg.set_ranges(self.bounds)
+    reg = Region(dict(self.bounds))
     return reg
 
   def intersect(self,reg):
