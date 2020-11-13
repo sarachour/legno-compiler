@@ -50,6 +50,13 @@ class Region():
     reg = Region(dict(self.bounds))
     return reg
 
+  def area(self):
+    area = 1
+    for l,u in self.bounds.values():
+      if not l is None and not u is None:
+        area *= max(u-l,0)
+    return area
+
   def intersect(self,reg):
     assert(isinstance(reg,Region))
     res = Region()
@@ -83,39 +90,15 @@ class Region():
     return True
 
   def overlap(self,reg):
-    raise Exception("too specialized")
-    bounds = {'pmos':[0,7],\
-                   'nmos':[0,7],\
-                   'gain_cal':[0,63],\
-                   'bias_out':[0,63],\
-                   'bias_in0':[0,63],\
-                   'bias_in1':[0,63]}
-    is_valid_range = True
-    for var in self.bounds:
-      lower_A = self.bounds[var][0]
-      upper_A = self.bounds[var][1]
-      lower_B = reg.bounds[var][0]
-      upper_B = reg.bounds[var][1]
-      #print("lower_A:", lower_A)
-      #print("upper_A:", upper_A)
-      #print("lower_A:", lower_A)
-      #print("upper_B:", upper_B)
-      if lower_A > lower_B:
-        target_lower = lower_A
-      else:
-        target_lower = lower_B
+    targ_reg = Region(self.bounds)
+    for var,(lower,upper) \
+        in reg.bounds.items():
+      targ_reg.set_range(var,lower,upper)
 
-      if upper_A < upper_B:
-        target_upper = upper_A
-      else:
-        target_upper = upper_B
+    if targ_reg.area() == 0:
+      return None
 
-      if target_upper < target_lower:
-        is_valid_range = False
-
-      bounds[var] = [target_lower,target_upper]
-
-    return Region(bounds)
+    return targ_reg
 
 
 

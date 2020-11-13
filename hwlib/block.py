@@ -742,11 +742,12 @@ class DeltaSpec:
                                            self.val, \
                                            self._model)
 
-    def __init__(self,rel):
+    def __init__(self,rel,objective=None):
         assert(isinstance(rel,oplib.Op))
         self._params = {}
         self.relation = rel
         self._model_error = None
+        self.objective = objective
 
     @property
     def model_error(self):
@@ -866,7 +867,6 @@ class Block:
     self.data = BlockFieldCollection(self,BlockData)
     self.state = BlockStateCollection(self)
     self.modes = BlockModeset(mode_spec)
-
 
     self.name = name
     self.ll_name = name

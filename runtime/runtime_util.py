@@ -7,6 +7,8 @@ import phys_model.model_fit as fitlib
 import phys_model.planner as planlib
 import phys_model.profiler as proflib
 import phys_model.fit_lin_dectree as fit_lindectree
+import phys_model.dectree_algebra as lindectree_eval
+import phys_model.lin_dectree as lindectreelib
 import phys_model.visualize as vizlib
 
 from hwlib.adp import ADP,ADPMetadata
@@ -18,6 +20,8 @@ import hwlib.physdb_util as physutil
 import hwlib.phys_model as physlib
 import hwlib.delta_model as deltalib
 import util.paths as paths
+
+import ops.generic_op as genoplib
 
 import compiler.lscale_pass.lscale_widening as widenlib
 import json
@@ -316,52 +320,25 @@ def fast_calibrate_adp(args):
                 print("-> no physical model available!")
                 continue
 
+            terms = []
+            obj_fun = genoplib.product(list(map(lambda out: out.deltas[cfg.mode].objective, \
+                                                blk.outputs)))
+            print("minimization objective: %s" % obj_fun)
+            dectree = lindectreelib.RegressionNodeCollection(lindectree_eval \
+                                                             .eval_expr(obj_fun, phys_model.params))
+            
             print("---> Bootstrapping model")
-            samples = phys_model.random_sample()
+            samples = dectree.random_sample()
             print("# samples: %s" % len(samples))
             for sample in samples:
+                print(sample)
                 planner = planlib.SingleTargetedPointPlanner(blk,cfg.inst.loc,cfg, \
                                                              n=args.grid_size, \
                                                              m=args.grid_size, \
                                                              hidden_codes=sample)
-                #proflib.profile_all_hidden_states(runtime,board,planner)
-                #TODO: analyze collected data to get delta model
+                proflib.profile_all_hidden_states(runtime,board,planner)
 
-            print("---> fitting this physical model to the specific block")
-            for expmodel in physapi.get_by_block_instance(board.physdb, board, \
-                                                      blk,cfg.inst.loc,cfg,hidden=False):
-                print("   -> entry %s" % cfg)
 
-            '''
-            physapi.fit_physical_model_to_block(board.physdb, phys_model, \
-                                                blk, \
-                                                cfg.inst.loc, \
-                                                cfg)
-
-            '''
-
-            objmodel = phys_model.objective_dectree
-
-            input()
-            '''
-            upd_cfg = llcmd.fast_calibrate(runtime, \
-                                           char_board, \
-                                           board, \
-                                           blk, \
-                                           cfg.inst.loc,\
-                                           adp, \
-                                           method=method)
-            '''
-            for output in blk.outputs:
-                exp = deltalib.ExpCfgBlock(board.physdb, \
-                                           board, \
-                                           blk, \
-                                           cfg.inst.loc,output, \
-                                           upd_cfg, \
-                                           status_type=board.profile_status_type, \
-                                           method_type=board.profile_op_type)
-                exp.delta_model.label = delta_model_label
-                exp.update()
 
 
 def calibrate_adp(args):

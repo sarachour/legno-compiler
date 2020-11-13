@@ -15,7 +15,7 @@ def is_valid_region(region):
 
 def eval_expr(e,subs):
   if e.op == genoplib.OpType.VAR:
-    return subs[e.name]
+    return subs[e.name].leaves()
   elif e.op == genoplib.OpType.PAREN:
     return eval_expr(e.expr,subs)
   elif e.op == genoplib.OpType.ADD:
@@ -45,9 +45,14 @@ def op_apply2(func, leaves1, leaves2):
   for leaf1 in leaves1:
     for leaf2 in leaves2:
       reg = leaf1.region.overlap(leaf2.region)
+      if reg is None:
+        continue
+
       expr = func(leaf1.expr,leaf2.expr)
       if is_valid_region(reg):
-        yield lin_dectree.RegressionLeafNode(expr, region = reg)
+        node = lin_dectree.RegressionLeafNode(expr)
+        node.region = reg
+        yield node
 
 def reconstruct(leaf_node_list,boundaries_to_ignore,default_boundaries):
 

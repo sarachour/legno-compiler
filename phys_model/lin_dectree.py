@@ -6,6 +6,17 @@ import phys_model.region as reglib
 import ops.base_op as baselib
 import json
 
+class RegressionNodeCollection:
+
+  def __init__(self,nodes):
+    self.nodes = nodes
+
+  def random_sample(self):
+    samples = []
+    for node in self.nodes:
+      samples += node.random_sample(samples)
+    return samples
+
 class DecisionNode:
 
   def __init__(self,name,value,left,right):
