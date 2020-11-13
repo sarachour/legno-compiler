@@ -171,7 +171,7 @@ def profile_adp(args):
         cfg_modes = cfg.modes
         for mode in cfg_modes:
             cfg.modes = [mode]
-            for expmodel in physdblib.get_calibrated_configured_physical_block(board.physdb, \
+            for expmodel in physapi.get_calibrated_configured_physical_block(board.physdb, \
                                                                                board, \
                                                                                blk, \
                                                                                cfg.inst.loc, \

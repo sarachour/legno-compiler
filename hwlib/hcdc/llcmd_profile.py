@@ -2,6 +2,7 @@ import hwlib.hcdc.hcdcv2 as hcdclib
 import hwlib.hcdc.llenums as llenums
 import hwlib.hcdc.llcmd_util as llutil
 import hwlib.physdb as physdblib
+import hwlib.delta_model as deltalib
 import hwlib.adp as adplib
 
 def profile(runtime,dev, \
@@ -56,8 +57,8 @@ def profile(runtime,dev, \
 
     # insert into database
     blkcfg = new_adp.configs.get(blk.name,loc)
-    row = physdblib.ExpCfgBlock(dev.physdb, \
-                             blk,loc,new_out,blkcfg, \
+    row = deltalib.ExpCfgBlock(dev.physdb, \
+                             dev,blk,loc,new_out,blkcfg, \
                              status_type=dev.profile_status_type, \
                              method_type=dev.profile_op_type)
     row.update()

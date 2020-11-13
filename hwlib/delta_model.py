@@ -370,14 +370,14 @@ class ExpCfgBlock:
   def add_datapoint(self,cfg,inputs,method,status,mean,std):
     # test that this is the same block usage
     assert(self.static_cfg  \
-           == ExpCfgBlock.get_static_cfg(self.block,cfg))
+           == physutil.get_static_cfg(self.block,cfg))
     assert(self.cfg.inst == cfg.inst)
     assert(self.hidden_cfg  \
-           == ExpCfgBlock.get_hidden_cfg(self.block,cfg))
+           == physutil.get_hidden_cfg(self.block,cfg))
 
     # add point
     self.dataset.add(method,inputs, \
-                     ExpCfgBlock.get_dynamic_cfg(cfg), \
+                     physutil.get_dynamic_cfg(cfg), \
                      status, \
                      mean,std)
     self.update()
