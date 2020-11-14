@@ -11,11 +11,12 @@ class RegressionNodeCollection:
   def __init__(self,nodes):
     self.nodes = nodes
 
-  def random_sample(self):
-    samples = []
+  def random_sample(self,samples=[]):
+    new_samples = []
     for node in self.nodes:
-      samples += node.random_sample(samples)
-    return samples
+      new_samples += node.random_sample(samples+new_samples)
+
+    return new_samples
 
   def fit(self,dataset):
     for node in self.nodes:

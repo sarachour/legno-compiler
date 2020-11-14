@@ -9,7 +9,14 @@ from hwlib.adp import ADP
 
 import argparse
 
-import runtime.runtime_util as grendel_util
+import runtime.runt_characterize as runt_char
+import runtime.runt_calibrate as runt_cal
+import runtime.runt_fastcal as runt_fastcal
+import runtime.runt_execute as runt_exec
+import runtime.runt_profile as runt_prof
+import runtime.runt_visualize as runt_visualize
+import runtime.runt_mkdeltamodels as runt_mkdeltas
+import runtime.runt_mkphysmodels as runt_mkphys
 
 
 parser = argparse.ArgumentParser(description='Grendel runtime.')
@@ -83,21 +90,21 @@ delta_subp.add_argument('--min-points',default=10,help='minimum number of points
 args = parser.parse_args()
 
 if args.subparser_name == "exec":
-    grendel_util.exec_adp(args)
+    runt_exec.exec_adp(args)
 elif args.subparser_name == "cal":
-    grendel_util.calibrate_adp(args)
+    runt_cal.calibrate_adp(args)
 elif args.subparser_name == "prof":
-    grendel_util.profile_adp(args)
+    runt_profile.profile_adp(args)
 elif args.subparser_name == "delta":
-    grendel_util.derive_delta_models_adp(args)
+    runt_mkdeltas.derive_delta_models_adp(args)
 elif args.subparser_name == "fastcal":
-    grendel_util.fast_calibrate_adp(args)
+    runt_fastcal.fast_calibrate_adp(args)
 elif args.subparser_name == "characterize":
-    grendel_util.characterize_adp(args)
+    runt_char.characterize_adp(args)
 elif args.subparser_name == "mktree":
-    grendel_util.mktree(args)
+    runt_mkphys.mktree(args)
 elif args.subparser_name == "vis-delta":
-    grendel_util.visualize(args)
+    runt_visualize.visualize(args)
 else:
     raise Exception("unknown subcommand <%s>" % args.subparser_name)
 
