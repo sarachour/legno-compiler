@@ -105,6 +105,9 @@ class ConfigStmt:
   def pretty_print(self):
     raise NotImplementedError()
 
+  def copy(self):
+    raise NotImplementedError
+
   def to_json(self):
     raise NotImplementedError
 
@@ -133,6 +136,11 @@ class ConstDataConfig(ConfigStmt):
     ConfigStmt.__init__(self,ConfigStmtType.CONSTANT,field)
     self.value = value
     self.scf = 1.0
+
+  def copy(self):
+    cfg = ConstDataConfig(self.name,self.value)
+    cfg.scf = self.scf
+    return cfg
 
   def pretty_print(self):
     return "val=%f scf=%f" \
@@ -163,6 +171,13 @@ class ExprDataConfig(ConfigStmt):
     for key in args + [field]:
       self.scfs[key] = 1.0
       self.injs[key] = 1.0
+
+  def copy(self):
+    cfg = ExprDataConfig(self.name,self.args,expr=self.expr)
+    cfg.scfs = dict(self.scfs)
+    cfg.injs = dict(self.injs)
+    return cfg
+
 
   @property
   def expr(self):
@@ -228,6 +243,13 @@ class PortConfig(ConfigStmt):
     self._scf = 1.0
     self.source = None
 
+  def copy(self):
+    cfg = PortConfig(self.name)
+    cfg._scf = self._scf
+    cfg.source = self.source
+    return cfg
+
+
   @property
   def scf(self):
     return self._scf
@@ -267,6 +289,9 @@ class StateConfig(ConfigStmt):
     ConfigStmt.__init__(self,ConfigStmtType.STATE,name)
     self.name = name
     self.value = value
+
+  def copy(self):
+    return StateConfig(self.name,self.value)
 
   def pretty_print(self):
     return "val=%s" % (self.value)
@@ -313,6 +338,15 @@ class BlockConfig:
     self._stmts = {}
     for stmt in other.stmts:
       self.add(stmt)
+
+  def copy(self):
+    cfg = BlockConfig(self.inst)
+    cfg.modes = list(self.modes)
+    for st in self._stmts.values():
+      cfg.add(st.copy())
+
+    return cfg
+
 
   @staticmethod
   def from_json(dev,obj):

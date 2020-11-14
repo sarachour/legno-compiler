@@ -20,7 +20,9 @@ import hwlib.physdb_util as physutil
 import hwlib.phys_model as physlib
 import hwlib.delta_model as deltalib
 import util.paths as paths
+import hwlib.block as blocklib
 
+import ops.op as oplib
 import ops.generic_op as genoplib
 
 import compiler.lscale_pass.lscale_widening as widenlib
@@ -280,18 +282,39 @@ def is_calibrated(board,blk,loc,cfg,label):
 
     return False
 
-def fit_phys_model(board,blk,loc,cfg,phys_model):
-    for expmodel in physapi.get_by_block_instance(board.physdb,board,blk, \
-                                                          cfg.inst.loc, cfg, hidden=False):
+def fit_phys_model(board,blk,loc,cfg,objfun_dectree,objfun_expr):
+    assert(isinstance(objfun_expr,oplib.Op))
+    assert(isinstance(objfun_dectree, lindectreelib.RegressionNodeCollection))
+    objfun_vals = []
+    hidden_codes = dict(map(lambda st: (st.name,[]), \
+                            filter(lambda st: isinstance(st.impl,blocklib.BCCalibImpl), \
+                               blk.state)))
+
+    for expmodel in physapi.get_by_block_instance(board.physdb,board,blk,\
+                                                  cfg.inst.loc, cfg,\
+                                                  hidden=False):
         if not expmodel.delta_model.complete:
             fitlib.fit_delta_model(expmodel)
 
         if not expmodel.delta_model.complete:
             continue
 
-        print(expmodel)
-    input()
+        for hidden_code in hidden_codes:
+            hidden_codes[hidden_code].append(expmodel.cfg[hidden_code].value)
 
+        pars = dict(expmodel.delta_model.params)
+        pars[physlib.ExpPhysModel.MODEL_ERROR] = expmodel.delta_model.model_error
+        value = objfun_expr.compute(pars)
+        objfun_vals.append(value)
+
+    print("num points: %d" % len(objfun_vals))
+    if len(objfun_vals) > 0 and \
+       objfun_dectree.fit({'inputs':hidden_codes, \
+                            'meas_mean':objfun_vals}):
+        assert(objfun_dectree.is_concrete())
+        return True
+    else:
+        return False
 
 def fast_calibrate_adp(args):
     board = get_device(args.model_number)
@@ -334,28 +357,54 @@ def fast_calibrate_adp(args):
                 continue
 
             terms = []
-            obj_fun = genoplib.product(list(map(lambda out: out.deltas[cfg.mode].objective, \
+            objfun_expr = genoplib.product(list(map(lambda out: out.deltas[cfg.mode].objective, \
                                                 blk.outputs)))
-            print("minimization objective: %s" % obj_fun)
-            dectree = lindectreelib.RegressionNodeCollection(lindectree_eval \
-                                                             .eval_expr(obj_fun, phys_model.params))
+            objfun_dectree = lindectreelib.RegressionNodeCollection(lindectree_eval \
+                                                                    .eval_expr(objfun_expr,  \
+                                                                               phys_model.params))
+            print("minimization objective: %s" % objfun_expr)
 
             #concrete physical model
-            #fit_phys_model(board,blk,cfg.inst.loc,cfg,phys_model)
 
             print("---> Bootstrapping model")
-            samples = dectree.random_sample()
-            print("# samples: %s" % len(samples))
+            samples = objfun_dectree.random_sample()
             for sample in samples:
-                print(sample)
                 planner = planlib.SingleTargetedPointPlanner(blk,cfg.inst.loc,cfg, \
                                                              n=args.grid_size, \
                                                              m=args.grid_size, \
                                                              hidden_codes=sample)
                 proflib.profile_all_hidden_states(runtime,board,planner)
 
-            
+            print("# samples: %s" % len(samples))
+            if not fit_phys_model(board,blk,cfg.inst.loc,cfg, \
+                                  objfun_dectree, \
+                                  objfun_expr):
+                print("-> could not fit physical model. Maybe not enough points?")
+                continue
 
+            minval, best_hidden_codes = objfun_dectree.find_minimum()
+            print("---- found next prediction ----")
+            print("minimum: %s" % str(minval))
+            print("  hidden-codes: %s" % best_hidden_codes)
+            
+            upd_cfg = cfg.copy()
+            for hidden_code,value in best_hidden_codes.items():
+                upd_cfg[hidden_code].value = value
+
+            print("-> updating code")
+            for output in blk.outputs:
+                print(upd_cfg)
+                print("label: %s" % delta_model_label)
+                exp = deltalib.ExpCfgBlock(board.physdb, \
+                                           board, \
+                                           blk, \
+                                           cfg.inst.loc, \
+                                           output, \
+                                           upd_cfg, \
+                                           status_type=board.profile_status_type, \
+                                           method_type=board.profile_op_type)
+                exp.delta_model.label = delta_model_label
+                exp.update()
 
 
 def calibrate_adp(args):

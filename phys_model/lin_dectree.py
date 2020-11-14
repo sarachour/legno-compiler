@@ -17,6 +17,34 @@ class RegressionNodeCollection:
       samples += node.random_sample(samples)
     return samples
 
+  def fit(self,dataset):
+    for node in self.nodes:
+      if not node.fit(dataset):
+        return False
+    return True
+
+  def is_concrete(self):
+    return any(map(lambda n: not n.is_concrete(), \
+                   self.nodes))
+
+  def find_minimum(self):
+    minval = None
+    codes = None
+    for node in self.nodes:
+      node_min,codes = node.find_minimum()
+      if minval is None or \
+         node_min < minval:
+        minval = node_min
+        mincodes = codes
+
+    return minval,codes
+
+  def __repr__(self):
+    st = ""
+    for node in self.nodes:
+      st += str(node) + "\n"
+    return st
+
 class DecisionNode:
 
   def __init__(self,name,value,left,right):
@@ -85,16 +113,13 @@ class DecisionNode:
     dictionary['right'] = self.right.to_json()
     return dictionary
 
-  def fit(self,dataset,output = []):
+  def fit(self,dataset):
     hidden_codes = ['pmos', 'nmos', 'gain_cal', 'bias_in0', 'bias_in1', 'bias_out'] 
 
     self.left.fit(dataset)
     self.right.fit(dataset)
 
   def find_minimum(self):
-    #reg = self.region.copy()
-    #reg.set_ranges(bounds)
-    #self.update(reg)
     left_minimum,left_min_code = self.left.find_minimum()
     right_minimum,right_min_code = self.right.find_minimum()
 
@@ -134,8 +159,13 @@ class RegressionLeafNode:
     return "%sexpr %s, npts=%d, R2=%f, pars=%s\n" \
       % (ind,self.expr,self.npts,self.R2,self.params)
 
+
+  def is_concrete(self):
+    return any(map(lambda v: v is None, self.params.values()))
+
   def min_sample(self):
     return len(self.params) + 1
+
 
   def random_sample(self,samples):
     result = []
@@ -194,7 +224,7 @@ class RegressionLeafNode:
   and R2 value of each leaf node. The format of the inputs and output fields
   is up to you
   '''
-  def fit(self,dataset,output = []):
+  def fit(self,dataset):
     valid_dataset = {}
     hidden_codes = dataset['inputs'].keys()
     valid_dataset['inputs'] = dict(map(lambda k : (k,[]), dataset['inputs'].keys()))
@@ -212,12 +242,13 @@ class RegressionLeafNode:
     if not npts_valid >= self.min_sample():
       print("not enough datapoints: have %d/%d points"  \
                       % (npts_valid,self.min_sample()))
-      self.params = {}
-      return
+      self.params = dict(map(lambda p: (p,None), \
+                             self.params.keys()))
+      return False
 
     new_fit = fitlib.fit_model(self.params, self.expr, valid_dataset)
     self.params = new_fit['params']
-    print("FIT %d" % (npts_valid))
+    return True
 
   def evaluate(self,hidden_state):
     assigns = dict(list(self.params.items()) +
@@ -228,6 +259,9 @@ class RegressionLeafNode:
     #concretize
     sub_dict = {}
     for key,value in self.params.items():
+      if value is None:
+        raise Exception("undefined variable <%s>" % key)
+
       sub_dict[key] = genoplib.Const(value)
     concrete_expr = self.expr.substitute(sub_dict)
 
@@ -245,7 +279,7 @@ class RegressionLeafNode:
   def apply_expr_op(self,target_function, optional_arg = None):
     expr = target_function(self.expr,optional_arg)
     return RegressionLeafNode(expr,self.npts,self.R2,self.params,self.region)
-    
+
 
   def concretize(self):
     new_params = {}
@@ -257,3 +291,7 @@ class RegressionLeafNode:
 
   def copy(self):
     return RegressionLeafNode(self.expr,self.npts,self.R2,self.params,self.region)
+
+
+  def __repr__(self):
+    return "%s %s (R2=%f)" % (self.expr,self.params,self.R2)

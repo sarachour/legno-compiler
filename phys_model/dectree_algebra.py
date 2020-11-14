@@ -39,6 +39,9 @@ def op_apply1(func, leaves):
    for leaf in leaves:
       new_leaf = leaf.copy()
       new_leaf.expr = func(leaf.expr)
+      new_leaf.params = dict(map(lambda p: (p,None),leaf1.params.keys() + \
+                                 leaf2.params.keys()))
+
       yield new_leaf
 
 def op_apply2(func, leaves1, leaves2):
@@ -51,6 +54,9 @@ def op_apply2(func, leaves1, leaves2):
       expr = func(leaf1.expr,leaf2.expr)
       if is_valid_region(reg):
         node = lin_dectree.RegressionLeafNode(expr)
+        node.params = dict(map(lambda p: (p,None), \
+                               list(leaf1.params.keys()) + \
+                               list(leaf2.params.keys())))
         node.region = reg
         yield node
 
