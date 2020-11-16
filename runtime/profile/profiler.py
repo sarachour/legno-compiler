@@ -9,7 +9,6 @@ import hwlib.hcdc.hcdcv2 as hcdclib
 import itertools
 import ops.op as oplib
 
-import phys_model.phys_util as phys_util
 from lab_bench.grendel_runner import GrendelRunner
 import lab_bench.grendel_util as grendel_util
 from enum import Enum

@@ -2,13 +2,13 @@ import hwlib.device as devlib
 import hwlib.block as blocklib
 import hwlib.adp as adplib
 import hwlib.hcdc.hcdcv2 as hcdclib
-import phys_model.phys_util as phys_util
-#import target_block
 import random
 import itertools
 import ops.opparse as opparse
 import time
 import matplotlib.pyplot as plt
+
+import runtime.runtime_util as runtime_util
 
 class ProfilePlanner:
 
@@ -49,7 +49,7 @@ class BruteForcePlanner(ProfilePlanner):
     hidden = {}
     for state in filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), \
                         self.block.state):
-      hidden[state] = phys_util.select_from_array(state.values,self.n)
+      hidden[state] = runtime_util.select_from_array(state.values,self.n)
     self._hidden_fields = list(hidden.keys())
     hidden_values = list(map(lambda k :hidden[k], self._hidden_fields))
 
@@ -74,10 +74,10 @@ class BruteForcePlanner(ProfilePlanner):
 
     dynamic = {}
     for inp in filter(lambda inp: inp.name in variables, blk.inputs):
-      dynamic[inp.name] = phys_util.select_from_interval(inp.interval[self.config.mode],self.m)
+      dynamic[inp.name] = runtime_util.select_from_interval(inp.interval[self.config.mode],self.m)
 
     for data in filter(lambda dat: dat.name in variables, blk.data):
-      dynamic[data.name] = phys_util.select_from_quantized_interval(data.interval[self.config.mode],  \
+      dynamic[data.name] = runtime_util.select_from_quantized_interval(data.interval[self.config.mode],  \
                                                                     data.quantize[self.config.mode], \
                                                                     self.m)
 
@@ -148,7 +148,7 @@ class SensitivityPlanner(BruteForcePlanner):
     output_codes = []
 
     for state in filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), self.block.state):
-      hidden[state] = phys_util.select_from_array(state.values,self.n)
+      hidden[state] = runtime_util.select_from_array(state.values,self.n)
       svd[state] = self.config[state.name].value
 
     for state in hidden:
@@ -170,7 +170,7 @@ class SensitivityPlanner(BruteForcePlanner):
     hidden_values = list(map(lambda k :hidden[k], self._hidden_fields))
 
     #for state in filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), self.block.state):
-    #  hidden[state] = phys_util.select_from_array(state.values,self.n)
+    #  hidden[state] = runtime_util.select_from_array(state.values,self.n)
     #  svd[state] = self.config[state.name].value
     #  for experiment_val in hidden[state]:
     #    output_codes.append(svd)
@@ -228,7 +228,7 @@ class CorrelationPlanner(BruteForcePlanner):
     
 
     for state in filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), self.block.state):
-      hidden[state] = phys_util.select_from_array(state.values,self.n)
+      hidden[state] = runtime_util.select_from_array(state.values,self.n)
       svd[state] = self.config[state.name].value
 
     state_list = list(filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), self.block.state))
@@ -270,7 +270,7 @@ class FullCorrelationPlanner(BruteForcePlanner):
     
 
     for state in filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), self.block.state):
-      hidden[state] = phys_util.select_from_array(state.values,self.n)
+      hidden[state] = runtime_util.select_from_array(state.values,self.n)
       svd[state] = self.config[state.name].value
 
     state_list = list(filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), self.block.state))
@@ -374,7 +374,7 @@ class ModelBasedPlanner(BruteForcePlanner):
     hidden = {}
     for state in filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), self.block.state):
       default_code[state] = self.config[state.name].value
-      hidden[state] = phys_util.select_from_array(state.values,self.n)
+      hidden[state] = runtime_util.select_from_array(state.values,self.n)
     self._hidden_fields = list(hidden.keys())
 
 
