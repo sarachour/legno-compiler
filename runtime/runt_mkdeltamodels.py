@@ -64,8 +64,9 @@ def derive_delta_models_adp(args):
                                                           dataset.output, \
                                                           dataset.config):
             succ,error = update_delta_model(board,delta_model,datum)
+            print("method=%s error=%f" % (datum.method.value, error))
             if succ:
-                model_error += error
+                model_error += abs(error)
 
         delta_model.set_model_error(model_error)
         exp_delta_model_lib.update(board,delta_model)
