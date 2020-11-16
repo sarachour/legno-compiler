@@ -1,6 +1,6 @@
 import ops.generic_op as genoplib
 import ops.lambda_op as lambdalib
-import phys_model.lin_dectree as lin_dectree
+import runtime.dectree.dectree as dectreelib
 import copy
 
 def is_valid_region(region):
@@ -31,7 +31,7 @@ def eval_expr(e,subs):
     power = eval_expr(e.args[1],subs)
     return list(op_apply2(lambda base,exponent: lambdalib.Pow(base,exponent), leaves, power))
   elif e.op == genoplib.OpType.CONST:
-    return [lin_dectree.RegressionLeafNode(genoplib.Const(e.value))]
+    return [dectreelib.RegressionLeafNode(genoplib.Const(e.value))]
   else:
     raise Exception('unsupported expr: %s' % e)
 
@@ -53,7 +53,7 @@ def op_apply2(func, leaves1, leaves2):
 
       expr = func(leaf1.expr,leaf2.expr)
       if is_valid_region(reg):
-        node = lin_dectree.RegressionLeafNode(expr)
+        node = dectreelib.RegressionLeafNode(expr)
         node.params = dict(map(lambda p: (p,None), \
                                list(leaf1.params.keys()) + \
                                list(leaf2.params.keys())))

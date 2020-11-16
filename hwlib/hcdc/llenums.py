@@ -20,6 +20,7 @@ class CalibrateObjective(Enum):
     MINIMIZE_ERROR = "minimize_error"
     MAXIMIZE_FIT = "maximize_fit"
     FAST = "fast"
+    NONE = "none"
 
 class ResponseType(Enum):
     PROFILE_RESULT = "resp_profile_result"

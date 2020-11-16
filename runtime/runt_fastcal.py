@@ -5,15 +5,15 @@ import json
 import numpy as np
 import hwlib.hcdc.llenums as llenums
 import hwlib.hcdc.llcmd as llcmd
-import hwlib.physdb_util as physutil
-import hwlib.physdb_api as physapi
 
-import phys_model.planner as planlib
-import phys_model.profiler as proflib
+import runtime.profile.planner as planlib
+import runtime.profile.profiler as proflib
 
-import phys_model.fit_lin_dectree as fit_lindectree
-import phys_model.dectree_algebra as lindectree_eval
-import phys_model.lin_dectree as lindectreelib
+import runtime.dectree.dectree_fit as dectree_fit
+import runtime.dectree.dectree_eval as dectree_eval
+import runtime.dectree.dectree as dectreelib
+
+import runtime.runtime_util as runtime_util
 
 import ops.op as oplib
 import ops.generic_op as genoplib
@@ -85,7 +85,7 @@ def fast_calibrate_adp(args):
     runtime = GrendelRunner()
     runtime.initialize()
     method = llenums.CalibrateObjective(args.method)
-    delta_model_label = physutil.DeltaModelLabel \
+    delta_model_label = runtime_util.DeltaModelLabel \
                                 .from_calibration_objective(method, \
                                                             legacy=False)
     for cfg in adp.configs:

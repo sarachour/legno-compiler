@@ -94,7 +94,7 @@ if args.subparser_name == "exec":
 elif args.subparser_name == "cal":
     runt_cal.calibrate_adp(args)
 elif args.subparser_name == "prof":
-    runt_profile.profile_adp(args)
+    runt_prof.profile_adp(args)
 elif args.subparser_name == "delta":
     runt_mkdeltas.derive_delta_models_adp(args)
 elif args.subparser_name == "fastcal":

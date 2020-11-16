@@ -1,9 +1,9 @@
 import hwlib.hcdc.hcdcv2 as hcdclib
 import hwlib.hcdc.llenums as llenums
 import hwlib.hcdc.llcmd_util as llutil
-import hwlib.physdb as physdblib
-import hwlib.delta_model as deltalib
 import hwlib.adp as adplib
+
+import runtime.models.exp_profile_dataset as exp_profile_lib
 
 def profile(runtime,dev, \
             blk,loc,adp,output_port, \
@@ -56,17 +56,21 @@ def profile(runtime,dev, \
     out_status = llenums.ProfileStatus.from_code(int(resp['status']))
 
     # insert into database
-    blkcfg = new_adp.configs.get(blk.name,loc)
-    row = deltalib.ExpCfgBlock(dev.physdb, \
-                             dev,blk,loc,new_out,blkcfg, \
-                             status_type=dev.profile_status_type, \
-                             method_type=dev.profile_op_type)
-    row.update()
-    row.add_datapoint(blkcfg, \
-                      inputs, \
-                      status=out_status, \
-                      method=new_method, \
-                      mean=out_mean, \
-                      std=out_std)
+    if out_status == llenums.ProfileStatus.SUCCESS:
+        blkcfg = new_adp.configs.get(blk.name,loc)
+        dataset= exp_profile_lib.load(dev,blk,loc,new_out,blkcfg,method)
+        if dataset is None:
+            dataset = exp_profile_lib.ExpProfileDataset(blk, \
+                                                        loc, \
+                                                        new_out, \
+                                                        blkcfg, \
+                                                        new_method)
+
+        dataset.add(config=blkcfg, \
+                    inputs=inputs, \
+                    mean=out_mean, \
+                    std=out_std)
+
+        exp_profile_lib.update(dev,dataset)
 
     return blkcfg

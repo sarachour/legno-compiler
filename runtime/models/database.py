@@ -13,6 +13,19 @@ import phys_model.phys_util as phys_util
 from enum import Enum
 
 
+CREATE_DATA_TABLE = '''
+CREATE TABLE IF NOT EXISTS profile_data (
+block text,
+loc text,
+output text,
+static_config text,
+hidden_config text,
+method text,
+dataset text,
+primary key (block,loc,output,static_config,hidden_config,method)
+);
+'''
+
 CREATE_DELTA_TABLE = '''
 CREATE TABLE IF NOT EXISTS delta_models (
 block text,
@@ -20,11 +33,8 @@ loc text,
 output text,
 static_config text,
 hidden_config text,
-config text,
-dataset text,
-delta_model text,
-model_error real,
-label text,
+model text,
+calib_obj text,
 primary key (block,loc,output,static_config,hidden_config)
 );
 '''
@@ -32,11 +42,7 @@ CREATE_PHYS_TABLE = '''
 CREATE TABLE IF NOT EXISTS phys_models (
 block text,
 static_config text,
-config text,
-params text,
-optimize_expr text,
-label text,
-num_samples integer,
+model text,
 primary key (block,static_config)
 );
 '''
@@ -45,6 +51,7 @@ class PhysicalDatabase:
   class DB(Enum):
     DELTA_MODELS = "delta_models"
     PHYS_MODELS = "phys_models"
+    PROFILE_DATASET = "profile_data"
 
   def __init__(self,filename):
     self.filename = filename
@@ -53,23 +60,30 @@ class PhysicalDatabase:
     self.curs = self.conn.cursor()
     self.curs.execute(CREATE_PHYS_TABLE)
     self.curs.execute(CREATE_DELTA_TABLE)
+    self.curs.execute(CREATE_DATA_TABLE)
     self.conn.commit()
-    self.phys_keys = ['block','static_config','config','params','optimize_expr', \
-                       'label','num_samples']
-    self.delta_keys = ['block','loc','output','static_config','hidden_config', \
-                       'config','dataset','delta_model','model_error','label']
+    self.keys = {}
+    self.keys[PhysicalDatabase.DB.PHYS_MODELS] = ['block','static_config','model']
+    self.keys[PhysicalDatabase.DB.DELTA_MODELS] = ['block','loc','output', \
+                                                   'static_config','hidden_config', \
+                                                   'model','calib_obj']
+    self.keys[PhysicalDatabase.DB.PROFILE_DATASET] = ['block','loc','output', \
+                                              'static_config','hidden_config', \
+                                              'method','dataset']
 
-  def insert(self,db,_fields):
+    self.updateable = {}
+    self.updateable[PhysicalDatabase.DB.PHYS_MODELS] = ['model']
+    self.updateable[PhysicalDatabase.DB.DELTA_MODELS] = ['model','calib_obj']
+    self.updateable[PhysicalDatabase.DB.PROFILE_DATASET] = ['dataset']
+
+
+  def insert(self,db,fields):
     assert(isinstance(db,PhysicalDatabase.DB))
-    if db == PhysicalDatabase.DB.DELTA_MODELS:
-      INSERT = '''INSERT INTO {db} (block,loc,output,static_config,hidden_config,config,dataset,delta_model,model_error,label)
-      VALUES ('{block}','{loc}','{output}','{static_config}','{hidden_config}','{config}','{dataset}','{delta_model}',{model_error},'{label}');'''
-    elif db == PhysicalDatabase.DB.PHYS_MODELS:
-      INSERT = '''INSERT INTO {db} (block,static_config,config,params,optimize_expr,label,num_samples)
-      VALUES ('{block}','{static_config}','{config}','{params}','{optimize_expr}','{label}',{num_samples});'''
-
-    fields = dict(_fields)
-    fields['db'] = db.value
+    row_fields = ",".join(self.keys[db])
+    row_values = ",".join(map(lambda k: "'{%s}'" % k, self.keys[db]))
+    INSERT = '''INSERT INTO %s (%s) VALUES (%s)''' % (db.value, \
+                                                        row_fields, \
+                                                        row_values)
     cmd = INSERT.format(**fields)
     self.curs.execute(cmd)
     self.conn.commit()
@@ -77,9 +91,7 @@ class PhysicalDatabase:
   def _where_clause(self,db,fields):
     assert(isinstance(db,PhysicalDatabase.DB))
     reqs = []
-    keys = self.delta_keys if db == PhysicalDatabase.DB.DELTA_MODELS \
-           else self.phys_keys
-    where_clause = dict(filter(lambda tup: tup[0] in keys, \
+    where_clause = dict(filter(lambda tup: tup[0] in self.keys[db], \
                                fields.items()))
     for k,v in where_clause.items():
       reqs.append("%s='%s'" % (k,v.replace("'","''")))
@@ -89,18 +101,16 @@ class PhysicalDatabase:
     else:
       return ""
 
-  def update(self,db,where_clause,_fields):
+  def update(self,db,where_clause,fields):
     assert(isinstance(db,PhysicalDatabase.DB))
     where_clause_frag = self._where_clause(db,where_clause)
     assert(len(where_clause_frag) > 0)
-    if db == PhysicalDatabase.DB.DELTA_MODELS:
-      UPDATE = "UPDATE {db} SET dataset='{dataset}',delta_model='{delta_model}',model_error={model_error},label='{label}' "
-    else:
-      UPDATE = "UPDATE {db} SET params='{params}',optimize_expr='{optimize_expr}',label='{label}',num_samples={num_samples} "
+    upd_frag = ",".join(map(lambda upd: "%s='{%s}'" % (upd,upd), \
+                            self.updateable[db]))
 
-    fields = dict(_fields)
-    fields['db'] = db.value
-    cmd = UPDATE.format(**fields) + where_clause_frag
+    UPDATE = "UPDATE %s SET %s %s" % (db.value,upd_frag, \
+                                      where_clause_frag)
+    cmd = UPDATE.format(**fields)
     self.curs.execute(cmd)
     self.conn.commit()
 
@@ -125,19 +135,13 @@ class PhysicalDatabase:
 
   def select(self,db,fields):
     assert(isinstance(db,PhysicalDatabase.DB))
-    keys = self.delta_keys if db == PhysicalDatabase.DB.DELTA_MODELS \
-           else self.phys_keys
-
     for row in self._select(db,"*",fields):
-      yield dict(zip(keys,row))
+      yield dict(zip(self.keys[db],row))
 
   def select_field(self,db,field_names,where_clause):
     assert(isinstance(db,PhysicalDatabase.DB))
-    keys = self.delta_keys if db == PhysicalDatabase.DB.DELTA_MODELS \
-           else self.phys_keys
-
     for field_name in field_names:
-      if not (field_name in keys):
+      if not (field_name in self.keys[db]):
         raise Exception("field <%s> not in database <%s>" % (field_name,db.value))
 
     select_clause = ",".join(field_names)

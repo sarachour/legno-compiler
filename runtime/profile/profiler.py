@@ -47,6 +47,8 @@ def profile_hidden_state(runtime,dev,planner,hidden):
 
 
   planner.new_dynamic()
+  output = planner.output
+  method = planner.method
   dynamic = planner.next_dynamic()
   while not dynamic is None:
     input_vals = {}
@@ -60,24 +62,14 @@ def profile_hidden_state(runtime,dev,planner,hidden):
         input_vals[st.ll_identifier] = value
 
     print("-> input %s" % str(dynamic))
-    for output in planner.block.outputs:
-      if phys_util.is_integration_op(output.relation[config.mode]):
-        methods = [llenums.ProfileOpType.INTEG_INITIAL_COND, \
-                   llenums.ProfileOpType.INTEG_DERIVATIVE_STABLE, \
-                   llenums.ProfileOpType.INTEG_DERIVATIVE_BIAS, \
-                   llenums.ProfileOpType.INTEG_DERIVATIVE_GAIN]
-      else:
-        methods = [llenums.ProfileOpType.INPUT_OUTPUT]
-
-      for method in methods:
-        profile(runtime, \
-                      dev, \
-                      planner.block, \
-                      planner.loc, \
-                      new_adp, \
-                      output.ll_identifier, \
-                      method=method, \
-                      inputs=input_vals)
+    profile(runtime, \
+            dev, \
+            planner.block, \
+            planner.loc, \
+            new_adp, \
+            output.ll_identifier, \
+            method=method, \
+            inputs=input_vals)
 
     dynamic = planner.next_dynamic()
 

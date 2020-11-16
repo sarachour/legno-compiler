@@ -1,19 +1,8 @@
-import phys_model.planner as planlib
-import phys_model.profiler as proflib
-import hwlib.physdb as physdblib
+import runtime.profile.planner as planlib
+import runtime.profile.profiler as proflib
+import runtime.runtime_util as runtime_util
+
 import hwlib.hcdc.llcmd_util as llutil
-import phys_model.model_fit as fitlib
-
-def analyze_db(board):
-
-	db = physdb.PhysicalDatabase(db_name)
-	# build up dataset
-	params = {}
-	inputs = {}
-	for blk in physdb.get_by_block_instance(db, dev,block,inst,cfg=cfg):
-  		fitlib.analyze_physical_output(blk)
-	return
-
 
 def characterize(runtime,board,block,cfg,grid_size=7,  \
                  num_hidden_codes=200, \
@@ -26,13 +15,11 @@ def characterize(runtime,board,block,cfg,grid_size=7,  \
     print("grid-size: %d / num-codes: %d / num-locs: %d" % (grid_size, \
                                                             num_hidden_codes, \
                                                             num_locs))
-    planner = planlib.RandomPlanner(block, loc, cfg,
-                                    n=grid_size,
-                                    m=grid_size,
-                                    num_codes=num_hidden_codes)
-    proflib.profile_all_hidden_states(runtime, board, planner)
-    #print(" -> analyzing")
-    #physdblib.get_by_block_instance(board.physdb, \
-    #                                board,block,loc,cfg=cfg)
-    #fitlib.analyze_physical_output(blk)
+    for output in block.outputs:
+        for method,n,m in runtime_util.get_profiling_steps(output,cfg,grid_size):
+                planner = planlib.RandomPlanner(block, loc, output, cfg, method,
+                                                n=n,
+                                                m=m,
+                                                num_codes=num_hidden_codes)
+                proflib.profile_all_hidden_states(runtime, board, planner)
 

@@ -3,8 +3,7 @@ from random import randrange
 from csv import reader
 from sklearn.linear_model import LinearRegression
 import ops.opparse as opparse
-import phys_model.lin_dectree as lindectree
-import phys_model.region as reglib
+import runtime.dectree.region as regionlib
 import numpy as np
 import warnings
 
@@ -180,7 +179,7 @@ def finalize_tree(input_names,node):
 def fit_decision_tree(input_names,inputs, output, bounds, max_depth, min_size):
     tree = build_tree(inputs, output, max_depth, min_size)
     clstree = finalize_tree(input_names,tree)
-    clstree.update(reglib.Region(bounds))
+    clstree.update(regionlib.Region(bounds))
     predictions = list()
     for idx in range(len(inputs)):
       predictions.append(clstree.evaluate(dict(zip(input_names,inputs[idx]))))

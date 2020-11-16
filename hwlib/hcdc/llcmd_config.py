@@ -2,12 +2,12 @@ import hwlib.hcdc.hcdcv2 as hcdclib
 import hwlib.hcdc.llenums as llenums
 import hwlib.block as blocklib
 import hwlib.adp as adplib
-import hwlib.physdb as physlib
+import runtime.models.exp_delta_model as exp_delta_lib
 
 from hwlib.hcdc.llcmd_util import *
 
-
-def set_state(runtime,board,blk,loc,adp):
+def set_state(runtime,board,blk,loc,adp, \
+              calib_obj=llenums.CalibrateObjective.MINIMIZE_ERROR):
     assert(isinstance(adp,adplib.ADP))
     if not llenums.BlockType(blk.ll_name).has_state():
         print("[SKIPPING] %s.%s no state required" % (blk.name,loc))
@@ -16,14 +16,11 @@ def set_state(runtime,board,blk,loc,adp):
     open_physical_db(board)
 
     cfg = adp.configs.get(blk.name,loc)
-
-    try:
-        # get calibration code
-        for physblk in physlib.get_best_configured_physical_block(board.physdb, \
-                                                                board,blk,loc,cfg):
-            print(physblk)
-    except physlib.NotCalibratedException:
-        raise Exception("not calibrated or profiled!")
+    calib_cfg = get_calibrated_block(board,blk,loc,cfg,calib_obj)
+    assert(calib_cfg is None)
+    for st in filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), \
+                     blk.state):
+        cfg[st.name].value = calib_cfg[st.name].value
 
     block_state = blk.state.concretize(adp,loc)
     print("state: %s" % block_state)
@@ -53,6 +50,8 @@ def set_conn(runtime,src_blk,src_loc,src_port, \
     cmd = cmd_t.build(cmd_data,debug=True)
     runtime.execute(cmd)
     return unpack_response(runtime.result())
+
+
 
 def disable(runtime,blk,loc):
     loc_t,loc_d = make_block_loc_t(blk,loc)

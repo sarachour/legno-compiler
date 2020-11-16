@@ -206,7 +206,7 @@ class Device:
   @property
   def physdb(self):
     if self._physdb is None:
-      import hwlib.physdb as physlib
+      import runtime.models.database as physlib
       self._physdb = physlib.PhysicalDatabase(self._paths.DATABASE)
 
     return self._physdb

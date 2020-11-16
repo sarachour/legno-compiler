@@ -1,10 +1,7 @@
 import hwlib.block as blocklib
 import hwlib.device as devlib
-import hwlib.hcdc.hcdcv2 as hcdclib
 import hwlib.hcdc.llenums as llenums
 import hwlib.hcdc.llstructs as llstructs
-import util.paths as pathlib
-import hwlib.physdb as physlib
 
 import lab_bench.grendel_util as grendel_util
 import random

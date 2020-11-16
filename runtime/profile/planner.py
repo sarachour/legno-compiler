@@ -1,15 +1,11 @@
-import hwlib.physdb as physdb
 import hwlib.device as devlib
 import hwlib.block as blocklib
 import hwlib.adp as adplib
 import hwlib.hcdc.hcdcv2 as hcdclib
 import phys_model.phys_util as phys_util
-import phys_model.model_fit as model_fit
 #import target_block
 import random
 import itertools
-from fit_and_minimize import investigate_model
-import phys_model.visualize as vizlib
 import ops.opparse as opparse
 import time
 import matplotlib.pyplot as plt
@@ -35,12 +31,15 @@ class ProfilePlanner:
 
 class BruteForcePlanner(ProfilePlanner):
 
-  def __init__(self,block,loc,cfg,n,m):
+  def __init__(self,block,loc,output,cfg,method,n,m):
     ProfilePlanner.__init__(self,block,loc,cfg)
     self.n = n					#outer dimensions of search space
     self.m = m					#resolution (linspace) of search space
     self.block = block
     self.loc = loc
+    self.output = output
+    self.method = method
+    self.dynamic_index = 0
 
   def new_hidden(self):				#hidden code is a particular set of nmos,pmos, etc
     #print(self.config["nmos"].value)
@@ -48,13 +47,15 @@ class BruteForcePlanner(ProfilePlanner):
     #print(dir(self.config["nmos"]))
     #help(self.config["nmos"])
     hidden = {}
-    for state in filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), self.block.state):
+    for state in filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), \
+                        self.block.state):
       hidden[state] = phys_util.select_from_array(state.values,self.n)
     self._hidden_fields = list(hidden.keys())
     hidden_values = list(map(lambda k :hidden[k], self._hidden_fields))
 
     self.hidden_iterator = itertools.product(*hidden_values)
     self.dynamic_iterator = None
+    self.dynamic_index = 0
 
   def next_hidden(self):
     try:
@@ -88,6 +89,7 @@ class BruteForcePlanner(ProfilePlanner):
   def next_dynamic(self):
     assert(not self.dynamic_iterator is None)
     try:
+      self.dynamic_index += 1
       values = next(self.dynamic_iterator)
       return dict(zip(self._dynamic_fields,values))
     except StopIteration:
@@ -96,8 +98,9 @@ class BruteForcePlanner(ProfilePlanner):
 
 class SingleDefaultPointPlanner(BruteForcePlanner):
 
-  def __init__(self,block,loc,cfg,n,m):
-    BruteForcePlanner.__init__(self,block,loc,cfg,n,m)
+  def __init__(self,block,loc,output,method,cfg,n,m):
+    BruteForcePlanner.__init__(self,block,loc,output,cfg,method, \
+                               n,m)
 
   def new_hidden(self):
     hidden = {}
@@ -115,8 +118,9 @@ class SingleDefaultPointPlanner(BruteForcePlanner):
 
 class SingleTargetedPointPlanner(BruteForcePlanner):
 
-  def __init__(self,block,loc,cfg,n,m,hidden_codes):
-    BruteForcePlanner.__init__(self,block,loc,cfg,n,m)
+  def __init__(self,block,loc,output,cfg,method,n,m,hidden_codes):
+    BruteForcePlanner.__init__(self,block,loc,output, \
+                               cfg,method,n,m)
     self.hidden_codes = hidden_codes
 
   def new_hidden(self):
@@ -132,7 +136,7 @@ class SingleTargetedPointPlanner(BruteForcePlanner):
     self.hidden_iterator = None
     return value
 
-
+'''
 class SensitivityPlanner(BruteForcePlanner):
   def __init__(self,block,loc,cfg,n,m):
     BruteForcePlanner.__init__(self,block,loc,cfg,n,m)
@@ -296,6 +300,7 @@ class FullCorrelationPlanner(BruteForcePlanner):
     self.hidden_iterator = GenericHiddenCodeIterator(output_without_repeats)
     self.dynamic_iterator = None
 
+'''
 
 class GenericHiddenCodeIterator:
   def __init__(self,output_codes):
@@ -334,7 +339,8 @@ class RandomCodeIterator:
   def __next__(self):
     if self.index >= 0:
       hidden_codes = {}
-      for state in filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), self.block.state):
+      for state in filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), \
+                          self.block.state):
         hidden_codes[state.name] = random.choice(state.values)
 
       self.index -= 1
@@ -344,14 +350,13 @@ class RandomCodeIterator:
       raise StopIteration
 
 class RandomPlanner(BruteForcePlanner):
-  def __init__(self,block,loc,cfg,n,m,num_codes):
-    ProfilePlanner.__init__(self,block,loc,cfg)
+  def __init__(self,block,loc,output,cfg,method,n,m,num_codes):
+    BruteForcePlanner.__init__(self,block,loc,output,cfg,method,n,m)
     self.n = n          #outer dimensions of search space
     self.m = m          #resolution (linspace) of search space
     self.num_codes = num_codes
 
   def new_hidden(self):
-
     self.hidden_iterator = RandomCodeIterator(self.block, \
                                               self.loc, \
                                               self.config, \
@@ -359,7 +364,7 @@ class RandomPlanner(BruteForcePlanner):
     self.dynamic_iterator = None
 
 
-
+'''
 class ModelBasedPlanner(BruteForcePlanner):
   def __init__(self,block,loc,cfg,n,m):
     BruteForcePlanner.__init__(self,block,loc,cfg,n,m)
@@ -447,14 +452,13 @@ class ExperimentalIterator(GenericHiddenCodeIterator):
   def minimize_model(self):
     return
 
-  '''def generate_random_code(default_code):
+  def generate_random_code(default_code):
     current_output = {}
     for state in default_code:
       current_output[state] = random.randint(0,current_output[state].values)
-    return current_output'''
+    return current_output
 
 
-'''
 ALGORITHM SPEC
 
 (a*c + d)*x + e = z

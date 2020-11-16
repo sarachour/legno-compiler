@@ -1,8 +1,8 @@
-import phys_model.model_fit as fitlib
+import runtime.dectree.dectree_fit as dectree_fit
 import copy
 import ops.lambda_op as lambdalib
 import ops.generic_op as genoplib
-import phys_model.region as reglib
+import runtime.dectree.region as regionlib
 import ops.base_op as baselib
 import json
 
@@ -153,7 +153,7 @@ class RegressionLeafNode:
     self.npts = npts
     self.R2 = R2
     self.params = params
-    self.region = reglib.Region()
+    self.region = regionlib.Region()
 
   def pretty_print(self,indent=0):
     ind = "| "*indent
@@ -200,7 +200,7 @@ class RegressionLeafNode:
     R2 = dictionary['R2']
     params = dictionary['params']
     #print("\n\n\n\nparams: ", params)
-    region = reglib.Region.from_json(dictionary['region'])
+    region = regionlib.Region.from_json(dictionary['region'])
     node = RegressionLeafNode(expr,npts,R2,params)
     node.region = region
     return node
@@ -247,7 +247,7 @@ class RegressionLeafNode:
                              self.params.keys()))
       return False
 
-    new_fit = fitlib.fit_model(self.params, self.expr, valid_dataset)
+    new_fit = dectree_fit.fit_model(self.params, self.expr, valid_dataset)
     self.params = new_fit['params']
     return True
 

@@ -6,7 +6,7 @@ from hwlib.hcdc.llcmd_util import *
 
 
 def calibrate(runtime,dev,blk,loc,adp, \
-              method=llenums.CalibrateObjective.MAXIMIZE_FIT):
+              calib_obj=llenums.CalibrateObjective.MAXIMIZE_FIT):
     state_t = {blk.name:blk.state.concretize(adp,loc)}
     # build set state command
     loc_t,loc_d = make_block_loc_t(blk,loc)
@@ -25,10 +25,10 @@ def calibrate(runtime,dev,blk,loc,adp, \
     cmd = cmd_t.build(cmd_data,debug=True)
     # execute set state command
 
-    calibrate_data = {"calib_obj": method.name, \
+    calibrate_data = {"calib_obj": calib_obj.name, \
                       "inst": loc_d}
     cmd_t, cmd_data = make_circ_cmd(llenums.CircCmdType.CALIBRATE,
-                             calibrate_data)
+                                    calibrate_data)
 
     print("-> calibrating block")
     cmd = cmd_t.build(cmd_data,debug=True)
