@@ -6,6 +6,8 @@ import hwlib.adp as adplib
 
 import runtime.runtime_util as runtime_util
 import runtime.models.database as dblib
+
+import ops.generic_op as genoplib
 import numpy as np
 
 class ExpDeltaModel:
@@ -80,6 +82,27 @@ class ExpDeltaModel:
 
     return np.sqrt(model_error/n)
 
+  def get_subexpr(self,init_cond=False, \
+                  correctable_only=False):
+    params = dict(self.params)
+    if correctable_only:
+      rel = self.spec.get_correctable_model(params)
+    else:
+      rel = self.spec.get_model(params)
+
+
+    if self.is_integration_op:
+      if init_cond:
+        rel = rel.init_cond
+      else:
+        coeff,all_vars= genoplib.unpack_product(rel.deriv)
+        model_vars = list(filter(lambda v: v in self.spec.params, all_vars))
+        rel = genoplib.product([genoplib.Const(coeff)] + \
+                               list(map(lambda v: genoplib.Var(v), \
+                                        model_vars)))
+
+
+    return rel
 
   def predict(self,dataset, \
               init_cond=False,
@@ -92,24 +115,16 @@ class ExpDeltaModel:
 
     params = dict(self.params)
 
-    if correctable_only:
-      rel = self.spec.get_correctable_model(params)
-    else:
-      rel = self.spec.get_model(params)
+    rel = self.get_subexpr(init_cond=init_cond, \
+                           correctable_only=correctable_only)
 
     n = len(dataset)
     predictions = []
     for idx in range(0,n):
       assigns = dict(map(lambda k : (k,inputs[k][idx]), \
                          inputs.keys()))
-      if self.is_integration_op:
-        if init_cond:
-          output = rel.init_cond.compute(assigns)
-        else:
-          output = rel.deriv.compute(assigns)
-      else:
-        output = rel.compute(assigns)
-      predictions.append(output)
+      pred = rel.compute(assigns)
+      predictions.append(pred)
 
     return predictions
 

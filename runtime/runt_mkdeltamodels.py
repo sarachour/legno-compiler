@@ -8,16 +8,19 @@ from lab_bench.grendel_runner import GrendelRunner
 
 import hwlib.hcdc.llenums as llenums
 import hwlib.hcdc.llcmd as llcmd
+import ops.generic_op as genoplib
 
 import runtime.fit.model_fit as fitlib
 
 def update_delta_model(dev,delta_model,dataset):
     if dataset.method == llenums.ProfileOpType.INPUT_OUTPUT:
-        rel = delta_model.relation
+        rel = delta_model.get_subexpr(correctable_only=False)
     elif dataset.method == llenums.ProfileOpType.INTEG_INITIAL_COND:
-        rel = delta_model.relation.init_cond
+        rel = delta_model.get_subexpr(init_cond=True, \
+                                      correctable_only=False)
     elif dataset.method == llenums.ProfileOpType.INTEG_DERIVATIVE_GAIN:
-        rel = delta_model.relation.deriv
+        rel = delta_model.get_subexpr(init_cond=False, \
+                                      correctable_only=False)
     else:
         return False,-1
 
@@ -30,8 +33,7 @@ def update_delta_model(dev,delta_model,dataset):
         return True, delta_model.error(dataset, \
                                   init_cond=True)
     else:
-        return True, delta_model.error(data.inputs, \
-                                       data.meas_mean)
+        return True, delta_model.error(dataset)
 
 
 def derive_delta_models_adp(args):

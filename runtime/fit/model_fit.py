@@ -211,6 +211,7 @@ def fit_delta_model_to_data(delta_model,relation,data):
                        relation,dataset)
   except Exception as e:
     print(data.method)
+    print(relation)
     print(dataset)
     raise e
   #print("insufficient data: %d points" % (len(data)))
