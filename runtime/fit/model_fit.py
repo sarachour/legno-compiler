@@ -206,9 +206,13 @@ def fit_delta_model_to_data(delta_model,relation,data):
     dataset['inputs'][k] = v
   dataset['meas_mean'] = data.meas_mean
 
-  
-  result = fit_model(delta_model.spec.params, \
-                     relation,dataset)
+  try:
+    result = fit_model(delta_model.spec.params, \
+                       relation,dataset)
+  except Exception as e:
+    print(data.method)
+    print(dataset)
+    raise e
   #print("insufficient data: %d points" % (len(data)))
   #return False
 

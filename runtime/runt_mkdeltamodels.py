@@ -26,8 +26,10 @@ def update_delta_model(dev,delta_model,dataset):
                                    dataset):
         return
 
-    print(rel)
     new_error = delta_model.model_error
+    if new_error == exp_delta_model_lib.ExpDeltaModel.MAX_MODEL_ERROR:
+        new_error = 0
+
     if dataset.method == llenums.ProfileOpType.INTEG_INITIAL_COND:
         new_error += delta_model.error(dataset, \
                                   init_cond=True)
@@ -56,5 +58,4 @@ def derive_delta_models_adp(args):
 
         if not delta_model.complete:
             update_delta_model(board,delta_model,dataset)
-            print(delta_model)
 

@@ -17,9 +17,9 @@ import math
 def get_profiling_steps(output_port,cfg,grid_size):
     if is_integration_op(output_port.relation[cfg.mode]):
         yield llenums.ProfileOpType.INTEG_INITIAL_COND,grid_size,grid_size
-        yield llenums.ProfileOpType.INTEG_DERIVATIVE_BIAS,3,1
-        yield llenums.ProfileOpType.INTEG_DERIVATIVE_GAIN,3,1
-        yield llenums.ProfileOpType.INTEG_DERIVATIVE_STABLE,3,1
+        yield llenums.ProfileOpType.INTEG_DERIVATIVE_BIAS,0,3
+        yield llenums.ProfileOpType.INTEG_DERIVATIVE_GAIN,0,3
+        yield llenums.ProfileOpType.INTEG_DERIVATIVE_STABLE,0,3
 
 
     else:
