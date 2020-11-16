@@ -144,7 +144,7 @@ class ExpProfileDataset:
     return {
       'block': self.block.name,
       'loc':self.loc.to_json(),
-      'config': self.cfg.to_json(),
+      'config': self.config.to_json(),
       'output': self.output.name,
       'inputs': self.inputs,
       'method': self.method.value,
