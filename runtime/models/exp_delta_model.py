@@ -6,6 +6,7 @@ import hwlib.adp as adplib
 
 import runtime.runtime_util as runtime_util
 import runtime.models.database as dblib
+import numpy as np
 
 class ExpDeltaModel:
   MAX_MODEL_ERROR = 9999
@@ -25,17 +26,29 @@ class ExpDeltaModel:
     self.calib_obj = llenums.CalibrateObjective.NONE
 
   @property
-  def delta_spec(self):
+  def params(self):
+    return dict(self._params)
+
+  @property
+  def spec(self):
     return self.output.deltas[self.cfg.mode]
+
+  @property
+  def model_error(self):
+    return self._model_error
+
+  @property
+  def relation(self):
+    return self.spec.relation
 
   @property
   def is_integration_op(self):
     rel = self.spec.get_model(self.params)
-    return runtime_lib.is_integration_op(rel)
+    return runtime_util.is_integration_op(rel)
 
   @property
   def complete(self):
-    for par in self.delta_spec.params:
+    for par in self.spec.params:
       if not par in self._params:
         return False
     return True
@@ -45,32 +58,38 @@ class ExpDeltaModel:
     self.model_error = ExpDeltaModel.MAX_MODEL_ERROR
 
   def bind(self,par,value):
-    assert(not par in self.params)
+    assert(not par in self._params)
     if not (par in self.spec.params):
       print("WARN: couldn't bind nonexistant parameter <%s> in delta" % par)
       return
 
-    self.params[par] = value
+    self._params[par] = value
 
-  def error(self,inputs,meas_outputs,init_cond=False):
-    pred_outputs = self.predict(inputs, \
-                                init_cond=init_cond)
-    model_error = 0
+  def set_model_error(self,error):
+    self._model_error = error
+
+  def error(self,dataset,init_cond=False,correctable_only=False):
+    predictions = self.predict(dataset, \
+                               init_cond=init_cond, \
+                               correctable_only=correctable_only)
     n = 0
-    for pred,meas in zip(pred_outputs,meas_outputs):
+    model_error = 0
+    for pred,meas in zip(predictions,dataset.ideal_mean):
       model_error += pow(pred-meas,2)
       n += 1
 
     return np.sqrt(model_error/n)
 
 
-  def predict(self,inputs, \
+  def predict(self,dataset, \
               init_cond=False,
               correctable_only=False):
-    input_fields = list(inputs.keys())
-    input_value_set = list(inputs.values())
-    n = len(input_value_set[0])
-    outputs = []
+    inputs = {}
+    for k,v in dataset.inputs.items():
+      inputs[k] = v
+    for k,v in dataset.data.items():
+      inputs[k] = v
+
     params = dict(self.params)
 
     if correctable_only:
@@ -78,19 +97,21 @@ class ExpDeltaModel:
     else:
       rel = self.spec.get_model(params)
 
-    for values in zip(*input_value_set):
-      inp_map = dict(list(zip(input_fields,values)) + \
-                     list(params.items()))
-      if self.integration_op:
+    n = len(dataset)
+    predictions = []
+    for idx in range(0,n):
+      assigns = dict(map(lambda k : (k,inputs[k][idx]), \
+                         inputs.keys()))
+      if self.is_integration_op:
         if init_cond:
-          output = rel.init_cond.compute(inp_map)
+          output = rel.init_cond.compute(assigns)
         else:
-          output = rel.deriv.compute(inp_map)
+          output = rel.deriv.compute(assigns)
       else:
-        output = rel.compute(inp_map)
-      outputs.append(output)
+        output = rel.compute(assigns)
+      predictions.append(output)
 
-    return outputs
+    return predictions
 
 
   @property

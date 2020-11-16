@@ -15,7 +15,7 @@ class ExpProfileDataset:
   def __init__(self,block,loc,output,cfg,method):
     self.block = block
     self.loc = loc
-    self.cfg = cfg
+    self.config = cfg
     self.output = output
     self.method = method
 
@@ -33,7 +33,7 @@ class ExpProfileDataset:
       if input_port.name in variables:
         self.inputs[input_port.name] = []
 
-    for stmt in self.cfg.stmts:
+    for stmt in self.config.stmts:
       if stmt.type == adplib.ConfigStmtType.CONSTANT:
         self.data[stmt.name] = []
 
@@ -44,22 +44,22 @@ class ExpProfileDataset:
 
   @property
   def hidden_cfg(self):
-    return runtime_util.get_hidden_cfg(self.block, self.cfg)
+    return runtime_util.get_hidden_cfg(self.block, self.config)
 
 
   @property
   def static_cfg(self):
-    return runtime_util.get_static_cfg(self.block, self.cfg)
+    return runtime_util.get_static_cfg(self.block, self.config)
 
   # dynamic values (data)
   @property
   def dynamic_cfg(self):
-    return runtime_util.get_dynamic_cfg(self.block, self.cfg)
+    return runtime_util.get_dynamic_cfg(self.block, self.config)
 
 
 
   def relation(self):
-      rel = self.output.relation[self.cfg.mode]
+      rel = self.output.relation[self.config.mode]
       if runtime_util.is_integration_op(rel):
           if self.method == llenums.ProfileOpType.INTEG_INITIAL_COND:
               return rel.init_cond
@@ -161,6 +161,10 @@ class ExpProfileDataset:
 
 
 
+def __to_datasets(dev,matches):
+  for match in matches:
+    yield ExpProfileDataset.from_json(dev, \
+                                      runtime_util.decode_dict(match['dataset']))
 
 def update(dev,dataset):
     assert(isinstance(dataset,ExpProfileDataset))
@@ -196,9 +200,13 @@ def load(dev,block,loc,output,cfg,method):
     matches = list(dev.physdb.select(dblib.PhysicalDatabase.DB.PROFILE_DATASET,
                                      where_clause))
     if len(matches) == 1:
-      return ExpProfileDataset.from_json(dev, \
-                                         runtime_util.decode_dict(matches[0]['dataset']))
+      return list(__to_datasets(dev,matches))[0]
     elif len(matches) == 0:
       pass
     else:
       raise Exception("can only have one match")
+
+def get_datasets(dev):
+     matches = list(dev.physdb.select(dblib.PhysicalDatabase.DB.PROFILE_DATASET, {}))
+     return list(__to_datasets(dev,matches))
+ 

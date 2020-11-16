@@ -791,7 +791,7 @@ class DeltaSpec:
         st = "delta {\n"
         indent = "  "
         for par_name,par in self._params.items():
-            st += "%spar %s\n" % par
+            st += "%spar %s\n" % (indent,par)
 
         st += "%srel %s\n" % (indent,self.relation)
         st += "}\n"

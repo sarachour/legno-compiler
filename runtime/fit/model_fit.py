@@ -1,10 +1,8 @@
 import hwlib.device as devlib
 import hwlib.block as blocklib
 import hwlib.adp as adplib
-import hwlib.physdb as physdb
 import hwlib.hcdc.llenums as llenums
 
-import phys_model.phys_util as phys_util
 import ops.generic_op as genoplib
 import ops.lambda_op as lambdoplib
 import ops.op as oplib
@@ -199,27 +197,29 @@ def predict_output(variable_assigns,expr,data):
 
   return pred
 
-def fit_delta_model_to_data(phys,relation,data):
-  try:
-    result = fit_model(phys.delta_model.spec.params,relation,data)
-  except TypeError as e:
-    print("insufficient data: %d points" % (len(data['meas_mean'])))
-    return False
+def fit_delta_model_to_data(delta_model,relation,data):
+  dataset = {}
+  dataset['inputs'] = {}
+  for k,v in data.inputs.items():
+    dataset['inputs'][k] = v
+  for k,v in data.data.items():
+    dataset['inputs'][k] = v
+  dataset['meas_mean'] = data.meas_mean
+
+  
+  result = fit_model(delta_model.spec.params, \
+                     relation,dataset)
+  #print("insufficient data: %d points" % (len(data)))
+  #return False
 
 
   for par,val in result['params'].items():
     if par in relation.vars():
-      phys.delta_model.bind(par,val)
+      delta_model.bind(par,val)
 
   return True
 
-def compute_delta_model_error(phys,data):
-  inputs = data['inputs']
-  meas_output = data['meas_mean']
-  sumsq = phys.delta_model.error(inputs,meas_output)
-  phys.delta_model.model_error = sumsq
-  phys.update()
-
+  '''
 def fit_delta_model_integrator(phys):
   relation = phys.delta_model.spec.relation
 
@@ -264,3 +264,5 @@ def fit_delta_model(phys):
       return
 
     compute_delta_model_error(phys,dataset)
+
+  '''
