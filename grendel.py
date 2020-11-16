@@ -34,9 +34,9 @@ char_subp.add_argument('adp', type=str,help='adp to characterize')
 char_subp.add_argument('--model-number',type=str,help='model number')
 char_subp.add_argument('--grid-size',type=int,default=7, \
                        help="number of inputs to sample along each axis")
-char_subp.add_argument('--num-hidden-codes',type=int,default=20, \
+char_subp.add_argument('--num-hidden-codes',type=int,default=200, \
                        help="number of hidden codes to sample")
-char_subp.add_argument('--num-locs',type=int,default=2, \
+char_subp.add_argument('--num-locs',type=int,default=1, \
                        help="number of hidden codes to sample")
 
 
