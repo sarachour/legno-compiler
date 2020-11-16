@@ -350,17 +350,14 @@ class RandomCodeIterator:
       raise StopIteration
 
 class RandomPlanner(BruteForcePlanner):
-  def __init__(self,block,loc,output,cfg,method,n,m,num_codes):
+  def __init__(self,block,loc,output,cfg,method,n,m,hidden_codes):
     BruteForcePlanner.__init__(self,block,loc,output,cfg,method,n,m)
     self.n = n          #outer dimensions of search space
     self.m = m          #resolution (linspace) of search space
-    self.num_codes = num_codes
+    self.hidden_codes = codes
 
   def new_hidden(self):
-    self.hidden_iterator = RandomCodeIterator(self.block, \
-                                              self.loc, \
-                                              self.config, \
-                                              self.num_codes)
+    self.hidden_iterator = iter(self.hidden_codes)
     self.dynamic_iterator = None
 
 
