@@ -204,6 +204,7 @@ def update(dev,model):
     insert_clause = dict(where_clause)
     insert_clause['model'] = runtime_util.encode_dict(model.to_json())
     insert_clause['calib_obj'] = model.calib_obj.value
+    insert_clause['model_error'] = model.model_error
 
     matches = list(dev.physdb \
                    .select(dblib.PhysicalDatabase.DB.DELTA_MODELS,where_clause))

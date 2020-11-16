@@ -34,6 +34,7 @@ static_config text,
 hidden_config text,
 model text,
 calib_obj text,
+model_error text,
 primary key (block,loc,output,static_config,hidden_config)
 );
 '''
@@ -65,14 +66,14 @@ class PhysicalDatabase:
     self.keys[PhysicalDatabase.DB.PHYS_MODELS] = ['block','static_config','model']
     self.keys[PhysicalDatabase.DB.DELTA_MODELS] = ['block','loc','output', \
                                                    'static_config','hidden_config', \
-                                                   'model','calib_obj']
+                                                   'model','calib_obj','model_error']
     self.keys[PhysicalDatabase.DB.PROFILE_DATASET] = ['block','loc','output', \
                                               'static_config','hidden_config', \
                                               'method','dataset']
 
     self.updateable = {}
     self.updateable[PhysicalDatabase.DB.PHYS_MODELS] = ['model']
-    self.updateable[PhysicalDatabase.DB.DELTA_MODELS] = ['model','calib_obj']
+    self.updateable[PhysicalDatabase.DB.DELTA_MODELS] = ['model','calib_obj','model_error']
     self.updateable[PhysicalDatabase.DB.PROFILE_DATASET] = ['dataset']
 
 

@@ -56,7 +56,7 @@ def derive_delta_models_adp(args):
             continue
 
         model_error = 0.0
-        for datum in exp_profile_dataset_lib.get_datasets(board, \
+        for datum in exp_profile_dataset_lib.get_datasets_by_configured_block(board, \
                                                           dataset.block, \
                                                           dataset.loc, \
                                                           dataset.output, \
@@ -66,6 +66,6 @@ def derive_delta_models_adp(args):
                 model_error += error
 
         delta_model.set_model_error(model_error)
-        exp_delta_model_lib.update(dev,delta_model)
+        exp_delta_model_lib.update(board,delta_model)
         if delta_model.complete:
             print(delta_model)
