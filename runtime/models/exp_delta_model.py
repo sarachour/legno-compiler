@@ -50,6 +50,12 @@ class ExpDeltaModel:
 
   @property
   def complete(self):
+    if self.spec is None:
+      raise Exception("no delta spec: %s.%s %s" \
+                      % (self.block.name, \
+                         self.output.name, \
+                         self.config.mode))
+
     for par in self.spec.params:
       if not par in self._params:
         return False
