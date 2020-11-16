@@ -9,7 +9,6 @@ import ops.op as oplib
 import base64
 import json
 import numpy as np
-import phys_model.phys_util as phys_util
 from enum import Enum
 
 
