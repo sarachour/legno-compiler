@@ -18,12 +18,16 @@ def characterize(runtime,board,block,cfg,grid_size=7,  \
 
     random_hidden_codes = list(planlib.RandomCodeIterator(block,loc,cfg, \
                                                           num_hidden_codes))
-
-    for output in block.outputs:
-        for method,n,m in runtime_util.get_profiling_steps(output,cfg,grid_size):
-                planner = planlib.RandomPlanner(block, loc, output, cfg, method,
-                                                n=n,
-                                                m=m,
-                                                hidden_codes=random_hidden_codes)
-                proflib.profile_all_hidden_states(runtime, board, planner)
+    for hidden_code in random_hidden_codes:
+        for output in block.outputs:
+                for method,n,m in runtime_util.get_profiling_steps(output,cfg,grid_size):
+                        planner = planlib.SingleTargetedPointPlanner(block,  \
+                                                                     loc,  \
+                                                                     output, \
+                                                                     cfg, \
+                                                                     method,
+                                                                     n=n,
+                                                                     m=m,
+                                                                     hidden_codes=hidden_code)
+                        proflib.profile_all_hidden_states(runtime, board, planner)
 

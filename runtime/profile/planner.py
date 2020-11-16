@@ -349,17 +349,6 @@ class RandomCodeIterator:
     else:
       raise StopIteration
 
-class RandomPlanner(BruteForcePlanner):
-  def __init__(self,block,loc,output,cfg,method,n,m,hidden_codes):
-    BruteForcePlanner.__init__(self,block,loc,output,cfg,method,n,m)
-    self.n = n          #outer dimensions of search space
-    self.m = m          #resolution (linspace) of search space
-    self.hidden_codes = codes
-
-  def new_hidden(self):
-    self.hidden_iterator = iter(self.hidden_codes)
-    self.dynamic_iterator = None
-
 
 '''
 class ModelBasedPlanner(BruteForcePlanner):
