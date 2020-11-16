@@ -6,11 +6,13 @@ import hwlib.adp as adplib
 
 import ops.op as oplib
 import ops.generic_op as genoplib
+import ops.interval as ivallib
 
 import compiler.lscale_pass.lscale_widening as widenlib
 import json
 import numpy as np
 import base64
+import math
 
 def get_profiling_steps(output_port,cfg,grid_size):
     if is_integration_op(output_port.relation[cfg.mode]):
@@ -101,3 +103,28 @@ def get_device(model_no,layout=False):
     import hwlib.hcdc.hcdcv2 as hcdclib
     return hcdclib.get_device(model_no,layout=layout)
 
+
+def select_from_array(arr,n):
+  space = math.ceil(len(arr)/n)
+  subarr = arr[0:len(arr):space]
+  return subarr
+
+def select_from_interval(ival,n):
+  return list(np.linspace(ival.lower,ival.upper,n))
+
+def select_from_quantized_interval(ival,quant,n):
+  values = quant.get_values(ival)
+  return select_from_array(values,n)
+
+
+def get_subarray(arr,inds):
+  return list(map(lambda i: arr[i], inds))
+
+def split_interval(ival,segments):
+  assert(isinstance(ival,ivallib.Interval))
+  spread = ival.spread/(segments)
+  lb = ival.lower
+  for i in range(0,segments):
+    ub = lb + spread
+    yield ivallib.Interval(lb,ub)
+    lb = ub
