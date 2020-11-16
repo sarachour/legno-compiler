@@ -80,7 +80,7 @@ prof_subp.add_argument('--max-points',type=int,default=50, \
 
 vis_subp = subparsers.add_parser('vis-delta', help='build delta model visualizations')
 vis_subp.add_argument('method', type=str, \
-                       help='vis label to profile (legacy_min_error/legacy_max_fit/min_error/max_fit)')
+                       help='vis label to profile (none/maximize_fit/minimize_error/fast)')
 vis_subp.add_argument('--model-number',type=str,help='model number')
 
 delta_subp = subparsers.add_parser('delta', help='build delta models from profile information')

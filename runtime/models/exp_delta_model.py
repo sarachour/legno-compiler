@@ -22,7 +22,7 @@ class ExpDeltaModel:
     self.block = blk
     self.loc = loc
     self.output = output
-    self.cfg = cfg
+    self.config = cfg
     self._params = {}
     self._model_error = ExpDeltaModel.MAX_MODEL_ERROR
     self.calib_obj = llenums.CalibrateObjective.NONE
@@ -33,7 +33,7 @@ class ExpDeltaModel:
 
   @property
   def spec(self):
-    return self.output.deltas[self.cfg.mode]
+    return self.output.deltas[self.config.mode]
 
   @property
   def model_error(self):
@@ -131,17 +131,17 @@ class ExpDeltaModel:
 
   @property
   def hidden_cfg(self):
-    return runtime_util.get_hidden_cfg(self.block, self.cfg)
+    return runtime_util.get_hidden_cfg(self.block, self.config)
 
 
   @property
   def static_cfg(self):
-    return runtime_util.get_static_cfg(self.block, self.cfg)
+    return runtime_util.get_static_cfg(self.block, self.config)
 
   # dynamic values (data)
   @property
   def dynamic_cfg(self):
-    return runtime_util.get_dynamic_cfg(self.block, self.cfg)
+    return runtime_util.get_dynamic_cfg(self.block, self.config)
 
 
   
@@ -149,24 +149,24 @@ class ExpDeltaModel:
   def get_bounds(self):
     bounds = {}
     for inp in self.block.inputs:
-      ival = inp.interval[self.cfg.mode]
+      ival = inp.interval[self.config.mode]
       if ival is None:
         raise Exception("no interval for input %s.<%s> in mode <%s>" \
-                        % (self.block.name,inp.name,self.cfg.mode))
+                        % (self.block.name,inp.name,self.config.mode))
       bounds[inp.name] = [ival.lower,ival.upper]
 
     for dat in self.block.data:
-      ival = dat.interval[self.cfg.mode]
+      ival = dat.interval[self.config.mode]
       if ival is None:
         raise Exception("no interval for datum %s.<%s> in mode <%s>" \
-                        % (self.block.name,dat.name,self.cfg.mode))
+                        % (self.block.name,dat.name,self.config.mode))
       bounds[dat.name] = [ival.lower,ival.upper]
 
     for out in self.block.outputs:
-      ival = out.interval[self.cfg.mode]
+      ival = out.interval[self.config.mode]
       if ival is None:
         raise Exception("no interval for output %s.<%s> in mode <%s>" \
-                        % (self.block.name,out.name,self.cfg.mode))
+                        % (self.block.name,out.name,self.config.mode))
 
       bounds[out.name] = [ival.lower,ival.upper]
 
@@ -178,7 +178,7 @@ class ExpDeltaModel:
         'block': self.block.name,
         'loc': str(self.loc),
         'output': self.output.name,
-        'config': self.cfg.to_json(),
+        'config': self.config.to_json(),
         'model_error':self._model_error,
         'params': self._params,
         'calib_obj':self.calib_obj.value
@@ -195,6 +195,9 @@ class ExpDeltaModel:
     cfg = adplib.BlockConfig.from_json(dev,obj['config'])
     phys = ExpDeltaModel(blk,loc,output,cfg)
 
+    phys._params = obj['params']
+    phys._model_error = obj['model_error']
+    phys.calib_obj = llenums.CalibrateObjective(obj['calib_obj'])
     return phys
 
 
@@ -229,6 +232,14 @@ def update(dev,model):
       dev.physdb.update(dblib.PhysicalDatabase.DB.DELTA_MODELS, \
                         where_clause,insert_clause)
 
+
+
+def __to_delta_models(dev,matches):
+  for match in matches:
+    yield ExpDeltaModel.from_json(dev, \
+                                  runtime_util.decode_dict(match['model']))
+
+
 def load(dev,block,loc,output,cfg):
     where_clause = {
       'block': block.name,
@@ -240,9 +251,7 @@ def load(dev,block,loc,output,cfg):
     matches = list(dev.physdb.select(dblib.PhysicalDatabase.DB.DELTA_MODELS,
                                   where_clause))
     if len(matches) == 1:
-      return ExpDeltaModel.from_json(dev, \
-                                     runtime_util \
-                                     .decode_dict(matches[0]['model']))
+      return list(__to_delta_models(dev,matches))[0]
     elif len(matches) == 0:
       pass
     else:
@@ -256,12 +265,9 @@ def get_models_by_block_config(dev,block,cfg):
   }
   matches = list(dev.physdb.select(dblib.PhysicalDatabase.DB.DELTA_MODELS, \
                                    where_clause))
-  for match in matches:
-    yield ExpDeltaModel.from_json(dev, \
-                                  runtime_util \
-                                  .decode_dict(match['model']))
 
-
+  return list(__to_delta_models(dev,matches))
+  
 
 def get_calibrated(dev,block,loc,cfg,calib_obj):
   assert(isinstance(calib_obj,llenums.CalibrateObjective))
@@ -273,17 +279,13 @@ def get_calibrated(dev,block,loc,cfg,calib_obj):
   }
   matches = list(dev.physdb.select(dblib.PhysicalDatabase.DB.DELTA_MODELS, \
                                    where_clause))
-  if len(matches) == 1:
-    yield ExpDeltaModel.from_json(dev, \
-                                   runtime_util \
-                                   .decode_dict(matches[0]['model']))
-  elif len(matches) == 0:
-    return None
-  else:
-    for match in matches:
-      ExpDeltaModel.from_json(dev, \
-                              runtime_util \
-                              .decode_dict(match['model']))
+  return list(__to_delta_models(dev,matches))
+
+def get_all(dev):
+
+  matches = list(dev.physdb.select(dblib.PhysicalDatabase.DB.DELTA_MODELS, \
+                                   {}))
+  return list(__to_delta_models(dev,matches))
 
 def is_calibrated(dev,block,loc,cfg,calib_obj):
   return not get_calibrated(dev,block,loc,cfg,calib_obj) is None
