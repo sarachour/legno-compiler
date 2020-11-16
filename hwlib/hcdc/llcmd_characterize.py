@@ -15,11 +15,15 @@ def characterize(runtime,board,block,cfg,grid_size=7,  \
     print("grid-size: %d / num-codes: %d / num-locs: %d" % (grid_size, \
                                                             num_hidden_codes, \
                                                             num_locs))
+
+    random_hidden_codes = list(planlib.RandomCodeIterator(block,loc,cfg, \
+                                                          num_hidden_codes))
+
     for output in block.outputs:
         for method,n,m in runtime_util.get_profiling_steps(output,cfg,grid_size):
                 planner = planlib.RandomPlanner(block, loc, output, cfg, method,
                                                 n=n,
                                                 m=m,
-                                                num_codes=num_hidden_codes)
+                                                hidden_codes=random_hidden_codes)
                 proflib.profile_all_hidden_states(runtime, board, planner)
 
