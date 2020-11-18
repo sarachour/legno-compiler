@@ -4,6 +4,8 @@ from csv import reader
 from sklearn.linear_model import LinearRegression
 import ops.opparse as opparse
 import runtime.dectree.region as regionlib
+import runtime.dectree.dectree as dectreelib
+
 import numpy as np
 import warnings
 
@@ -163,14 +165,14 @@ def finalize_tree(input_names,node):
     for idx,coeff in enumerate(node['model'].coef_):
       params["c%d" % (idx+1)] = coeff
 
-    return lindectree.RegressionLeafNode(expr,\
+    return dectreelib.RegressionLeafNode(expr,\
                               npts=node['npts'], \
                               R2=node['R2'], \
                               params=params)
   else:
     left = finalize_tree(input_names,node['left'])
     right = finalize_tree(input_names,node['right'])
-    return lindectree.DecisionNode(input_names[node['index']], \
+    return dectreelib.DecisionNode(input_names[node['index']], \
                         node['value'], \
                         left, right)
 

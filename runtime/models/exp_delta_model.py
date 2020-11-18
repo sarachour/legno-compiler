@@ -150,7 +150,10 @@ class ExpDeltaModel:
     return runtime_util.get_dynamic_cfg(self.block, self.config)
 
 
-  
+  def hidden_codes(self):
+    for st in filter(lambda st: isinstance(st.impl,blocklib.BCCalibImpl), \
+                     self.block.state):
+      yield st.name,self.config[st.name].value
 
   def get_bounds(self):
     bounds = {}
