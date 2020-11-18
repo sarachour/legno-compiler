@@ -70,7 +70,9 @@ calib_subp.add_argument('--model-number',type=str,help='model number')
 
 prof_subp = subparsers.add_parser('prof', help='profile calibrated blocks')
 prof_subp.add_argument('adp', type=str,help='adp to profile')
-prof_subp.add_argument('method', type=str,help='delta label to profile (legacy_min_error/legacy_max_fit/min_error/max_fit)')
+prof_subp.add_argument('method', type=str, \
+                       default='none', \
+                       help='delta label to profile (legacy_min_error/legacy_max_fit/min_error/max_fit)')
 prof_subp.add_argument('--model-number',type=str,help='model number')
 prof_subp.add_argument('--grid-size',type=int,default=5, \
                        help="number of inputs to sample along each axis")

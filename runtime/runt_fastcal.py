@@ -85,8 +85,9 @@ class MinimizationObjective:
 
         objfun_dectree = dectreelib.RegressionNodeCollection(nodes)
         minval,codes = objfun_dectree.find_minimum()
-        print(minval,codes)
-        input()
+        for var,value in codes.items():
+            codes[var] = self.block.state[var].nearest_value(value)
+
         return minval,codes
 
     def get_data(self,dev):

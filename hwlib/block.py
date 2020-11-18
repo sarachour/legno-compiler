@@ -3,6 +3,7 @@ import ops.interval as interval
 import ops.generic_op as oplib
 import hwlib.exceptions as exceptions
 import numpy as np
+import util.util as util
 
 class ExternalPins(Enum):
     NONE = "NONE"
@@ -609,6 +610,9 @@ class BlockState(BlockField):
         if value == v:
           return True
       return False
+
+  def nearest_value(self,value):
+      return util.nearest_value(self.values,value)
 
   @property
   def min_value(self):
