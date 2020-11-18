@@ -3,6 +3,7 @@ from hwlib.adp import ADP,ADPMetadata
 import runtime.runtime_util as runtime_util
 import runtime.models.exp_delta_model as exp_delta_model_lib
 import runtime.models.exp_phys_model as exp_phys_model_lib
+import runtime.models.exp_profile_dataset as exp_profile_dataset_lib
 import runtime.runt_mkdeltamodels as runt_mkdeltamodels
 from lab_bench.grendel_runner import GrendelRunner
 
