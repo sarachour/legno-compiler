@@ -1,4 +1,5 @@
 from enum import Enum
+import ops.generic_op as genoplib
 
 class Channels(Enum):
     POS = "POS"
@@ -67,6 +68,25 @@ class ProfileOpType(Enum):
     @staticmethod
     def from_code(idx):
         return ProfileOpType.array()[idx]
+
+
+    def get_expr(self,block,rel):
+        if self == ProfileOpType.INPUT_OUTPUT:
+            return rel
+        elif self == ProfileOpType.INTEG_INITIAL_COND:
+            return rel.init_cond
+        elif self == ProfileOpType.INTEG_DERIVATIVE_GAIN:
+            coeff,all_vars= genoplib.unpack_product(rel.deriv)
+            block_vars = list(map(lambda inp: inp.name, block.inputs)) + \
+                         list(map(lambda dat: dat.name, block.data))
+            model_vars = list(filter(lambda v: not v in block_vars, all_vars))
+            rel = genoplib.product([genoplib.Const(coeff)] + \
+                                   list(map(lambda v: genoplib.Var(v), \
+                                            model_vars)))
+            return rel
+        else:
+            return genoplib.Const(0.0)
+
 
 
 class CmdType(Enum):

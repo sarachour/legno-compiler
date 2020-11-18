@@ -4,12 +4,22 @@ import runtime.runtime_util as runtime_util
 import runtime.models.database as dblib
 
 class ExpPhysModel:
+  MODEL_ERROR = "modelError"
 
   def __init__(self,blk,cfg):
     self.block = blk
     self.cfg = cfg
     self._params = {}
     self._model_error = dectreelib.make_constant(0.0)
+
+  @property
+  def params(self):
+    return dict(self._params.items())
+
+  def variables(self):
+    variables = self.params
+    variables[ExpPhysModel.MODEL_ERROR] = self._model_error
+    return variables
 
   @property
   def model_error(self):
@@ -37,6 +47,13 @@ class ExpPhysModel:
     return runtime_util\
       .get_static_cfg(self.block,self.cfg)
 
+
+
+  def hidden_codes(self):
+    for st in filter(lambda st: isinstance(st.impl,blocklib.BCCalibImpl), \
+                     self.block.state):
+      yield st.name,self.config[st.name].value
+
   def to_json(self):
     param_dict = {}
     for par,model in self._params.items():
@@ -46,7 +63,7 @@ class ExpPhysModel:
       'block': self.block.name,
       'config': self.cfg.to_json(),
       'params': param_dict,
-      'model_error':self.model_error.to_json()
+      'model_error':self._model_error.to_json()
     }
   #'phys_model': self.phys_models.to_json(),
 
@@ -68,18 +85,18 @@ class ExpPhysModel:
     self._params = {}
     for par,tree in other._params.items():
       self._params[par] = tree.copy()
-    self.model_error = other.model_error.copy()
+    self._model_error = other.model_error.copy()
 
   @staticmethod
   def from_json(dev,obj):
     blk = dev.get_block(obj['block'])
-    cfg = adplib.BlockConfig.from_json(obj['config'])
+    cfg = adplib.BlockConfig.from_json(dev,obj['config'])
 
     mdl = ExpPhysModel(blk,cfg)
     for par,subobj in obj['params'].items():
       mdl._params[par] = dectreelib.Node.from_json(subobj)
 
-    mdl.model_error = dectreelib.Node.from_json(obj['model_error'])
+    mdl._model_error = dectreelib.Node.from_json(obj['model_error'])
     return mdl
 
 
@@ -88,17 +105,17 @@ def __to_phys_models(dev,matches):
     yield ExpPhysModel.from_json(dev, \
                                  runtime_util.decode_dict(match['model']))
 
-def load(db,dev,blk,cfg):
+def load(dev,blk,cfg):
     where_clause = {
-      'block': self.block.name,
-      'static_config': self.static_cfg
+      'block': blk.name,
+      'static_config': runtime_util.get_static_cfg(blk,cfg)
     }
-    matches = list(self.db.select(dblib \
+    matches = list(dev.physdb.select(dblib \
                                   .PhysicalDatabase \
                                   .DB.PHYS_MODELS,
                                   where_clause))
     if len(matches) == 1:
-      return __to_phys_models(dev,matches)[0]
+      return list(__to_phys_models(dev,matches))[0]
 
     elif len(matches) == 0:
       pass

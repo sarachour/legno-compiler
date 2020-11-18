@@ -52,6 +52,21 @@ class Node:
   def __init__(self):
     pass
 
+  '''
+  This function accepts a json object that was previously returned
+  by the to_json routine and builds a decision tree object from the data.
+  '''
+  @staticmethod
+  def from_json(parent):
+    if parent['type'] == 'DecisionNode':
+      name = parent['name']
+      value = parent['value']
+      left = DecisionNode.from_json(parent['left'])
+      right = DecisionNode.from_json(parent['right'])
+      return DecisionNode(name,value,left,right)
+    else:
+      return RegressionLeafNode.from_json(parent)
+
 class DecisionNode(Node):
 
   def __init__(self,name,value,left,right):
@@ -61,6 +76,10 @@ class DecisionNode(Node):
     self.left = left
     self.right = right
 
+  def copy(self):
+    return DecisionNode(self.name, self.value, \
+                       self.left.copy(), \
+                       self.right.copy())
   def evaluate(self,hidden_state):
     if hidden_state[self.name] < self.value:
       return self.left.evaluate(hidden_state)
@@ -91,21 +110,6 @@ class DecisionNode(Node):
     results += self.right.random_sample(samples)
     return results
 
-
-  '''
-  This function accepts a json object that was previously returned
-  by the to_json routine and builds a decision tree object from the data.
-  '''
-  @staticmethod
-  def from_json(parent):
-    if parent['type'] == 'DecisionNode':
-      name = parent['name']
-      value = parent['value']
-      left = DecisionNode.from_json(parent['left'])
-      right = DecisionNode.from_json(parent['right'])
-      return DecisionNode(name,value,left,right)
-    else:
-      return RegressionLeafNode.from_json(parent)
 
  
 
@@ -299,8 +303,12 @@ class RegressionLeafNode(Node):
     return RegressionLeafNode(new_expr,self.npts,self.R2,new_params,self.region)
 
   def copy(self):
-    return RegressionLeafNode(self.expr,self.npts,self.R2,self.params,self.region)
-
+    node = RegressionLeafNode(self.expr,
+                              npts=self.npts, \
+                              R2=self.R2, \
+                              params=self.params)
+    node.region = self.region.copy()
+    return node
 
   def __repr__(self):
     return "%s %s (R2=%f)" % (self.expr,self.params,self.R2)

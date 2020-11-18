@@ -11,6 +11,7 @@ import ops.generic_op as genoplib
 import numpy as np
 
 class ExpDeltaModel:
+  MODEL_ERROR = "modelError"
   MAX_MODEL_ERROR = 9999
 
   def __init__(self,blk,loc,output,cfg):
@@ -31,6 +32,20 @@ class ExpDeltaModel:
   def params(self):
     return dict(self._params)
 
+  def variables(self):
+    variables = self.params
+    variables[ExpDeltaModel.MODEL_ERROR] = self.model_error
+    return variables
+
+  def get_value(self,varname):
+    if varname in self._params:
+      self._params[varname]
+
+    if varname == ExpDeltaModel.MODEL_ERROR:
+      return self._model_error
+
+    raise Exception("unknown variable <%s>" % varname)
+
   @property
   def spec(self):
     return self.output.deltas[self.config.mode]
@@ -47,6 +62,18 @@ class ExpDeltaModel:
   def is_integration_op(self):
     rel = self.spec.get_model(self.params)
     return runtime_util.is_integration_op(rel)
+
+  def is_concrete(self,variables):
+    for var in variables:
+      if var in self.spec.params and \
+         not var in self._params:
+        return False
+
+      if var == ExpDeltaModel.MODEL_ERROR and \
+         self._model_error == ExpDeltaModel.MAX_MODEL_ERROR:
+        return False
+
+    return True
 
   @property
   def complete(self):
@@ -96,19 +123,16 @@ class ExpDeltaModel:
     else:
       rel = self.spec.get_model(params)
 
+    if self.is_integration_op and init_cond:
+      return llenums.ProfileOpType \
+                    .INTEG_INITIAL_COND.get_expr(self.block,rel)
+    elif self.is_integration_op and not init_cond:
+      return llenums.ProfileOpType \
+                    .INTEG_DERIVATIVE_GAIN.get_expr(self.block,rel)
+    else:
+      return llenums.ProfileOpType \
+                    .INPUT_OUTPUT.get_expr(self.block,rel)
 
-    if self.is_integration_op:
-      if init_cond:
-        rel = rel.init_cond
-      else:
-        coeff,all_vars= genoplib.unpack_product(rel.deriv)
-        model_vars = list(filter(lambda v: v in self.spec.params, all_vars))
-        rel = genoplib.product([genoplib.Const(coeff)] + \
-                               list(map(lambda v: genoplib.Var(v), \
-                                        model_vars)))
-
-
-    return rel
 
   def predict(self,dataset, \
               init_cond=False,
@@ -267,6 +291,17 @@ def load(dev,block,loc,output,cfg):
       raise Exception("can only have one match")
 
 
+def get_models_by_block_instance(dev,block,loc,cfg):
+  where_clause = {
+    'block': block.name,
+    'loc': str(loc),
+    'static_config': runtime_util.get_static_cfg(block,cfg)
+  }
+  matches = list(dev.physdb.select(dblib.PhysicalDatabase.DB.DELTA_MODELS, \
+                                   where_clause))
+  return list(__to_delta_models(dev,matches))
+
+
 def get_models_by_block_config(dev,block,cfg):
   where_clause = {
     'block': block.name,
@@ -276,7 +311,7 @@ def get_models_by_block_config(dev,block,cfg):
                                    where_clause))
 
   return list(__to_delta_models(dev,matches))
-  
+
 
 def get_calibrated(dev,block,loc,cfg,calib_obj):
   assert(isinstance(calib_obj,llenums.CalibrateObjective))
@@ -297,4 +332,4 @@ def get_all(dev):
   return list(__to_delta_models(dev,matches))
 
 def is_calibrated(dev,block,loc,cfg,calib_obj):
-  return not get_calibrated(dev,block,loc,cfg,calib_obj) is None
+  return len(get_calibrated(dev,block,loc,cfg,calib_obj)) > 0
