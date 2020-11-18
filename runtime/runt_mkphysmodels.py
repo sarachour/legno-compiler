@@ -66,14 +66,14 @@ def mktree(args):
         blk = exp_mdl.block
 
         if not exp_mdl.complete:
-            for dataset in exp_profile_dataset_lib.get_dataset_by_configured_block(dev, \
+            for dataset in exp_profile_dataset_lib.get_datasets_by_configured_block(dev, \
                                                                                 blk, \
                                                                                 exp_mdl.loc, \
                                                                                 exp_mdl.output, \
-                                                                                exp_mdl.cfg, \
+                                                                                exp_mdl.config, \
                                                                                 hidden=True):
 
-                runt_mkdelta_models.update_delta_model(dev,exp_mdl,dataset)
+                runt_mkdeltamodels.update_delta_model(dev,exp_mdl,dataset)
 
         if not exp_mdl.complete:
             print("[WARN] incomplete delta model!")
