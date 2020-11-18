@@ -2,6 +2,7 @@ import hwlib.device as devlib
 import hwlib.block as blocklib
 import hwlib.adp as adplib
 import hwlib.hcdc.hcdcv2 as hcdclib
+import hwlib.hcdc.llenums as llenums
 import random
 import itertools
 import ops.opparse as opparse
@@ -31,10 +32,11 @@ class ProfilePlanner:
 
 class BruteForcePlanner(ProfilePlanner):
 
-  def __init__(self,block,loc,output,cfg,method,n,m):
+  def __init__(self,block,loc,output,cfg,method,n,m,reps=1):
     ProfilePlanner.__init__(self,block,loc,cfg)
     self.n = n					#outer dimensions of search space
     self.m = m					#resolution (linspace) of search space
+    self.reps = reps
     self.block = block
     self.loc = loc
     self.output = output
@@ -64,26 +66,29 @@ class BruteForcePlanner(ProfilePlanner):
     except StopIteration:
       return None
 
+
   def new_dynamic(self):
     # build up dynamically changing codes
     assert(self.dynamic_iterator is None)
-    variables = []
-    blk = self.block
-    for out in blk.outputs:
-      variables += list(out.relation[self.config.mode].vars())
+    variables = self.method.get_expr(self.block, \
+                                     self.output \
+                                     .relation[self.config.mode]).vars()
 
     dynamic = {}
-    for inp in filter(lambda inp: inp.name in variables, blk.inputs):
+    for inp in filter(lambda inp: inp.name in variables, self.block.inputs):
       dynamic[inp.name] = runtime_util.select_from_interval(inp.interval[self.config.mode],self.m)
 
-    for data in filter(lambda dat: dat.name in variables, blk.data):
+    for data in filter(lambda dat: dat.name in variables, self.block.data):
       dynamic[data.name] = runtime_util.select_from_quantized_interval(data.interval[self.config.mode],  \
                                                                     data.quantize[self.config.mode], \
                                                                     self.m)
 
 
     self._dynamic_fields = list(dynamic.keys())
-    dynamic_values = list(map(lambda k :dynamic[k], self._dynamic_fields))
+    dynamic_values = []
+    for rep in range(self.reps):
+      dynamic_values += list(map(lambda k :dynamic[k], self._dynamic_fields))
+
     self.dynamic_iterator = itertools.product(*dynamic_values)
 
   def next_dynamic(self):
@@ -98,9 +103,9 @@ class BruteForcePlanner(ProfilePlanner):
 
 class SingleDefaultPointPlanner(BruteForcePlanner):
 
-  def __init__(self,block,loc,output,method,cfg,n,m):
+  def __init__(self,block,loc,output,method,cfg,n,m,reps):
     BruteForcePlanner.__init__(self,block,loc,output,cfg,method, \
-                               n,m)
+                               n,m,reps=reps)
 
   def new_hidden(self):
     hidden = {}
@@ -118,9 +123,9 @@ class SingleDefaultPointPlanner(BruteForcePlanner):
 
 class SingleTargetedPointPlanner(BruteForcePlanner):
 
-  def __init__(self,block,loc,output,cfg,method,n,m,hidden_codes):
+  def __init__(self,block,loc,output,cfg,method,n,m,reps,hidden_codes):
     BruteForcePlanner.__init__(self,block,loc,output, \
-                               cfg,method,n,m)
+                               cfg,method,n,m,reps)
     self.hidden_codes = hidden_codes
 
   def new_hidden(self):

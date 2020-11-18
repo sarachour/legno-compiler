@@ -210,12 +210,9 @@ def fit_delta_model_to_data(delta_model,relation,data):
     result = fit_model(delta_model.spec.params, \
                        relation,dataset)
   except Exception as e:
-    print(data.method)
-    print(relation)
-    print(dataset)
-    raise e
-  #print("insufficient data: %d points" % (len(data)))
-  #return False
+    #print("insufficient data: %d points" % (len(data)))
+    #print(e)
+    return False
 
 
   for par,val in result['params'].items():

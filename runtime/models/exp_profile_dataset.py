@@ -206,6 +206,18 @@ def load(dev,block,loc,output,cfg,method):
     else:
       raise Exception("can only have one match")
 
+def get_configured_block_instances(dev):
+  instances = {}
+  for ds in get_datasets(dev):
+    key = "%s-%s-%s-%s" % (ds.block.name,ds.loc, \
+                           ds.static_cfg, \
+                           ds.hidden_cfg)
+    if not key in instances:
+      instances[key] = (ds.block,ds.loc,ds.config)
+
+  for blk,loc,cfg in instances.values():
+    yield blk,loc,cfg
+
 def get_datasets(dev):
      matches = list(dev.physdb.select(dblib.PhysicalDatabase.DB.PROFILE_DATASET, {}))
      return list(__to_datasets(dev,matches))

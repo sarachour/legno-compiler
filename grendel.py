@@ -54,7 +54,7 @@ dectree_subp.add_argument('--num-leaves',type=int,default=3,\
 
 fastcal_subp = subparsers.add_parser('fastcal', help='fastcalrate blocks in configuration')
 fastcal_subp.add_argument('adp', type=str,help='adp to characterize')
-fastcal_subp.add_argument('method', type=str,help='fast calibration objective function (minimize_error/maximize_fit)')
+#fastcal_subp.add_argument('method', type=str,help='fast calibration objective function (minimize_error/maximize_fit)')
 fastcal_subp.add_argument('--char-data',type=str,help='model number for characterization data')
 fastcal_subp.add_argument('--model-number',type=str,help='model number')
 fastcal_subp.add_argument('--grid-size',type=int,default=5,help='grid size')
@@ -70,7 +70,9 @@ calib_subp.add_argument('--model-number',type=str,help='model number')
 
 prof_subp = subparsers.add_parser('prof', help='profile calibrated blocks')
 prof_subp.add_argument('adp', type=str,help='adp to profile')
-prof_subp.add_argument('method', type=str,help='delta label to profile (legacy_min_error/legacy_max_fit/min_error/max_fit)')
+prof_subp.add_argument('method', type=str, \
+                       default='none', \
+                       help='delta label to profile (legacy_min_error/legacy_max_fit/min_error/max_fit)')
 prof_subp.add_argument('--model-number',type=str,help='model number')
 prof_subp.add_argument('--grid-size',type=int,default=5, \
                        help="number of inputs to sample along each axis")

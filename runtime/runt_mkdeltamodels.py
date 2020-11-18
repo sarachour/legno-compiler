@@ -36,38 +36,56 @@ def update_delta_model(dev,delta_model,dataset):
         return True, delta_model.error(dataset)
 
 
+def _update_delta_models_for_configured_block(dev,blk,loc,output,config,force=False):
+    delta_model = exp_delta_model_lib.load(dev, \
+                                        blk, \
+                                        loc, \
+                                        output, \
+                                        config)
+    if delta_model is None:
+        delta_model = exp_delta_model_lib.ExpDeltaModel(blk, \
+                                                        loc, \
+                                                        output, \
+                                                        config)
+
+    if delta_model.complete and not force:
+        return
+
+    model_error = 0.0
+    for dataset in \
+        exp_profile_dataset_lib.get_datasets_by_configured_block(dev, \
+                                                                 blk, \
+                                                                 loc, \
+                                                                 output, \
+                                                                 config):
+        succ,error = update_delta_model(dev,delta_model,dataset)
+        if succ:
+            model_error += abs(error)
+
+
+    delta_model.set_model_error(model_error)
+    if delta_model.complete:
+        print(delta_model)
+
+    exp_delta_model_lib.update(dev,delta_model)
+
+def update_delta_models_for_configured_block(dev,blk,loc,cfg,hidden=True):
+    num_deltas = 0
+    for output in blk.outputs:
+        for dataset in exp_profile_dataset_lib \
+            .get_datasets_by_configured_block(dev,blk,loc,output,cfg, \
+                                              hidden=hidden):
+            _update_delta_models_for_configured_block(dev,blk, \
+                                                      loc,output, \
+                                                      dataset.config)
+            num_deltas += 1
+    print("# updated deltas: %s" % num_deltas)
+
+
 def derive_delta_models_adp(args):
     board = runtime_util.get_device(args.model_number)
 
-    for dataset in exp_profile_dataset_lib \
-        .get_datasets(board):
-
-
-        delta_model = exp_delta_model_lib.load(board, \
-                                            dataset.block, \
-                                            dataset.loc, \
-                                            dataset.output, \
-                                            dataset.config)
-        if delta_model is None:
-            delta_model = exp_delta_model_lib.ExpDeltaModel(dataset.block, \
-                                                         dataset.loc, \
-                                                         dataset.output, \
-                                                         dataset.config)
-
-        if delta_model.complete:
-            continue
-
-        model_error = 0.0
-        for datum in exp_profile_dataset_lib.get_datasets_by_configured_block(board, \
-                                                          dataset.block, \
-                                                          dataset.loc, \
-                                                          dataset.output, \
-                                                          dataset.config):
-            succ,error = update_delta_model(board,delta_model,datum)
-            if succ:
-                model_error += error
-
-        delta_model.set_model_error(model_error)
-        exp_delta_model_lib.update(board,delta_model)
-        if delta_model.complete:
-            print(delta_model)
+    for blk,loc,cfg in exp_profile_dataset_lib \
+        .get_configured_block_instances(board):
+        update_delta_models_for_configured_block(board,blk,loc,cfg,hidden=True)
+ 

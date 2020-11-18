@@ -56,8 +56,8 @@ def profile(runtime,dev, \
     out_status = llenums.ProfileStatus.from_code(int(resp['status']))
 
     # insert into database
+    blkcfg = new_adp.configs.get(blk.name,loc)
     if out_status == llenums.ProfileStatus.SUCCESS:
-        blkcfg = new_adp.configs.get(blk.name,loc)
         dataset= exp_profile_lib.load(dev,blk,loc,new_out,blkcfg,method)
         if dataset is None:
             dataset = exp_profile_lib.ExpProfileDataset(blk, \

@@ -1,9 +1,10 @@
-import runtime.dectree.dectree_fit as dectree_fit
+import runtime.fit.model_fit as expr_fit_lib
 import copy
 import ops.lambda_op as lambdalib
 import ops.generic_op as genoplib
 import runtime.dectree.region as regionlib
 import ops.base_op as baselib
+import ops.generic_op as genoplib
 import json
 
 class RegressionNodeCollection:
@@ -46,14 +47,39 @@ class RegressionNodeCollection:
       st += str(node) + "\n"
     return st
 
-class DecisionNode:
+class Node:
+
+  def __init__(self):
+    pass
+
+  '''
+  This function accepts a json object that was previously returned
+  by the to_json routine and builds a decision tree object from the data.
+  '''
+  @staticmethod
+  def from_json(parent):
+    if parent['type'] == 'DecisionNode':
+      name = parent['name']
+      value = parent['value']
+      left = DecisionNode.from_json(parent['left'])
+      right = DecisionNode.from_json(parent['right'])
+      return DecisionNode(name,value,left,right)
+    else:
+      return RegressionLeafNode.from_json(parent)
+
+class DecisionNode(Node):
 
   def __init__(self,name,value,left,right):
+    Node.__init__(self)
     self.name = name
     self.value = value
     self.left = left
     self.right = right
 
+  def copy(self):
+    return DecisionNode(self.name, self.value, \
+                       self.left.copy(), \
+                       self.right.copy())
   def evaluate(self,hidden_state):
     if hidden_state[self.name] < self.value:
       return self.left.evaluate(hidden_state)
@@ -84,21 +110,6 @@ class DecisionNode:
     results += self.right.random_sample(samples)
     return results
 
-
-  '''
-  This function accepts a json object that was previously returned
-  by the to_json routine and builds a decision tree object from the data.
-  '''
-  @staticmethod
-  def from_json(parent):
-    if parent['type'] == 'DecisionNode':
-      name = parent['name']
-      value = parent['value']
-      left = DecisionNode.from_json(parent['left'])
-      right = DecisionNode.from_json(parent['right'])
-      return DecisionNode(name,value,left,right)
-    else:
-      return RegressionLeafNode.from_json(parent)
 
  
 
@@ -146,9 +157,10 @@ class DecisionNode:
   def concretize(self):
     return DecisionNode(self.name,self.value,self.left.concretize(),self.right.concretize())
 
-class RegressionLeafNode:
+class RegressionLeafNode(Node):
 
   def __init__(self,expr,npts=0,R2=-1.0,params={}):
+    Node.__init__(self)
     self.expr = expr
     self.npts = npts
     self.R2 = R2
@@ -247,7 +259,7 @@ class RegressionLeafNode:
                              self.params.keys()))
       return False
 
-    new_fit = dectree_fit.fit_model(self.params, self.expr, valid_dataset)
+    new_fit = expr_fit_lib.fit_model(self.params, self.expr, valid_dataset)
     self.params = new_fit['params']
     return True
 
@@ -268,7 +280,7 @@ class RegressionLeafNode:
 
 
     hidden_vars = concrete_expr.vars()
-    optimal_codes = fitlib.minimize_model(hidden_vars,  \
+    optimal_codes = expr_fit_lib.minimize_model(hidden_vars,  \
                                           concrete_expr, {}, \
                                           self.region.bounds)
     return optimal_codes['objective_val'], optimal_codes['values']
@@ -291,8 +303,16 @@ class RegressionLeafNode:
     return RegressionLeafNode(new_expr,self.npts,self.R2,new_params,self.region)
 
   def copy(self):
-    return RegressionLeafNode(self.expr,self.npts,self.R2,self.params,self.region)
-
+    node = RegressionLeafNode(self.expr,
+                              npts=self.npts, \
+                              R2=self.R2, \
+                              params=self.params)
+    node.region = self.region.copy()
+    return node
 
   def __repr__(self):
     return "%s %s (R2=%f)" % (self.expr,self.params,self.R2)
+
+
+def make_constant(value):
+  return RegressionLeafNode(genoplib.Const(value))
