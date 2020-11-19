@@ -24,9 +24,11 @@ def continue_characterization(runtime,board,datasets,block,config, \
     for dataset in datasets:
         datasets_by_loc[dataset.loc].add(dataset.hidden_cfg)
 
+    print("=== Continuing Characterization! ===")
     for loc,hidden_cfgs in datasets_by_loc.items():
         if len(hidden_cfgs) < num_hidden_codes:
             new_hidden_codes = num_hidden_codes - len(hidden_cfgs) + 1
+            print("=>> LOC=%s new-hidden-codes=%d" % (loc,new_hidden_codes))
             upd_cfg = llcmd.characterize(runtime, \
                                          board, \
                                          block, \
@@ -44,7 +46,8 @@ def continue_characterization(runtime,board,datasets,block,config, \
 
 def new_characterization(runtime,board,block,config, \
                          grid_size,num_locs,num_hidden_codes):
-  locs = llutil.random_locs(board,block,num_locs)
+  locs = list(llutil.random_locs(board,block,num_locs))
+  print("=== New Characterization! ===")
   upd_cfg = llcmd.characterize(runtime, \
                                board, \
                                block, \
