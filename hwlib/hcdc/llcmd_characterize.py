@@ -20,7 +20,7 @@ def characterize(runtime,board,block,cfg,grid_size=7,  \
                                                           num_hidden_codes))
     for hidden_code in random_hidden_codes:
         for output in block.outputs:
-                for method,n,m in runtime_util.get_profiling_steps(output,cfg,grid_size):
+                for method,n,m,reps in runtime_util.get_profiling_steps(output,cfg,grid_size):
                         planner = planlib.SingleTargetedPointPlanner(block,  \
                                                                      loc,  \
                                                                      output, \
@@ -28,6 +28,7 @@ def characterize(runtime,board,block,cfg,grid_size=7,  \
                                                                      method,
                                                                      n=n,
                                                                      m=m,
+                                                                     reps=reps,
                                                                      hidden_codes=hidden_code)
                         proflib.profile_all_hidden_states(runtime, board, planner)
 
