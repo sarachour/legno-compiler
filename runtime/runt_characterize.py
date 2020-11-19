@@ -2,9 +2,10 @@ from hwlib.adp import ADP,ADPMetadata
 
 import runtime.runtime_util as runtime_util
 import runtime.models.exp_delta_model as exp_delta_model_lib
+import runtime.models.exp_profile_dataset as exp_profile_dataset_lib
 
 from lab_bench.grendel_runner import GrendelRunner
-
+import hwlib.hcdc.llcmd_util as llutil
 import hwlib.hcdc.llenums as llenums
 import hwlib.hcdc.llcmd as llcmd
 import math
@@ -15,6 +16,44 @@ def count_hidden_codes(delta_models):
                                                        board, \
                                                        blk, \
                                                        cfg)))
+
+def continue_characterization(runtime,board,datasets,block,config, \
+                              grid_size,num_locs,num_hidden_codes):
+    locs = set(map(lambda ds: ds.loc, datasets))
+    datasets_by_loc = dict(map(lambda loc: (loc,set()), locs))
+    for dataset in datasets:
+        datasets_by_loc[dataset.loc].add(dataset.hidden_cfg)
+
+    for loc,hidden_cfgs in datasets_by_loc.items():
+        if len(hidden_cfgs) < num_hidden_codes:
+            new_hidden_codes = num_hidden_codes - len(hidden_cfgs) + 1
+            upd_cfg = llcmd.characterize(runtime, \
+                                         board, \
+                                         block, \
+                                         config, \
+                                         locs=[loc],
+                                         grid_size=grid_size, \
+                                         num_hidden_codes=new_hidden_codes)
+
+
+
+    if len(locs) < num_locs:
+        new_locs = num_locs - len(locs)
+        new_characterization(runtime,board,block,config, \
+                             grid_size,new_locs,num_hidden_codes)
+
+def new_characterization(runtime,board,block,config, \
+                         grid_size,num_locs,num_hidden_codes):
+  locs = llutil.random_locs(board,block,num_locs)
+  upd_cfg = llcmd.characterize(runtime, \
+                               board, \
+                               block, \
+                               config, \
+                               locs=locs,
+                               grid_size=grid_size, \
+                               num_hidden_codes=num_hidden_codes)
+
+
 
 
 def characterize_adp(args):
@@ -27,24 +66,33 @@ def characterize_adp(args):
         cfg_modes = cfg.modes
         for mode in cfg_modes:
             cfg.modes = [mode]
-            delta_models = list(exp_delta_model_lib.get_models_by_block_config(board, \
-                                                                               blk, \
-                                                                               cfg))
+            datasets = list(exp_profile_dataset_lib.get_datasets_by_configured_block(board, \
+                                                                                         blk, \
+                                                                                         cfg, \
+                                                                                         hidden=False))
             unique_hidden_codes = set(map(lambda model: str(model.loc)+"." \
-                                          +model.hidden_cfg, delta_models))
+                                          +model.hidden_cfg, datasets))
             total_codes = args.num_hidden_codes*args.num_locs
             if len(unique_hidden_codes) >= total_codes:
                 continue
 
-            curr_num_locs = math.floor(len(unique_hidden_codes)/args.num_hidden_codes)
-            num_new_locs = args.num_locs - curr_num_locs
-            assert(curr_num_locs >= 0)
-
-            upd_cfg = llcmd.characterize(runtime, \
-                                         board, \
-                                         blk, \
-                                         cfg, \
-                                         grid_size=args.grid_size, \
-                                         num_locs=args.num_locs, \
-                                         num_hidden_codes=args.num_hidden_codes)
+            if len(datasets) > 0:
+                continue_characterization(runtime, \
+                                          board=board,
+                                          block=blk,
+                                          config=cfg, \
+                                          datasets=datasets,\
+                                          grid_size=args.grid_size, \
+                                          num_locs=args.num_locs, \
+                                          num_hidden_codes=args.num_hidden_codes
+                )
+            else:
+                new_characterization(runtime, \
+                                     board=board,
+                                     block=blk,
+                                     config=cfg, \
+                                     grid_size=args.grid_size, \
+                                     num_locs=args.num_locs, \
+                                     num_hidden_codes=args.num_hidden_codes
+                )
 

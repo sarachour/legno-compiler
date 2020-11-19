@@ -222,8 +222,23 @@ def get_datasets(dev):
      matches = list(dev.physdb.select(dblib.PhysicalDatabase.DB.PROFILE_DATASET, {}))
      return list(__to_datasets(dev,matches))
 
-def get_datasets_by_configured_block(dev,block,loc,output,cfg, \
+def get_datasets_by_configured_block(dev,block,cfg, \
                                      hidden=True):
+    where_clause = {
+      'block': block.name,
+      'static_config': runtime_util.get_static_cfg(block,cfg)
+    }
+    if hidden:
+      where_clause['hidden_config'] = runtime_util.get_hidden_cfg(block,cfg)
+
+    matches = list(dev.physdb.select(dblib.PhysicalDatabase.DB.PROFILE_DATASET,
+                                     where_clause))
+
+    return list(__to_datasets(dev,matches))
+
+
+def get_datasets_by_configured_block_instance(dev,block,loc,output,cfg, \
+                                              hidden=True):
     where_clause = {
       'block': block.name,
       'loc': str(loc),
