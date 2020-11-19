@@ -80,12 +80,12 @@ prof_subp.add_argument('--max-points',type=int,default=50, \
                        help="maximum number of dataset points")
 
 
-vis_subp = subparsers.add_parser('vis-delta', help='build delta model visualizations')
+vis_subp = subparsers.add_parser('vis', help='build delta model visualizations')
 vis_subp.add_argument('method', type=str, \
                        help='vis label to profile (none/maximize_fit/minimize_error/fast)')
 vis_subp.add_argument('--model-number',type=str,help='model number')
 
-delta_subp = subparsers.add_parser('delta', help='build delta models from profile information')
+delta_subp = subparsers.add_parser('mkdeltas', help='build delta models from profile information')
 delta_subp.add_argument('adp', type=str,help='adp to profile')
 delta_subp.add_argument('--model-number',type=str,help='model number')
 delta_subp.add_argument('--min-points',default=10,help='minimum number of points to fit model')
@@ -97,7 +97,7 @@ elif args.subparser_name == "cal":
     runt_cal.calibrate_adp(args)
 elif args.subparser_name == "prof":
     runt_prof.profile_adp(args)
-elif args.subparser_name == "delta":
+elif args.subparser_name == "mkdeltas":
     runt_mkdeltas.derive_delta_models_adp(args)
 elif args.subparser_name == "fastcal":
     runt_fastcal.fast_calibrate_adp(args)
@@ -105,7 +105,7 @@ elif args.subparser_name == "characterize":
     runt_char.characterize_adp(args)
 elif args.subparser_name == "mktree":
     runt_mkphys.mktree(args)
-elif args.subparser_name == "vis-delta":
+elif args.subparser_name == "vis":
     runt_visualize.visualize(args)
 else:
     raise Exception("unknown subcommand <%s>" % args.subparser_name)

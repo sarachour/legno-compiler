@@ -17,7 +17,7 @@ def visualize(args):
                                       board.model_number,make_dirs=True)
 
     for delta_model in delta_model_lib.get_all(board):
-        if delta_model.complete:
+        if delta_model.complete or True:
             png_file = ph.get_delta_vis(delta_model.block.name, \
                                         str(delta_model.loc), \
                                         str(delta_model.output.name), \
