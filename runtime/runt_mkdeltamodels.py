@@ -53,11 +53,11 @@ def _update_delta_models_for_configured_block(dev,blk,loc,output,config,force=Fa
 
     model_error = 0.0
     for dataset in \
-        exp_profile_dataset_lib.get_datasets_by_configured_block(dev, \
-                                                                 blk, \
-                                                                 loc, \
-                                                                 output, \
-                                                                 config):
+        exp_profile_dataset_lib.get_datasets_by_configured_block_instance(dev, \
+                                                                          blk, \
+                                                                          loc, \
+                                                                          output, \
+                                                                          config):
         succ,error = update_delta_model(dev,delta_model,dataset)
         if succ:
             model_error += abs(error)
@@ -73,8 +73,8 @@ def update_delta_models_for_configured_block(dev,blk,loc,cfg,hidden=True):
     num_deltas = 0
     for output in blk.outputs:
         for dataset in exp_profile_dataset_lib \
-            .get_datasets_by_configured_block(dev,blk,loc,output,cfg, \
-                                              hidden=hidden):
+            .get_datasets_by_configured_block_instance(dev,blk,loc,output,cfg, \
+                                                       hidden=hidden):
             _update_delta_models_for_configured_block(dev,blk, \
                                                       loc,output, \
                                                       dataset.config)
