@@ -16,6 +16,10 @@ def get_device(model_number):
     import hwlib.hcdc.hcdcv2 as hcdclib
     return hcdclib.get_device(model_number,layout=True)
 
+def get_calibrate_objective(name):
+    import hwlib.hcdc.llenums as llenums
+    return llenums.CalibrateObjective(name)
+
 def exec_lscale(args):
     from compiler import lscale
     import compiler.lscale_pass.lscale_ops as scalelib
@@ -36,11 +40,13 @@ def exec_lscale(args):
 
                 obj = scalelib.ObjectiveFun(args.objective)
                 scale_method = scalelib.ScaleMethod(args.scale_method)
+                calib_obj = get_calibrate_objective(args.calib_obj)
                 for idx,scale_adp in enumerate(lscale.scale(board, \
                                                             program, \
                                                             adp, \
                                                             objective=obj, \
-                                                            scale_method=scale_method)):
+                                                            scale_method=scale_method, \
+                                                            calib_obj=calib_obj)):
 
                     print("<<< writing scaled circuit %d>>>" % idx)
                     scale_adp.metadata.set(ADPMetadata.Keys.LSCALE_ID,idx)

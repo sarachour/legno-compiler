@@ -51,11 +51,14 @@ def adp_summary(adp):
 
 def scale(dev, program, adp, \
           objective=scalelib.ObjectiveFun.QUALITY, \
-          scale_method=scalelib.ScaleMethod.IDEAL):
+          scale_method=scalelib.ScaleMethod.IDEAL, \
+          calib_obj=None):
 
   cstr_prob = []
   for stmt in lscaleprob. \
-      generate_constraint_problem(dev,program,adp):
+      generate_constraint_problem(dev,program,adp, \
+                                  scale_method=scale_method, \
+                                  calib_obj=calib_obj):
     cstr_prob.append(stmt)
 
   obj = get_objective(objective)

@@ -401,8 +401,12 @@ def generate_analog_port_constraints(hwinfo,dsinfo,inst, \
 
 
 
-def generate_constraint_problem(dev,program,adp):
-  hwinfo = scalelib.HardwareInfo(dev)
+def generate_constraint_problem(dev,program,adp, \
+                                scale_method=scalelib.ScaleMethod.IDEAL, \
+                                calib_obj=None):
+  hwinfo = scalelib.HardwareInfo(dev, \
+                                 scale_method=scale_method, \
+                                 calib_obj=calib_obj)
   dsinfo = generate_dynamical_system_info(dev,program,adp)
 
   for block in dev.blocks:
@@ -420,15 +424,20 @@ def generate_constraint_problem(dev,program,adp):
     for out in block.outputs:
       # idealized relation
       baseline = hwinfo.get_ideal_relation(config.inst,config.modes[0],out.name)
-      deviations = list(map(lambda mode: hwinfo \
-                            .get_empirical_relation(config.inst, \
+      deviations = []
+      deviation_modes = []
+      for mode in hwinfo.modes(block.name):
+        dev_rel = hwinfo.get_empirical_relation(config.inst, \
                                                     mode, \
-                                                    out.name), \
-                            hwinfo.modes(block.name)))
+                                                    out.name)
+        if not dev_rel is None:
+          deviations.append(dev_rel)
+          deviation_modes.append(mode)
+
       master_rel, modes, mode_assignments = harmlib.get_master_relation(baseline, \
                                                                         deviations, \
-                                                                        hwinfo.modes(block.name))
-      modes_subset = modes_subset.intersection(set(modes))
+                                                                        deviation_modes)
+      modes_subset = list(modes_subset.intersection(set(modes)))
       cstrs,op_monom = generate_factor_constraints(config.inst,master_rel)
       for cstr in cstrs:
         yield cstr
@@ -447,9 +456,12 @@ def generate_constraint_problem(dev,program,adp):
 
 
 
+    if len(modes_subset) == 0:
+      raise Exception("block %s: no valid modes" % (config.inst))
+
     yield scalelib.SCSubsetOfModes(scalelib.ModeVar(config.inst, \
                                                     hwinfo.modes(block.name)),\
-                                                    list(modes_subset))
+                                                    modes_subset)
 
     for port in list(block.outputs) + list(block.inputs):
       if not adp.port_in_use(config.inst,port.name):

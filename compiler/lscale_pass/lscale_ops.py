@@ -1,3 +1,5 @@
+import runtime.models.exp_delta_model as exp_delta_model_lib
+import hwlib.adp as adplib
 import ops.interval as ivallib
 from enum import Enum
 
@@ -42,7 +44,9 @@ class DynamicalSystemInfo:
 
 class HardwareInfo:
 
-  def __init__(self,dev,scale_method=ScaleMethod.IDEAL):
+  def __init__(self,dev, \
+               scale_method=ScaleMethod.IDEAL,  \
+               calib_obj=None):
     self.dev = dev
     self.scale_method = scale_method
     self.mode_mappings = {}
@@ -99,10 +103,24 @@ class HardwareInfo:
     return ival
 
   def get_empirical_relation(self,instance,mode,port):
-    if self.scale_method.IDEAL:
+    if self.scale_method == ScaleMethod.IDEAL:
       return self.get_ideal_relation(instance,mode,port)
     else:
+      block = self.dev.get_block(instance.block)
+      out = block.outputs[port]
       delta = out.deltas[mode]
+      cfg = adplib.BlockConfig(instance)
+      cfg.modes = [mode]
+      exp_model = exp_delta_model_lib.load(self.dev, block, \
+                                           instance.loc, out, cfg)
+      if exp_model is None:
+        print("[[WARN]] no experimental model %s (%s)" \
+              % (instance,mode))
+        return None
+
+      print(delta)
+      print(exp_model)
+      input()
       return delta
 
   def get_ideal_relation(self,instance,mode,port):
@@ -428,6 +446,8 @@ class SCSubsetOfModes:
                         % (str(modes),str(all_modes)))
     self.mode_var = modevar
     self.valid_modes = list(modes)
+    if len(self.valid_modes) == 0:
+      raise Exception("no valid modes in %s" % str(modes))
 
   def vars(self):
     yield self.mode_var
