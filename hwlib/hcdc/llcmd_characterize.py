@@ -4,6 +4,11 @@ import runtime.runtime_util as runtime_util
 
 import hwlib.hcdc.llcmd_util as llutil
 
+def has_hidden_codes(block,loc,cfg):
+  code = list(planlib.RandomCodeIterator(block,loc,cfg, \
+                                         1))
+  return len(code[0]) > 0
+
 def characterize(runtime,board,block,cfg,locs, \
                  grid_size=7,  \
                  num_hidden_codes=200):
@@ -14,6 +19,8 @@ def characterize(runtime,board,block,cfg,locs, \
     print("grid-size: %d / num-codes: %d / num-locs: %d" % (grid_size, \
                                                             num_hidden_codes, \
                                                             len(locs)))
+    if not has_hidden_codes(block,loc,cfg):
+      return
 
     random_hidden_codes = list(planlib.RandomCodeIterator(block,loc,cfg, \
                                                           num_hidden_codes))
