@@ -32,17 +32,18 @@ def calibrate_adp(args):
                                              blk,cfg.inst.loc, \
                                              cfg,calib_obj):
                 print("-> already calibrated")
+                print(delta_model_lib.get_calibrated(board, blk, \
+                                                     cfg.inst.loc, \
+                                                     cfg, \
+                                                     calib_obj))
                 continue
 
-            '''
             upd_cfg = llcmd.calibrate(runtime, \
                                       board, \
                                       blk, \
                                       cfg.inst.loc,\
                                       adp, \
                                       calib_obj=calib_obj)
-            '''
-            upd_cfg = cfg
             for output in blk.outputs:
                 delta_model = delta_model_lib.load(board,blk, \
                                                    cfg.inst.loc,\
