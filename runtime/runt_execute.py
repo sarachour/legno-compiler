@@ -9,6 +9,8 @@ import runtime.runtime_util as runtime_util
 import lab_bench.devices.sigilent_osc as osclib
 import lab_bench.devices.sigilent_osc_lib as oscliblib
 
+import util.config as configlib
+
 import json
 
 def test_osc(args):
@@ -22,8 +24,12 @@ def test_osc(args):
 
     prog_name = adp.metadata.get(ADPMetadata.Keys.DSNAME)
     program = dsproglib.DSProgDB.get_prog(prog_name)
+    if args.no_osc:
+        osc = osclib.DummySigilent1020XEOscilloscope()
+    else:
+        osc = osclib.Sigilent1020XEOscilloscope(configlib.OSC_IP, \
+                                                configlib.OSC_PORT)
 
-    osc = osclib.DummySigilent1020XEOscilloscope()
 
     sim_time = program.max_time
     if args.runtime:
@@ -45,7 +51,8 @@ def exec_adp(args):
     if args.no_osc:
         osc = osclib.DummySigilent1020XEOscilloscope()
     else:
-        osc = osclib.Sigilent1020XEOscilloscope()
+        osc = osclib.Sigilent1020XEOscilloscope(configlib.OSC_IP, \
+                                                configlib.OSC_PORT)
 
     sim_time = program.max_time
     if args.runtime:
