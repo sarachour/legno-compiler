@@ -23,6 +23,16 @@ class CalibrateObjective(Enum):
     FAST = "fast"
     NONE = "none"
 
+    def tag(self):
+        if self == CalibrateObjective.FAST:
+            return "fst"
+        elif self == CalibrateObjective.MAXIMIZE_FIT:
+            return "maxfit"
+        elif self == CalibrateObjective.MINIMIZE_ERROR:
+            return "minerr"
+        else:
+            return "none"
+
 class ResponseType(Enum):
     PROFILE_RESULT = "resp_profile_result"
     BLOCK_STATE = "resp_block_state"

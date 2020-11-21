@@ -11,13 +11,13 @@ from hwlib.adp import ADP,ADPMetadata
 from dslang.dsprog import DSProgDB
 import json
 import hwlib.adp_renderer as adprender
+import hwlib.hcdc.llenums as llenums
 
 def get_device(model_number):
     import hwlib.hcdc.hcdcv2 as hcdclib
     return hcdclib.get_device(model_number,layout=True)
 
 def get_calibrate_objective(name):
-    import hwlib.hcdc.llenums as llenums
     return llenums.CalibrateObjective(name)
 
 def exec_lscale(args):
@@ -51,12 +51,16 @@ def exec_lscale(args):
                     print("<<< writing scaled circuit %d>>>" % idx)
                     scale_adp.metadata.set(ADPMetadata.Keys.LSCALE_ID,idx)
 
-
+                    calib_tag = llenums.CalibrateObjective(scale_adp \
+                                                       .metadata[ADPMetadata.Keys.RUNTIME_CALIB_OBJ]).tag()
                     filename = path_handler.lscale_adp_file(
                         scale_adp.metadata[ADPMetadata.Keys.LGRAPH_ID],
                         scale_adp.metadata[ADPMetadata.Keys.LSCALE_ID],
                         scale_adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD],
-                        scale_adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE])
+                        scale_adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE],
+                        calib_tag,
+                        scale_adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB]
+                    )
 
                     with open(filename,'w') as fh:
                         jsondata = scale_adp.to_json()
@@ -67,7 +71,10 @@ def exec_lscale(args):
                         scale_adp.metadata[ADPMetadata.Keys.LGRAPH_ID],
                         scale_adp.metadata[ADPMetadata.Keys.LSCALE_ID],
                         scale_adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD],
-                        scale_adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE])
+                        scale_adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE],
+                        calib_tag,
+                        scale_adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB]
+                    )
 
                     adprender.render(board,scale_adp,filename)
                     if idx >= args.scale_adps:

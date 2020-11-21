@@ -129,34 +129,41 @@ class PathHandler:
                            lgraph=graph_index)
 
 
-    def lscale_adp_diagram_file(self,graph_index,scale_index,model,opt):
+    def lscale_adp_diagram_file(self,graph_index,scale_index,model,opt,calib_obj=None):
+        model_tag = model
+        if not calib_obj is None:
+            model_tag += "_%s" % calib_obj
         path ="{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}.gv"
         filepath = path.format(path=self.LSCALE_ADP_DIAG_DIR, \
                                prog=self._prog, \
                                lgraph=graph_index, \
                                lscale=scale_index, \
-                               model=model, \
+                               model=model_tag, \
                                opt=opt)
 
  
-    def lscale_adp_file(self,graph_index,scale_index,model,opt):
-        path ="{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}.adp"
+    def lscale_adp_file(self,graph_index,scale_index,model,opt,calib_obj,phys_db):
+        path ="{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}_{calib_obj}_{physdb}.adp"
         filepath = path.format(path=self.LSCALE_ADP_DIR, \
                                prog=self._prog, \
                                lgraph=graph_index, \
                                lscale=scale_index, \
                                model=model, \
+                               calib_obj=calib_obj, \
+                               physdb=phys_db, \
                                opt=opt)
 
         return filepath
 
-    def lscale_adp_diagram_file(self,graph_index,scale_index,model,opt):
-        path = "{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}.dot"
+    def lscale_adp_diagram_file(self,graph_index,scale_index,model,opt,calib_obj,phys_db):
+        path = "{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}_{calib_obj}_{physdb}.dot"
         return path.format(path=self.LSCALE_ADP_DIAG_DIR,
                            prog=self._prog, \
                            lgraph=graph_index, \
                            lscale=scale_index, \
                            model=model, \
+                           calib_obj=calib_obj, \
+                           physdb=phys_db, \
                            opt=opt)
 
 
@@ -164,7 +171,7 @@ class PathHandler:
     def measured_waveform_file(self,graph_index,scale_index, \
                                model,opt,\
                                variable,trial):
-        path = "{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}"
+        path = "{path}/{prog}_g{lgraph}_s{lscale}_{model}_{calib_obj}_{opt}"
         path += "_{var}_{trial}.json"
 
         return path.format(path=self.MEAS_WAVEFORM_FILE_DIR,
@@ -172,6 +179,7 @@ class PathHandler:
                            lgraph=graph_index,
                            lscale=scale_index,
                            model=model,
+                           calib_obj=calib_obj if not calib_obj is None else "xx", \
                            opt=opt,
                            var=variable,
                            trial=trial)

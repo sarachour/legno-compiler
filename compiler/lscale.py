@@ -54,6 +54,17 @@ def scale(dev, program, adp, \
           scale_method=scalelib.ScaleMethod.IDEAL, \
           calib_obj=None):
 
+  def set_metadata(adp):
+    adp.metadata.set(adplib.ADPMetadata.Keys.LSCALE_SCALE_METHOD, \
+                     scale_method.value)
+    adp.metadata.set(adplib.ADPMetadata.Keys.LSCALE_OBJECTIVE, \
+                           objective.value)
+    adp.metadata.set(adplib.ADPMetadata.Keys.RUNTIME_CALIB_OBJ, \
+                           calib_obj.value)
+    adp.metadata.set(adplib.ADPMetadata.Keys.RUNTIME_PHYS_DB, \
+                           dev.model_number)
+
+
   cstr_prob = []
   for stmt in lscaleprob. \
       generate_constraint_problem(dev,program,adp, \
@@ -67,18 +78,12 @@ def scale(dev, program, adp, \
     for cfg in adp.configs:
       cfg.modes = [cfg.modes[0]]
 
-    adp.metadata.set(adplib.ADPMetadata.Keys.LSCALE_SCALE_METHOD, \
-                     scale_method.value)
-    adp.metadata.set(adplib.ADPMetadata.Keys.LSCALE_OBJECTIVE, \
-                           objective.value)
+    set_metadata(adp)
     yield adp
     return
 
   for adp in lscale_solver.solve(dev,adp,cstr_prob,obj):
-    adp.metadata.set(adplib.ADPMetadata.Keys.LSCALE_SCALE_METHOD, \
-                     scale_method.value)
-    adp.metadata.set(adplib.ADPMetadata.Keys.LSCALE_OBJECTIVE, \
-                           objective.value)
+    set_metadata(adp)
     for cfg in adp.configs:
       assert(cfg.complete())
 
