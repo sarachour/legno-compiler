@@ -74,6 +74,7 @@ def mktree(args):
                 runt_mkdeltamodels.update_delta_model(dev,exp_mdl,dataset)
 
         if not exp_mdl.complete:
+            print(exp_mdl.config)
             print("[WARN] incomplete delta model!")
             continue
 

@@ -39,12 +39,13 @@ class ExpDeltaModel:
 
   def get_value(self,varname):
     if varname in self._params:
-      self._params[varname]
+      return self._params[varname]
 
     if varname == ExpDeltaModel.MODEL_ERROR:
       return self._model_error
 
-    raise Exception("unknown variable <%s>" % varname)
+    raise Exception("unknown variable <%s> (pars:%s)" \
+                    % (varname,self._params.keys()))
 
   @property
   def spec(self):
