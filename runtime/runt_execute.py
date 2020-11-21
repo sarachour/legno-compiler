@@ -30,6 +30,7 @@ def test_osc(args):
     else:
         osc = osclib.Sigilent1020XEOscilloscope(configlib.OSC_IP, \
                                                 configlib.OSC_PORT)
+        osc.setup()
 
 
     sim_time = program.max_time
@@ -57,6 +58,7 @@ def exec_adp(args):
     else:
         osc = osclib.Sigilent1020XEOscilloscope(configlib.OSC_IP, \
                                                 configlib.OSC_PORT)
+        osc.setup()
 
     sim_time = program.max_time
     if args.runtime:
