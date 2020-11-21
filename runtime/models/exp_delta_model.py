@@ -350,7 +350,8 @@ def get_calibrated(dev,block,loc,cfg,calib_obj):
   }
   matches = list(dev.physdb.select(dblib.PhysicalDatabase.DB.DELTA_MODELS, \
                                    where_clause))
-  return list(__to_delta_models(dev,matches))
+  models = list(__to_delta_models(dev,matches))
+  return models
 
 def get_all(dev):
 

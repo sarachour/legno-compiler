@@ -13,17 +13,22 @@ def set_state(runtime,board,blk,loc,adp, \
         print("[SKIPPING] %s.%s no state required" % (blk.name,loc))
         return
 
-    open_physical_db(board)
 
     cfg = adp.configs.get(blk.name,loc)
-    calib_cfg = get_calibrated_block(board,blk,loc,cfg,calib_obj)
-    assert(calib_cfg is None)
+    calib_cfgs = exp_delta_lib.get_calibrated(board,blk,loc,cfg,calib_obj)
+    if len(calib_cfgs) == 0:
+        print(cfg)
+        raise Exception("not calibrated model_number=%s calib=%s" % (board.model_number, \
+                                                                     calib_obj))
+
+    assert(len(calib_cfgs) == 1)
+    calib_cfg = calib_cfgs[0]
+
     for st in filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), \
                      blk.state):
-        cfg[st.name].value = calib_cfg[st.name].value
+        cfg[st.name].value = calib_cfg.config[st.name].value
 
     block_state = blk.state.concretize(adp,loc)
-    print("state: %s" % block_state)
     state_t = {blk.name:block_state}
     loc_t,loc_d = make_block_loc_t(blk,loc)
     state_data = {'inst':loc_d, 'state':state_t}
