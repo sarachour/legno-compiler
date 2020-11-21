@@ -94,6 +94,10 @@ def configure_oscilloscope(osc,board,dsprog,adp,time):
     oscliblib.set_trigger(osc)
 
 
+def test_oscilloscope(board,osc,dsprog,adp,sim_time=None):
+    configure_oscilloscope(osc,board,dsprog,adp,sim_time)
+    save_data_from_oscilloscope(osc,board,dsprog,adp,sim_time)
+
 def execute_simulation(runtime,board,dsprog,adp,sim_time=None,osc=None,manual=False):
     def dispatch(cmd_type,data,flag):
         cmd_t,cmd_data = make_exp_cmd(cmd_type,data,flag)

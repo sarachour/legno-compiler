@@ -1,4 +1,22 @@
 
+def test_osc(args):
+    board = get_device()
+    with open(args.adp,'r') as fh:
+        adp = ADP.from_json(board, \
+                            json.loads(fh.read()))
+
+
+    prog_name = adp.metadata.get(ADPMetadata.Keys.DSNAME)
+    program = dsproglib.DSProgDB.get_prog(prog_name)
+
+    osc = osclib.DummySigilent1020XEOscilloscope()
+
+    sim_time= None
+    if args.runtime:
+        sim_time= args.runtime
+
+        llcmd.test_oscilloscope(board,osc,program,adp,sim_time)
+
 def exec_adp(args):
     board = get_device()
     with open(args.adp,'r') as fh:
