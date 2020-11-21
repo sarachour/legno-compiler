@@ -28,12 +28,13 @@ subparsers = parser.add_subparsers(dest='subparser_name',
 exec_subp = subparsers.add_parser('exec', help='execute benchmark')
 exec_subp.add_argument('adp', type=str,help='benchmark to compile')
 exec_subp.add_argument('--runtime',type=float,help='runtime in simulation units')
-exec_subp.add_argument('--model_number',type=str,help='model database to use')
+exec_subp.add_argument('--model-number',type=str,help='model database to use')
+exec_subp.add_argument('--no-osc',action='store_true',help='no oscilloscope connected')
 
 testosc_subp = subparsers.add_parser('test_osc', help='test the oscilloscope')
 testosc_subp.add_argument('adp', type=str,help='benchmark to compile')
 testosc_subp.add_argument('--runtime',type=float,help='runtime in simulation units')
-testosc_subp.add_argument('--model_number',type=str,help='model database to use')
+testosc_subp.add_argument('--model-number',type=str,help='model database to use')
 
 char_subp = subparsers.add_parser('characterize', help='characterize blocks for fast calibration. This takes a really long time')
 char_subp.add_argument('adp', type=str,help='adp to characterize')
