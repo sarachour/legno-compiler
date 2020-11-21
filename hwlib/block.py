@@ -1,6 +1,7 @@
 from enum import Enum
 import ops.interval as interval
 import ops.generic_op as oplib
+import ops.lambda_op as lambdoplib
 import hwlib.exceptions as exceptions
 import numpy as np
 import util.util as util
@@ -771,9 +772,9 @@ class DeltaSpec:
         for par in params.keys():
             if self._params[par].typ  \
                != DeltaParamType.CORRECTABLE:
-                pdict[par] = par.val
+                pdict[par] = self._params[par].val
 
-        return self.get_model(pdict)
+        return lambdoplib.simplify(self.get_model(pdict))
 
     @property
     def params(self):

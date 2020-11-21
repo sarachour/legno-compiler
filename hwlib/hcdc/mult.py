@@ -221,30 +221,22 @@ mult.state['bias_out'].impl.set_default(32)
 
 
 
+calib_obj = parser.parse_expr('((abs(a))^(-1))*(abs(modelError) + abs(d))')
+
 spec = DeltaSpec(parser.parse_expr('(a*c+b)*x+d'))
-
-#spec = DeltaSpec(parser.parse_expr('(a*c+b)*x+0.15*sin((3*w1*c+phi1))*sin((3*w2*x+phi2))+d'))
-phys_model_d = ["pmos", "nmos", "gain_cal", "bias_in0", "bias_out","bias_in1", "pmos*nmos", "pmos*gain_cal", "nmos*gain_cal", "pmos*bias_out"]
-phys_model_a = ['pmos', 'nmos', 'gain_cal', 'bias_in0', 'bias_in1', 'bias_out', 'pmos*nmos', 'pmos*bias_in0', 'pmos*bias_in1', 'pmos*bias_out', 'nmos*gain_cal', 'nmos*bias_in0', 'nmos*bias_in1', 'nmos*bias_out', 'bias_in0*bias_in1', 'nmos*pmos*bias_in0', 'nmos*pmos*bias_in1', 'nmos*pmos*bias_out', 'nmos*bias_in0*bias_in1']
-phys_model_error = [ "pmos","nmos","bias_in0", "bias_in1", "bias_out", "gain_cal"]
-
-spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0, \
-           model=mkmodel(mult,phys_model_a))
-spec.param('b',DeltaParamType.CORRECTABLE,ideal=0.0, \
-           model=None)
-spec.param('d',DeltaParamType.GENERAL,ideal=0.0, \
-           model=mkmodel(mult,phys_model_d))
-spec.model_error = mkmodel(mult,phys_model_error)
+spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
+spec.param('b',DeltaParamType.GENERAL,ideal=0.0)
+spec.param('d',DeltaParamType.GENERAL,ideal=0.0)
+spec.objective = calib_obj
 
 mult.outputs['z'].deltas.bind(['x','m','m'],spec)
 mult.outputs['z'].deltas.bind(['x','h','h'],spec)
 
 #calib_obj = parser.parse_expr('((a)^(-1))*(modelError+d)')
-calib_obj = parser.parse_expr('((abs(a))^(-1))*(abs(modelError) + abs(d))')
 
 spec = DeltaSpec(parser.parse_expr('0.1*(a*c+b)*x + d'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
-spec.param('b',DeltaParamType.CORRECTABLE,ideal=0.0)
+spec.param('b',DeltaParamType.GENERAL,ideal=0.0)
 spec.param('d',DeltaParamType.GENERAL,ideal=0.0)
 spec.objective = calib_obj
 mult.outputs['z'].deltas.bind(['x','h','m'],spec)
@@ -252,7 +244,7 @@ mult.outputs['z'].deltas.bind(['x','h','m'],spec)
 
 spec = DeltaSpec(parser.parse_expr('10.0*(a*c+b)*x + d'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
-spec.param('b',DeltaParamType.CORRECTABLE,ideal=0.0)
+spec.param('b',DeltaParamType.GENERAL,ideal=0.0)
 spec.param('d',DeltaParamType.GENERAL,ideal=0.0)
 spec.objective = calib_obj
 mult.outputs['z'].deltas.bind(['x','m','h'],spec)

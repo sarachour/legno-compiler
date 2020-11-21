@@ -538,3 +538,9 @@ def equivalent(expr1,expr2):
     se2 = to_sympy(expr2,e2_syms)
     is_equal = se1 - se2 == 0
     return is_equal
+
+def simplify(expr):
+    e_syms = {}
+    se = to_sympy(expr,e_syms)
+    se_simpl = sympy.simplify(se)
+    return from_sympy(se_simpl)

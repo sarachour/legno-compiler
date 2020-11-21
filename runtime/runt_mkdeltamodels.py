@@ -25,8 +25,8 @@ def update_delta_model(dev,delta_model,dataset):
         return False,-1
 
     if not fitlib.fit_delta_model_to_data(delta_model, \
-                                   rel, \
-                                   dataset):
+                                          rel, \
+                                          dataset):
         return False,-1
 
     if dataset.method == llenums.ProfileOpType.INTEG_INITIAL_COND:
@@ -49,7 +49,7 @@ def _update_delta_models_for_configured_block(dev,blk,loc,output,config,force=Fa
                                                         config)
 
     if delta_model.complete and not force:
-        return
+        return False
 
     model_error = 0.0
     for dataset in \
@@ -68,6 +68,7 @@ def _update_delta_models_for_configured_block(dev,blk,loc,output,config,force=Fa
         print(delta_model)
 
     exp_delta_model_lib.update(dev,delta_model)
+    return True
 
 def update_delta_models_for_configured_block(dev,blk,loc,cfg,hidden=True):
     num_deltas = 0
@@ -75,11 +76,13 @@ def update_delta_models_for_configured_block(dev,blk,loc,cfg,hidden=True):
         for dataset in exp_profile_dataset_lib \
             .get_datasets_by_configured_block_instance(dev,blk,loc,output,cfg, \
                                                        hidden=hidden):
-            _update_delta_models_for_configured_block(dev,blk, \
-                                                      loc,output, \
-                                                      dataset.config)
-            num_deltas += 1
-    print("# updated deltas: %s" % num_deltas)
+            if _update_delta_models_for_configured_block(dev,blk, \
+                                                         loc,output, \
+                                                         dataset.config):
+                num_deltas += 1
+    if num_deltas > 0:
+        print(cfg)
+        print("# updated deltas: %s" % num_deltas)
 
 
 def derive_delta_models_adp(args):

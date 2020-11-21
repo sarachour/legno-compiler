@@ -322,7 +322,7 @@ def unpack_product(expr):
     if expr.op == OpType.CONST:
         return expr.value,[]
     elif expr.op == OpType.VAR:
-        return 0.0,[expr.name]
+        return 1.0,[expr.name]
     elif expr.op == OpType.MULT:
         c1,vs1 = unpack_product(expr.arg(0))
         c2,vs2 = unpack_product(expr.arg(1))

@@ -314,7 +314,33 @@ def get_models_by_block_config(dev,block,cfg):
   return list(__to_delta_models(dev,matches))
 
 
+def get_calibrated_output(dev,block,loc,output,cfg,calib_obj):
+  if calib_obj is None:
+    raise Exception("no calibration objective specified")
+
+  assert(isinstance(calib_obj,llenums.CalibrateObjective))
+  where_clause = {
+    'block': block.name,
+    'loc': str(loc),
+    'output': output.name,
+    'static_config': runtime_util.get_static_cfg(block,cfg),
+    'calib_obj': calib_obj.value
+  }
+  matches = list(dev.physdb.select(dblib.PhysicalDatabase.DB.DELTA_MODELS, \
+                                   where_clause))
+  models = list(__to_delta_models(dev,matches))
+  if len(models) == 1:
+    return models[0]
+  elif len(models) > 1:
+    raise Exception("cannot have more than one delta model per calibration objective")
+  else:
+    pass
+
+
 def get_calibrated(dev,block,loc,cfg,calib_obj):
+  if calib_obj is None:
+    raise Exception("no calibration objective specified")
+
   assert(isinstance(calib_obj,llenums.CalibrateObjective))
   where_clause = {
     'block': block.name,

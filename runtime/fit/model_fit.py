@@ -127,20 +127,29 @@ perr = np.sqrt(np.diag(pcov))
 '''
 
 
-def fit_model(variables,expr,data):
+def fit_model(all_vars,expr,data):
 
-  #print("*********START OF FIT_MODEL*********")
-  inputs = data['inputs']
+  print("*********START OF FIT_MODEL*********")
+  inputs = {}
+  for varname,datum in data['inputs'].items():
+    if varname in expr.vars():
+      inputs[varname] = datum
+
+  variables = []
+  for varname in all_vars:
+    if varname in expr.vars():
+      variables.append(varname)
+
+  if len(variables) == 0:
+    return
+
   #print("inputs:", inputs)
   meas_output = data['meas_mean']
   #print("meas_output:", meas_output)
-  
   n_inputs = len(inputs.keys())
-
 
   #if phys.model.complete:
   #  return False
-
   repl = {}
   dataset = [None]*n_inputs
   for idx,bound_var in enumerate(inputs.keys()):
@@ -205,66 +214,21 @@ def fit_delta_model_to_data(delta_model,relation,data):
   for k,v in data.data.items():
     dataset['inputs'][k] = v
   dataset['meas_mean'] = data.meas_mean
+  
 
   try:
     result = fit_model(delta_model.spec.params, \
                        relation,dataset)
   except Exception as e:
-    #print("insufficient data: %d points" % (len(data)))
-    #print(e)
+    print("insufficient data: %d points" % (len(data)))
+    print(e)
     return False
 
+  if result is None:
+    return False
 
   for par,val in result['params'].items():
     if par in relation.vars():
       delta_model.bind(par,val)
 
   return True
-
-  '''
-def fit_delta_model_integrator(phys):
-  relation = phys.delta_model.spec.relation
-
-  ic_dataset = phys.dataset.get_data( \
-                                   llenums.ProfileStatus.SUCCESS, \
-                                   llenums.ProfileOpType.INTEG_INITIAL_COND)
-  if len(ic_dataset['meas_mean']) == 0:
-    return
-
-  result = fit_delta_model_to_data(phys,relation.init_cond, ic_dataset)
-
-  deriv_dataset = phys.dataset.get_data( \
-                                         llenums.ProfileStatus.SUCCESS, \
-                                         llenums.ProfileOpType.INTEG_DERIVATIVE_GAIN)
-
-  if len(deriv_dataset['meas_mean']) == 0:
-    return
-
-  if not fit_delta_model_to_data(phys,relation.deriv,deriv_dataset):
-    return
-
-  sumsq = phys.delta_model.error(ic_dataset['inputs'], \
-                                 ic_dataset['meas_mean'], \
-                                 init_cond=True)
-
-  phys.delta_model.model_error = sumsq
-  phys.update()
-
-
-
-def fit_delta_model(phys):
-  delta_spec = phys.delta_model.spec
-  assert(isinstance(delta_spec,blocklib.DeltaSpec))
-  phys.delta_model.clear()
-  if delta_spec.relation.op == oplib.OpType.INTEG:
-    fit_delta_model_integrator(phys)
-  else:
-    dataset = phys.dataset.get_data( \
-                                     llenums.ProfileStatus.SUCCESS, \
-                                     llenums.ProfileOpType.INPUT_OUTPUT)
-    if not fit_delta_model_to_data(phys, delta_spec.relation, dataset):
-      return
-
-    compute_delta_model_error(phys,dataset)
-
-  '''

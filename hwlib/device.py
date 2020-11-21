@@ -208,6 +208,9 @@ class Device:
 
   @property
   def physdb(self):
+    if self.model_number is None:
+      raise Exception("cannot open physical database if model number is not defined..")
+
     if self._physdb is None:
       import runtime.models.database as physlib
       self._physdb = physlib.PhysicalDatabase(self._paths.DATABASE)

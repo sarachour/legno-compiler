@@ -75,14 +75,17 @@ class ProfileOpType(Enum):
             return rel
         elif self == ProfileOpType.INTEG_INITIAL_COND:
             return rel.init_cond
+
         elif self == ProfileOpType.INTEG_DERIVATIVE_GAIN:
             coeff,all_vars= genoplib.unpack_product(rel.deriv)
             block_vars = list(map(lambda inp: inp.name, block.inputs)) + \
                          list(map(lambda dat: dat.name, block.data))
-            model_vars = list(filter(lambda v: not v in block_vars, all_vars))
+
+            model_terms = list(filter(lambda v: not v in block_vars, all_vars))
+            block_terms = list(filter(lambda v: v in block_vars, all_vars))
             rel = genoplib.product([genoplib.Const(coeff)] + \
                                    list(map(lambda v: genoplib.Var(v), \
-                                            model_vars)))
+                                            model_terms)))
             return rel
         else:
             return genoplib.Const(0.0)
