@@ -1,6 +1,9 @@
+import runtime.runtime_util as runtime_util
 
 def test_osc(args):
-    board = get_device()
+    board = runtime_util \
+            .get_device(args.model_number,layout=False)
+
     with open(args.adp,'r') as fh:
         adp = ADP.from_json(board, \
                             json.loads(fh.read()))

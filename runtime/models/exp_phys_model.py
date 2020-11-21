@@ -8,7 +8,7 @@ class ExpPhysModel:
 
   def __init__(self,blk,cfg):
     self.block = blk
-    self.cfg = cfg
+    self.config = cfg
     self._params = {}
     self._model_error = dectreelib.make_constant(0.0)
 
@@ -24,6 +24,14 @@ class ExpPhysModel:
   @property
   def model_error(self):
       return self._model_error
+
+  def set_variable(self,name,tree):
+    if name == ExpPhysModel.MODEL_ERROR:
+      self.set_model_error(tree)
+
+    else:
+      self.set_param(name,tree)
+
 
   def set_model_error(self,tree):
       assert(isinstance(tree,dectreelib.Node))
@@ -45,7 +53,7 @@ class ExpPhysModel:
   @property
   def static_cfg(self):
     return runtime_util\
-      .get_static_cfg(self.block,self.cfg)
+      .get_static_cfg(self.block,self.config)
 
 
 
@@ -61,7 +69,7 @@ class ExpPhysModel:
 
     return {
       'block': self.block.name,
-      'config': self.cfg.to_json(),
+      'config': self.config.to_json(),
       'params': param_dict,
       'model_error':self._model_error.to_json()
     }
@@ -69,7 +77,7 @@ class ExpPhysModel:
 
 
   def __repr__(self):
-    st = "%s\n" % self.cfg
+    st = "%s\n" % self.config
     for par,dectree in self._params.items():
       st += "===== %s =====\n" % par
       st += str(dectree.pretty_print())
@@ -81,7 +89,7 @@ class ExpPhysModel:
   def copy_from(self,other):
     assert(self.block.name == other.block.name)
     assert(self.static_cfg == other.static_cfg)
-    self.cfg = other.cfg.copy()
+    self.config = other.cfg.copy()
     self._params = {}
     for par,tree in other._params.items():
       self._params[par] = tree.copy()
@@ -91,7 +99,7 @@ class ExpPhysModel:
   def from_json(dev,obj):
     blk = dev.get_block(obj['block'])
     cfg = adplib.BlockConfig.from_json(dev,obj['config'])
-
+    assert(not blk is None)
     mdl = ExpPhysModel(blk,cfg)
     for par,subobj in obj['params'].items():
       mdl._params[par] = dectreelib.Node.from_json(subobj)

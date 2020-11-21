@@ -14,6 +14,7 @@ import runtime.profile.profiler as proflib
 
 import runtime.dectree.dectree_fit as dectree_fit
 import runtime.dectree.dectree_eval as dectree_eval
+import runtime.dectree.dectree_optsample as dectree_optsample_lib
 import runtime.dectree.dectree as dectreelib
 
 import runtime.runtime_util as runtime_util
@@ -49,11 +50,6 @@ class MinimizationObjective:
                                                 blk.outputs)))
         return objfun_expr
 
-        '''
-        objfun_dectree = dectreelib.RegressionNodeCollection(dectree_eval\
-                                                             .eval_expr(objfun_expr,  \
-                                                                        phys_model.variables()))
-        '''
 
     def random_sample(self,samples):
         new_samples = []
@@ -61,11 +57,7 @@ class MinimizationObjective:
         nodes = map(lambda tup: tup[1], \
                     filter(lambda tup: tup[0] in self.expr.vars(),  \
                            self.variables.items()))
-
-        for node in nodes:
-            new_samples += node.random_sample(samples+new_samples)
-
-        return new_samples
+        return dectree_optsample_lib.random_sample(list(nodes),samples)
 
     def fit(self,dev):
         npts,hidden_codes,deltavar_vals,objfun_vals = self.get_data(dev)
@@ -144,13 +136,13 @@ def bootstrap_phys_model(runtime,board,blk,cfg,objfun,grid_size):
 
     new_samples = objfun.random_sample(samples)
     print("   new-samples: %d" % (len(new_samples)))
-    for sample in new_samples:
+    for idx,sample in enumerate(new_samples):
         for output in blk.outputs:
             for method,n,m,reps in runtime_util.get_profiling_steps(output, \
                                                                cfg, \
                                                                grid_size):
-                print("=> [[sample]] n=%d m=%d hidden_codes=%s" \
-                      %(n,m,sample))
+                print("=> [[sample %d/%d]] n=%d m=%d hidden_codes=%s" \
+                      %(idx,len(new_samples),n,m,sample))
                 planner = planlib.SingleTargetedPointPlanner(blk, \
                                                              loc=cfg.inst.loc, \
                                                              output=output, \

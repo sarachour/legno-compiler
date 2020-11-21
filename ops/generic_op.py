@@ -306,18 +306,30 @@ def factor_positive_coefficient(expr):
     else:
         return abs(coeff),Mult(Const(-1.0),base_expr)
 
+def unpack_sum(expr):
+    if expr.op == OpType.CONST:
+        return expr.value,[]
+    elif expr.op == OpType.VAR:
+        return 1.0,[expr]
+    elif expr.op == OpType.ADD:
+        c1,vs1 = unpack_sum(expr.arg(0))
+        c2,vs2 = unpack_sum(expr.arg(1))
+        return c1+c2,vs1+vs2
+    else:
+        return 0.0,[expr]
+
 def unpack_product(expr):
     if expr.op == OpType.CONST:
         return expr.value,[]
     elif expr.op == OpType.VAR:
-        return 1.0,[expr.name]
+        return 0.0,[expr.name]
     elif expr.op == OpType.MULT:
         c1,vs1 = unpack_product(expr.arg(0))
         c2,vs2 = unpack_product(expr.arg(1))
         return c1*c2,vs1+vs2
     else:
         raise Exception("Expected product...")
-    
+
 
 def factor_coefficient(expr):
     if expr.op == OpType.CONST:

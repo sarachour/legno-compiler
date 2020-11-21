@@ -99,7 +99,8 @@ class HardwareInfo:
     port = self._get_port(instance,port_name)
     ival = port.interval[mode]
     if ival is None:
-      raise Exception("specification error: %s.%s has no operating range for mode %s" % (instance,port_name,mode))
+      raise Exception("specification error: %s.%s has no operating range for mode %s" \
+                      % (instance,port_name,mode))
     return ival
 
   def get_empirical_relation(self,instance,mode,port):
@@ -111,6 +112,7 @@ class HardwareInfo:
       delta = out.deltas[mode]
       cfg = adplib.BlockConfig(instance)
       cfg.modes = [mode]
+      print(cfg)
       exp_model = exp_delta_model_lib.load(self.dev, block, \
                                            instance.loc, out, cfg)
       if exp_model is None:
