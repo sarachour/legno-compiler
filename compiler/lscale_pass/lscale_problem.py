@@ -426,6 +426,7 @@ def generate_constraint_problem(dev,program,adp, \
       baseline = hwinfo.get_ideal_relation(config.inst,config.modes[0],out.name)
       deviations = []
       deviation_modes = []
+      print(config)
       for mode in hwinfo.modes(block.name):
         dev_rel = hwinfo.get_empirical_relation(config.inst, \
                                                     mode, \
@@ -433,11 +434,12 @@ def generate_constraint_problem(dev,program,adp, \
         if not dev_rel is None:
           deviations.append(dev_rel)
           deviation_modes.append(mode)
+          print(dev_rel)
 
       master_rel, modes, mode_assignments = harmlib.get_master_relation(baseline, \
                                                                         deviations, \
                                                                         deviation_modes)
-      modes_subset = list(modes_subset.intersection(set(modes)))
+      modes_subset = list(set(modes_subset).intersection(set(modes)))
       cstrs,op_monom = generate_factor_constraints(config.inst,master_rel)
       for cstr in cstrs:
         yield cstr

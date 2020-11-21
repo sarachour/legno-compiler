@@ -49,6 +49,7 @@ class HardwareInfo:
                calib_obj=None):
     self.dev = dev
     self.scale_method = scale_method
+    self.calib_obj = calib_obj
     self.mode_mappings = {}
 
   def register_modes(self,blk,modes):
@@ -104,26 +105,31 @@ class HardwareInfo:
     return ival
 
   def get_empirical_relation(self,instance,mode,port):
-    if self.scale_method == ScaleMethod.IDEAL:
+    block = self.dev.get_block(instance.block)
+    if self.scale_method == ScaleMethod.IDEAL or \
+       not block.requires_calibration():
       return self.get_ideal_relation(instance,mode,port)
     else:
-      block = self.dev.get_block(instance.block)
       out = block.outputs[port]
       delta = out.deltas[mode]
       cfg = adplib.BlockConfig(instance)
       cfg.modes = [mode]
-      print(cfg)
-      exp_model = exp_delta_model_lib.load(self.dev, block, \
-                                           instance.loc, out, cfg)
+      exp_model = exp_delta_model_lib.get_calibrated_output(self.dev, block, \
+                                                            instance.loc, \
+                                                            out, \
+                                                            cfg, \
+                                                            calib_obj=self.calib_obj)
       if exp_model is None:
         print("[[WARN]] no experimental model %s (%s)" \
               % (instance,mode))
         return None
 
-      print(delta)
-      print(exp_model)
-      input()
-      return delta
+      if not exp_model.complete:
+        print(exp_model)
+        raise Exception("experimental model must be complete")
+
+      expr = delta.get_correctable_model(exp_model.params)
+      return expr
 
   def get_ideal_relation(self,instance,mode,port):
     out = self.dev.get_block(instance.block) \
