@@ -67,11 +67,9 @@ def mktree(args):
 
         if not exp_mdl.complete:
             for dataset in exp_profile_dataset_lib.get_datasets_by_configured_block(dev, \
-                                                                                blk, \
-                                                                                exp_mdl.loc, \
-                                                                                exp_mdl.output, \
-                                                                                exp_mdl.config, \
-                                                                                hidden=True):
+                                                                                    blk, \
+                                                                                    exp_mdl.config, \
+                                                                                    hidden=True):
 
                 runt_mkdeltamodels.update_delta_model(dev,exp_mdl,dataset)
 

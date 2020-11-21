@@ -43,7 +43,7 @@ char_subp.add_argument('--num-locs',type=int,default=1, \
 
 char_subp = subparsers.add_parser('fastcal_srcgen', help='generate c sources for fast calibration routine')
 
-dectree_subp = subparsers.add_parser('mktree', help='Use characterization data to build calibration decision tree.')
+dectree_subp = subparsers.add_parser('mkphys', help='Use characterization data to build calibration decision tree.')
 dectree_subp.add_argument('--model-number',type=str,help='model number')
 dectree_subp.add_argument('--max-depth',type=int,default=2,\
                           help='maximum depth')
@@ -103,7 +103,7 @@ elif args.subparser_name == "fastcal":
     runt_fastcal.fast_calibrate_adp(args)
 elif args.subparser_name == "characterize":
     runt_char.characterize_adp(args)
-elif args.subparser_name == "mktree":
+elif args.subparser_name == "mkphys":
     runt_mkphys.mktree(args)
 elif args.subparser_name == "vis":
     runt_visualize.visualize(args)
