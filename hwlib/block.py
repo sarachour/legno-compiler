@@ -530,14 +530,14 @@ class BCConnImpl:
         self._outgoing:
         outgoing_conns = adp.outgoing_conns(block_name,loc,source_port)
         for conn in outgoing_conns:
-            if conn.is_dest(sink_block,sink_loc,sink_port):
+            if conn.dest_match(sink_block,sink_loc,sink_port):
                 return value
 
     for (sink_port,source_block,source_loc,source_port,value) in \
         self._incoming:
         incoming_conns = adp.incoming_conns(block_name,loc,sink_port)
         for conn in incoming_conns:
-            if conn.is_source(source_block,source_loc,source_port):
+            if conn.source_match(source_block,source_loc,source_port):
                 return value
 
     return self._default

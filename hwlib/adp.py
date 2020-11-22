@@ -464,7 +464,9 @@ class ADPConnection:
 
   def test_addr(loc,addr):
     assert(len(loc) == len(addr))
-    for a1,a2 in zip(loc.address,addr):
+    assert(isinstance(loc, devlib.Location))
+    assert(isinstance(addr, devlib.Location))
+    for a1,a2 in zip(loc.address,addr.address):
       if a2 != ADPConnection.WILDCARD and \
          a1 != a2:
         return False
