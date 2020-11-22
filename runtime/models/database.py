@@ -35,9 +35,10 @@ hidden_config text,
 model text,
 calib_obj text,
 model_error text,
-primary key (block,loc,output,static_config,hidden_config)
+primary key (block,loc,output,static_config,hidden_config,calib_obj)
 );
 '''
+
 CREATE_PHYS_TABLE = '''
 CREATE TABLE IF NOT EXISTS phys_models (
 block text,

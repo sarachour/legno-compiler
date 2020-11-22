@@ -29,8 +29,10 @@ def calibrate_adp(args):
             print('----')
 
             if delta_model_lib.is_calibrated(board, \
-                                             blk,cfg.inst.loc, \
-                                             cfg,calib_obj):
+                                             blk, \
+                                             cfg.inst.loc, \
+                                             cfg, \
+                                             calib_obj):
                 print("-> already calibrated")
                 print(delta_model_lib.get_calibrated(board, blk, \
                                                      cfg.inst.loc, \
@@ -38,7 +40,7 @@ def calibrate_adp(args):
                                                      calib_obj))
                 continue
 
-            print("== calibrate %s ==" % (cfg.inst))
+            print("== calibrate %s (%s) ==" % (cfg.inst,calib_obj.value))
             print(cfg)
             print('----')
 

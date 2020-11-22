@@ -274,14 +274,20 @@ def __to_delta_models(dev,matches):
                                   runtime_util.decode_dict(match['model']))
 
 
-def load(dev,block,loc,output,cfg):
+def load(dev,block,loc,output,cfg,calib_obj):
+
+    if calib_obj is None:
+      raise Exception("no calibration objective specified")
+
     where_clause = {
       'block': block.name,
       'loc': str(loc),
       'output':output.name,
       'static_config': runtime_util.get_static_cfg(block,cfg),
-      'hidden_config': runtime_util.get_hidden_cfg(block,cfg)
+      'hidden_config': runtime_util.get_hidden_cfg(block,cfg),
+      'calib_obj': calib_obj.value
     }
+
     matches = list(dev.physdb.select(dblib.PhysicalDatabase.DB.DELTA_MODELS,
                                   where_clause))
     if len(matches) == 1:
