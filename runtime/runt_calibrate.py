@@ -31,15 +31,15 @@ def calibrate_adp(args):
                                              cfg, \
                                              calib_obj):
                 print("-> already calibrated")
-                print(delta_model_lib.get_calibrated(board, blk, \
-                                                     cfg.inst.loc, \
-                                                     cfg, \
-                                                     calib_obj))
                 continue
 
             print("== calibrate %s (%s) ==" % (cfg.inst,calib_obj.value))
             print(cfg)
             print('----')
+            print(delta_model_lib.get_calibrated(board, blk, \
+                                                 cfg.inst.loc, \
+                                                 cfg, \
+                                                 calib_obj))
             input("continue")
             upd_cfg = llcmd.calibrate(runtime, \
                                       board, \
@@ -50,12 +50,14 @@ def calibrate_adp(args):
             for output in blk.outputs:
                 delta_model = delta_model_lib.load(board,blk, \
                                                    cfg.inst.loc,\
-                                                   output,upd_cfg, \
+                                                   output, \
+                                                   upd_cfg, \
                                                    calib_obj=calib_obj)
                 if delta_model is None:
                     delta_model = delta_model_lib \
                                   .ExpDeltaModel(blk,cfg.inst.loc, \
-                                                 output,upd_cfg, \
+                                                 output, \
+                                                 upd_cfg, \
                                                  calib_obj=calib_obj)
 
                 delta_model.calib_obj = calib_obj

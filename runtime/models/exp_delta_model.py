@@ -19,7 +19,7 @@ class ExpDeltaModel:
     assert(isinstance(loc,devlib.Location))
     assert(isinstance(output,blocklib.BlockOutput))
     assert(isinstance(cfg,adplib.BlockConfig))
-
+    assert(isinstance(calib_obj,llenums.CalibrateObjective))
     self.block = blk
     self.loc = loc
     self.output = output
@@ -361,14 +361,11 @@ def get_calibrated(dev,block,loc,cfg,calib_obj):
   return models
 
 def get_all(dev):
-
-  matches = list(dev.physdb.select(dblib.PhysicalDatabase.DB.DELTA_MODELS, \
-                                   {}))
+  matches = list(dev.physdb.select(dblib.PhysicalDatabase.DB.DELTA_MODELS, {}))
   return list(__to_delta_models(dev,matches))
 
 def is_calibrated(dev,block,loc,cfg,calib_obj):
-  for model in get_models_by_block_instance(dev,block,loc,cfg):
-     if model.calib_obj == calib_obj:
-        return True
-  return False
-
+  return len(get_calibrated(dev, block, \
+                            loc, \
+                            cfg, \
+                            calib_obj)) > 0
