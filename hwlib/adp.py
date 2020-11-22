@@ -471,7 +471,6 @@ class ADPConnection:
     for a1,a2 in zip(loc,addr):
       if a2 != ADPConnection.WILDCARD and \
          a1 != a2:
-        print("%s != %s" % (a1,a2))
         return False
     return True
 
@@ -481,7 +480,6 @@ class ADPConnection:
     block_match = ADPConnection.test_str(self.dest_inst.block,block_name)
     port_match = ADPConnection.test_str(self.dest_port,port)
     loc_match = ADPConnection.test_addr(self.dest_inst.loc,loc)
-    print("block=%s port=%s loc=%s" % (block_match,port_match,loc_match))
     return block_match and port_match and loc_match
 
   def source_match(self,block_name,loc,port):
@@ -489,7 +487,6 @@ class ADPConnection:
     block_match = ADPConnection.test_str(self.source_inst.block,block_name)
     port_match = ADPConnection.test_str(self.source_port,port)
     loc_match = ADPConnection.test_addr(self.source_inst.loc,loc)
-    print("block=%s port=%s loc=%s" % (block_match,port_match,loc_match))
     return block_match and port_match and loc_match
 
   def same_source(self,other):
