@@ -15,6 +15,14 @@ namespace util {
   }
 
   const char * ifc_to_string(ifc id){
+    switch(id){
+    case in0Id: return "x0"; break;
+    case in1Id: return "x1"; break;
+    case out0Id: return "z0"; break;
+    case out1Id: return "z1"; break;
+    case out2Id: return "z2"; break;
+    default: return "?"; break;
+    }
     return "?";
   }
 
