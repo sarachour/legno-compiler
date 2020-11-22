@@ -74,7 +74,7 @@ class PhysicalDatabase:
 
     self.updateable = {}
     self.updateable[PhysicalDatabase.DB.PHYS_MODELS] = ['model']
-    self.updateable[PhysicalDatabase.DB.DELTA_MODELS] = ['model','calib_obj','model_error']
+    self.updateable[PhysicalDatabase.DB.DELTA_MODELS] = ['model','model_error']
     self.updateable[PhysicalDatabase.DB.PROFILE_DATASET] = ['dataset']
 
 
