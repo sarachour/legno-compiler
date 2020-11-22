@@ -40,15 +40,13 @@ def save_data_from_oscilloscope(osc,board,dsprog,adp,time,trial=0):
                                                 chan_neg, \
                                                 differential=True)
 
-        tc = board.time_constant*adp.tau
-        ampls = list(map(lambda v: v/scf, voltages))
-        times_su = list(map(lambda t: t/tc, times))
-        json_data = {'hw_times':times,  \
-                     'voltages':voltages,  \
-                     'sim_times':times_su,  \
-                     'values':ampls, \
+        json_data = {'times':times,  \
+                     'values':voltages,  \
+                     'time_units': 'wall_clock_sec', \
+                     'ampl_units': 'voltage', \
                      'variable':varname, \
-                     'scf':scf}
+                     'time_scale':tc, \
+                     'mag_scale':scf}
         print("<writing file>")
 
         filename = ph.measured_waveform_file(graph_index=adp.metadata[adplib.ADPMetadata.Keys.LGRAPH_ID], \
