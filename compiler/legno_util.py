@@ -162,6 +162,9 @@ def exec_lsim(args):
                     lsim.simulate(board,adp,plot_file)
 
 def exec_wav(args,trials=1):
+    import compiler.lwav_pass.waveform as wavelib
+    import compiler.lwav_pass.analyze as analyzelib
+
     path_handler = paths.PathHandler(args.subset, \
                                      args.program)
     program = DSProgDB.get_prog(args.program)
@@ -189,5 +192,9 @@ def exec_wav(args,trials=1):
                                                                                  opt=adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE], \
                                                                                  phys_db=adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB], \
                                                                                  variable=var, \
-                                                                        trial=trial)
-                            print(waveform_file)
+                                                                                 trial=trial)
+                            if os.path.exists(waveform_file):
+                                with open(waveform_file,'r') as fh:
+                                    obj = util.decompress_json(fh.read())
+                                    wave = wavelib.Waveform.from_json(obj)
+                                    ref,traj = analyzelib.analyze(adp,wave)
