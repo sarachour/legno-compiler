@@ -61,6 +61,10 @@ lscale_subp.add_argument('program', type=str,help='benchmark to compile')
 sim_subp = subparsers.add_parser('lsim', help='simulate circuit.')
 sim_subp.add_argument('program', help='program to simulate.')
 
+sim_subp = subparsers.add_parser('lwav', help='analyze waveforms.')
+sim_subp.add_argument('program', help='program to analyze.')
+
+
 args = parser.parse_args()
 
 #from hwlib.hcdc.hcdcv2_4 import make_board
@@ -77,6 +81,9 @@ elif args.subparser_name == "lscale":
 
 elif args.subparser_name == "lsim":
    legno_util.exec_lsim(args)
+
+elif args.subparser_name == "lwav":
+   legno_util.exec_wav(args)
 
 else:
     raise Exception("XXX")

@@ -160,3 +160,34 @@ def exec_lsim(args):
 
 
                     lsim.simulate(board,adp,plot_file)
+
+def exec_wav(args,trials=1):
+    path_handler = paths.PathHandler(args.subset, \
+                                     args.program)
+    program = DSProgDB.get_prog(args.program)
+    for dirname, subdirlist, filelist in \
+        os.walk(path_handler.lscale_adp_dir()):
+        for adp_file in filelist:
+            if adp_file.endswith('.adp'):
+                with open(dirname+"/"+adp_file,'r') as fh:
+                    print("===== %s =====" % (adp_file))
+                    obj = json.loads(fh.read())
+                    metadata = ADPMetadata.from_json(obj['metadata'])
+                    if not metadata.has(ADPMetadata.Keys.RUNTIME_PHYS_DB) or \
+                       not metadata.has(ADPMetadata.Keys.RUNTIME_CALIB_OBJ):
+                        continue
+
+                    board = get_device(metadata.get(ADPMetadata.Keys.RUNTIME_PHYS_DB))
+                    adp = ADP.from_json(board, obj)
+                    for trial in range(trials):
+                        for var,_,_ in adp.observable_ports(board):
+                            waveform_file = path_handler.measured_waveform_file( \
+                                                                                 graph_index=adp.metadata[ADPMetadata.Keys.LGRAPH_ID],
+                                                                                 scale_index=adp.metadata[ADPMetadata.Keys.LSCALE_ID],
+                                                                                 model=adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD],
+                                                                                 calib_obj=adp.metadata[ADPMetadata.Keys.RUNTIME_CALIB_OBJ], \
+                                                                                 opt=adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE], \
+                                                                                 phys_db=adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB], \
+                                                                                 variable=var, \
+                                                                        trial=trial)
+                            print(waveform_file)
