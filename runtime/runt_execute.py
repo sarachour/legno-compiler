@@ -53,6 +53,7 @@ def exec_adp(args):
 
     prog_name = adp.metadata.get(ADPMetadata.Keys.DSNAME)
     program = dsproglib.DSProgDB.get_prog(prog_name)
+    sim = dsproglib.DSProgDB.get_sim(prog_name)
     if args.no_osc:
         osc = osclib.DummySigilent1020XEOscilloscope()
     else:
@@ -60,8 +61,9 @@ def exec_adp(args):
                                                 configlib.OSC_PORT)
         osc.setup()
 
-    sim_time = program.max_time
+    sim_time = sim.sim_time
     if args.runtime:
+        assert(args.runtime <= program.max_time)
         sim_time= args.runtime
 
     runtime = grendel_runner_lib.GrendelRunner()

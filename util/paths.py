@@ -186,21 +186,31 @@ class PathHandler:
                            var=variable,
                            trial=trial)
 
+    def waveform_plot_file(self,graph_index,scale_index, \
+                           model,opt,\
+                           calib_obj, phys_db, \
+                           variable,trial, \
+                           plot):
+        filepath = "{path}/{plot_type}"
+        cdir = filepath.format(path=self.PLOT_DIR, \
+                               plot_type='wave')
+        util.mkdir_if_dne(cdir)
 
+        path = "{path}/{prog}_g{lgraph}_s{lscale}_{model}_{calib_obj}_{opt}"
+        path += "_{var}_{trial}_{plot}.pdf"
 
-    def measured_waveform_file_to_args(self,path):
-        name = path.split("/")[-1]
-        for model_cmd in util.model_format():
-            cmd = "{prog:w}_g{lgraph:w}_s{lscale:d}_%s_{opt:w}" % model_cmd
-            cmd += "_{dssim:w}_{hwenv:w}_{var:w}_{trial:d}.json"
-            result = parselib.parse(cmd,name)
-            if not result is None:
-                result = dict(result.named.items())
-                result['model'] = util.pack_parsed_model(result)
-                assert(not result is None)
-                return result
+        return path.format(path=cdir,
+                           prog=self._prog,
+                           lgraph=graph_index,
+                           lscale=scale_index,
+                           model=model,
+                           calib_obj=calib_obj, \
+                           physdb=phys_db, \
+                           opt=opt,
+                           var=variable,
+                           trial=trial, \
+                           plot=plot)
 
-        raise Exception("could not parse: %s" % name)
 
 
 
