@@ -27,24 +27,23 @@ def get_wall_clock_time(board,dsprog,adp,sim_time):
     return time_us
 
 def save_data_from_oscilloscope(osc,board,dsprog,adp,time,trial=0):
-    variables = {}
 
     ph = pathlib.PathHandler(adp.metadata[adplib.ADPMetadata.Keys.FEATURE_SUBSET], \
                              dsprog.name)
 
     for var,scf,chans in adp.observable_ports(board):
-        chan_pos = get_osc_chan_for_pin(variables[varname]['chans'][llenums.Channels.POS].pin)
-        chan_neg = get_osc_chan_for_pin(variables[varname]['chans'][llenums.Channels.NEG].pin)
+        chan_pos = get_osc_chan_for_pin(chans[llenums.Channels.POS].pin)
+        chan_neg = get_osc_chan_for_pin(chans[llenums.Channels.NEG].pin)
         times,voltages = oscliblib.get_waveform(osc, \
                                                 chan_pos, \
                                                 chan_neg, \
                                                 differential=True)
-
+        tc = board.time_constant*adp.tau
         json_data = {'times':times,  \
                      'values':voltages,  \
                      'time_units': 'wall_clock_sec', \
                      'ampl_units': 'voltage', \
-                     'variable':varname, \
+                     'variable':var, \
                      'time_scale':tc, \
                      'mag_scale':scf}
         print("<writing file>")
@@ -55,10 +54,10 @@ def save_data_from_oscilloscope(osc,board,dsprog,adp,time,trial=0):
                                              opt=adp.metadata[adplib.ADPMetadata.Keys.LSCALE_OBJECTIVE], \
                                              phys_db=adp.metadata[adplib.ADPMetadata.Keys.RUNTIME_PHYS_DB], \
                                              calib_obj=adp.metadata[adplib.ADPMetadata.Keys.RUNTIME_CALIB_OBJ], \
-                                             variable=varname, \
+                                             variable=var, \
                                              trial=trial)
 
-        with open(filename.format(variable=varname),'w') as fh:
+        with open(filename.format(variable=var),'w') as fh:
             print("-> compressing data")
             strdata = util.compress_json(json_data)
             fh.write(strdata)
