@@ -263,8 +263,6 @@ def update(dev,model):
     insert_clause['model'] = runtime_util.encode_dict(model.to_json())
     insert_clause['calib_obj'] = model.calib_obj.value
     insert_clause['model_error'] = model.model_error
-    print(insert_clause)
-    print(model)
     matches = list(dev.physdb \
                    .select(dblib.PhysicalDatabase.DB.DELTA_MODELS,where_clause))
     if len(matches) == 0:

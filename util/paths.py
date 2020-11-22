@@ -170,6 +170,7 @@ class PathHandler:
 
     def measured_waveform_file(self,graph_index,scale_index, \
                                model,opt,\
+                               calib_obj, phys_db, \
                                variable,trial):
         path = "{path}/{prog}_g{lgraph}_s{lscale}_{model}_{calib_obj}_{opt}"
         path += "_{var}_{trial}.json"
@@ -179,7 +180,8 @@ class PathHandler:
                            lgraph=graph_index,
                            lscale=scale_index,
                            model=model,
-                           calib_obj=calib_obj if not calib_obj is None else "xx", \
+                           calib_obj=calib_obj, \
+                           physdb=phys_db, \
                            opt=opt,
                            var=variable,
                            trial=trial)

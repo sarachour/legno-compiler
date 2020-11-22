@@ -68,6 +68,8 @@ def save_data_from_oscilloscope(osc,board,dsprog,adp,time,trial=0):
                                              scale_index=adp.metadata[adplib.ADPMetadata.Keys.LSCALE_ID], \
                                              model=adp.metadata[adplib.ADPMetadata.Keys.LSCALE_SCALE_METHOD], \
                                              opt=adp.metadata[adplib.ADPMetadata.Keys.LSCALE_OBJECTIVE], \
+                                             phys_db=adp.metadata[adplib.ADPMetadata.Keys.RUNTIME_PHYS_DB], \
+                                             calib_obj=adp.metadata[adplib.ADPMetadata.Keys.RUNTIME_CALIB_OBJ], \
                                              variable=varname, \
                                              trial=trial)
 

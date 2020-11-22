@@ -36,11 +36,6 @@ def calibrate_adp(args):
             print("== calibrate %s (%s) ==" % (cfg.inst,calib_obj.value))
             print(cfg)
             print('----')
-            print(delta_model_lib.get_calibrated(board, blk, \
-                                                 cfg.inst.loc, \
-                                                 cfg, \
-                                                 calib_obj))
-            input("continue")
             upd_cfg = llcmd.calibrate(runtime, \
                                       board, \
                                       blk, \

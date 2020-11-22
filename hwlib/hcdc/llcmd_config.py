@@ -21,7 +21,6 @@ def set_state(runtime,board,blk,loc,adp, \
         raise Exception("not calibrated model_number=%s calib=%s" % (board.model_number, \
                                                                      calib_obj))
 
-    assert(len(calib_cfgs) == 1)
     calib_cfg = calib_cfgs[0]
 
     for st in filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), \
