@@ -40,7 +40,7 @@ lut.state['source'].impl.incoming(sink_port="x", \
 lut.state['source'].impl.incoming(sink_port="x", \
                                   source_block='adc', \
                                   source_loc=['_','_',2,0], \
-                                  source_port='x', \
+                                  source_port='z', \
                                   value=enums.LUTSourceType.ADC1)
 
 lut.state['source'].impl.set_default(enums.LUTSourceType.EXTERN)

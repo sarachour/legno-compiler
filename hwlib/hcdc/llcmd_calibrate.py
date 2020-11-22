@@ -18,7 +18,6 @@ def calibrate(runtime,dev,blk,loc,adp, \
     # execute set state command
     print("-> setting state")
     print(state_t)
-    input()
     runtime.execute(cmd)
     resp = unpack_response(runtime.result())
 
