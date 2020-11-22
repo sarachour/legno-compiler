@@ -38,6 +38,10 @@ def calibrate_adp(args):
                                                      calib_obj))
                 continue
 
+            print("== calibrate %s ==" % (cfg.inst))
+            print(cfg)
+            print('----')
+
             upd_cfg = llcmd.calibrate(runtime, \
                                       board, \
                                       blk, \
