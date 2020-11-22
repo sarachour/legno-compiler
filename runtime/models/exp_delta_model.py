@@ -14,7 +14,7 @@ class ExpDeltaModel:
   MODEL_ERROR = "modelError"
   MAX_MODEL_ERROR = 9999
 
-  def __init__(self,blk,loc,output,cfg):
+  def __init__(self,blk,loc,output,cfg,calib_obj=llenums.CalibrateObjective.NONE):
     assert(isinstance(blk,blocklib.Block))
     assert(isinstance(loc,devlib.Location))
     assert(isinstance(output,blocklib.BlockOutput))
@@ -26,7 +26,7 @@ class ExpDeltaModel:
     self.config = cfg
     self._params = {}
     self._model_error = ExpDeltaModel.MAX_MODEL_ERROR
-    self.calib_obj = llenums.CalibrateObjective.NONE
+    self.calib_obj = calib_obj
 
   @property
   def params(self):
