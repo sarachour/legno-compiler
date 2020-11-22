@@ -321,6 +321,21 @@ def get_models_by_block_config(dev,block,cfg):
   return list(__to_delta_models(dev,matches))
 
 
+def get_fully_configured_outputs(dev,block,loc,output,cfg):
+  where_clause = {
+    'block': block.name,
+    'loc': str(loc),
+    'output': output.name,
+    'static_config': runtime_util.get_static_cfg(block,cfg),
+    'hidden_config': runtime_util.get_hidden_cfg(block,cfg)
+  }
+  matches = list(dev.physdb.select(dblib.PhysicalDatabase.DB.DELTA_MODELS, \
+                                   where_clause))
+  models = list(__to_delta_models(dev,matches))
+  return models
+
+
+
 def get_calibrated_output(dev,block,loc,output,cfg,calib_obj):
   if calib_obj is None:
     raise Exception("no calibration objective specified")

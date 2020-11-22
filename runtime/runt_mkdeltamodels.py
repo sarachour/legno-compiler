@@ -37,18 +37,18 @@ def update_delta_model(dev,delta_model,dataset):
 
 
 def _update_delta_models_for_configured_block(dev,blk,loc,output,config,force=False):
-    delta_model = exp_delta_model_lib.load(dev, \
-                                        blk, \
-                                        loc, \
-                                        output, \
-                                        config)
-    if delta_model is None:
-        delta_model = exp_delta_model_lib.ExpDeltaModel(blk, \
+    delta_models = exp_delta_model_lib.get_fully_configured_outputs(dev, \
+                                                                   blk, \
+                                                                   loc, \
+                                                                   output, \
+                                                                   config)
+    if len(delta_models) == 0:
+        delta_models = [exp_delta_model_lib.ExpDeltaModel(blk, \
                                                         loc, \
                                                         output, \
-                                                        config)
+                                                        config)]
 
-    if delta_model.complete and not force:
+    if all(map(lambda model: model.complete, delta_models)) and not force:
         return False
 
     model_error = 0.0
@@ -58,16 +58,18 @@ def _update_delta_models_for_configured_block(dev,blk,loc,output,config,force=Fa
                                                                           loc, \
                                                                           output, \
                                                                           config):
-        succ,error = update_delta_model(dev,delta_model,dataset)
+        for delta_model in delta_models:
+            succ,error = update_delta_model(dev,delta_model,dataset)
         if succ:
             model_error += abs(error)
 
 
-    delta_model.set_model_error(model_error)
-    if delta_model.complete:
-        print(delta_model)
+    for delta_model in delta_models:
+        delta_model.set_model_error(model_error)
+        if delta_model.complete:
+            print(delta_model)
+        exp_delta_model_lib.update(dev,delta_model)
 
-    exp_delta_model_lib.update(dev,delta_model)
     return True
 
 def update_delta_models_for_configured_block(dev,blk,loc,cfg,hidden=True):
