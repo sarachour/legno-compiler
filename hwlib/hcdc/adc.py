@@ -67,7 +67,7 @@ for field in ["test_en","test_adc","test_i2v","test_rs","test_rsinc"]:
 
 for field in ['i2v_cal','upper','lower']:
   adc.state.add(BlockState(field,
-                          values=range(0,32), \
+                          values=range(0,64), \
                           state_type=BlockStateType.CALIBRATE))
   adc.state[field].impl.set_default(16)
 
