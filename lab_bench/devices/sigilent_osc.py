@@ -663,7 +663,10 @@ class Sigilent1020XEOscilloscope(SICPDevice):
         return True if "ON" in resp else False
 
     def waveform(self,channel):
-        assert(channel in self._channels)
+        if not (channel in self._channels):
+            raise Exception("no channel %s in channel list <%s>" \
+                            % (channel,self._channels))
+
         props = self.get_properties()
         #NHDIV = 14
         #NVDIV = 8
