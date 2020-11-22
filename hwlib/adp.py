@@ -549,10 +549,16 @@ class ADPMetadata:
                       self._meta.items()))
     }
 
+  def has(self,key):
+    return key in self._meta
+
   def get(self,key):
     return self[key]
 
   def __getitem__(self,k):
+    if not k in self._meta:
+      raise Exception("key <%s> not in metadata (%s)" \
+                      % (k,self._meta.keys()))
     return self._meta[k]
 
   def __repr__(self):
@@ -652,6 +658,26 @@ class ADP:
         return True
 
     return False
+
+  def observable_ports(self,board):
+    variables = {}
+    for cfg in self.configs:
+        blk = board.get_block(cfg.inst.block)
+        for out in blk.outputs:
+            for pininfo in board.get_external_pins(blk, \
+                                                   cfg.inst.loc, \
+                                                   out.name):
+                port_cfg = cfg[out.name]
+                varname = port_cfg.source.name
+                scf = port_cfg.scf
+                if not varname in variables:
+                    variables[varname] = {'chans':{}, \
+                                          'scf':port_cfg.scf}
+
+                variables[varname]['chans'][pininfo.channel] = pininfo
+
+    for var,data in variables.items():
+      yield var,data['scf'],data['chans']
 
   @staticmethod
   def from_json(board,jsonobj):

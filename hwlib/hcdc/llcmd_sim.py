@@ -32,37 +32,23 @@ def save_data_from_oscilloscope(osc,board,dsprog,adp,time,trial=0):
     ph = pathlib.PathHandler(adp.metadata[adplib.ADPMetadata.Keys.FEATURE_SUBSET], \
                              dsprog.name)
 
-    for cfg in adp.configs:
-        blk = board.get_block(cfg.inst.block)
-        for out in blk.outputs:
-            for pininfo in board.get_external_pins(blk,cfg.inst.loc,out.name):
-                chan = get_osc_chan_for_pin(pininfo.pin)
-                port_cfg = cfg[out.name]
-                varname = port_cfg.source.name
-                scf = port_cfg.scf
-                if not varname in variables:
-                    variables[varname] = {'chans':{}, \
-                                          'values':[], \
-                                          'scf':port_cfg.scf}
-
-                assert(not chan is None)
-                variables[varname]['chans'][pininfo.channel] = chan
-
-    for varname,data in variables.items():
+    for var,scf,chans in adp.observable_ports(board):
+        chan_pos = get_osc_chan_for_pin(variables[varname]['chans'][llenums.Channels.POS].pin)
+        chan_neg = get_osc_chan_for_pin(variables[varname]['chans'][llenums.Channels.NEG].pin)
         times,voltages = oscliblib.get_waveform(osc, \
-                                                variables[varname]['chans'][llenums.Channels.POS], \
-                                                variables[varname]['chans'][llenums.Channels.NEG], \
+                                                chan_pos, \
+                                                chan_neg, \
                                                 differential=True)
 
         tc = board.time_constant*adp.tau
-        ampls = list(map(lambda v: v/data['scf'], voltages))
+        ampls = list(map(lambda v: v/scf, voltages))
         times_su = list(map(lambda t: t/tc, times))
         json_data = {'hw_times':times,  \
                      'voltages':voltages,  \
                      'sim_times':times_su,  \
                      'values':ampls, \
                      'variable':varname, \
-                     'scf':data['scf']}
+                     'scf':scf}
         print("<writing file>")
 
         filename = ph.measured_waveform_file(graph_index=adp.metadata[adplib.ADPMetadata.Keys.LGRAPH_ID], \
