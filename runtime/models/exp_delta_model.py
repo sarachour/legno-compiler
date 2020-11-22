@@ -242,6 +242,11 @@ class ExpDeltaModel:
                                            self.calib_obj.value)
 
 
+def __to_delta_models(dev,matches):
+  for match in matches:
+    yield ExpDeltaModel.from_json(dev, \
+                                  runtime_util.decode_dict(match['model']))
+
 def update(dev,model):
     assert(isinstance(model,ExpDeltaModel))
     #fields['phys_model'] = phys_util.encode_dict(fields['phys_model'])
@@ -250,7 +255,8 @@ def update(dev,model):
       'loc': str(model.loc),
       'output': model.output.name,
       'static_config': model.static_cfg,
-      'hidden_config': model.hidden_cfg
+      'hidden_config': model.hidden_cfg,
+      'calib_obj': model.calib_obj.value
 
     }
     insert_clause = dict(where_clause)
@@ -266,13 +272,9 @@ def update(dev,model):
     elif len(matches) == 1:
       dev.physdb.update(dblib.PhysicalDatabase.DB.DELTA_MODELS, \
                         where_clause,insert_clause)
+    else:
+      raise Exception("cannot haave more than one match")
 
-
-
-def __to_delta_models(dev,matches):
-  for match in matches:
-    yield ExpDeltaModel.from_json(dev, \
-                                  runtime_util.decode_dict(match['model']))
 
 
 def load(dev,block,loc,output,cfg,calib_obj):
