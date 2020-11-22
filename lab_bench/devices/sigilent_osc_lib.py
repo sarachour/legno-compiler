@@ -16,6 +16,10 @@ def get_waveform(osc,chan1,chan2,differential=True):
         #pos channel
         #y = 1.0115x - 13.872
         #R² = 0.99999
+        if chan2 is None and differential:
+            raise Exception("channel 2 is unset but differential mode is selected")
+            differential = False
+
         mV = 1.0/1000.0
         CHAN1_SLOPE = 1.0115
         CHAN1_OFFSET = -13.72*mV
@@ -24,15 +28,15 @@ def get_waveform(osc,chan1,chan2,differential=True):
         #R² = 0.99981
         CHAN2_SLOPE = 1.0151
         CHAN2_OFFSET = -11.135*mV
-        chan1 = osc.waveform(chan1)
-        chan2 = None
+        data1 = osc.waveform(chan1)
+        data2 = None
         if differential:
-            chan2 = osc.waveform(chan2)
+            data2 = osc.waveform(chan2)
 
 
         if differential:
-            out_t1,out_v1 = chan1
-            out_t2,out_v2 = chan2
+            out_t1,out_v1 = data1
+            out_t2,out_v2 = data2
             def compute(i):
                 v1 = out_v1[i]*CHAN1_SLOPE+CHAN1_OFFSET
                 v2 = out_v2[i]*CHAN2_SLOPE+CHAN2_OFFSET
@@ -44,7 +48,7 @@ def get_waveform(osc,chan1,chan2,differential=True):
             out_t = out_t1
 
         else:
-            out_t,out_v = chan1
+            out_t,out_v = data1
             def compute(i):
                 v1 = out_v[i]*CHAN1_SLOPE+CHAN1_OFFSET
                 return v

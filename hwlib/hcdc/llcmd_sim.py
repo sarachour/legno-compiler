@@ -45,6 +45,7 @@ def save_data_from_oscilloscope(osc,board,dsprog,adp,time,trial=0):
                                           'values':[], \
                                           'scf':port_cfg.scf}
 
+                assert(not chan is None)
                 variables[varname]['chans'][pininfo.channel] = chan
 
     for varname,data in variables.items():
