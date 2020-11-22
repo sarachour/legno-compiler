@@ -53,11 +53,12 @@ def calibrate_adp(args):
             for output in blk.outputs:
                 delta_model = delta_model_lib.load(board,blk, \
                                                    cfg.inst.loc,\
-                                                   output,upd_cfg)
+                                                   output,upd_cfg, \
+                                                   calib_obj=calib_obj)
                 if delta_model is None:
                     delta_model = delta_model_lib \
                                   .ExpDeltaModel(blk,cfg.inst.loc, \
-                                                 output,upd_cfg)
+                                                 output,upd_cfg, \
+                                                 calib_obj=calib_obj)
 
-                delta_model.calib_obj = calib_obj
                 delta_model_lib.update(board,delta_model)
