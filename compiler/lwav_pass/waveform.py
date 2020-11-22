@@ -1,5 +1,9 @@
 from enum import Enum
 
+import compiler.lwav_pass.waveform_align as alignutil
+import matplotlib.pyplot as plt
+import seaborn as sns
+
 class Waveform:
     class TimeUnits(Enum):
         WALL_CLOCK_SECONDS = "wall_clock_sec"
@@ -28,7 +32,7 @@ class Waveform:
                  ampl_units,
                  time_scale=1.0,
                  mag_scale=1.0):
-        self.ampls = values
+        self.values = values
         self.times = times
         self.variable = variable
         self.time_scale = time_scale
@@ -49,9 +53,9 @@ class Waveform:
 
     def rec_value(self,v):
         if self.ampl_units == Waveform.AmplUnits.VOLTAGE:
-            return v/self.ampl_scale
+            return v/self.mag_scale
         else:
-            return v*self.ampl_scale
+            return v*self.mag_scale
 
     @staticmethod
     def from_json(obj):
@@ -69,7 +73,7 @@ class Waveform:
 
         return Waveform(variable=self.variable, \
                         times=times, \
-                        value=values, \
+                        values=values, \
                         time_units=self.time_units.rec_units(), \
                         ampl_units=self.ampl_units.rec_units(), \
                         time_scale=1.0/self.time_scale, \
@@ -77,4 +81,76 @@ class Waveform:
 
 
     def align(self,other):
-        raise NotImplementedError
+        if not (self.time_units == other.time_units):
+            raise Exception("time unit mismatch: %s != %s"  \
+                            % (self.time_units,other.time_units))
+        if not (self.ampl_units == other.ampl_units):
+            raise Exception("ampl unit mismatch: %s != %s"  \
+                            % (self.ampl_units,other.ampl_units))
+
+        time_slack = 0.02
+        time_jitter = other.max_time*0.1
+        xform_spec = [
+            (1.0-time_slack,1.0+time_slack),
+            #(0.0,max(tmeas)*0.25)
+            (-time_jitter,time_jitter)
+        ]
+        return alignutil.align(self,other,xform_spec)
+
+class WaveformVis:
+
+    def __init__(self,name,units,title):
+        self.name = name
+        self.units = units
+        self.title = title
+        self.waveforms = {}
+        self.styles = {}
+ 
+    @property
+    def time_units(self):
+        for wf in self.waveforms.values():
+            return wf.time_units
+        return None
+
+    @property
+    def num_waveforms(self):
+        return len(self.waveforms.keys())
+
+    @property
+    def empty(self):
+        return self.num_waveforms == 0
+
+    def add_waveform(self,name,wf):
+        if not self.empty and \
+           self.time_units != wf.time_units:
+            raise Exception("time unit mismatch: %s != %s (%d)" \
+                            % (self.time_units,wf.time_units, self.num_waveforms))
+
+        self.waveforms[name] = wf
+
+
+    def set_style(self,name,color,linestyle):
+        self.styles[name] = (color,linestyle)
+
+
+    def plot(self,filepath):
+        palette = sns.color_palette()
+        ax = plt.subplot(1, 1, 1)
+        title = self.title
+        ax.tick_params(labelsize=16);
+        ax.set_xlabel('simulation time',fontsize=32)
+        ax.set_ylabel(self.units,fontsize=32)
+
+        ax.grid(False)
+
+        for name,wf in self.waveforms.items():
+            color,linestyle = self.styles[name]
+            ax.plot(wf.times,wf.values,label=name,
+                    linestyle=linestyle, \
+                    linewidth=3, \
+                    color=color)
+
+        #plt.tight_layout()
+        plt.savefig(filepath)
+        plt.clf()
+

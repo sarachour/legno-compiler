@@ -136,7 +136,7 @@ def exec_lgraph(args):
 def exec_lsim(args):
     from compiler import lsim
 
-    board = get_device()
+    board = get_device(None)
     path_handler = paths.PathHandler(args.subset,args.program)
     program = DSProgDB.get_prog(args.program)
     timer = util.Timer('lsim',path_handler)
@@ -197,4 +197,16 @@ def exec_wav(args,trials=1):
                                 with open(waveform_file,'r') as fh:
                                     obj = util.decompress_json(fh.read())
                                     wave = wavelib.Waveform.from_json(obj)
-                                    ref,traj = analyzelib.analyze(adp,wave)
+                                    for vis in analyzelib.analyze(adp,wave):
+                                        plot_file = path_handler.waveform_plot_file( \
+                                                                                             graph_index=adp.metadata[ADPMetadata.Keys.LGRAPH_ID],
+                                                                                             scale_index=adp.metadata[ADPMetadata.Keys.LSCALE_ID],
+                                                                                             model=adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD],
+                                                                                             calib_obj=adp.metadata[ADPMetadata.Keys.RUNTIME_CALIB_OBJ], \
+                                                                                             opt=adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE], \
+                                                                                             phys_db=adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB], \
+                                                                                             variable=var, \
+                                                                                             trial=trial, \
+                                                                                     plot=vis.name)
+
+                                        vis.plot(plot_file)

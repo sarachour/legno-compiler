@@ -262,10 +262,10 @@ class DSProg:
         stvars,ics,derivs,fnvars,fns = self.build_ode_prob()
 
         def dt_func(t,values):
-            vs = dict(zip(map(lambda v: "%s_" % v, stvars), \
+            vs = dict(zip(map(lambda v: "%s" % v, stvars), \
                         values))
             for fvar in fnvars:
-                vs["%s_" % fvar] = _evaluate(fns[fvar],vs)
+                vs["%s" % fvar] = _evaluate(fns[fvar],vs)
 
             next_vs = {}
             for stvar in stvars:
@@ -361,14 +361,15 @@ class DSProg:
         T,Y = self._execute(dssim)
         stvars,ics,derivs,fnvars,fns = self.build_ode_prob()
         def fn_func(t,values):
-            vs = dict(zip(map(lambda v: "%s_" % v, stvars), \
+            vs = dict(zip(map(lambda v: v, stvars), \
                             values))
             vals = {}
             for fvar in fnvars:
                 vals[fvar] = _evaluate(fns[fvar],vs)
-                vs["%s_" % fvar] = vals[fvar]
+                vs[fvar] = vals[fvar]
+
             for v in stvars:
-                vals[v] = vs['%s_' % v]
+                vals[v] = vs[v]
             return vals
 
         if(len(stvars) == 0):
