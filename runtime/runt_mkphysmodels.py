@@ -173,8 +173,8 @@ def mktree(args):
             models[(blk,cfg)] = []
         models[(blk,cfg)].append(new_model)
 
-        #with open(tmpfile,'a') as fh:
-        #    fh.write("%s\n" % json.dumps(new_model.to_json()))
+        with open(tmpfile,'a') as fh:
+            fh.write("%s\n" % json.dumps(new_model.to_json()))
 
     print("==== Generalizing + Minimizing Models ===")
     for key,mdls in models.items():

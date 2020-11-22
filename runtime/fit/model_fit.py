@@ -129,7 +129,7 @@ perr = np.sqrt(np.diag(pcov))
 
 def fit_model(all_vars,expr,data):
 
-  print("*********START OF FIT_MODEL*********")
+  #print("*********START OF FIT_MODEL*********")
   inputs = {}
   for varname,datum in data['inputs'].items():
     if varname in expr.vars():
