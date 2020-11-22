@@ -24,9 +24,6 @@ def calibrate_adp(args):
             if not blk.requires_calibration():
                 continue
 
-            print("%s" % (cfg.inst))
-            print(cfg)
-            print('----')
 
             if delta_model_lib.is_calibrated(board, \
                                              blk, \
@@ -43,7 +40,7 @@ def calibrate_adp(args):
             print("== calibrate %s (%s) ==" % (cfg.inst,calib_obj.value))
             print(cfg)
             print('----')
-
+            input("continue")
             upd_cfg = llcmd.calibrate(runtime, \
                                       board, \
                                       blk, \
@@ -61,4 +58,5 @@ def calibrate_adp(args):
                                                  output,upd_cfg, \
                                                  calib_obj=calib_obj)
 
+                delta_model.calib_obj = calib_obj
                 delta_model_lib.update(board,delta_model)

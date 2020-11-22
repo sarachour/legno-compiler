@@ -257,7 +257,8 @@ def update(dev,model):
     insert_clause['model'] = runtime_util.encode_dict(model.to_json())
     insert_clause['calib_obj'] = model.calib_obj.value
     insert_clause['model_error'] = model.model_error
-
+    print(insert_clause)
+    print(model)
     matches = list(dev.physdb \
                    .select(dblib.PhysicalDatabase.DB.DELTA_MODELS,where_clause))
     if len(matches) == 0:
@@ -366,4 +367,8 @@ def get_all(dev):
   return list(__to_delta_models(dev,matches))
 
 def is_calibrated(dev,block,loc,cfg,calib_obj):
-  return len(get_calibrated(dev,block,loc,cfg,calib_obj)) > 0
+  for model in get_models_by_block_instance(dev,block,loc,cfg):
+     if model.calib_obj == calib_obj:
+        return True
+  return False
+
