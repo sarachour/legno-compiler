@@ -26,7 +26,7 @@ def get_wall_clock_time(board,dsprog,adp,sim_time):
     time_us = sim_time*adp.tau*hwtime
     return time_us
 
-def save_data_from_oscilloscope(osc,board,dsprog,adp,time,trial=0):
+def save_data_from_oscilloscope(osc,board,dsprog,adp,sim_time,trial=0):
 
     ph = pathlib.PathHandler(adp.metadata[adplib.ADPMetadata.Keys.FEATURE_SUBSET], \
                              dsprog.name)
@@ -43,6 +43,7 @@ def save_data_from_oscilloscope(osc,board,dsprog,adp,time,trial=0):
                      'values':voltages,  \
                      'time_units': 'wall_clock_sec', \
                      'ampl_units': 'voltage', \
+                     'runtime': sim_time/tc,\
                      'variable':var, \
                      'time_scale':tc, \
                      'mag_scale':scf}
