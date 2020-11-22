@@ -12,8 +12,10 @@ def calibrate_adp(args):
     board = runtime_util.get_device(args.model_number)
     adp = runtime_util.get_adp(board,args.adp)
 
+    debug = False
     runtime = GrendelRunner()
-    runtime.initialize()
+    if not debug:
+        runtime.initialize()
     calib_obj = llenums.CalibrateObjective(args.method)
     for cfg in adp.configs:
         blk = board.get_block(cfg.inst.block)
@@ -36,12 +38,16 @@ def calibrate_adp(args):
             print("== calibrate %s (%s) ==" % (cfg.inst,calib_obj.value))
             print(cfg)
             print('----')
-            upd_cfg = llcmd.calibrate(runtime, \
-                                      board, \
-                                      blk, \
-                                      cfg.inst.loc,\
-                                      adp, \
-                                      calib_obj=calib_obj)
+            if not debug:
+                upd_cfg = llcmd.calibrate(runtime, \
+                                        board, \
+                                        blk, \
+                                        cfg.inst.loc,\
+                                        adp, \
+                                        calib_obj=calib_obj)
+            else:
+                upd_cfg = cfg
+
             for output in blk.outputs:
                 delta_model = delta_model_lib.load(board,blk, \
                                                    cfg.inst.loc,\

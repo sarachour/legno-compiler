@@ -95,13 +95,13 @@ dac.state.add(BlockState('source', BlockStateType.CONNECTION, \
 dac.state['source'].impl.incoming(sink_port="x", \
                                   source_block='lut', \
                                   source_loc=['_','_',0,0], \
-                                  source_port='x', \
+                                  source_port='z', \
                                   value=enums.DACSourceType.LUT0)
 
 dac.state['source'].impl.incoming(sink_port="x", \
                                   source_block='lut', \
                                   source_loc=['_','_',2,0], \
-                                  source_port='x', \
+                                  source_port='z', \
                                   value=enums.DACSourceType.LUT1)
 dac.state['source'].impl.set_default(enums.DACSourceType.MEM)
 
@@ -109,9 +109,9 @@ dac.state['source'].impl.set_default(enums.DACSourceType.MEM)
 dac.state.add(BlockState('dynamic', BlockStateType.MODE, \
                          values=enums.BoolType))
 dac.state['dynamic'] \
-   .impl.bind(['const','_'], enums.BoolType.TRUE)
+   .impl.bind(['const','_'], enums.BoolType.FALSE)
 dac.state['dynamic'] \
-   .impl.bind(['dyn','_'], enums.BoolType.FALSE)
+   .impl.bind(['dyn','_'], enums.BoolType.TRUE)
 
 
 dac.state.add(BlockState('gain_cal',

@@ -17,6 +17,8 @@ def calibrate(runtime,dev,blk,loc,adp, \
     cmd = cmd_t.build(cmd_data,debug=True)
     # execute set state command
     print("-> setting state")
+    print(state_t)
+    input()
     runtime.execute(cmd)
     resp = unpack_response(runtime.result())
 

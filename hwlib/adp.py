@@ -462,28 +462,35 @@ class ADPConnection:
     return test_st == ADPConnection.WILDCARD or \
       st == test_st
 
+  @staticmethod
+  def is_wildcard(st):
+    return st == ADPConnection.WILDCARD
+
   def test_addr(loc,addr):
     assert(len(loc) == len(addr))
-    assert(isinstance(loc, devlib.Location))
-    assert(isinstance(addr, devlib.Location))
-    for a1,a2 in zip(loc.address,addr.address):
+    for a1,a2 in zip(loc,addr):
       if a2 != ADPConnection.WILDCARD and \
          a1 != a2:
+        print("%s != %s" % (a1,a2))
         return False
     return True
 
 
   def dest_match(self,block_name,loc,port):
     assert(isinstance(block_name,str))
-    return ADPConnection.test_str(self.dest_inst.block,block_name) and \
-      ADPConnection.test_str(self.dest_port,port) and \
-      ADPConnection.test_addr(self.dest_inst.loc,loc)
+    block_match = ADPConnection.test_str(self.dest_inst.block,block_name)
+    port_match = ADPConnection.test_str(self.dest_port,port)
+    loc_match = ADPConnection.test_addr(self.dest_inst.loc,loc)
+    print("block=%s port=%s loc=%s" % (block_match,port_match,loc_match))
+    return block_match and port_match and loc_match
 
   def source_match(self,block_name,loc,port):
     assert(isinstance(block_name,str))
-    return ADPConnection.test_str(self.source_inst.block,block_name) and \
-      ADPConnection.test_str(self.source_port,port) and \
-      ADPConnection.test_addr(self.source_inst.loc,loc)
+    block_match = ADPConnection.test_str(self.source_inst.block,block_name)
+    port_match = ADPConnection.test_str(self.source_port,port)
+    loc_match = ADPConnection.test_addr(self.source_inst.loc,loc)
+    print("block=%s port=%s loc=%s" % (block_match,port_match,loc_match))
+    return block_match and port_match and loc_match
 
   def same_source(self,other):
     assert(isinstance(other,ADPConnection))

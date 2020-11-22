@@ -43,6 +43,10 @@ class Location:
   def __repr__(self):
     return str(self)
 
+  def __iter__(self):
+    for it in self.address:
+      yield it
+
 class Layer:
 
   def __init__(self):
