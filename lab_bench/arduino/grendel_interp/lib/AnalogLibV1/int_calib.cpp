@@ -5,6 +5,7 @@
 
 #define CALIB_NPTS 7
 #define TOTAL_NPTS CALIB_NPTS
+#define DEBUG_INTEG_CAL
 const float TEST_POINTS[CALIB_NPTS] = {-0.875,0.875,0.5,-0.5,-0.25,0.25,0.0};
 
 
@@ -31,6 +32,11 @@ float Fabric::Chip::Tile::Slice::Integrator::calibrateHelper(Dac* ref_dac,
                                              measure_steady_state,
                                              mean,
                                              variance);
+#ifdef DEBUG_INTEG_CAL
+    sprintf(FMTBUF, "integ-ic ic=%f targ=%f mean=%f\n",
+            ic_val, target, mean);
+    print_info(FMTBUF);
+#endif
     if(succ){
       observations[npts] = mean;
       expected[npts] = target;
@@ -196,7 +202,7 @@ float tc_compute_loss(calib_objective_t obj,
                     float target_tc,
                     time_constant_stats stats){
   float time_scale = stats.tc/target_tc;
-  sprintf(FMTBUF,"time-const=%f eps=%f confidence=(%f,%f)",
+  sprintf(FMTBUF,"integ-tc-est time-const=%f eps=%f confidence=(%f,%f)",
           time_scale,
           stats.eps,
           stats.R2_k,
@@ -236,7 +242,7 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrateOpenLoopCircuit(calib_objec
   // determine the rate of change of the open loop system.
   float dummy;
   float input = val_dac->fastMeasureValue(dummy);
-  sprintf(FMTBUF,"open-loop input=%f",input);
+  sprintf(FMTBUF,"integ-ol open-loop input=%f",input);
   print_info(FMTBUF);
 
   // set the initial condition of the system
@@ -284,7 +290,7 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrateOpenLoopCircuit(calib_objec
       cutil::update_calib_table(calib_table[nmos],loss,1,gain_cal);
     }
 
-    sprintf(FMTBUF,"BEST nmos=%d code=%d loss=%f",
+    sprintf(FMTBUF,"BEST integ-ol nmos=%d code=%d loss=%f",
             nmos,
             calib_table[nmos].state[0],
             calib_table[nmos].loss);
@@ -329,7 +335,7 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrateClosedLoopCircuit(calib_obj
   fan->measureZero(out0bias,out1bias,out2bias);
   float target = 0.0 + out0bias + out1bias;
 
-  sprintf(FMTBUF,"fan bias0=%f bias1=%f bias2=%f", out0bias,out1bias,out2bias);
+  sprintf(FMTBUF,"integ-cl fan bias0=%f bias1=%f bias2=%f", out0bias,out1bias,out2bias);
   print_info(FMTBUF);
   // configure init cond
   setInitial(0.0);
@@ -370,7 +376,7 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrateClosedLoopCircuit(calib_obj
       float loss = fabs(mean-target);
       cutil::update_calib_table(calib_table[nmos],loss,2,in0_cal,32);
     }
-    sprintf(FMTBUF,"nmos=%d BEST in0_code=%d loss=%f",
+    sprintf(FMTBUF,"integ-cl nmos=%d BEST in0_code=%d loss=%f",
             nmos, calib_table[nmos].state[0], calib_table[nmos].loss);
     print_info(FMTBUF);
   }
@@ -393,7 +399,7 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrateClosedLoopCircuit(calib_obj
       print_info(FMTBUF);
       */
     }
-    sprintf(FMTBUF,"nmos=%d BEST codes=(%d,%d) loss=%f",
+    sprintf(FMTBUF,"integ-cl nmos=%d BEST codes=(%d,%d) loss=%f",
             nmos,
             calib_table[nmos].state[0],
             calib_table[nmos].state[1],
@@ -470,7 +476,7 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrate(calib_objective_t obj){
     this->m_state.gain_cal = gain_cal;
     update(this->m_state);
     float loss = this->getInitCondLoss(val_dac,obj);
-    sprintf(FMTBUF,"nmos=%d gain_cal=%d loss=%f",this->m_state.nmos,
+    sprintf(FMTBUF,"integ-top nmos=%d gain_cal=%d loss=%f",this->m_state.nmos,
             gain_cal,loss);
     print_info(FMTBUF);
     cutil::update_calib_table(ol_calib_table[best_nmos],loss,1,gain_cal);
@@ -478,7 +484,7 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrate(calib_objective_t obj){
   int best_gain_cal = ol_calib_table[best_nmos].state[0];
   int best_port_cal_in0 = cl_calib_table[best_nmos].state[0];
   int best_port_cal_out0 = cl_calib_table[best_nmos].state[1];
-  sprintf(FMTBUF,"BEST nmos=%d gain_cal=%d port_cals=(%d,%d)",
+  sprintf(FMTBUF,"BEST integ-top nmos=%d gain_cal=%d port_cals=(%d,%d)",
           best_nmos,best_gain_cal,best_port_cal_in0,best_port_cal_out0);
   print_info(FMTBUF);
 
