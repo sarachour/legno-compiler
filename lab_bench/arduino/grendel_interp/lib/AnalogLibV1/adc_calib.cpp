@@ -87,8 +87,11 @@ float Fabric::Chip::Tile::Slice::ChipAdc::calibrateMaxDeltaFit(Fabric::Chip::Til
 
     util::meas_dist_adc(this,mean,variance);
     mean = this->digitalCodeToValue(mean);
-    expected[i] = TEST_POINTS[i];
+    sprintf(FMTBUF,"cal-min in_val=%f targ=%f meas=%f\n", in_val,target,mean);
+    print_info(FMTBUF);
+    expected[i] = target;
     errors[i] = mean-target;
+
     highest_std = max(sqrt(variance)/128.0,highest_std);
   }
   float gain_mean,bias,rsq,avg_error,max_error;
