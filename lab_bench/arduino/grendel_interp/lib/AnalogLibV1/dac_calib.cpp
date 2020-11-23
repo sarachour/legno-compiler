@@ -148,7 +148,8 @@ float Fabric::Chip::Tile::Slice::Dac::calibrateMinError(){
 }
 
 float Fabric::Chip::Tile::Slice::Dac::calibrateFast(){
-  this->setConstant(1.0);
+  float const_val = 1.0;
+  this->setConstant(const_val);
   float target = Fabric::Chip::Tile::Slice::Dac::computeOutput(this->m_state);
   float mean,variance;
   mean = this->fastMeasureValue(variance);
