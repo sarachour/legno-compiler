@@ -57,6 +57,7 @@ class Unification:
     return st
 
 class UnifyConstraint(Enum):
+  NOT_CONSTANT = "not_const"
   CONSTANT = "const"
   FUNCTION = "func"
   NONE = "none"
@@ -182,9 +183,10 @@ from sympy.solvers import solve as sympy_solve
 def sympy_unify_const(pat_expr,targ_expr):
     assert(len(pat_expr.vars()) <= 1)
     assert(len(targ_expr.vars()) == 0)
-    targ_syms,pat_syms= {},{}
-    pat_symexpr = lambdoplib.to_sympy(pat_expr,pat_syms)
+    targ_syms = {}
     targ_symexpr = lambdoplib.to_sympy(targ_expr,targ_syms)
+    pat_syms = dict(targ_syms)
+    pat_symexpr = lambdoplib.to_sympy(pat_expr,pat_syms)
     symbols = list(targ_syms.values()) + list(pat_syms.values())
     try:
         result = sympy_solve(targ_symexpr - pat_symexpr, \
@@ -209,23 +211,25 @@ def sympy_equals(e1,e2):
     return result == 0
 
 def sympy_unify_rewrite(pat_expr,targ_expr,cstrs,blacklist={}):
-    updated_blacklist = False
     deterministic = False
     def add_to_bl(wildvar,expr):
         assert(isinstance(wildvar,sympy.Wild))
-        if not var.name in blacklist:
-            blacklist[var.name] = []
-        if not symexpr in blacklist[var.name]:
-            blacklist[var.name].append(symexpr)
-            updated_blacklist = True
+        if not wildvar.name in blacklist:
+            blacklist[wildvar.name] = []
+
+        if not symexpr in blacklist[wildvar.name]:
+            blacklist[wildvar.name].append(symexpr)
+            return True
+
+        return False
 
     targ_syms,pat_syms= {},{}
     pat_symexpr = lambdoplib.to_sympy(pat_expr,pat_syms,wildcard=True, \
                                     blacklist=blacklist)
-    targ_symexpr = lambdoplib.to_sympy(targ_expr,targ_syms)
-    print(pat_symexpr)
-    print(targ_symexpr)
-    if isinstance(targ_symexpr,float):
+    targ_symexpr = lambdoplib.to_sympy(targ_expr,targ_syms, \
+                                       no_aliasing=True)
+    if isinstance(targ_symexpr,float) or \
+       isinstance(targ_symexpr,int):
         deterministic = True
         try:
             result = sympy_solve(targ_symexpr - pat_symexpr, \
@@ -236,40 +240,54 @@ def sympy_unify_rewrite(pat_expr,targ_expr,cstrs,blacklist={}):
             result = None
 
     else:
-        result = targ_symexpr.match(pat_symexpr)
+        result = targ_symexpr.match(pat_symexpr, old=True)
+        #print("targ:%s" % targ_symexpr)
+        #print("pat:%s" % pat_symexpr)
+        #print("res:%s" % result)
+
     if result is None:
         return
 
-    valid = True
     unif = Unification()
+    updated_blacklist = False
+    valid = True
     for var,symexpr in result.items():
         try:
-            expr = lambdoplib.from_sympy(sympy.simplify(symexpr))
+            expr = lambdoplib.from_sympy(symexpr,no_aliasing=True)
             unif.add(genoplib.Var(var.name), expr)
         except lambdoplib.FromSympyFailed as e:
-            add_to_bl(var,symexpr)
+            updated_blacklist |= add_to_bl(var,symexpr)
             valid = False
             continue
 
         cstr = cstrs[var.name] if var.name in cstrs else \
                UnifyConstraint.NONE
 
+        if cstr == UnifyConstraint.NOT_CONSTANT\
+            and expr.op == oplib.OpType.CONST:
+            updated_blacklist |= add_to_bl(var,symexpr)
+            valid = False
         if cstr == UnifyConstraint.CONSTANT \
             and expr.op != oplib.OpType.CONST:
-            add_to_bl(var,symexpr)
+            updated_blacklist |= add_to_bl(var,symexpr)
             valid = False
         if cstr == UnifyConstraint.VARIABLE \
            and expr.op != oplib.OpType.VAR:
-            add_to_bl(var,symexpr)
+            updated_blacklist |= add_to_bl(var,symexpr)
             valid = False
         if cstr == UnifyConstraint.SAMEVAR:
             raise NotImplementedError
 
-    wildvar,symexpr = random.choice(list(result.items()))
     if valid:
         yield unif
-        add_to_bl(wildvar,symexpr)
+        opts = list(result.items())
+        random.shuffle(opts)
+        for wildvar,symexpr in opts:
+            if not updated_blacklist:
+                updated_blacklist |= add_to_bl(wildvar,symexpr)
 
+
+    #print("blacklist: %s (valid=%s,updated=%s)" % (blacklist,valid,updated_blacklist))
     if updated_blacklist and not deterministic:
         for unif in sympy_unify_rewrite(pat_expr,targ_expr,cstrs,blacklist):
             yield unif
@@ -297,6 +315,6 @@ def unify(pat_expr,targ_expr,cstrs):
     if not new_pat_expr is None:
         pat_expr = new_pat_expr
 
-    for result in sympy_unify_rewrite(pat_expr,targ_expr,cstrs):
-        print(pat_expr,targ_expr,result)
+    for result in sympy_unify_rewrite(pat_expr,targ_expr,cstrs, \
+                                      blacklist={}):
         yield result

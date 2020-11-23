@@ -33,6 +33,8 @@ lgraph_subp.add_argument('--vadp-fragments', type=int,default=5,
                        help='number of abs circuits to generate.')
 lgraph_subp.add_argument('--vadps', type=int,default=3,
                        help='number of conc circuits to generate.')
+lgraph_subp.add_argument('--routes', type=int,default=3,
+                       help='number routed circuits to generate.')
 lgraph_subp.add_argument('--adps', type=int,default=5,
                        help='maximum number of circuits to generate.')
 lgraph_subp.add_argument('--asm-fragments',type=int,default=3,

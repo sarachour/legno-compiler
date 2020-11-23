@@ -4,6 +4,7 @@ import compiler.lgraph_pass.vadp as vadplib
 import compiler.lgraph_pass.tableau as tablib
 import hwlib.block as blocklib
 import ops.generic_op as genoplib
+import ops.op as oplib
 import ops.opparse as parser
 
 class KirchhoffRule(rulelib.Rule):
@@ -20,6 +21,15 @@ class KirchhoffRule(rulelib.Rule):
     e = parser.parse_expr('a+b')
     self.virt.add_expr("*",e)
 
+
+
+  def valid(self,unif):
+    for var,val in unif.assignments:
+      if val.op == oplib.OpType.CONST and \
+         val.value == 0.0:
+        return False
+
+    return True
 
   def apply(self,goal,rule,unif=None):
     assert(rule.law.name == self.name)

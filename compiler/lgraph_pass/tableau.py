@@ -39,6 +39,9 @@ class PortRelation:
     self.cstrs = dict(map(lambda v: (v,unifylib.UnifyConstraint.NONE), \
                           self.expr.vars()))
     for var in self.cstrs.keys():
+      if self.block.inputs.has(var):
+        self.cstrs[var] = unifylib.UnifyConstraint.NOT_CONSTANT
+
       if self.block.data.has(var) and \
          self.block.data[var].type == blocklib.BlockDataType.CONST:
         self.cstrs[var] = unifylib.UnifyConstraint.CONSTANT

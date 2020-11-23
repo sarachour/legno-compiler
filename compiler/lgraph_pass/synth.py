@@ -5,7 +5,9 @@ import compiler.lgraph_pass.vadp as vadplib
 from compiler.lgraph_pass.tableau import *
 import ops.base_op as oplib
 import ops.generic_op as genoplib
+import ops.lambda_op as lambdlib
 import numpy as np
+from functools import cmp_to_key
 
 def make_initial_tableau(blocks,laws,variable,expr):
   tab = Tableau()
@@ -207,21 +209,34 @@ def compatible_relation(dev,goal,rel):
 
   return True
 
+def valid_port_unif(expr,unif):
+  total_nodes = 0
+  for k,e in unif.assignments:
+    total_nodes += e.count()
+    if lambdlib.equivalent(e,expr):
+      return False
+
+  #if total_nodes > expr.count():
+  #  return False
+
+  return True
+
 def derive_tableaus(dev,tableau,goal):
   for rel in tableau.relations:
     if not compatible_relation(dev,goal,rel):
       continue
     if isinstance(rel,PortRelation):
       for unif in unifylib.unify(rel.expr,goal.expr,rel.cstrs):
-        new_tableau = derive_tableau_from_port_rel(tableau,goal,rel,unif)
-        yield new_tableau
+        if valid_port_unif(goal.expr, unif):
+          new_tableau = derive_tableau_from_port_rel(tableau,goal,rel,unif)
+          yield new_tableau
 
     elif isinstance(rel,PhysicsLawRelation):
       cstrs = rel.law.virt.unify_cstrs()
-      print(rel.expr)
       for unif in unifylib.unify(rel.expr,goal.expr,cstrs):
-        new_tableau = derive_tableau_from_phys_rel(tableau,goal,rel,unif)
-        yield new_tableau
+        if rel.law.valid(unif):
+          new_tableau = derive_tableau_from_phys_rel(tableau,goal,rel,unif)
+          yield new_tableau
 
     else:
       raise Exception("unknown relation")
@@ -233,17 +248,61 @@ def get_valid_tableaus(frontier,depth):
     if idx < depth:
       yield tab,idx
 
+def tableau_stats(tab,depth):
+  cost = 0.0
+  for goal in tab.goals:
+    #cost += goal.expr.count()
+    cost = max(goal.expr.count(),cost)
+
+  vadp_size = len(tab.vadp)
+  goal_size = len(tab.goals)
+  return cost,vadp_size,goal_size,depth
+
+def _order_tableaus(tab1,tab2):
+  cost1,vadp_size1,goal_size1,depth1 = tableau_stats(*tab1)
+  cost2,vadp_size2,goal_size2,depth2 = tableau_stats(*tab2)
+  if cost1 < cost2:
+    return -1
+  elif cost1 > cost2:
+    return 1
+  else:
+    if vadp_size1 < vadp_size2:
+      return -1
+    elif vadp_size1 > vadp_size2:
+      return 1
+    else:
+      if goal_size1 < goal_size2:
+        return -1
+      elif goal_size1 > goal_size2:
+        return 1
+      else:
+        return 0
+
+def sort_tableaus(tabs):
+  tab_key = cmp_to_key(_order_tableaus)
+  tabs.sort(key=tab_key)
+
 def tableau_complexity(tableau,depth):
   cost = 0.0
   for goal in tableau.goals:
     #cost += goal.expr.count()
     cost = max(goal.expr.count(),cost)
-  return cost + len(tableau.goals) + depth
+
+  vadp_size = len(tableau.vadp)
+  goal_size = len(tableau.goals)
+  return max(cost, vadp_size)
 
 def goal_complexity(goal):
+  if goal.expr.op == oplib.OpType.VAR:
+    return 0
+
   return goal.expr.count()
 
 def select_tableau(frontier,complexity):
+  sort_tableaus(frontier)
+  tab,tab_depth = frontier[0]
+  return tab,tab_depth,frontier[1:]
+  '''
   penalty = list(map(lambda tab: complexity(*tab), frontier))
   idx = np.argmin(penalty)
   tableau,tableau_depth = frontier[idx]
@@ -251,6 +310,7 @@ def select_tableau(frontier,complexity):
                             filter(lambda i: i != idx, \
                                    range(0,len(frontier)))))
   return tableau,tableau_depth,other_tableaus
+  '''
 
 def select_goal(goals,complexity):
   penalty = list(map(lambda goal: complexity(goal), goals))
@@ -289,6 +349,8 @@ def search(dev,blocks,laws,variable,expr,depth=20):
 
   frontier = [(tableau,0)]
 
+  #debug = True
+  debug = False
   next_frontier = []
   valid_tableaus = list(get_valid_tableaus(frontier,depth))
   solutions = 0
@@ -298,10 +360,14 @@ def search(dev,blocks,laws,variable,expr,depth=20):
     next_frontier = other_tableaus
     goal,other_goals = select_goal(tableau.goals, \
                        goal_complexity)
-    print(">> %s" % goal)
-    for g in other_goals:
-      print("   %s" % g)
-    print("------")
+    if debug:
+      print("\n\n\n")
+      print("-- depth=%d --" % tab_depth)
+      print(">> %s" % goal)
+      for g in other_goals:
+        print("   %s" % g)
+      print("------")
+      input()
 
     for new_tableau in derive_tableaus(dev,tableau,goal):
       simpl_tableau = simplify_tableau(new_tableau)
@@ -320,6 +386,11 @@ def search(dev,blocks,laws,variable,expr,depth=20):
         solutions += 1
       else:
         next_frontier.append((simpl_tableau,tab_depth + 1))
+        if debug:
+          print("-- depth=%d cost=%f --" % (tab_depth+1, \
+                                            tableau_complexity(simpl_tableau,tab_depth+1)))
+          print(simpl_tableau.goals)
+          print("--------------")
 
     valid_tableaus = list(get_valid_tableaus(next_frontier,depth))
     print("number tableaus: %d" % len(valid_tableaus))

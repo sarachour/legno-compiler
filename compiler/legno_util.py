@@ -48,7 +48,7 @@ def exec_lscale(args):
                                                             scale_method=scale_method, \
                                                             calib_obj=calib_obj)):
 
-                    print("<<< writing scaled circuit %d>>>" % idx)
+                    print("<<< writing scaled circuit %d/%d>>>" % (idx,args.scale_adps))
                     scale_adp.metadata.set(ADPMetadata.Keys.LSCALE_ID,idx)
 
                     calib_tag = llenums.CalibrateObjective(scale_adp \
@@ -104,7 +104,8 @@ def exec_lgraph(args):
                                  asm_frags=args.asm_fragments,
                                  synth_depth=args.synth_depth,
                                  vadps=args.vadps,
-                                 adps=args.adps)):
+                                 adps=args.adps, \
+                                 routes=args.routes)):
         timer.end()
         adp.metadata.set(ADPMetadata.Keys.DSNAME, \
                          args.program)

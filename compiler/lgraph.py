@@ -79,7 +79,8 @@ def compile(board,prob,
             synth_depth=12, \
             asm_frags=10, \
             vadps=1, \
-            adps=1):
+            adps=1, \
+            routes=1):
 
     fragments = dict(map(lambda v: (v,[]), prob.variables()))
     compute_blocks = list(filter(lambda blk: \
@@ -127,6 +128,7 @@ def compile(board,prob,
 
     print("> routing circuit")
     for circ in vadp_circuits:
-        vadp = routelib.route(board,circ)
-        if not vadp is None:
-            yield vadplib.to_adp(vadp)
+        for _ in range(routes):
+            vadp = routelib.route(board,circ)
+            if not vadp is None:
+                yield vadplib.to_adp(vadp)
