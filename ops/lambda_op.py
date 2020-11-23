@@ -468,7 +468,7 @@ def to_sympy(expr,symbols={},wildcard=False,blacklist={},no_aliasing=False):
                                            wildcard, \
                                            blacklist,no_aliasing), \
                         expr.func_args))
-        body = to_sympy(expr.expr,symbols,wildcard)
+        body = to_sympy(expr.expr,symbols,wildcard,blacklist,no_aliasing)
         args.append(body)
         return sympy.Function("func")(*args)
 
@@ -503,13 +503,13 @@ def from_sympy(symexpr,no_aliasing=False):
 
         elif symexpr.func.name == "call":
             efn = from_sympy(symexpr.args[0],no_aliasing)
-            args = list(map(lambda e : from_sympy(e), \
+            args = list(map(lambda e : from_sympy(e,no_aliasing), \
                             symexpr.args[1:]))
             return genop.Call(args,efn)
 
         elif symexpr.func.name == "func":
             ebody = from_sympy(symexpr.args[-1],no_aliasing)
-            pars = list(map(lambda e: from_sympy(e).name, \
+            pars = list(map(lambda e: from_sympy(e,no_aliasing).name, \
                             symexpr.args[:-1]))
             return Func(pars,ebody)
 

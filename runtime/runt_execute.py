@@ -87,6 +87,14 @@ def exec_adp(args):
                                adp, \
                                calib_obj=calib_obj)
 
+        if blk.name == 'lut':
+            llcmd.write_lut(runtime, \
+                            board, \
+                            blk, \
+                            cfg.inst.loc, \
+                            adp, \
+                            calib_obj=calib_obj)
+
     llcmd.execute_simulation(runtime,board, \
                              program, adp,\
                              sim_time=sim_time, \

@@ -6,6 +6,11 @@ import runtime.models.exp_delta_model as exp_delta_lib
 
 from hwlib.hcdc.llcmd_util import *
 
+def set_write_lut(runtime,board,blk,loc,adp, \
+              calib_obj=llenums.CalibrateObjective.MINIMIZE_ERROR):
+    print(cfg)
+    raise Exception("???")
+
 def set_state(runtime,board,blk,loc,adp, \
               calib_obj=llenums.CalibrateObjective.MINIMIZE_ERROR):
     assert(isinstance(adp,adplib.ADP))
@@ -34,7 +39,7 @@ def set_state(runtime,board,blk,loc,adp, \
         data_field = blk.data.singleton().name
         corr_par = ll_corr_pars[0]
         old_val = cfg[data_field].value
-        cfg[data_field].value -= calib_cfg.get_value(corr_par.name)
+        cfg[data_field].value -= calib_cfg.get_value(corr_par.name)/cfg[data_field].scf
         print("=> updated data field %s : %f -> %f" % (data_field, old_val, \
                                                        cfg[data_field].value))
 

@@ -280,7 +280,7 @@ class Call(GenericOp):
 
     def __repr__(self):
         pars = " ".join(map(lambda p: str(p), self._params))
-        return "call %s %s" % (pars,self._func)
+        return "call(%s, %s)" % (pars,self._func)
 
 def product(terms):
     if len(terms) == 0:
@@ -310,7 +310,7 @@ def unpack_sum(expr):
     if expr.op == OpType.CONST:
         return expr.value,[]
     elif expr.op == OpType.VAR:
-        return 1.0,[expr]
+        return 0.0,[expr]
     elif expr.op == OpType.ADD:
         c1,vs1 = unpack_sum(expr.arg(0))
         c2,vs2 = unpack_sum(expr.arg(1))
@@ -322,14 +322,31 @@ def unpack_product(expr):
     if expr.op == OpType.CONST:
         return expr.value,[]
     elif expr.op == OpType.VAR:
-        return 1.0,[expr.name]
+        return 1.0,[expr]
     elif expr.op == OpType.MULT:
         c1,vs1 = unpack_product(expr.arg(0))
         c2,vs2 = unpack_product(expr.arg(1))
         return c1*c2,vs1+vs2
     else:
-        raise Exception("Expected product...")
+        return 1.0,[expr]
 
+def get_var(expr):
+    offset,exprs = unpack_sum(expr)
+    if offset != 0.0 or len(exprs) != 1:
+        return None
+    term = exprs[0]
+    coeff,exprs = unpack_product(term)
+    if coeff != 1.0 or len(exprs) != 1:
+        return None
+    term = exprs[0]
+    if term.op == OpType.VAR:
+        return term
+    else:
+        return None
+
+def is_var(expr):
+    result = get_var(expr)
+    return not result is None
 
 def factor_coefficient(expr):
     if expr.op == OpType.CONST:

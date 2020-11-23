@@ -32,6 +32,9 @@ class Unification:
 
   def get_by_name(self,name):
       assert(isinstance(name,str))
+      if not name in self._assignments:
+          raise Exception("unassigned var <%s> %s" \
+                          % (name,str(self._assignments)))
       v,e = self._assignments[name]
       return (v,e)
 

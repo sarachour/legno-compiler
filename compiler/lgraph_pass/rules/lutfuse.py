@@ -15,6 +15,8 @@ class FuseLUTRule(rulelib.Rule):
     self.virt.add_input('a',blocklib.BlockSignalType.ANALOG,  \
                         unifylib.UnifyConstraint.NONE)
 
+    self.virt.add_data('b',blocklib.BlockSignalType.DIGITAL,  \
+                        unifylib.UnifyConstraint.CONSTANT)
 
     self.virt.add_data('e',blocklib.BlockSignalType.DIGITAL,  \
                        unifylib.UnifyConstraint.NONE)
@@ -23,23 +25,24 @@ class FuseLUTRule(rulelib.Rule):
                          unifylib.UnifyConstraint.NONE)
 
     fxns = {'f':(['y'],parser.parse_expr('e'))}
-    e = parser.parse_expr('2.0*f((0.5*a))', fxns)
+    e = parser.parse_expr('2.0*b*f((0.5*a))', fxns)
     self.virt.add_expr(('m','m'), e)
 
-    e = parser.parse_expr('2.0*f((0.05*a))', fxns)
+    e = parser.parse_expr('2.0*b*f((0.05*a))', fxns)
     self.virt.add_expr(('h','m'), e)
 
-    e = parser.parse_expr('20.0*f((0.05*a))', fxns)
+    e = parser.parse_expr('20.0*b*f((0.05*a))', fxns)
     self.virt.add_expr(('h','h'), e)
 
-    e = parser.parse_expr('20.0*f((0.5*a))', fxns)
+    e = parser.parse_expr('20.0*b*f((0.5*a))', fxns)
     self.virt.add_expr(('m','h'), e)
 
+  def valid(self,unif):
+    return True
 
   def apply(self,goal,rule,unif=None):
     assert(not unif is None)
     assert(rule.law.name == self.name)
-
     law_var = tablib.LawVar(self.name,rule.target.ident)
     out_var = law_var.make_law_var(self.virt.output.name)
     stmts = []
@@ -49,19 +52,23 @@ class FuseLUTRule(rulelib.Rule):
     else:
       stmts.append(tablib.VADPConn(out_var,goal.variable))
 
-    _,inpexpr = unif.get_by_name('a')
-    coeff,base_expr = genoplib.factor_coefficient(inpexpr)
-    assert(not base_expr is None)
+    _,call_inp = unif.get_by_name('a')
+    _,call_coeff = unif.get_by_name('b')
+
+    call_inp_coeff,call_inp_base = genoplib.factor_coefficient(call_inp)
     _,expr = unif.get_by_name('e')
-    repl = {'T': genoplib.Mult(genoplib.Const(1.0/coeff),  \
-                               genoplib.Var("y")) \
-    }
+    _,call_coeff = unif.get_by_name('b')
+    impl = genoplib.Mult(call_coeff, \
+                         expr.substitute({'T': \
+                                          genoplib.Mult(genoplib.Const(call_inp_coeff), \
+                                                        genoplib.Var("y"))} \
+                         ))
     cfg = tablib.VADPConfig(law_var,rule.mode)
-    cfg.bind('e',expr.substitute(repl))
+    cfg.bind('e',impl)
     stmts.append(cfg)
 
     new_unif = unifylib.Unification()
-    new_unif.set_by_name('a', base_expr)
+    new_unif.set_by_name('a', call_inp_base)
     return new_unif,stmts
 
 

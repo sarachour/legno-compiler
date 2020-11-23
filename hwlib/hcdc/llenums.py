@@ -1,5 +1,6 @@
 from enum import Enum
 import ops.generic_op as genoplib
+import ops.op as oplib
 
 class Channels(Enum):
     POS = "POS"
@@ -87,7 +88,10 @@ class ProfileOpType(Enum):
             return rel.init_cond
 
         elif self == ProfileOpType.INTEG_DERIVATIVE_GAIN:
-            coeff,all_vars= genoplib.unpack_product(rel.deriv)
+            coeff,exprs = genoplib.unpack_product(rel.deriv)
+            assert(all(lambda expr: expr.op == oplib.OpType.VAR, exprs))
+            all_vars = list(map(lambda e: e.name, exprs))
+
             block_vars = list(map(lambda inp: inp.name, block.inputs)) + \
                          list(map(lambda dat: dat.name, block.data))
 

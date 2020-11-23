@@ -328,7 +328,7 @@ def simplify_tableau(tableau,simplify_laws=False):
   for goal in tableau.goals:
     if (isinstance(goal.variable, PortVar) or \
         isinstance(goal.variable, LawVar)) and \
-       goal.expr.op == oplib.OpType.VAR and \
+       genoplib.is_var(goal.expr) and \
        goal.type == blocklib.BlockSignalType.ANALOG:
       new_tableau.remove_goal(goal)
       new_tableau.add_stmt(VADPSink(goal.variable, \
@@ -372,6 +372,11 @@ def search(dev,blocks,laws,variable,expr,depth=20):
     for new_tableau in derive_tableaus(dev,tableau,goal):
       simpl_tableau = simplify_tableau(new_tableau)
       if simpl_tableau.success():
+        if debug:
+          print("-- [[solution]] depth=%d  --" % (tab_depth))
+          print(simpl_tableau.goals)
+          input()
+
         simpl_tableau = simplify_tableau(new_tableau, \
                                          simplify_laws=True)
         if not is_concrete_vadp(simpl_tableau.vadp, \
@@ -389,7 +394,8 @@ def search(dev,blocks,laws,variable,expr,depth=20):
         if debug:
           print("-- depth=%d cost=%f --" % (tab_depth+1, \
                                             tableau_complexity(simpl_tableau,tab_depth+1)))
-          print(simpl_tableau.goals)
+          for goal in simpl_tableau.goals:
+            print(goal)
           print("--------------")
 
     valid_tableaus = list(get_valid_tableaus(next_frontier,depth))
