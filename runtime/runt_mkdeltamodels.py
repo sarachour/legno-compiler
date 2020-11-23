@@ -58,6 +58,8 @@ def _update_delta_models_for_configured_block(dev,blk,loc,output,config,force=Fa
                                                                           loc, \
                                                                           output, \
                                                                           config):
+        print(dataset)
+        print("# data points: %d" % len(dataset))
         for delta_model in delta_models:
             succ,error = update_delta_model(dev,delta_model,dataset)
         if succ:

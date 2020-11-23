@@ -160,6 +160,22 @@ class ExpProfileDataset:
     return len(self.meas_mean)
 
 
+  def __repr__(self):
+    st = "%s %s %s [method=%s]\n" \
+         % (self.block.name,self.loc,self.output.name,self.method.value)
+    st += str(self.config)
+    for idx in range(len(self)):
+      inps = dict(map(lambda tup: (tup[0],tup[1][idx]), \
+                      self.inputs.items()))
+      dat = dict(map(lambda tup: (tup[0],tup[1][idx]), \
+                      self.data.items()))
+
+      out = self.ideal_mean[idx]
+      meas = self.meas_mean[idx]
+      st += "inps=%s dat=%s out=%s meas=%s\n" \
+            % (inps,dat,out,meas)
+
+    return st
 
 def __to_datasets(dev,matches):
   for match in matches:
