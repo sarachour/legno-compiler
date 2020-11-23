@@ -58,6 +58,7 @@ class BlockType(Enum):
 
 class DeltaParamType(str,Enum):
   CORRECTABLE = 'correctable'
+  LL_CORRECTABLE = "ll_correctable"
   GENERAL = 'general'
 
 
@@ -220,6 +221,10 @@ class BlockFieldCollection:
     self._type = block_t
     self._collection = {}
 
+
+  def singleton(self):
+    assert(len(self) == 1)
+    return list(self._collection.values())[0]
 
   def field_names(self):
     return list(self._collection.keys())
@@ -754,6 +759,10 @@ class DeltaSpec:
         self._model_error = None
         self.objective = objective
 
+    def get_params_of_type(self,typ):
+        return list(filter(lambda p: p.typ == typ, \
+                           self._params.values()))
+ 
     @property
     def model_error(self):
         return self._model_error
