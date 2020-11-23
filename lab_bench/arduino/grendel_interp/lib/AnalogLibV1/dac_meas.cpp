@@ -51,7 +51,12 @@ profile_t Fabric::Chip::Tile::Slice::Dac::measureConstVal(profile_spec_t spec)
   int next_slice = (slice_to_int(parentSlice->sliceId) + 1) % 4;
   dac_state_t codes_dac = this->m_state;
   this->m_state = spec.state.dac;
-  this->m_state.source = DSRC_MEM;
+  if(spec.state.dac.source == DSRC_LUT0 ||
+     spec.state.dac.source == DSRC_LUT1 ||
+     spec.state.dac.source == DSRC_EXTERN){
+    this->setConstant(spec.inputs[in0Id]);
+    this->m_state.source = DSRC_MEM;
+  }
   //setConstant(in);
   update(this->m_state);
 
