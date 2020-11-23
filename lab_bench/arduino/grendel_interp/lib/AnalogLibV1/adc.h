@@ -36,6 +36,7 @@ class Fabric::Chip::Tile::Slice::ChipAdc : public Fabric::Chip::Tile::Slice::Fun
 			// default is 2uA mode
 			range_t range // 20 uA mode
 		);
+    static float digitalCodeToValue(adc_state_t& config, float input);
     static float computeOutput(adc_state_t& config, float input);
     static void computeInterval(adc_state_t& config, port_type_t port,
                                  float& min, float& max);
