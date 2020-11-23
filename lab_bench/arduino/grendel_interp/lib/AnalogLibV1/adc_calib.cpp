@@ -151,6 +151,10 @@ void Fabric::Chip::Tile::Slice::ChipAdc::calibrate (calib_objective_t obj) {
 	conn0.setConn();
 
   print_info("calibrating adc...");
+  sprintf(FMTBUF,"calib_obj: %s\n",
+          calib_obj_to_string(obj));
+  print_info(FMTBUF);
+
   cutil::calib_table_t calib_table = cutil::make_calib_table();
   unsigned char opts[] = {nA100,nA200,nA300,nA400};
   int signs[] = {-1,1};

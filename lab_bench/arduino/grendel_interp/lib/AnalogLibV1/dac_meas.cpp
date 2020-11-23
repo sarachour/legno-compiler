@@ -6,6 +6,8 @@
 #include "dac.h"
 #include "emulator.h"
 
+#define DEBUG_DAC_PROF
+
 emulator::physical_model_t dac_draw_random_model(profile_spec_t spec){
   emulator::physical_model_t model;
   emulator::ideal(model);
@@ -67,11 +69,14 @@ profile_t Fabric::Chip::Tile::Slice::Dac::measureConstVal(profile_spec_t spec)
   dac_to_tile.setConn();
 	tile_to_chip.setConn();
   this->m_state = spec.state.dac;
+  float target = this->computeOutput(this->m_state);
   float mean,variance;
   mean = this->fastMeasureValue(variance);
-  sprintf(FMTBUF,"PARS mean=%f variance=%f",
-          mean,variance);
+#ifdef DEBUG_DAC_PROF
+  sprintf(FMTBUF,"PARS targ=%f mean=%f variance=%f",
+          target,mean,variance);
   print_info(FMTBUF);
+#endif
   const int mode = 0;
   const float in1 = 0.0;
   profile_t result = prof::make_profile(spec,

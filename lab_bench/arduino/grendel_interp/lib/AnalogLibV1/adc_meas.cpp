@@ -4,6 +4,7 @@
 #include "calib_util.h"
 #include "emulator.h"
 
+#define DEBUG_ADC_PROF
 
 emulator::physical_model_t adc_draw_random_model(profile_spec_t spec){
   emulator::physical_model_t model; 
@@ -61,11 +62,14 @@ profile_t Fabric::Chip::Tile::Slice::ChipAdc::measureConstVal(profile_spec_t spe
   float mean,variance;
   util::meas_dist_adc(this,mean,variance);
   mean = this->digitalCodeToValue(mean);
+#ifdef DEBUG_ADC_PROF
   sprintf(FMTBUF, "prof inp=%f targ=%f mean=%f\n",
           spec.inputs[in0Id],
           target,
           mean);
   print_info(FMTBUF);
+#endif
+
   profile_t prof = prof::make_profile(spec,
                                       mean,
                                       variance);

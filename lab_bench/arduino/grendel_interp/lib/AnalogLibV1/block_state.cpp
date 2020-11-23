@@ -10,6 +10,16 @@ const char * bool_to_string(uint8_t value){
     return "n";
   }
 }
+
+
+const char * calib_obj_to_string(calib_objective_t obj){
+  switch(obj){
+  case CALIB_MAXIMIZE_DELTA_FIT: return "max-delta-fit"; break;
+  case CALIB_MINIMIZE_ERROR: return "min-error"; break;
+  case CALIB_FAST: return "fast"; break;
+  }
+  return "unknown";
+}
 const char * range_to_string(range_t range){
   switch(range){
   case RANGE_MED: return "m"; break;

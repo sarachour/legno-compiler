@@ -195,6 +195,7 @@ typedef struct {
 } profile_t;
 
 ifc port_type_to_ifc(port_type_t port);
+const char * calib_obj_to_string(calib_objective_t src);
 const char * lut_source_to_string(lut_source_t src);
 const char * dac_source_to_string(dac_source_t src);
 const char * block_type_to_string(block_type_t type);
