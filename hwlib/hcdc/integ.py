@@ -50,7 +50,7 @@ integ.outputs['z'] \
 
 integ.data.add(BlockData('z0',BlockDataType.CONST))
 integ.data['z0'] \
-    .interval.bind(['_','_','_'],interval.Interval(-1,1))
+    .interval.bind(['_','_','_'],interval.Interval(-1,0.9921875))
 integ.data['z0'] \
     .quantize.bind(['_','_','_'],Quantize(256,QuantizeType.LINEAR))
 

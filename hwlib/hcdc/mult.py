@@ -77,7 +77,7 @@ mult.outputs['z'] \
 
 mult.data.add(BlockData('c',BlockDataType.CONST))
 mult.data['c'] \
-    .interval.bind(['_','_','_'],interval.Interval(-1,1))
+    .interval.bind(['_','_','_'],interval.Interval(-1,0.9921875))
 mult.data['c'] \
     .quantize.bind(['_','_','_'],Quantize(256,QuantizeType.LINEAR))
 
