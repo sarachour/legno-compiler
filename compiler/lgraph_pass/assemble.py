@@ -288,9 +288,10 @@ def create_vadp_frag(hierarchy,input_var,parent_vadp,instance_map={}):
     # inject connection
     found_source = False
     for idx,stmt in enumerate(parent_vadp):
-      if isinstance(stmt,vadplib.VADPSource) and stmt.dsexpr.op == oplib.OpType.VAR \
+      if isinstance(stmt,vadplib.VADPSource)  \
+         and stmt.dsexpr.op == oplib.OpType.VAR \
          and stmt.dsexpr.name == input_var:
-        vadp.append(vadplib.VADPConn(stmt.port, inp_port))
+        vadp.append(vadplib.VADPConn(stmt.target, inp_port))
         parent_vadp.pop(idx)
         found_source = True
         break
@@ -306,7 +307,7 @@ def create_vadp_frag(hierarchy,input_var,parent_vadp,instance_map={}):
   other_stmts = list(filter(lambda vst: not isinstance(vst,vadplib.VADPSource), vadp))
   for st in vadp:
     if isinstance(st,vadplib.VADPConn):
-      sources = list(filter(lambda src: st.source != src.port,sources))
+      sources = list(filter(lambda src: st.source != src.target,sources))
 
   vadp = sources + other_stmts
   n_sinks = len(list(filter(lambda vst: isinstance(vst,vadplib.VADPSink), vadp)))
