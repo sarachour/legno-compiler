@@ -68,6 +68,8 @@ float Fabric::Chip::Tile::Slice::ChipAdc::calibrateMinError(Fabric::Chip::Tile::
 
     util::meas_dist_adc(this,mean,variance);
     mean = this->digitalCodeToValue(mean);
+    sprintf(FMTBUF,"cal-min in_val=%f targ=%f meas=%f\n", in_val,target,mean);
+    print_info(FMTBUF);
     loss_total += fabs(target-mean);
   }
   return loss_total/CALIB_NPTS;
@@ -169,7 +171,7 @@ void Fabric::Chip::Tile::Slice::ChipAdc::calibrate (calib_objective_t obj) {
                                  this->m_state.i2v_cal,
                                  error,
                                  MEAS_ADC);
-            sprintf(FMTBUF,"fs=(%d,%d) def=(%d,%d) nmos=%d i2v=%d loss=%f",
+            sprintf(FMTBUF,"A fs=(%d,%d) def=(%d,%d) nmos=%d i2v=%d loss=%f",
                     this->m_state.lower_fs,
                     this->m_state.upper_fs,
                     this->m_state.lower,
@@ -183,7 +185,7 @@ void Fabric::Chip::Tile::Slice::ChipAdc::calibrate (calib_objective_t obj) {
             }
             update(this->m_state);
             float loss = getLoss(obj,val_dac);
-            sprintf(FMTBUF,"fs=(%d,%d) def=(%d,%d) nmos=%d i2v=%d loss=%f",
+            sprintf(FMTBUF,"B fs=(%d,%d) def=(%d,%d) nmos=%d i2v=%d loss=%f",
                     this->m_state.lower_fs,
                     this->m_state.upper_fs,
                     this->m_state.lower,

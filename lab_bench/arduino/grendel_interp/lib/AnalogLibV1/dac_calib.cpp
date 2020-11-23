@@ -131,6 +131,9 @@ float Fabric::Chip::Tile::Slice::Dac::calibrateMinError(){
     float mean,variance;
     N_DAC_POINTS_TESTED += 1;
     mean = this->fastMeasureValue(variance);
+    sprintf(FMTBUF,"cal-min in_val=%f targ=%f meas=%f\n",
+            const_val,target,mean);
+    print_info(FMTBUF);
     loss_total += fabs(target-mean);
   }
   return loss_total/CALIB_NPTS;

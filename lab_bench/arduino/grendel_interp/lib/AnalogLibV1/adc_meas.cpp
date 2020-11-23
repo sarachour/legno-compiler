@@ -59,7 +59,7 @@ profile_t Fabric::Chip::Tile::Slice::ChipAdc::measureConstVal(profile_spec_t spe
 
   float mean,variance;
   util::meas_dist_adc(this,mean,variance);
-  mean = this->digitalCodeToValue(this->m_state, mean);
+  mean = this->digitalCodeToValue(mean);
   profile_t prof = prof::make_profile(spec,
                                       mean,
                                       variance);
