@@ -332,7 +332,7 @@ def simplify_tableau(tableau,simplify_laws=False):
        goal.type == blocklib.BlockSignalType.ANALOG:
       new_tableau.remove_goal(goal)
       new_tableau.add_stmt(VADPSink(goal.variable, \
-                                    goal.expr))
+                                    genoplib.get_var(goal.expr)))
 
   # perform simplification
   if simplify_laws:

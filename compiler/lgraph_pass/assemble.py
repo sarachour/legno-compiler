@@ -12,7 +12,7 @@ def unzip(lst):
 def get_first_n(iterable,n):
   for idx,val in enumerate(iterable):
     if idx < n:
-      yield val
+      yield idx,val
     else:
       return
 
@@ -187,6 +187,7 @@ def build_asm_frag(corpus,input_var,sinks):
     # produce new set of sinks to fulfill
     new_sinks = list(map(lambda idx : genoplib.Var(input_var), \
                         range(n_stems_required)))
+    print("n_stems_required: %d" % n_stems_required)
 
     for par_frags in build_asm_frag(corpus,input_var,new_sinks):
       new_frags = list(map(lambda lv: [], range(len(par_frags) + len(frag_hierarchy))))
@@ -335,11 +336,16 @@ def assemble(blocks,fragments,n_asm_frags=3):
   asm_frags = {}
   for var,sinks in sinks.items():
     asm_frags[var] = []
-    for frag in get_first_n(build_asm_frag(build_fragment_corpus(blocks,var), \
+    print("%s sinks=%s" % (var,sinks))
+    for idx,frag in get_first_n(build_asm_frag(build_fragment_corpus(blocks,var), \
                                            var, sinks), n_asm_frags):
-
       vadp_frag = create_vadp_frag(frag,var,[])
       asm_frags[var].append(vadp_frag)
+
+  for var,frags in asm_frags.items():
+    print("asm %s = %d frags" % (var,len(frags)))
+    if len(frags) == 0:
+      raise Exception("variable %s : zero fragments!" % (var))
 
   asm_frag_vars = list(asm_frags.keys())
   asm_frag_values = list(map(lambda var: asm_frags[var], \
