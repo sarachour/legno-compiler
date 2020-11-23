@@ -18,7 +18,7 @@ mult = Block('mult',BlockType.COMPUTE, \
              enums.RangeType, \
              enums.RangeType])
 
-mult.modes.add_all([
+MODES = [
   ['x','m','m'],
   ['x','m','h'],
   ['x','h','m'],
@@ -29,7 +29,19 @@ mult.modes.add_all([
   ['m','m','h'],
   ['m','h','h'],
   ['h','m','h']
-])
+]
+MODES = [
+  ['x','m','m'],
+  ['x','h','m'],
+  ['x','h','h'],
+  ['m','m','m'],
+  ['m','h','m'],
+  ['h','m','m'],
+  ['h','m','h']
+]
+
+
+mult.modes.add_all(MODES)
 LOW_NOISE = 0.02
 HIGH_NOISE = 0.2
 

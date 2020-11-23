@@ -163,8 +163,11 @@ class ExpProfileDataset:
 
 def __to_datasets(dev,matches):
   for match in matches:
-    yield ExpProfileDataset.from_json(dev, \
-                                      runtime_util.decode_dict(match['dataset']))
+    try:
+      yield ExpProfileDataset.from_json(dev, \
+                                        runtime_util.decode_dict(match['dataset']))
+    except Exception as e:
+      pass
 
 def update(dev,dataset):
     assert(isinstance(dataset,ExpProfileDataset))
