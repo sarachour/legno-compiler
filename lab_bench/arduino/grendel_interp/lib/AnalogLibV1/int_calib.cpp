@@ -5,7 +5,7 @@
 
 #define CALIB_NPTS 7
 #define TOTAL_NPTS CALIB_NPTS
-#define DEBUG_INTEG_CAL
+//#define DEBUG_INTEG_CAL
 const float TEST_POINTS[CALIB_NPTS] = {-0.875,0.875,0.5,-0.5,-0.25,0.25,0.0};
 
 

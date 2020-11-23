@@ -10,7 +10,7 @@ const float TEST0_POINTS[CALIB_NPTS] = {-0.75,0.75,0.5,0.0};
 const float TEST1_MULT_POINTS[CALIB_NPTS] = {-0.75,0.75,0.5,0.0};
 const float TEST1_VGA_POINTS[CALIB_NPTS] = {-0.75,0.75,0.5,0.0};
 
-#define DEBUG_MULT_CAL
+//#define DEBUG_MULT_CAL
 
 unsigned int N_MULT_POINTS_TESTED = 0;
 float Fabric::Chip::Tile::Slice::Multiplier::getLoss(calib_objective_t obj,
@@ -406,16 +406,17 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
 
   }
   else{
+    // 0.5*0*2.0
     fast_calibrate_dac(val0_dac);
     fast_calibrate_dac(val1_dac);
     val0_dac->setRange(util::range_to_dac_range(this->m_state.range[in0Id]));
     val1_dac->setRange(util::range_to_dac_range(this->m_state.range[in1Id]));
     val0_dac->setConstant(0.0);
     dac_out0 = val0_dac->fastMeasureValue(dummy);
-    val1_dac->setConstant(0.5);
+    val1_dac->setConstant(1.0);
     dac_out1 = val1_dac->fastMeasureValue(dummy);
     target_pos = computeOutput(this->m_state, dac_out0, dac_out1);
-    val1_dac->setConstant(-0.5);
+    val1_dac->setConstant(-1.0);
     dac_out1 = val1_dac->fastMeasureValue(dummy);
     target_neg = computeOutput(this->m_state, dac_out0, dac_out1);
   }
@@ -440,9 +441,9 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
                                        val1_dac,
                                        ref_dac,
                                        bias_bounds,
-                                       this->m_state.vga ? 1.0 : 0.5,
+                                       1.0,
                                        target_pos,
-                                       this->m_state.vga ? -1.0 : -0.5,
+                                       -1.0,
                                        target_neg);
 
     this->m_state.port_cal[in0Id] = table_bias.state[0];
@@ -503,9 +504,9 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
                                      val1_dac,
                                      ref_dac,
                                      bias_bounds,
-                                     this->m_state.vga ? 1.0 : 0.5,
+                                     1.0,
                                      target_pos,
-                                     this->m_state.vga ? -1.0 : -0.5,
+                                     -1.0,
                                      target_neg);
   bias_bounds[0] = max(table_bias.state[0]-4,0);
   bias_bounds[1] = min(table_bias.state[0]+4,MAX_BIAS_CAL);
@@ -518,9 +519,9 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
                                      val1_dac,
                                      ref_dac,
                                      bias_bounds,
-                                     this->m_state.vga ? 1.0 : 0.5,
+                                     1.0,
                                      target_pos,
-                                     this->m_state.vga ? -1.0 : -0.5,
+                                     -1.0,
                                      target_neg);
 
   this->m_state.port_cal[in0Id] = table_bias.state[0];
