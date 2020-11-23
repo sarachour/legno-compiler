@@ -87,6 +87,9 @@ class ParametricSurface:
 
 
 
+def remove_nans(arr):
+  nparr = np.array(arr)
+  return nparr[:,~np.isnan(nparr).any(axis=0)]
 
 def heatmap(physblk,output_file,inputs,output,n,amplitude=None):
   bounds = physblk.get_bounds()
@@ -112,7 +115,9 @@ def heatmap(physblk,output_file,inputs,output,n,amplitude=None):
     v1 = surf.variables[0]
     v2 = surf.variables[1]
     for patch,inps,out in surf.divide(inputs,output):
-      data[patch[v1],patch[v2]] = np.mean(out)
+      value = np.mean(remove_nans(out))
+      data[patch[v1],patch[v2]] = value
+      assert(value != np.nan)
 
     fig,ax = plt.subplots()
     ax.set_xlabel(v1)
@@ -122,7 +127,7 @@ def heatmap(physblk,output_file,inputs,output,n,amplitude=None):
     ax.set_xticklabels(surf.ticks(v1))
     ax.set_yticklabels(surf.ticks(v2))
     if amplitude is None:
-      amplitude = np.max(np.abs(data))
+      amplitude = np.max(np.abs(remove_nans(data)))
 
     im = ax.imshow(data, \
                     cmap=plt.get_cmap(colormap_name), \

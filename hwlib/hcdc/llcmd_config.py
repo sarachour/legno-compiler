@@ -27,6 +27,17 @@ def set_state(runtime,board,blk,loc,adp, \
                      blk.state):
         cfg[st.name].value = calib_cfg.config[st.name].value
 
+    ll_corr_pars = calib_cfg.spec \
+                            .get_params_of_type(blocklib.DeltaParamType.LL_CORRECTABLE)
+    if len(ll_corr_pars) == 1:
+        assert(len(blk.data) == 1)
+        data_field = blk.data.singleton().name
+        corr_par = ll_corr_pars[0]
+        old_val = cfg[data_field].value
+        cfg[data_field].value -= calib_cfg.get_value(corr_par.name)
+        print("=> updated data field %s : %f -> %f" % (data_field, old_val, \
+                                                       cfg[data_field].value))
+
     block_state = blk.state.concretize(adp,loc)
     state_t = {blk.name:block_state}
     loc_t,loc_d = make_block_loc_t(blk,loc)
