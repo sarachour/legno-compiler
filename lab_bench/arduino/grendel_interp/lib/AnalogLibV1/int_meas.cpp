@@ -4,6 +4,7 @@
 #include "fu.h"
 #include "emulator.h"
 
+#define DEBUG_INTEG_PROF
 emulator::physical_model_t integ_draw_random_model(profile_spec_t spec){
   emulator::physical_model_t model;
   emulator::ideal(model);
@@ -199,14 +200,25 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measureOpenLoopCircuit(profile_
   profile_t result;
   switch(spec.type){
   case INTEG_DERIVATIVE_GAIN:
+#ifdef DEBUG_INTEG_PROF
+    sprintf(FMTBUF,"prof-integ-gain targ=%f meas=%f tc=%f\n",
+            target_tc, tc_stats.tc,
+            tc_stats.tc/target_tc);
+    print_info(FMTBUF);
+#endif
     result = prof::make_profile(spec,
                                 tc_stats.tc/target_tc,
                                 sqrt(tc_stats.R2_k));
     break;
   case INTEG_DERIVATIVE_BIAS:
+#ifdef DEBUG_INTEG_PROF
+    sprintf(FMTBUF,"prof-integ-offset targ=%f meas=%f\n",
+            0.0, tc_stats.eps);
+    print_info(FMTBUF);
+#endif
     result = prof::make_profile(spec,
                                 tc_stats.eps,
-                                tc_stats.R2_eps);
+                                sqrt(tc_stats.R2_eps));
     break;
   default:
     error("unexpected profile-spec type");
@@ -261,6 +273,12 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measureInitialCond(profile_spec
                                                 measure_steady,
                                                 mean,
                                                 variance);
+#ifdef DEBUG_INTEG_PROF
+  sprintf(FMTBUF,"prof-integ-ic inp=%f target=%f mean=%f\n",
+          spec.inputs[in0Id],target,mean);
+  print_info(FMTBUF);
+#endif
+
   profile_t prof = prof::make_profile(spec,
                                       mean,
                                       variance);
