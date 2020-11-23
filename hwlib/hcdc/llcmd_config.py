@@ -84,6 +84,9 @@ def _compensate_for_offsets(blk,cfg,calib_cfg):
 
     ll_corr_pars = calib_cfg.spec \
                             .get_params_of_type(blocklib.DeltaParamType.LL_CORRECTABLE)
+    if len(blk.data) < 1:
+        return
+
     if len(ll_corr_pars) == 1:
         assert(len(blk.data) == 1)
         data_field = blk.data.singleton().name
