@@ -20,7 +20,6 @@ def _compute_pct_nrmsd(ref_t,ref_x,meas_t,meas_x,debug=False):
 
 def _apply_xform(t_meas,x_meas,model):
     a,b,c,d = model
-    print(model)
     t_xform = a*t_meas - b
     x_xform = c*x_meas - d
     return t_xform,x_xform
@@ -53,7 +52,7 @@ def align(scaffold,sig,xform_spec):
                            xform=x)
 
   time_coeff,time_offset = optimize.brute(objfun,xform_spec,Ns=n)
-  tmeas_xform = time_coeff*np.array(sig.times) + time_offset
+  tmeas_xform = time_coeff*np.array(sig.times) - time_offset
   return wavelib.Waveform(variable=sig.variable, \
                           times=tmeas_xform, \
                           values=sig.values, \
