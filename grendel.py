@@ -82,7 +82,7 @@ prof_subp.add_argument('method', type=str, \
                        default='none', \
                        help='delta label to profile (legacy_min_error/legacy_max_fit/min_error/max_fit)')
 prof_subp.add_argument('--model-number',type=str,help='model number')
-prof_subp.add_argument('--grid-size',type=int,default=5, \
+prof_subp.add_argument('--grid-size',type=int,default=9, \
                        help="number of inputs to sample along each axis")
 prof_subp.add_argument('--max-points',type=int,default=50, \
                        help="maximum number of dataset points")

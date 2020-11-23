@@ -45,24 +45,20 @@ def write_lut(runtime,board,blk,loc,adp, \
     assert(len(lut_outs) == 256)
     loc_t,loc_d = make_block_loc_t(blk,loc)
     chunksize = 48
+    print("expr: %s" % final_expr)
+    print("# values: %d" % len(lut_outs))
     for offset,values in divide_list_into_chunks(lut_outs,chunksize):
-        print("-> writing values %d-%d" % (offset,offset+chunksize))
+        print("-> writing values %d-%d" % (offset,offset+len(values)))
         header = {'inst':loc_d,'offset':offset,'n':len(values)}
         cmd_t,cmd_data = make_circ_cmd(llenums.CircCmdType.WRITE_LUT, \
                                        header)
+        payload_t,payload_d = make_dataset_t(values)
         cmd = cmd_t.build(cmd_data,debug=True)
-        runtime.execute(cmd)
-
+        runtime.execute_with_payload(cmd,payload_d)
         resp = unpack_response(runtime.result())
-        print(resp)
 
 
-    print(len(lut_outs))
-    print(rel)
-    print(final_expr)
-    raise Exception("???")
-
-def _add_calibration_codes(board,blk,loc,cfg):
+def _add_calibration_codes(board,blk,loc,cfg,calib_obj):
     calib_codes = list(filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), \
                               blk.state))
 
@@ -82,7 +78,7 @@ def _add_calibration_codes(board,blk,loc,cfg):
 
     return calib_cfg
 
-def _compensate_for_offsets(blk,calib_cfg):
+def _compensate_for_offsets(blk,cfg,calib_cfg):
     if calib_cfg is None:
         return
 
@@ -106,8 +102,8 @@ def set_state(runtime,board,blk,loc,adp, \
 
 
     cfg = adp.configs.get(blk.name,loc)
-    calib_cfg = _add_calibration_codes(board,blk,loc,cfg)
-    _compensate_for_offsets(blk,calib_cfg)
+    calib_cfg = _add_calibration_codes(board,blk,loc,cfg,calib_obj)
+    _compensate_for_offsets(blk,cfg,calib_cfg)
 
     block_state = blk.state.concretize(adp,loc)
     state_t = {blk.name:block_state}
