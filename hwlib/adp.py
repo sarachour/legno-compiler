@@ -231,8 +231,11 @@ class ExprDataConfig(ConfigStmt):
     st = templ.format(name=self.name, \
                       args=",".join(self.args), \
                       expr=self.expr)
-    st += "%s\n" % str(self.scfs)
-    st += "%s\n" % str(self.injs)
+
+    for field in self.scfs.keys():
+      st += "fld %s scf=%f inj=%f\n" \
+            % (field,self.scfs[field],self.injs[field])
+
     return st
 
 

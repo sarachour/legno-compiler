@@ -1,5 +1,6 @@
 from lab_bench.devices.arduino_due import ArduinoDue
 import lab_bench.grendel_util as grendel_util
+import lab_bench.generic_util as generic_util
 
 class GrendelRunner:
 
@@ -24,8 +25,13 @@ class GrendelRunner:
     self.due.write_bytes(cmd)
     self.due.write_newline()
 
-  def send_data(self,data,chunksize=4):
-    pass
+  def execute_with_payload(self,header_data,payload_data):
+    pad_size= 80
+    n_pad = generic_util.compute_pad_bytes(len(header_data), \
+                                           pad_size)
+    pad_data = bytearray([0]*n_pad)
+    rawbuf = header_data+pad_data+payload_data
+    self.execute(rawbuf)
 
   def dispatch(self):
     raise Exception("OverrideMe: fill in with execution and result processing")

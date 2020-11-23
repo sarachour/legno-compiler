@@ -873,6 +873,9 @@ class BlockData(BlockField):
       return quant.round_value(ival,value)
 
 
+  def __repr__(self):
+      return "data %s type=%s inputs=%s" % (self.name,self.type,self.inputs)
+
 class Block:
 
   def __init__(self,name,typ,mode_spec):

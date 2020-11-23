@@ -5,6 +5,11 @@ import hwlib.hcdc.llstructs as llstructs
 
 import lab_bench.grendel_util as grendel_util
 import random
+import construct
+
+def divide_list_into_chunks(lst,n):
+    for i in range(0,len(lst),n):
+        yield i,lst[i:i+n]
 
 def random_locs(board,block,num_locs):
     insts = list(board.layout.instances(block.name))
@@ -29,6 +34,12 @@ def from_block_loc_t(dev,dict_):
             int(dict_['slice']), \
             int(dict_['idx'])]
     return blk,devlib.Location(addr)
+
+def make_dataset_t(buf):
+    arr_t = construct.Array(len(buf),
+                          construct.Float32l)
+    arr_d = arr_t.build(buf)
+    return arr_t,arr_d
 
 def make_block_loc_t(blk,loc):
   assert(len(loc) == 4)
