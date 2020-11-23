@@ -11,3 +11,4 @@ calibrate = llcmd_calibrate.calibrate
 characterize = llcmd_characterize.characterize
 profile = llcmd_profile.profile
 test_oscilloscope = llcmd_sim.test_oscilloscope
+write_lut = llcmd_config.write_lut

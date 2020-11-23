@@ -6,6 +6,10 @@ import hwlib.hcdc.llstructs as llstructs
 import lab_bench.grendel_util as grendel_util
 import random
 
+def divide_list_into_chunks(lst,n):
+    for i in range(0,len(lst),n):
+        yield i,lst[i:i+n]
+
 def random_locs(board,block,num_locs):
     insts = list(board.layout.instances(block.name))
     for addr in random.sample(insts,num_locs):

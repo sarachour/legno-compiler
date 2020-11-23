@@ -21,9 +21,9 @@ lut.outputs['z'].relation.bind(['_'], \
                                }))
 
 lut.inputs['x'] \
-    .interval.bind(['*'],interval.Interval(-1,1))
+    .interval.bind(['*'],interval.Interval(-1,0.9921875))
 lut.outputs['z'] \
-    .interval.bind(['*'],interval.Interval(-1,1))
+    .interval.bind(['*'],interval.Interval(-1,0.9921875))
 lut.inputs['x'] \
     .quantize.bind(['*'],Quantize(256,QuantizeType.LINEAR))
 lut.outputs['z'] \
