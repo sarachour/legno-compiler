@@ -6,6 +6,8 @@
 #include "emulator.h"
 #include <float.h>
 
+#define DEBUG_MULT_PROF
+
 emulator::physical_model_t mult_draw_random_model(profile_spec_t spec){
   emulator::physical_model_t model;
   emulator::ideal(model);
@@ -115,9 +117,15 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(profile_spec_t spec)
   profile_t prof = prof::make_profile(spec,
                                       mean,
                                       sqrt(variance));
-  sprintf(FMTBUF,"result target=%f mean=%f std=%f\n", target_vga,
-          mean,sqrt(variance));
+#ifdef DEBUG_MULT_PROF
+  float coeff = (this->m_state.gain_code - 128.0)/128.0;
+  sprintf(FMTBUF,"prof-vga input=%f coeff=%f target=%f mean=%f\n",
+          spec.inputs[in0Id],
+          coeff,
+          target_vga,
+          mean);
   print_info(FMTBUF);
+#endif
   if(!calib.success){
     prof.status = FAILED_TO_CALIBRATE;
   }
@@ -201,8 +209,14 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureMult(profile_spec_t spec
   if(!calib.success){
     prof.status = FAILED_TO_CALIBRATE;
   }
-  sprintf(FMTBUF,"result target=%f mean=%f std=%f\n", target_mult,
-          mean,sqrt(variance));
+#ifdef DEBUG_MULT_PROF
+  sprintf(FMTBUF,"prof-vga in0=%f in1=%f target=%f mean=%f\n",
+          spec.inputs[in0Id],
+          spec.inputs[in1Id],
+          target_mult,
+          mean);
+  print_info(FMTBUF);
+#endif
   print_info(FMTBUF);
   dac_to_in0.brkConn();
   dac_to_in1.brkConn();

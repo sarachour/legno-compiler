@@ -10,6 +10,8 @@ const float TEST0_POINTS[CALIB_NPTS] = {-0.75,0.75,0.5,0.0};
 const float TEST1_MULT_POINTS[CALIB_NPTS] = {-0.75,0.75,0.5,0.0};
 const float TEST1_VGA_POINTS[CALIB_NPTS] = {-0.75,0.75,0.5,0.0};
 
+#define DEBUG_MULT_CAL
+
 unsigned int N_MULT_POINTS_TESTED = 0;
 float Fabric::Chip::Tile::Slice::Multiplier::getLoss(calib_objective_t obj,
                                                      Dac * val0_dac,
@@ -86,9 +88,11 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperVga(Dac * val_dac,
                                             meas_steady,
                                             mean,
                                             variance);
-      sprintf(FMTBUF,"in0=%f c=%f out=%f meas=%f", target_in0, in1,
-              target_out,mean);
+#ifdef DEBUG_MULT_CAL
+      sprintf(FMTBUF,"vga-h in0=%f coeff=%f targ=%f meas=%f\n",
+              target_in0, in1, target_out, mean);
       print_info(FMTBUF);
+#endif
       N_MULT_POINTS_TESTED += 1;
       if(succ){
         observations[npts] = mean;
@@ -116,7 +120,6 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperMult(Dac * val0_dac,
   Connection dac1_to_in1 = Connection (val1_dac->out0, this->in1);
 
   float max_std = 0.0;
-  
   ref_to_tileout.setConn();
   dac0_to_in0.setConn();
   dac1_to_in1.setConn();
@@ -142,6 +145,12 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperMult(Dac * val0_dac,
                                                meas_steady,
                                                mean,
                                                variance);
+#ifdef DEBUG_MULT_CAL
+      sprintf(FMTBUF,"mul-h in0=%f in1=%f targ=%f meas=%f\n",
+              target_in0, target_in1, target_out, mean);
+      print_info(FMTBUF);
+#endif
+
       N_MULT_POINTS_TESTED += 1;
       if(succ){
         observations[npts] = mean;
@@ -178,7 +187,7 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitMult(Dac * val0
   return cutil::compute_loss(ignore_bias ? 0.0 : bias,max_std,
                              avg_error,
                              1.0 + gain_mean,
-                             this->m_state.range[out0Id], 
+                             this->m_state.range[out0Id],
                              0.0, 10.0);
 }
 float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitVga(Dac * val_dac,
