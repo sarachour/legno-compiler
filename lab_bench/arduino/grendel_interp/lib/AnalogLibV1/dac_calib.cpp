@@ -108,6 +108,11 @@ float Fabric::Chip::Tile::Slice::Dac::calibrateMaxDeltaFit(){
     float target = Fabric::Chip::Tile::Slice::Dac::computeOutput(this->m_state);
     float mean,variance;
     mean = this->fastMeasureValue(variance);
+#ifdef DEBUG_DAC_CAL
+    sprintf(FMTBUF,"cal-maxfit in_val=%f targ=%f meas=%f\n",
+            const_val,target,mean);
+    print_info(FMTBUF);
+#endif
     N_DAC_POINTS_TESTED += 1;
     errors[i] = mean-target;
     expected[i] = target;
@@ -131,9 +136,11 @@ float Fabric::Chip::Tile::Slice::Dac::calibrateMinError(){
     float mean,variance;
     N_DAC_POINTS_TESTED += 1;
     mean = this->fastMeasureValue(variance);
+#ifdef DEBUG_DAC_CAL
     sprintf(FMTBUF,"cal-min in_val=%f targ=%f meas=%f\n",
             const_val,target,mean);
     print_info(FMTBUF);
+#endif
     loss_total += fabs(target-mean);
   }
   return loss_total/CALIB_NPTS;
@@ -144,5 +151,10 @@ float Fabric::Chip::Tile::Slice::Dac::calibrateFast(){
   float target = Fabric::Chip::Tile::Slice::Dac::computeOutput(this->m_state);
   float mean,variance;
   mean = this->fastMeasureValue(variance);
+#ifdef DEBUG_DAC_CAL
+  sprintf(FMTBUF,"cal-fast in_val=%f targ=%f meas=%f\n",
+          const_val,target,mean);
+  print_info(FMTBUF);
+#endif
   return fabs(mean-target);
 }

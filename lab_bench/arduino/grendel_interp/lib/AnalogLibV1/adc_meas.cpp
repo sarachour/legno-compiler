@@ -56,10 +56,16 @@ profile_t Fabric::Chip::Tile::Slice::ChipAdc::measureConstVal(profile_spec_t spe
 	conn0.setConn();
 	val_dac->setEnable (true);
   spec.inputs[in0Id] = val_dac->fastMakeValue(spec.inputs[in0Id]);
+  float target = this->computeOutput(this->m_state,spec.inputs[in0Id]);
 
   float mean,variance;
   util::meas_dist_adc(this,mean,variance);
   mean = this->digitalCodeToValue(mean);
+  sprintf(FMTBUF, "prof inp=%f targ=%f mean=%f\n",
+          spec.inputs[in0Id],
+          target,
+          mean);
+  print_info(FMTBUF);
   profile_t prof = prof::make_profile(spec,
                                       mean,
                                       variance);

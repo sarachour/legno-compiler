@@ -54,8 +54,10 @@ float Fabric::Chip::Tile::Slice::ChipAdc::calibrateFast(Fabric::Chip::Tile::Slic
 
   util::meas_dist_adc(this,mean,variance);
   mean = this->digitalCodeToValue(mean);
+#ifdef DEBUG_ADC_CAL
   sprintf(FMTBUF,"cal-fast in_val=%f targ=%f meas=%f\n", in_val,target,mean);
   print_info(FMTBUF);
+#endif
   return fabs(target-mean);
 }
 
@@ -71,8 +73,10 @@ float Fabric::Chip::Tile::Slice::ChipAdc::calibrateMinError(Fabric::Chip::Tile::
 
     util::meas_dist_adc(this,mean,variance);
     mean = this->digitalCodeToValue(mean);
+#ifdef DEBUG_ADC_CAL
     sprintf(FMTBUF,"cal-min in_val=%f targ=%f meas=%f\n", in_val,target,mean);
     print_info(FMTBUF);
+#endif
     loss_total += fabs(target-mean);
   }
   return loss_total/CALIB_NPTS;
@@ -90,8 +94,10 @@ float Fabric::Chip::Tile::Slice::ChipAdc::calibrateMaxDeltaFit(Fabric::Chip::Til
 
     util::meas_dist_adc(this,mean,variance);
     mean = this->digitalCodeToValue(mean);
+#ifdef DEBUG_ADC_CAL
     sprintf(FMTBUF,"cal-min in_val=%f targ=%f meas=%f\n", in_val,target,mean);
     print_info(FMTBUF);
+#endif
     expected[i] = target;
     errors[i] = mean-target;
 
