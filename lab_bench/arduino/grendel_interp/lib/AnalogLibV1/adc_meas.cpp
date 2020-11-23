@@ -43,7 +43,6 @@ profile_t Fabric::Chip::Tile::Slice::ChipAdc::measureConstVal(profile_spec_t spe
   update(this->m_state);
 
   Fabric::Chip::Tile::Slice::Dac * val_dac = parentSlice->dac;
-  Fabric* fab = parentSlice->parentTile->parentChip->parentFabric;
   adc_state_t codes_self= this->m_state;
   dac_state_t codes_dac = val_dac->m_state;
 
@@ -60,8 +59,7 @@ profile_t Fabric::Chip::Tile::Slice::ChipAdc::measureConstVal(profile_spec_t spe
 
   float mean,variance;
   util::meas_dist_adc(this,mean,variance);
-  const int mode = 0;
-  const int in1 = 0.0;
+  mean = this->digitalCodeToValue(this->m_state, mean);
   profile_t prof = prof::make_profile(spec,
                                       mean,
                                       variance);

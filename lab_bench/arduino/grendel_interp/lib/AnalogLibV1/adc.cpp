@@ -19,6 +19,14 @@ void Fabric::Chip::Tile::Slice::ChipAdc::computeInterval(adc_state_t& state,
   min = -ampl;
   max = ampl;
 }
+float Fabric::Chip::Tile::Slice::ChipAdc::digitalCodeToValue(adc_state_t& config,
+                                                               float digital_value){
+  digital_value = max(min(255,digital_value),0);
+  float input = (digital_value - 128.0)/128.0;
+  return input;
+}
+
+
 float Fabric::Chip::Tile::Slice::ChipAdc::computeOutput (adc_state_t& config,
                                                          float input){
   float rng = util::range_to_coeff(config.range);
