@@ -61,6 +61,12 @@ class DeltaParamType(str,Enum):
   LL_CORRECTABLE = "ll_correctable"
   GENERAL = 'general'
 
+  def is_correctable(self):
+      if self == DeltaParamType.GENERAL:
+          return False
+      else:
+          return True
+
 
 class BlockDataType(str,Enum):
   CONST = 'const'
@@ -779,8 +785,7 @@ class DeltaSpec:
     def get_correctable_model(self,params):
         pdict = dict(params)
         for par in params.keys():
-            if self._params[par].typ  \
-               != DeltaParamType.CORRECTABLE:
+            if not self._params[par].typ.is_correctable():
                 pdict[par] = self._params[par].val
 
         return lambdoplib.simplify(self.get_model(pdict))
