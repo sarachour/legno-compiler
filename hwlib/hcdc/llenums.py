@@ -89,7 +89,7 @@ class ProfileOpType(Enum):
 
         elif self == ProfileOpType.INTEG_DERIVATIVE_GAIN:
             coeff,exprs = genoplib.unpack_product(rel.deriv)
-            assert(all(lambda expr: expr.op == oplib.OpType.VAR, exprs))
+            assert(all(map(lambda expr: expr.op == oplib.OpType.VAR, exprs)))
             all_vars = list(map(lambda e: e.name, exprs))
 
             block_vars = list(map(lambda inp: inp.name, block.inputs)) + \

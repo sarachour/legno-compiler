@@ -30,6 +30,7 @@ MODES = [
   ['m','h','h'],
   ['h','m','h']
 ]
+'''
 MODES = [
   ['x','m','m'],
   ['x','h','m'],
@@ -39,6 +40,7 @@ MODES = [
   ['h','m','m'],
   ['h','m','h']
 ]
+'''
 
 
 mult.modes.add_all(MODES)
