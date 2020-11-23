@@ -37,7 +37,7 @@ void Fabric::Chip::Tile::Slice::Dac::fastMakeDacModel(){
   for(int i=0; i < NPTS; i += 1){
     measurements[i] = this->fastMakeHighValue(values[i],0.2);
     codes[i] = this->m_state.const_code;
-    sprintf(FMTBUF," v=%f m=%f c=%f", values[i],measurements[i],codes[i]);
+    sprintf(FMTBUF," fast-dac v=%f m=%f c=%f", values[i],measurements[i],codes[i]);
     print_info(FMTBUF);
   }
   float max_error,avg_error;
@@ -46,7 +46,7 @@ void Fabric::Chip::Tile::Slice::Dac::fastMakeDacModel(){
                           this->m_dac_model.beta,
                           this->m_dac_model.rsq,
                           max_error,avg_error);
-  sprintf(FMTBUF,"alpha=%f beta=%f rsq=%f",
+  sprintf(FMTBUF,"fast-dac alpha=%f beta=%f rsq=%f",
           this->m_dac_model.alpha,
           this->m_dac_model.beta,
           this->m_dac_model.rsq);

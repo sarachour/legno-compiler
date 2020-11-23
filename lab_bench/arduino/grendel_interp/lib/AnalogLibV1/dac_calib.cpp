@@ -10,6 +10,7 @@
 const float TEST_POINTS[CALIB_NPTS] = {0,0.875,0.5,-0.875,-0.5,0.25,-0.25};
 unsigned int N_DAC_POINTS_TESTED = 0;
 
+#define DEBUG_DAC_CAL
 float Fabric::Chip::Tile::Slice::Dac::getLoss(calib_objective_t obj){
   float loss = 0;
   switch(obj){
@@ -63,7 +64,7 @@ void Fabric::Chip::Tile::Slice::Dac::calibrate (calib_objective_t obj)
       //compute loss for combo
       float loss = getLoss(obj);
       cutil::update_calib_table(calib_table,loss,2,nmos,gain_cal);
-      sprintf(FMTBUF,"nmos=%d\tgain_cal=%d\tloss=%f",nmos,gain_cal,loss);
+      sprintf(FMTBUF,"dac-cal nmos=%d\tgain_cal=%d\tloss=%f",nmos,gain_cal,loss);
       print_info(FMTBUF);
     }
   }
@@ -80,7 +81,7 @@ void Fabric::Chip::Tile::Slice::Dac::calibrate (calib_objective_t obj)
   int best_nmos = calib_table.state[0];
   int best_gain_cal = calib_table.state[1];
   print_info("======");
-  sprintf(FMTBUF,"BEST nmos=%d\tgain_cal=%d\tloss=%f",
+  sprintf(FMTBUF,"BEST dac-cal nmos=%d\tgain_cal=%d\tloss=%f",
           best_nmos,best_gain_cal,calib_table.loss);
   print_info(FMTBUF);
   sprintf(FMTBUF,"Tested Points: %d\n", N_DAC_POINTS_TESTED);
@@ -109,7 +110,7 @@ float Fabric::Chip::Tile::Slice::Dac::calibrateMaxDeltaFit(){
     float mean,variance;
     mean = this->fastMeasureValue(variance);
 #ifdef DEBUG_DAC_CAL
-    sprintf(FMTBUF,"cal-maxfit in_val=%f targ=%f meas=%f\n",
+    sprintf(FMTBUF,"dac-cal-maxfit in_val=%f targ=%f meas=%f\n",
             const_val,target,mean);
     print_info(FMTBUF);
 #endif
@@ -137,7 +138,7 @@ float Fabric::Chip::Tile::Slice::Dac::calibrateMinError(){
     N_DAC_POINTS_TESTED += 1;
     mean = this->fastMeasureValue(variance);
 #ifdef DEBUG_DAC_CAL
-    sprintf(FMTBUF,"cal-min in_val=%f targ=%f meas=%f\n",
+    sprintf(FMTBUF,"dac-cal-min in_val=%f targ=%f meas=%f\n",
             const_val,target,mean);
     print_info(FMTBUF);
 #endif
@@ -152,7 +153,7 @@ float Fabric::Chip::Tile::Slice::Dac::calibrateFast(){
   float mean,variance;
   mean = this->fastMeasureValue(variance);
 #ifdef DEBUG_DAC_CAL
-  sprintf(FMTBUF,"cal-fast in_val=%f targ=%f meas=%f\n",
+  sprintf(FMTBUF,"dac-cal-fast in_val=%f targ=%f meas=%f\n",
           const_val,target,mean);
   print_info(FMTBUF);
 #endif
