@@ -31,6 +31,7 @@ def calibrate(runtime,dev,blk,loc,adp, \
     cmd_t, cmd_data = make_circ_cmd(llenums.CircCmdType.CALIBRATE,
                                     calibrate_data)
 
+    print(cmd_data)
     print("-> calibrating block")
     cmd = cmd_t.build(cmd_data,debug=True)
     runtime.execute(cmd)
