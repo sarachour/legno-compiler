@@ -56,12 +56,12 @@ adc.state['range'] \
 
 spec = DeltaSpec(parser.parse_expr('a*0.5*x+b'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
-spec.param('b',DeltaParamType.CORRECTABLE,ideal=0.0)
+spec.param('b',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
 adc.outputs['z'].deltas.bind(['m'],spec)
 
 spec = DeltaSpec(parser.parse_expr('a*0.05*x+b'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
-spec.param('b',DeltaParamType.CORRECTABLE,ideal=0.0)
+spec.param('b',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
 adc.outputs['z'].deltas.bind(['h'],spec)
 
 

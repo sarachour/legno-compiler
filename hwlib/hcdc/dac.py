@@ -59,23 +59,23 @@ dac.inputs['x'] \
 
 spec = DeltaSpec(parser.parse_expr('a*2.0*c+b'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
-spec.param('b',DeltaParamType.CORRECTABLE,ideal=0.0)
+spec.param('b',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
 dac.outputs['z'].deltas.bind(['const','m'],spec)
 
 spec = DeltaSpec(parser.parse_expr('a*20.0*c+b'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
-spec.param('b',DeltaParamType.CORRECTABLE,ideal=0.0)
+spec.param('b',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
 dac.outputs['z'].deltas.bind(['const','h'],spec)
 
 
 spec = DeltaSpec(parser.parse_expr('a*2.0*x+b'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
-spec.param('b',DeltaParamType.CORRECTABLE,ideal=0.0)
+spec.param('b',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
 dac.outputs['z'].deltas.bind(['dyn','m'],spec)
 
 spec = DeltaSpec(parser.parse_expr('a*20.0*x+b'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
-spec.param('b',DeltaParamType.CORRECTABLE,ideal=0.0)
+spec.param('b',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
 dac.outputs['z'].deltas.bind(['dyn','h'],spec)
 
 
