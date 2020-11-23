@@ -53,6 +53,9 @@ float Fabric::Chip::Tile::Slice::ChipAdc::calibrateFast(Fabric::Chip::Tile::Slic
                                                                   in_val);
 
   util::meas_dist_adc(this,mean,variance);
+  mean = this->digitalCodeToValue(mean);
+  sprintf(FMTBUF,"cal-fast in_val=%f targ=%f meas=%f\n", in_val,target,mean);
+  print_info(FMTBUF);
   return fabs(target-mean);
 }
 
