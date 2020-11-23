@@ -67,6 +67,7 @@ float Fabric::Chip::Tile::Slice::ChipAdc::calibrateMinError(Fabric::Chip::Tile::
                                                                    in_val);
 
     util::meas_dist_adc(this,mean,variance);
+    mean = this->digitalCodeToValue(mean);
     loss_total += fabs(target-mean);
   }
   return loss_total/CALIB_NPTS;
@@ -77,15 +78,15 @@ float Fabric::Chip::Tile::Slice::ChipAdc::calibrateMaxDeltaFit(Fabric::Chip::Til
   float errors[CALIB_NPTS];
   float expected[CALIB_NPTS];
   for(int i=0; i < CALIB_NPTS; i += 1){
-    // FIXME: this is definitely wrong. Why is TEST_POINTS being used over target.
     float test_pt = TEST_POINTS[i]*util::range_to_coeff(this->m_state.range);
     float in_val = val_dac->fastMakeValue(test_pt);
     float target =Fabric::Chip::Tile::Slice::ChipAdc::computeOutput(this->m_state,
                                                                     in_val);
 
     util::meas_dist_adc(this,mean,variance);
+    mean = this->digitalCodeToValue(mean);
     expected[i] = TEST_POINTS[i];
-    errors[i] = ((mean-128.0)/128.0)-expected[i];
+    errors[i] = mean-target;
     highest_std = max(sqrt(variance)/128.0,highest_std);
   }
   float gain_mean,bias,rsq,avg_error,max_error;
