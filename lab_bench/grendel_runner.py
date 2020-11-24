@@ -26,7 +26,7 @@ class GrendelRunner:
     self.due.write_newline()
 
   def execute_with_payload(self,header_data,payload_data):
-    pad_size= 80
+    pad_size= 80 - 10*4
     n_pad = generic_util.compute_pad_bytes(len(header_data), \
                                            pad_size)
     pad_data = bytearray([0]*n_pad)

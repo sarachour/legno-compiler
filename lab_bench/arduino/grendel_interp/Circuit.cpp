@@ -61,7 +61,7 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
     for(int data_idx=0; data_idx < wrlutd.n; data_idx+=1){
       byteval = min(round(inbuf[data_idx]*128.0 + 128.0),255);
 #ifdef DEBUG_CIRC
-      sprintf(FMTBUF,"%d\n",byteval);
+      sprintf(FMTBUF,"%f %d\n",inbuf[data_idx],byteval);
       print_info(FMTBUF);
 #endif
       if(inbuf[data_idx] < -1.0 || inbuf[data_idx] > 1.0){
