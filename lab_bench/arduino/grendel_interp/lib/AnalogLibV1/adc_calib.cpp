@@ -108,9 +108,12 @@ float Fabric::Chip::Tile::Slice::ChipAdc::calibrateMaxDeltaFit(Fabric::Chip::Til
                           gain_mean,bias,rsq,max_error,avg_error);
   // put no emphasis on deviation because parameter setting doesn't
   // change it that much.
+  float min,max;
+  this->computeInterval(this->m_state, out0Id, min, max);
   return cutil::compute_loss(bias,highest_std,avg_error,
                              1.0+gain_mean,     \
-                             RANGE_MED, 0.0, 1.0);
+                             max, \
+                             0.0, 1.0);
 }
 
 float Fabric::Chip::Tile::Slice::ChipAdc::getLoss(calib_objective_t obj,

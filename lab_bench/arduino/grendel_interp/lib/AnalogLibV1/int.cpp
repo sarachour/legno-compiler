@@ -4,6 +4,24 @@
 #include "fu.h"
 #include "assert.h"
 
+void Fabric::Chip::Tile::Slice::Integrator::computeInterval(integ_state_t& state,
+                                                            port_type_t port, float& min, float& max){
+  float ampl = 2.0;
+  switch(port){
+  case in0Id:
+    ampl = state.range[in0Id] == RANGE_HIGH ? 20.0 : 2.0;
+    break;
+  case out0Id:
+    ampl = state.range[out0Id] == RANGE_HIGH ? 20.0 : 2.0;
+    break;
+  default:
+    error("multiplier was supplied unknown port");
+  }
+  min = -ampl;
+  max = ampl;
+}
+
+
 float Fabric::Chip::Tile::Slice::Integrator::computeInitCond(integ_state_t& state){
   float sign = state.inv ? -1.0 : 1.0;
   float rng = util::range_to_coeff(state.range[out0Id])*2.0;

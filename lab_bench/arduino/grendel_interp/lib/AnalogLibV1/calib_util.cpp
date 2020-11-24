@@ -39,9 +39,8 @@ namespace cutil {
   }
 
   float compute_loss(float bias, float noise_std, float pred_err,
-                     float gain, range_t range,
+                     float gain, float mag,
                      float deviation_weight, float max_gain){
-    float mag = util::range_to_coeff(range);
     float error = max(max(fabs(bias),noise_std),pred_err);
     float pct_deviate = fabs(gain-1.0)/1.0;
     float pct_error = error/mag;

@@ -182,12 +182,14 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitMult(Dac * val0
   float gain_mean,rsq,bias,max_error,avg_error;
   util::linear_regression(expected,errors,npts,
                           gain_mean,bias,rsq,max_error,avg_error);
-
+  float min,max;
+  this->computeInterval(this->m_state, out0Id, min, max);
   // put no emphasis on deviation, because it will not adhere to 1.0
-  return cutil::compute_loss(ignore_bias ? 0.0 : bias,max_std,
+  return cutil::compute_loss(ignore_bias ? 0.0 : bias,
+                             max_std,
                              avg_error,
                              1.0 + gain_mean,
-                             this->m_state.range[out0Id],
+                             max,
                              0.0, 10.0);
 }
 float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitVga(Dac * val_dac,
@@ -210,10 +212,12 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitVga(Dac * val_d
 
   // put some emphasis on deviation because it is changed.
   // 0.015 before
+  float min,max;
+  this->computeInterval(this->m_state, out0Id, min, max);
   return cutil::compute_loss(ignore_bias ? 0.0 : bias,highest_std,
                              avg_error,
                              1.0+gain_mean,
-                             this->m_state.range[out0Id],
+                             max,
                              0.003,
                              10.0);
 }
@@ -510,10 +514,10 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
                                      target_neg);
   bias_bounds[0] = max(table_bias.state[0]-4,0);
   bias_bounds[1] = min(table_bias.state[0]+4,MAX_BIAS_CAL);
-  bias_bounds[3] = max(table_bias.state[1]-4,0);
-  bias_bounds[4] = min(table_bias.state[1]+4,MAX_BIAS_CAL);
-  bias_bounds[5] = max(table_bias.state[2]-4,0);
-  bias_bounds[6] = min(table_bias.state[2]+4,MAX_BIAS_CAL);
+  bias_bounds[2] = max(table_bias.state[1]-4,0);
+  bias_bounds[3] = min(table_bias.state[1]+4,MAX_BIAS_CAL);
+  bias_bounds[4] = max(table_bias.state[2]-4,0);
+  bias_bounds[5] = min(table_bias.state[2]+4,MAX_BIAS_CAL);
   this->calibrateHelperFindBiasCodes(table_bias, 1,
                                      val0_dac,
                                      val1_dac,

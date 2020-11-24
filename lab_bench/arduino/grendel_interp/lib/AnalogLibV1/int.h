@@ -49,7 +49,8 @@ class Fabric::Chip::Tile::Slice::Integrator : public Fabric::Chip::Tile::Slice::
 			bool exception // turn on overflow detection
 			// turning false overflow detection saves power if it is known to be unnecessary
 		);
-
+    void computeInterval(integ_state_t& state,
+                         port_type_t port, float& min, float& max);
 
     static float computeInitCond(integ_state_t& m_codes);
     static float computeOutput(integ_state_t& m_codes,float input);
