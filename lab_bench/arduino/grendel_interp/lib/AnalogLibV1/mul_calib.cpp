@@ -18,7 +18,7 @@ float Fabric::Chip::Tile::Slice::Multiplier::getLoss(calib_objective_t obj,
                                                      Dac * val1_dac,
                                                      Dac * ref_dac,
                                                      bool ignore_bias){
-  float loss;
+  float loss = 999.0;
   switch(obj){
   case CALIB_MINIMIZE_ERROR:
     loss = calibrateMinError(val0_dac,val1_dac,ref_dac);
@@ -89,8 +89,8 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperVga(Dac * val_dac,
                                             mean,
                                             variance);
 #ifdef DEBUG_MULT_CAL
-      sprintf(FMTBUF,"vga-h dac=(%f,%f) in0=%f coeff=%f targ=%f meas=%f mean=%f\n",
-              in0,in1,target_in0, in1, target_out, meas_steady, mean);
+      sprintf(FMTBUF,"vga-h dac=(%f,%f) in0=%f coeff=%f targ=%f mean=%f\n",
+              in0,in1,target_in0, in1, target_out, mean);
       print_info(FMTBUF);
 #endif
       N_MULT_POINTS_TESTED += 1;
@@ -146,8 +146,8 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperMult(Dac * val0_dac,
                                                mean,
                                                variance);
 #ifdef DEBUG_MULT_CAL
-      sprintf(FMTBUF,"mul-h dac=(%f,%f) in0=%f in1=%f targ=%f meas=%f mean=%f\n",
-              in0,in1,target_in0, target_in1, target_out, meas_steady, mean);
+      sprintf(FMTBUF,"mul-h dac=(%f,%f) in0=%f in1=%f targ=%f mean=%f\n",
+              in0,in1,target_in0, target_in1, target_out, mean);
       print_info(FMTBUF);
 #endif
 

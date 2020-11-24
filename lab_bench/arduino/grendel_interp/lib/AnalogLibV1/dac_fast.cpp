@@ -6,6 +6,7 @@
 #include "dac.h"
 
 // this model for the high-mode dac.
+#define DEBUG_DAC_FAST
 
 void fast_calibrate_dac(Fabric::Chip::Tile::Slice::Dac * aux_dac){
   if(!aux_dac->m_is_calibrated){
@@ -383,8 +384,8 @@ float Fabric::Chip::Tile::Slice::Dac::fastMeasureHighValue(float& variance){
   ref_dac_to_tile.setConn();
   tile_to_chip.setConn();
 
-  const float max_meas_val = 0.8;
-  const float max_ref_dist = 0.8;
+  const float max_meas_val = 1.8;
+  const float max_ref_dist = 1.8;
   //compute the floating point value from the dac code.
   int distance = fabs(this->m_state.const_code-128);
   if(this->m_state.const_code < 128)
@@ -399,8 +400,11 @@ float Fabric::Chip::Tile::Slice::Dac::fastMeasureHighValue(float& variance){
   dac_model_t model = ref_dac->m_dac_model;
   float ref = ref_dac->m_state.const_code*model.alpha + model.beta;
   float out = meas - ref;
-  //sprintf(FMTBUF,"ref=%f meas=%f out=%f", ref,meas,out);
-  //print_info(FMTBUF);
+#ifdef DEBUG_DAC_FAST
+  sprintf(FMTBUF,"ref=%f meas=%f out=%f", ref,meas,out);
+  print_info(FMTBUF);
+#endif
+
   ref_dac_to_tile.brkConn();
   this_dac_to_tile.brkConn();
   tile_to_chip.brkConn();
