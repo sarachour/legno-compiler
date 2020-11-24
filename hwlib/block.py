@@ -16,11 +16,12 @@ class QuantizeType(Enum):
 
 class Quantize:
 
-    def __init__(self,n,interp_type):
+    def __init__(self,n,interp_type,scale=1.0):
         assert(isinstance(n,int))
         assert(isinstance(interp_type,QuantizeType))
         self.n = n
         self.type = interp_type
+        self.scale = scale
 
     def error(self,interval):
         assert(self.type == QuantizeType.LINEAR)

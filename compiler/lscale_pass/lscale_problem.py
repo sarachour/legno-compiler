@@ -220,6 +220,7 @@ def generate_port_properties(hwinfo,dsinfo,inst, \
     if not quantize is None:
       mode_quantize= hwinfo.get_quantize(inst,mode,port)
       quant_ratio = mode_quantize.error(mode_oprange)/quantize.error(oprange)
+      quant_ratio *= mode_quantize.scale
       assert(quant_ratio > 0.0)
       yield scalelib.SCModeImplies(v_mode,mode,v_quantize, quant_ratio)
 
