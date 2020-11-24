@@ -11,27 +11,32 @@ import hwlib.hcdc.llcmd as llcmd
 import ops.generic_op as genoplib
 
 import runtime.fit.model_fit as fitlib
+import numpy as np
 
 def update_delta_model(dev,delta_model,dataset):
     if dataset.method == llenums.ProfileOpType.INPUT_OUTPUT:
         rel = delta_model.get_subexpr(correctable_only=False)
     elif dataset.method == llenums.ProfileOpType.INTEG_INITIAL_COND:
         rel = delta_model.get_subexpr(init_cond=True, \
-                                      correctable_only=False)
+                                      correctable_only=False, \
+                                      concrete=False)
     elif dataset.method == llenums.ProfileOpType.INTEG_DERIVATIVE_GAIN:
         rel = delta_model.get_subexpr(init_cond=False, \
-                                      correctable_only=False)
+                                      correctable_only=False, \
+                                      concrete=False)
     else:
         return False,-1
 
     if not fitlib.fit_delta_model_to_data(delta_model, \
                                           rel, \
                                           dataset):
+        print(dataset)
+        print("rel=%s" % rel)
+        print("can't fit model <%s>" % dataset.method)
         return False,-1
 
     if dataset.method == llenums.ProfileOpType.INTEG_INITIAL_COND:
-        return True, delta_model.error(dataset, \
-                                  init_cond=True)
+        return True, delta_model.error(dataset, init_cond=True)
     else:
         return True, delta_model.error(dataset)
 
@@ -58,13 +63,18 @@ def _update_delta_models_for_configured_block(dev,blk,loc,output,config,force=Fa
                                                                           loc, \
                                                                           output, \
                                                                           config):
-        print(dataset)
         print("# data points: %d" % len(dataset))
         for delta_model in delta_models:
             succ,error = update_delta_model(dev,delta_model,dataset)
         if succ:
-            model_errors.append(abs(error))
+            print(dataset)
+            print("   delta %s (succ=%s,err=%f)" % (delta_model,succ,error));
+            if dataset.method == llenums.ProfileOpType.INPUT_OUTPUT or \
+               dataset.method == llenums.ProfileOpType.INTEG_INITIAL_COND:
+               model_errors.append(abs(error))
 
+    if len(model_errors) == 0:
+        return False
 
     for delta_model in delta_models:
         avg_error = np.mean(model_errors)
@@ -78,7 +88,7 @@ def _update_delta_models_for_configured_block(dev,blk,loc,output,config,force=Fa
 
     return True
 
-def update_delta_models_for_configured_block(dev,blk,loc,cfg,hidden=True):
+def update_delta_models_for_configured_block(dev,blk,loc,cfg,hidden=True,force=False):
     num_deltas = 0
     for output in blk.outputs:
         for dataset in exp_profile_dataset_lib \
@@ -86,7 +96,7 @@ def update_delta_models_for_configured_block(dev,blk,loc,cfg,hidden=True):
                                                        hidden=hidden):
             if _update_delta_models_for_configured_block(dev,blk, \
                                                          loc,output, \
-                                                         dataset.config):
+                                                         dataset.config, force=force):
                 num_deltas += 1
     if num_deltas > 0:
         print(cfg)
@@ -98,5 +108,5 @@ def derive_delta_models_adp(args):
 
     for blk,loc,cfg in exp_profile_dataset_lib \
         .get_configured_block_instances(board):
-        update_delta_models_for_configured_block(board,blk,loc,cfg,hidden=True)
+        update_delta_models_for_configured_block(board,blk,loc,cfg,hidden=True,force=args.force)
  
