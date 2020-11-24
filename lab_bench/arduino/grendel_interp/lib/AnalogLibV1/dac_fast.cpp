@@ -53,6 +53,7 @@ void Fabric::Chip::Tile::Slice::Dac::fastMakeDacModel(){
   print_info(FMTBUF);
 }
 float Fabric::Chip::Tile::Slice::Dac::fastMakeValue(float target){
+  update(this->m_state);
   if(fabs(target) < 1.8){
     return fastMakeMedValue(target, 0.02);
   }
