@@ -99,7 +99,7 @@ namespace cutil {
         util::meas_dist_chip_out(fu,measurement,variance);
       }
 #ifdef DEBUG_CALIB_UTIL
-      sprintf(FMTBUF, "ref-dac=%f meas=%f\n", ref_dac_val, measurement);
+      sprintf(FMTBUF, "cutil targ=%f ref-dac=%f meas=%f\n", target, ref_dac_val, measurement);
       print_info(FMTBUF);
 #endif
       // tune measurement if we saturated the range
@@ -121,7 +121,7 @@ namespace cutil {
     float dummy;
     ref_dac_val = ref_dac->fastMeasureValue(dummy);
 #ifdef DEBUG_CALIB_UTIL
-    sprintf(FMTBUF, "ref=%f meas=%f\n", ref_dac_val, measurement);
+    sprintf(FMTBUF, "cutil targ=%f ref=%f meas=%f\n", target, ref_dac_val, measurement);
     print_info(FMTBUF);
 #endif
     mean = measurement-ref_dac_val;
