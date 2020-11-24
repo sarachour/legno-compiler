@@ -2,25 +2,13 @@
 VISUALIZE=--visualize
 VISUALIZE=
 
-calibrate-minerr:
-	python3 -u grendel.py calibrate --no-oscilloscope --calib-obj min_error device-state/calibrate/min_error.grendel 
+mount-remote-dirs:
+	sshfs jray@lab-bench.csail.mit.edu:/Users/JRay/Documents/SaraAchour-Workspace/legno-compiler/device-state device-state
+	sshfs jray@lab-bench.csail.mit.edu:/Users/JRay/Documents/SaraAchour-Workspace/legno-compiler/outputs outputs
 
-calibrate-maxfit:
-	python3 -u grendel.py calibrate --no-oscilloscope --calib-obj max_fit device-state/calibrate/max_fit.grendel 
-	python3 -u grendel.py calibrate --no-oscilloscope --calib-obj min_error device-state/calibrate/max_fit.grendel 
-
-profile-maxfit:
-	python3 -u grendel.py profile --no-oscilloscope --calib-obj max_fit device-state/calibrate/max_fit.grendel 
-	python3 -u grendel.py profile --no-oscilloscope --calib-obj min_error device-state/calibrate/max_fit.grendel 
-
-profile-minerr:
-	python3 -u grendel.py profile --no-oscilloscope --calib-obj min_error device-state/calibrate/min_error.grendel 
-
-models-maxfit:
-	python3 model_builder.py infer --calib-obj max_fit ${VISUALIZE}
-
-models-minerr:
-	python3 model_builder.py infer --calib-obj min_error ${VISUALIZE}
+unmount-remote-dirs:
+	fusermount -u device-state
+	fusermount -u outputs
 
 clean-executions:
 	rm -f outputs/experiments.db
@@ -33,7 +21,3 @@ clean-executions:
 	rm -f outputs/legno/*/*/times/srcgen.txt
 	rm -f outputs/legno/*/*/times/lscale.txt
 
-clean-models:
-	rm -rf device-state/datasets
-	rm -rf device-state/models/*
-	rm -rf device-state/model.db
