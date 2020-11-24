@@ -61,8 +61,10 @@ class DeltaParamType(str,Enum):
   LL_CORRECTABLE = "ll_correctable"
   GENERAL = 'general'
 
-  def is_correctable(self):
+  def is_correctable(self,low_level=False):
       if self == DeltaParamType.GENERAL:
+          return False
+      elif self == DeltaParamType.LL_CORRECTABLE and not low_level:
           return False
       else:
           return True
