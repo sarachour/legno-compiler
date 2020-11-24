@@ -13,6 +13,9 @@ namespace calibrate {
       return CALIB_FAST;
       break;
     case block_type_t::MULT:
+    case block_type_t::INTEG:
+    case block_type_t::TILE_DAC:
+    case block_type_t::TILE_ADC:
       return CALIB_MAXIMIZE_DELTA_FIT;
       break;
     default:
