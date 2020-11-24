@@ -5,6 +5,7 @@
 #include "profile.h"
 #include <float.h>
 
+#define DEBUG_CALIB_UTIL
 
 namespace cutil {
 
@@ -97,6 +98,10 @@ namespace cutil {
       else{
         util::meas_dist_chip_out(fu,measurement,variance);
       }
+#ifdef DEBUG_CALIB_UTIL
+      sprintf(FMTBUF, "ref-dac=%f meas=%f\n", ref_dac_val, measurement);
+      print_info(FMTBUF);
+#endif
       // tune measurement if we saturated the range
       if(fabs(measurement) > thresh){
         delta += measurement < 0 ? -step : step;
@@ -115,7 +120,10 @@ namespace cutil {
     }
     float dummy;
     ref_dac_val = ref_dac->fastMeasureValue(dummy);
-
+#ifdef DEBUG_CALIB_UTIL
+    sprintf(FMTBUF, "ref=%f meas=%f\n", ref_dac_val, measurement);
+    print_info(FMTBUF);
+#endif
     mean = measurement-ref_dac_val;
     variance = variance;
 

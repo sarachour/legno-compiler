@@ -263,10 +263,10 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measureInitialCond(profile_spec
   integ_to_tile.setConn();
 	tile_to_chip.setConn();
 
-  //setInitial(input);
   float target = this->computeInitCond(m_state);
   float mean,variance;
   bool measure_steady=false;
+  this->update(this->m_state);
   calib.success &= cutil::measure_signal_robust(this,
                                                 ref_dac,
                                                 target,
