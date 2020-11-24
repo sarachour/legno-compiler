@@ -26,6 +26,11 @@ def eval_expr(e,subs):
     leaves1 = eval_expr(e.args[0],subs)
     leaves2 = eval_expr(e.args[1],subs)
     return list(op_apply2(lambda a, b: genoplib.Mult(a,b), leaves1, leaves2))
+
+  elif e.op == genoplib.OpType.ABS:
+    leaves = eval_expr(e.args[0],subs)
+    return list(op_apply1(lambda e: lambdalib.Abs(e), leaves))
+
   elif e.op == genoplib.OpType.POW:
     leaves = eval_expr(e.args[0],subs)
     power = eval_expr(e.args[1],subs)
@@ -39,8 +44,7 @@ def op_apply1(func, leaves):
    for leaf in leaves:
       new_leaf = leaf.copy()
       new_leaf.expr = func(leaf.expr)
-      new_leaf.params = dict(map(lambda p: (p,None),leaf1.params.keys() + \
-                                 leaf2.params.keys()))
+      new_leaf.params = dict(map(lambda p: (p,None), leaf.params.keys()))
 
       yield new_leaf
 
