@@ -51,7 +51,7 @@ def _update_delta_models_for_configured_block(dev,blk,loc,output,config,force=Fa
     if all(map(lambda model: model.complete, delta_models)) and not force:
         return False
 
-    model_error = 0.0
+    model_errors = []
     for dataset in \
         exp_profile_dataset_lib.get_datasets_by_configured_block_instance(dev, \
                                                                           blk, \
@@ -63,11 +63,15 @@ def _update_delta_models_for_configured_block(dev,blk,loc,output,config,force=Fa
         for delta_model in delta_models:
             succ,error = update_delta_model(dev,delta_model,dataset)
         if succ:
-            model_error += abs(error)
+            model_errors.append(abs(error))
 
 
     for delta_model in delta_models:
-        delta_model.set_model_error(model_error)
+        avg_error = np.mean(model_errors)
+        for err in model_errors:
+            print("  err: %f" % err)
+        print("avg-err: %f" % avg_error)
+        delta_model.set_model_error(avg_error)
         if delta_model.complete:
             print(delta_model)
         exp_delta_model_lib.update(dev,delta_model)
