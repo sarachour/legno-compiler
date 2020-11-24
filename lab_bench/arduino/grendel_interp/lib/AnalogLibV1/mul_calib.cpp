@@ -89,8 +89,8 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperVga(Dac * val_dac,
                                             mean,
                                             variance);
 #ifdef DEBUG_MULT_CAL
-      sprintf(FMTBUF,"vga-h in0=%f coeff=%f targ=%f meas=%f\n",
-              target_in0, in1, target_out, mean);
+      sprintf(FMTBUF,"vga-h in0=%f coeff=%f targ=%f meas=%f mean=%f\n",
+              target_in0, in1, target_out, meas_steady, mean);
       print_info(FMTBUF);
 #endif
       N_MULT_POINTS_TESTED += 1;
@@ -146,8 +146,8 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperMult(Dac * val0_dac,
                                                mean,
                                                variance);
 #ifdef DEBUG_MULT_CAL
-      sprintf(FMTBUF,"mul-h in0=%f in1=%f targ=%f meas=%f\n",
-              target_in0, target_in1, target_out, mean);
+      sprintf(FMTBUF,"mul-h in0=%f in1=%f targ=%f meas=%f mean=%f\n",
+              target_in0, target_in1, target_out, meas_steady, mean);
       print_info(FMTBUF);
 #endif
 
