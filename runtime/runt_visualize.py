@@ -46,6 +46,6 @@ def visualize(args):
                              dataset, \
                              png_file, \
                              baseline=vizlib.ReferenceType.MODEL_PREDICTION, \
-                             num_bins=15, \
+                             num_bins=10, \
                              amplitude=None, \
                              relative=True)

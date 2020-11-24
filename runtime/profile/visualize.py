@@ -91,7 +91,8 @@ def remove_nans(arr):
   nparr = np.array(arr)
   return nparr[:,~np.isnan(nparr).any(axis=0)]
 
-def heatmap(physblk,output_file,inputs,output,n,amplitude=None):
+def heatmap(physblk,output_file,inputs,output,n,relative=False, \
+            amplitude=None):
   bounds = physblk.get_bounds()
   surf = ParametricSurface(n)
   colormap_name = "coolwarm"
@@ -136,7 +137,8 @@ def heatmap(physblk,output_file,inputs,output,n,amplitude=None):
 
 
     cbar = ax.figure.colorbar(im, ax=ax)
-    cbar.ax.set_ylabel("value", rotation=-90, va="bottom")
+    hm_label = "error (rel)" if relative else "error (abs)"
+    cbar.ax.set_ylabel(hm_label, rotation=-90, va="bottom")
     fig.tight_layout()
     plt.savefig(output_file)
     plt.close()
@@ -187,17 +189,6 @@ def deviation_(delta_model,dataset,output_file, \
   else:
     raise Exception("unimplemented")
 
-  #valid_vars = blk.model.delta_model.vars()
-  #print("valid variables: %s" % valid_vars)
-  #for idx in range(0,len(ref)):
-  #  pred = ref[idx]
-  #  inps = {}
-  #  for var in dataset.inputs['inputs']:
-  #    inps[var] = data['inputs'][var][idx]
-  #  obs = data['meas_mean'][idx]
-    #print("inputs=%s pred=%s obs=%s" % (inps,pred,obs))
-    #input("continue")
-
   inps = {}
   for k,v in dataset.inputs.items():
     inps[k] = v
@@ -210,7 +201,8 @@ def deviation_(delta_model,dataset,output_file, \
     errors.append((meas-pred)/ampl)
 
   heatmap(delta_model,output_file,inps,errors,n=num_bins, \
-          amplitude=amplitude)
+          amplitude=amplitude, \
+          relative=relative)
 
 def deviation(delta_model,dataset,output_file, \
               baseline=ReferenceType.MODEL_PREDICTION, \
