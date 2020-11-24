@@ -13,28 +13,35 @@ def is_valid_region(region):
         break
   return is_valid
 
-def eval_expr(e,subs):
+def eval_expr(e,subs,concretize=True):
   if e.op == genoplib.OpType.VAR:
-    return subs[e.name].leaves()
+    if concretize:
+      return list(map(lambda leaf: leaf.concretize(), \
+                      subs[e.name].leaves()))
+    else:
+      return subs[e.name].leaves()
+
   elif e.op == genoplib.OpType.PAREN:
     return eval_expr(e.expr,subs)
   elif e.op == genoplib.OpType.ADD:
-    leaves1 = eval_expr(e.args[0],subs)
-    leaves2 = eval_expr(e.args[1],subs)
+    leaves1 = eval_expr(e.args[0],subs,concretize)
+    leaves2 = eval_expr(e.args[1],subs,concretize)
     return list(op_apply2(lambda a, b: genoplib.Add(a,b), leaves1, leaves2))
   elif e.op == genoplib.OpType.MULT:
-    leaves1 = eval_expr(e.args[0],subs)
-    leaves2 = eval_expr(e.args[1],subs)
+    leaves1 = eval_expr(e.args[0],subs,concretize)
+    leaves2 = eval_expr(e.args[1],subs,concretize)
     return list(op_apply2(lambda a, b: genoplib.Mult(a,b), leaves1, leaves2))
 
   elif e.op == genoplib.OpType.ABS:
-    leaves = eval_expr(e.args[0],subs)
+    leaves = eval_expr(e.args[0],subs,concretize)
     return list(op_apply1(lambda e: lambdalib.Abs(e), leaves))
 
   elif e.op == genoplib.OpType.POW:
-    leaves = eval_expr(e.args[0],subs)
-    power = eval_expr(e.args[1],subs)
-    return list(op_apply2(lambda base,exponent: lambdalib.Pow(base,exponent), leaves, power))
+    leaves = eval_expr(e.args[0],subs,concretize)
+    power = eval_expr(e.args[1],subs,concretize)
+    return list(op_apply2(lambda base,exponent: lambdalib.Pow(base,exponent),  \
+                          leaves, power))
+
   elif e.op == genoplib.OpType.CONST:
     return [dectreelib.RegressionLeafNode(genoplib.Const(e.value))]
   else:

@@ -273,7 +273,8 @@ class RegressionLeafNode(Node):
     sub_dict = {}
     for key,value in self.params.items():
       if value is None:
-        raise Exception("undefined variable <%s>" % key)
+        raise Exception("undefined variable <%s> (%s)"  \
+                        % (key,self.params))
 
       sub_dict[key] = genoplib.Const(value)
     concrete_expr = self.expr.substitute(sub_dict)
@@ -300,7 +301,9 @@ class RegressionLeafNode(Node):
     for key,value in self.params.items():
       sub_dict[key] = genoplib.Const(value)
     new_expr = self.expr.substitute(sub_dict)
-    return RegressionLeafNode(new_expr,self.npts,self.R2,new_params,self.region)
+    leaf = RegressionLeafNode(new_expr,self.npts,self.R2,new_params)
+    leaf.region = self.region.copy()
+    return leaf
 
   def copy(self):
     node = RegressionLeafNode(self.expr,
