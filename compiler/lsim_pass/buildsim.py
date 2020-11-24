@@ -99,6 +99,21 @@ def build_const_data_field(dev,adp,cfg,field):
                        field.value*field.scf)
   return genoplib.Const(dig_val)
 
+def build_expr_data_field(dev,adp,cfg,field):
+  blk = dev.get_block(cfg.inst.block)
+  spec = blk.data[field.name]
+  inject_coeff = genoplib.Const(field.injs[field.name])
+  inject_inps = {}
+  for inp in spec.inputs:
+    inject_inps[inp] = genoplib.Mult( \
+                                      genoplib.Const(field.injs[inp]), \
+                                      genoplib.Var(inp))
+
+  conc = genoplib.Mult(inject_coeff, \
+                       field.expr.substitute(inject_inps))
+  return conc
+
+
 def build_expr(dev,sim,adp,cfg,expr):
   blk = dev.get_block(cfg.inst.block)
   repl = {}
@@ -106,7 +121,7 @@ def build_expr(dev,sim,adp,cfg,expr):
     if cfg[var].type == adplib.ConfigStmtType.CONSTANT:
       repl[var] = build_const_data_field(dev,adp,cfg,cfg[var])
     elif cfg[var].type == adplib.ConfigStmtType.EXPR:
-      raise Exception("substitute in configuration expr")
+      repl[var] = build_expr_data_field(dev,adp,cfg,cfg[var])
     elif cfg[var].type == adplib.ConfigStmtType.PORT:
       terms = []
       # get source expressions

@@ -5,6 +5,7 @@ import hwlib.adp as adplib
 import tqdm
 import numpy as np
 import matplotlib.pyplot as plt
+import math
 
 class ADPSimResult:
 
@@ -47,6 +48,7 @@ def next_state(sim,values):
   vdict = dict(zip(map(lambda v: "%s" % v.var_name, \
                        sim.state_variables()),values))
   vdict['np'] = np
+  vdict['math'] = math
   result = [0.0]*len(sim.state_variables())
   for idx,v in enumerate(sim.state_variables()):
     result[idx] = eval(sim.derivative(v),vdict)

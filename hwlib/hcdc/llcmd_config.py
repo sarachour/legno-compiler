@@ -17,8 +17,6 @@ def write_lut(runtime,board,blk,loc,adp, \
     expr_cfg = cfg[expr_data_field]
     data = blk.data[expr_data_field]
     assert(isinstance(expr_cfg,adplib.ExprDataConfig))
-    print(expr_cfg)
-    print(data)
     repls = {}
     for inp in data.inputs:
         inj = expr_cfg.injs[inp]

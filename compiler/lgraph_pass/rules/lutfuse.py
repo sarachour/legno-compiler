@@ -25,17 +25,23 @@ class FuseLUTRule(rulelib.Rule):
                          unifylib.UnifyConstraint.NONE)
 
     fxns = {'f':(['y'],parser.parse_expr('e'))}
+    self.coeffs = {}
+
     e = parser.parse_expr('2.0*b*f((0.5*a))', fxns)
     self.virt.add_expr(('m','m'), e)
+    self.coeffs[('m','m')] = (2.0,0.5)
 
     e = parser.parse_expr('2.0*b*f((0.05*a))', fxns)
     self.virt.add_expr(('h','m'), e)
+    self.coeffs[('h','m')] = (2.0,0.05)
 
     e = parser.parse_expr('20.0*b*f((0.05*a))', fxns)
     self.virt.add_expr(('h','h'), e)
+    self.coeffs[('h','h')] = (20.0,0.05)
 
     e = parser.parse_expr('20.0*b*f((0.5*a))', fxns)
     self.virt.add_expr(('m','h'), e)
+    self.coeffs[('m','h')] = (20.0,0.5)
 
   def valid(self,unif):
     return True
@@ -54,21 +60,21 @@ class FuseLUTRule(rulelib.Rule):
 
     _,call_inp = unif.get_by_name('a')
     _,call_coeff = unif.get_by_name('b')
-
-    call_inp_coeff,call_inp_base = genoplib.factor_coefficient(call_inp)
     _,expr = unif.get_by_name('e')
-    _,call_coeff = unif.get_by_name('b')
-    impl = genoplib.Mult(call_coeff, \
-                         expr.substitute({'T': \
-                                          genoplib.Mult(genoplib.Const(call_inp_coeff), \
-                                                        genoplib.Var("y"))} \
-                         ))
+    b_coeff,a_coeff = self.coeffs[rule.mode]
+
+    b_expr = genoplib.Mult(call_coeff, genoplib.Const(b_coeff))
+    a_conc_coeff,a_conc_base = genoplib.factor_coefficient(call_inp)
+    a_expr = genoplib.Mult(genoplib.Const(a_conc_coeff), \
+                           genoplib.Var("y"))
+    impl = genoplib.Mult(b_expr, \
+                         expr.substitute({'T': a_expr}))
     cfg = tablib.VADPConfig(law_var,rule.mode)
     cfg.bind('e',impl)
     stmts.append(cfg)
 
     new_unif = unifylib.Unification()
-    new_unif.set_by_name('a', call_inp_base)
+    new_unif.set_by_name('a', a_conc_base)
     return new_unif,stmts
 
 
