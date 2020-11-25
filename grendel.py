@@ -29,7 +29,7 @@ exec_subp = subparsers.add_parser('exec', help='execute benchmark')
 exec_subp.add_argument('adp', type=str,help='benchmark to compile')
 exec_subp.add_argument('--runtime',type=float,help='runtime in simulation units')
 exec_subp.add_argument('--model-number',type=str,help='model database to use')
-exec_subp.add_argument('--no-osc',action='store_true',help='no oscilloscope connected')
+exec_subp.add_argument('--osc',action='store_true',help='oscilloscope connected')
 
 testosc_subp = subparsers.add_parser('test_osc', help='test the oscilloscope')
 testosc_subp.add_argument('adp', type=str,help='benchmark to compile')
@@ -48,8 +48,6 @@ char_subp.add_argument('--num-locs',type=int,default=1, \
                        help="number of hidden codes to sample")
 
 
-
-char_subp = subparsers.add_parser('fastcal_srcgen', help='generate c sources for fast calibration routine')
 
 dectree_subp = subparsers.add_parser('mkphys', help='Use characterization data to build calibration decision tree.')
 dectree_subp.add_argument('--model-number',type=str,help='model number')
