@@ -30,8 +30,6 @@ def update_delta_model(dev,delta_model,dataset):
     if not fitlib.fit_delta_model_to_data(delta_model, \
                                           rel, \
                                           dataset):
-        print(dataset)
-        print("rel=%s" % rel)
         print("can't fit model <%s>" % dataset.method)
         return False,-1
 
@@ -67,8 +65,6 @@ def _update_delta_models_for_configured_block(dev,blk,loc,output,config,force=Fa
         for delta_model in delta_models:
             succ,error = update_delta_model(dev,delta_model,dataset)
         if succ:
-            print(dataset)
-            print("   delta %s (succ=%s,err=%f)" % (delta_model,succ,error));
             if dataset.method == llenums.ProfileOpType.INPUT_OUTPUT or \
                dataset.method == llenums.ProfileOpType.INTEG_INITIAL_COND:
                model_errors.append(abs(error))
@@ -109,4 +105,3 @@ def derive_delta_models_adp(args):
     for blk,loc,cfg in exp_profile_dataset_lib \
         .get_configured_block_instances(board):
         update_delta_models_for_configured_block(board,blk,loc,cfg,hidden=True,force=args.force)
- 

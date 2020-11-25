@@ -25,7 +25,7 @@ def test_osc(args):
 
     prog_name = adp.metadata.get(ADPMetadata.Keys.DSNAME)
     program = dsproglib.DSProgDB.get_prog(prog_name)
-    if args.no_osc:
+    if not args.osc:
         osc = osclib.DummySigilent1020XEOscilloscope()
     else:
         osc = osclib.Sigilent1020XEOscilloscope(configlib.OSC_IP, \
@@ -54,7 +54,7 @@ def exec_adp(args):
     prog_name = adp.metadata.get(ADPMetadata.Keys.DSNAME)
     program = dsproglib.DSProgDB.get_prog(prog_name)
     sim = dsproglib.DSProgDB.get_sim(prog_name)
-    if args.no_osc:
+    if not args.osc:
         osc = None
     else:
         osc = osclib.Sigilent1020XEOscilloscope(configlib.OSC_IP, \

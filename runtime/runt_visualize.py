@@ -10,12 +10,49 @@ import hwlib.hcdc.llenums as llenums
 import hwlib.hcdc.llcmd as llcmd
 import util.paths as paths
 
+def make_histogram(args):
+    board = runtime_util.get_device(args.model_number,layout=True)
+    ph = paths.DeviceStatePathHandler(board.name, \
+                                  board.model_number,make_dirs=True)
+
+    models = {}
+    for exp_model in delta_model_lib.get_all(board):
+        key = (exp_model.block, exp_model.output,\
+               runtime_util.get_static_cfg(exp_model.block,exp_model.config), \
+               exp_model.calib_obj)
+        if not key in models:
+            models[key] = []
+        models[key].append(exp_model)
+
+    for key,models in models.items():
+        blk,out,cfg,lbl = key
+        print("%s:%s = %d models" % (blk.name,cfg,len(models)))
+        png_file = ph.get_histogram_vis('merr', \
+                                        blk.name, \
+                                        out.name, \
+                                        cfg, \
+                                        lbl)
+        vizlib.model_error_histogram(models, \
+                                     png_file, \
+                                     num_bins=10)
+
+        png_file = ph.get_histogram_vis('objf', \
+                                        blk.name, \
+                                        out.name, \
+                                        cfg, \
+                                        lbl)
+        vizlib.objective_fun_histogram(models, \
+                                       png_file, \
+                                       num_bins=10)
+
+
+
 def visualize(args):
     board = runtime_util.get_device(args.model_number,layout=True)
     label = llenums.CalibrateObjective(args.method)
     ph = paths.DeviceStatePathHandler(board.name, \
                                       board.model_number,make_dirs=True)
-
+    make_histogram(args)
     for delta_model in delta_model_lib.get_all(board):
         if delta_model.complete and \
            delta_model.calib_obj != llenums.CalibrateObjective.NONE:
