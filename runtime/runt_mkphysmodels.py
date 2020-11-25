@@ -104,7 +104,7 @@ def build_dectree(key,metadata, \
         model.set_param(param, dectree)
 
         err = dectree_fit_lib.model_error(predictions,param_values)
-        pct_err = err/max(np.abs(model_errors_))*100.0
+        pct_err = err/max(np.abs(param_values))*100.0
         print("<<dectree>>: [[Param:%s]] err=%f pct-err=%f param-range=[%f,%f]" \
                 % (param, err, pct_err, \
                     min(param_values), \
@@ -193,6 +193,7 @@ def mktree(args):
 
             print("-----")
 
+        print("num-models: %d" % len(mdls))
         if len(mdls) > 1:
             general_phys_model = dectree_generalize_lib.dectree_generalize(mdls)
         else:
