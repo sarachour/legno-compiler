@@ -120,9 +120,11 @@ def unpack_response(resp):
     payload_result = None
     if payload_type == llenums.ResponseType.BLOCK_STATE.value:
       payload_result = llstructs.parse(llstructs.state_t(), \
-                                       resp.array)
+                                       bytes(resp.array))
     elif payload_type == llenums.ResponseType.PROFILE_RESULT.value:
       payload_result = llstructs.parse(llstructs.profile_result_t(), \
-                                       resp.array)
+                                       bytes(resp.array))
+    else:
+      payload_result = resp.array
 
     return payload_result

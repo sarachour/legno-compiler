@@ -12,6 +12,15 @@ import lab_bench.devices.sigilent_osc as osclib
 
 from hwlib.hcdc.llcmd_util import *
 
+def get_ard_chan_for_pin(pin):
+    if pin == llenums.ExternalPins.OUT0:
+        return 0
+    elif pin == llenums.ExternalPins.OUT1:
+        raise Exception("arduino due is in differential mode. only positive channels accessible")
+    else:
+        raise Exception("unknown pin <%s>" % pin)
+
+
 def get_osc_chan_for_pin(pin):
     if pin == llenums.ExternalPins.OUT0:
         return osclib.Sigilent1020XEOscilloscope.Channels.ACHAN1
@@ -25,6 +34,66 @@ def get_wall_clock_time(board,dsprog,adp,sim_time):
     hwtime = board.time_constant
     time_us = sim_time*adp.tau*hwtime
     return time_us
+
+def unpack_arduino_waveform(dataset):
+    freq = dataset[0]
+    time_delta = 1.0/freq;
+    siz = dataset[1]
+    times = list(map(lambda i: time_delta*i, range(siz)))
+    voltages = {}
+    offset = 2
+    while offset < siz:
+        chan = dataset[offset]
+        offset+=1
+        assert(not chan in voltages)
+        values = dataset[offset:offset+siz]
+        volts = list(map(lambda v: 2.0*(v-2048.0)/2048.0, values))
+        voltages[chan] = volts
+        offset+=siz
+
+    return times,voltages
+
+def save_data_from_arduino(dataset,board,dsprog,adp,sim_time,trial=0):
+
+    ph = pathlib.PathHandler(adp.metadata[adplib.ADPMetadata.Keys.FEATURE_SUBSET], \
+                             dsprog.name)
+
+
+    times,voltages_by_chan = unpack_arduino_waveform(dataset)
+    tc = board.time_constant*adp.tau
+    print("num-samps: %d" % len(times))
+    print("wall-clock-time: [%f,%f]" % (min(times),max(times)))
+    for var,scf,chans in adp.observable_ports(board):
+        chan_id = get_ard_chan_for_pin(chans[llenums.Channels.POS].pin)
+        voltages = voltages_by_chan[chan_id]
+        print("voltages[%s,%d]: [%f,%f]" % (var,chan_id, \
+                                          min(voltages),max(voltages)))
+
+        json_data = {'times':times,  \
+                     'values':voltages_by_chan[chan_id],  \
+                     'time_units': 'wall_clock_sec', \
+                     'ampl_units': 'voltage', \
+                     'runtime': sim_time/tc,\
+                     'variable':var, \
+                     'time_scale':tc, \
+                     'mag_scale':scf}
+        print("<writing file>")
+        filename = ph.measured_waveform_file(graph_index=adp.metadata[adplib.ADPMetadata.Keys.LGRAPH_ID], \
+                                             scale_index=adp.metadata[adplib.ADPMetadata.Keys.LSCALE_ID], \
+                                             model=adp.metadata[adplib.ADPMetadata.Keys.LSCALE_SCALE_METHOD], \
+                                             opt=adp.metadata[adplib.ADPMetadata.Keys.LSCALE_OBJECTIVE], \
+                                             phys_db=adp.metadata[adplib.ADPMetadata.Keys.RUNTIME_PHYS_DB], \
+                                             calib_obj=adp.metadata[adplib.ADPMetadata.Keys.RUNTIME_CALIB_OBJ], \
+                                             variable=var, \
+                                             trial=trial)
+
+        with open(filename.format(variable=var),'w') as fh:
+            print("-> compressing data")
+            strdata = util.compress_json(json_data)
+            fh.write(strdata)
+        print("<wrote file>")
+
+
 
 def save_data_from_oscilloscope(osc,board,dsprog,adp,sim_time,trial=0):
 
@@ -116,7 +185,8 @@ def execute_simulation(runtime,board,dsprog,adp,sim_time=None,osc=None,manual=Fa
     if manual:
         input("waiting for input:")
 
-    dispatch(llenums.ExpCmdType.RUN,noargs,0)
+    resp = dispatch(llenums.ExpCmdType.RUN,noargs,0)
+    save_data_from_arduino(resp,board,dsprog,adp,sim_time)
 
     if not osc is None:
         print("=== retrieving data ===")

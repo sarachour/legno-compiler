@@ -84,6 +84,7 @@ namespace circ {
   typedef enum {
     PROFILE_RESULT,
     BLOCK_STATE,
+    DATASET
   } response_type_t;
 
   //Fabric* setup_board();

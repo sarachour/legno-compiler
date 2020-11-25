@@ -206,6 +206,7 @@ class DataArduinoResponse(GenericArduinoResponse):
 
 
 class PayloadArduinoResponse(GenericArduinoResponse):
+
   def __init__(self, typ, n):
     GenericArduinoResponse.__init__(self, ArduinoResponseType.PAYLOAD)
     self._array = None
@@ -238,7 +239,7 @@ class PayloadArduinoResponse(GenericArduinoResponse):
     buf = [0]*n
     for idx, val in enumerate(inbuf):
       buf[idx] = int(val)
-    resp.set_array(bytes(buf))
+    resp.set_array(buf)
     return resp
 
   def __repr__(self):
