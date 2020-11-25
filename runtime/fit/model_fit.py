@@ -26,6 +26,8 @@ def _prepare_minimize_model(variables,expr,params,bounds={}):
 
   bounds_arr = [(None,None)]*n_inputs
   for var,(lower,upper) in bounds.items():
+    if not var in variables:
+       continue
     idx = variables.index(var)
     bounds_arr[idx] = (lower,upper)
 

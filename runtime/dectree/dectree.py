@@ -299,7 +299,10 @@ class RegressionLeafNode(Node):
     new_params = {}
     sub_dict = {}
     for key,value in self.params.items():
+      if value is None:
+         continue
       sub_dict[key] = genoplib.Const(value)
+
     new_expr = self.expr.substitute(sub_dict)
     leaf = RegressionLeafNode(new_expr,self.npts,self.R2,new_params)
     leaf.region = self.region.copy()

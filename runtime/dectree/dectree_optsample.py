@@ -9,9 +9,9 @@ def count_valid(dectrees,sample):
     return cnt
 
 def random_sample(dectrees,samples):
-    n_tries = 100
     new_samples = []
     for idx,node in enumerate(dectrees):
-        new_samples += node.random_sample(new_samples + samples)
+        samps = node.random_sample(new_samples + samples)
+        new_samples += samps
 
     return new_samples
