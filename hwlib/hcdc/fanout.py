@@ -46,12 +46,16 @@ for port in [p_in,p_out0,p_out1,p_out2]:
                      HIGH_NOISE)
 
 for idx,port in enumerate([p_out0,p_out1,p_out2]):
+
+  calib_obj = parser.parse_expr('abs(modelError) + abs(b)')
+
   pat = ['_','_','_','_']
   pat[idx] = '+'
   fan.outputs[port.name].relation.bind(pat, parser.parse_expr('x'))
   spec = DeltaSpec(parser.parse_expr('a*x+b'))
   spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
   spec.param('b',DeltaParamType.GENERAL,ideal=0.0)
+  spec.objective = calib_obj
   fan.outputs[port.name].deltas.bind(pat,spec)
 
   pat[idx] = '-'
@@ -59,6 +63,7 @@ for idx,port in enumerate([p_out0,p_out1,p_out2]):
   spec = DeltaSpec(parser.parse_expr('-a*x+b'))
   spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
   spec.param('b',DeltaParamType.GENERAL,ideal=0.0)
+  spec.objective = calib_obj
   fan.outputs[port.name].deltas.bind(pat,spec)
 
 
