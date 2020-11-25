@@ -26,13 +26,24 @@ class DeviceStatePathHandler:
                 util.mkdir_if_dne(path)
 
 
+    def get_histogram_vis(self,name,block,output,static_cfg,label):
+        rel_path = "%s/%s/%s/" % (self.VISUALIZATIONS,block,static_cfg)
+        util.mkdir_if_dne(rel_path)
+        if label.value == 'none':
+            return "%s/hist_%s_%s.png" \
+                % (rel_path,name,output)
+        else:
+            return "%s/hist_%s_%s_%s.png" \
+                % (rel_path,name,output,label.value)
+
+
     def get_delta_vis(self,block,output,loc,static_cfg,hidden_cfg,label):
         rel_path = "%s/%s/%s/" % (self.VISUALIZATIONS,block,static_cfg)
         util.mkdir_if_dne(rel_path)
         if label.value == 'none':
-            return "%s/%s_%s_%s.png" % (rel_path,loc,output,hidden_cfg)
+            return "%s/del_%s_%s_%s.png" % (rel_path,loc,output,hidden_cfg)
         else:
-            return "%s/%s_%s_%s.png" % (rel_path,loc,output,label.value)
+            return "%s/del_%s_%s_%s.png" % (rel_path,loc,output,label.value)
 
     def set_root_dir(self,root):
         self.ROOT_DIR = root

@@ -2,13 +2,14 @@
 VISUALIZE=--visualize
 VISUALIZE=
 
-mount-remote-dirs:
-	sshfs jray@lab-bench.csail.mit.edu:/Users/JRay/Documents/SaraAchour-Workspace/legno-compiler/device-state device-state
-	sshfs jray@lab-bench.csail.mit.edu:/Users/JRay/Documents/SaraAchour-Workspace/legno-compiler/outputs outputs
-
-unmount-remote-dirs:
-	fusermount -u device-state
-	fusermount -u outputs
+remote-update:
+	rm -rf device-state*
+	rm -rf outputs*
+	scp -r jray@lab-bench.csail.mit.edu:/Users/JRay/Documents/SaraAchour-Workspace/legno-compiler/device-state device-state
+	scp -r jray@lab-bench.csail.mit.edu:/Users/JRay/Documents/SaraAchour-Workspace/legno-compiler/outputs outputs
+	#sshfs jray@lab-bench.csail.mit.edu:/Users/JRay/Documents/SaraAchour-Workspace/legno-compiler/device-state device-state
+	#sshfs jray@lab-bench.csail.mit.edu:/Users/JRay/Documents/SaraAchour-Workspace/legno-compiler/outputs outputs
+	
 
 clean-executions:
 	rm -f outputs/experiments.db

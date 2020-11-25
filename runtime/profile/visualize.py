@@ -94,6 +94,13 @@ def remove_nans(arr):
 def heatmap(physblk,output_file,inputs,output,n,relative=False, \
             amplitude=None):
   bounds = physblk.get_bounds()
+
+  output_ival = ivallib.Interval(bounds[physblk.output.name][0], \
+                                  bounds[physblk.output.name][1])
+  normalize_out = 1.0
+  if relative:
+    normalize_out = output_ival.bound
+
   surf = ParametricSurface(n)
   colormap_name = "coolwarm"
   if len(output) == 0:
@@ -115,9 +122,10 @@ def heatmap(physblk,output_file,inputs,output,n,relative=False, \
     variables = list(surf.variables)
     v1 = surf.variables[0]
     v2 = surf.variables[1]
+
     for patch,inps,out in surf.divide(inputs,output):
       value = np.mean(remove_nans(out))
-      data[patch[v1],patch[v2]] = value
+      data[patch[v1],patch[v2]] = value/normalize_out
       assert(value != np.nan)
 
     fig,ax = plt.subplots()
@@ -146,9 +154,10 @@ def heatmap(physblk,output_file,inputs,output,n,relative=False, \
   elif len(surf.variables) == 1:
     v1 = surf.variables[0]
     data = np.zeros((2,surf.num_patches));
+
     for patch,inps,out in surf.divide(inputs,output):
-      data[0,patch[v1]] = np.mean(out)
-      data[1,patch[v1]] = np.mean(out)
+      data[0,patch[v1]] = np.mean(out)/normalize_out
+      data[1,patch[v1]] = np.mean(out)/normalize_out
 
     fig,ax = plt.subplots()
     ax.set_xlabel(v1)
@@ -156,6 +165,7 @@ def heatmap(physblk,output_file,inputs,output,n,relative=False, \
     ax.set_xticklabels(surf.ticks(v1))
     if amplitude is None:
       amplitude = np.max(np.abs(data))
+
 
     im = ax.imshow(data, \
                     cmap=plt.get_cmap(colormap_name), \
@@ -226,4 +236,37 @@ def deviation(delta_model,dataset,output_file, \
                amplitude=amplitude, \
                relative=relative)
 
+
+
+def model_error_histogram(delta_models,png_file,num_bins=10):
+  if len(delta_models) < 3:
+    return
+
+  fig, axs = plt.subplots(1, 1, tight_layout=True)
+  model_errors = list(map(lambda dm: dm.model_error, \
+                          delta_models))
+  # We can set the number of bins with the `bins` kwarg
+  axs.hist(model_errors, bins=num_bins)
+  fig.tight_layout()
+  plt.savefig(png_file)
+  plt.close()
+
+
+def objective_fun_histogram(delta_models,png_file,num_bins=10):
+  if len(delta_models) < 3:
+    return
+
+  fig, axs = plt.subplots(1, 1, tight_layout=True)
+  objvals = []
+  for model in delta_models:
+    try:
+      objval = model.spec.objective.compute(model.variables())
+      objvals.append(objval)
+    except Exception as e:
+      continue
+
+  axs.hist(objvals, bins=num_bins)
+  fig.tight_layout()
+  plt.savefig(png_file)
+  plt.close()
 
