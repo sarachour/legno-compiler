@@ -276,7 +276,7 @@ def __is_response(msg):
   return msg.startswith(__arduino_command_header())
 
 
-def get_response(ard):
+def get_response(ard,quiet=False):
   state = ArduinoResponseState.PENDING
   this_resp = None
   this_data = None
@@ -321,14 +321,16 @@ def get_response(ard):
           return this_resp
 
       elif resp.type == ArduinoResponseType.MESSAGE:
-        print("[msg] %s" % resp.message)
+        if not quiet:
+          print("[msg] %s" % resp.message)
         if "ERROR:" in line:
           print("ERROR DETECTED..QUITTING...")
           ard.close()
           sys.exit(1)
 
       elif resp.type == ArduinoResponseType.DONE:
-        print("<simulation finished>")
+        if not quiet:
+          print("<simulation finished>")
         continue
 
       elif resp.type == ArduinoResponseType.ERROR:

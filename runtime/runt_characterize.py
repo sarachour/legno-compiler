@@ -62,7 +62,7 @@ def new_characterization(runtime,board,block,config, \
 def characterize_adp(args):
     board = runtime_util.get_device(args.model_number,layout=True)
     adp = runtime_util.get_adp(board,args.adp)
-    runtime = GrendelRunner()
+    runtime = GrendelRunner(quiet=True)
     runtime.initialize()
     for cfg in adp.configs:
         blk = board.get_block(cfg.inst.block)

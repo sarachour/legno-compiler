@@ -198,7 +198,7 @@ def fast_calibrate_adp(args):
             objfun = build_objective_function(blk,cfg,phys_model)
 
             bootstrap_phys_model(runtime, \
-                                 board, \
+                                 char_board, \
                                  blk, \
                                  cfg, \
                                  objfun, \
@@ -206,7 +206,7 @@ def fast_calibrate_adp(args):
             #concrete physical model
 
             print("==== fitting model ====")
-            if not objfun.fit(board):
+            if not objfun.fit(char_board):
                 print("[[error]] could not fit physical model")
                 continue
 
