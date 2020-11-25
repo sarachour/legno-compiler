@@ -22,6 +22,7 @@ class CalibrateObjective(Enum):
     MINIMIZE_ERROR = "minimize_error"
     MAXIMIZE_FIT = "maximize_fit"
     FAST = "fast"
+    BOTH = "both"
     NONE = "none"
 
     def tag(self):
@@ -31,6 +32,8 @@ class CalibrateObjective(Enum):
             return "maxfit"
         elif self == CalibrateObjective.MINIMIZE_ERROR:
             return "minerr"
+        elif self == CalibrateObjective.BOTH:
+            return "both"
         else:
             return "none"
 
