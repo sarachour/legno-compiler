@@ -55,7 +55,7 @@ def exec_adp(args):
     program = dsproglib.DSProgDB.get_prog(prog_name)
     sim = dsproglib.DSProgDB.get_sim(prog_name)
     if args.no_osc:
-        osc = osclib.DummySigilent1020XEOscilloscope()
+        osc = None
     else:
         osc = osclib.Sigilent1020XEOscilloscope(configlib.OSC_IP, \
                                                 configlib.OSC_PORT)
