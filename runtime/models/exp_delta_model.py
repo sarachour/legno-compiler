@@ -94,7 +94,6 @@ class ExpDeltaModel:
     self.model_error = ExpDeltaModel.MAX_MODEL_ERROR
 
   def bind(self,par,value):
-    assert(not par in self._params)
     if not (par in self.spec.params):
       print("WARN: couldn't bind nonexistant parameter <%s> in delta" % par)
       return
@@ -110,15 +109,20 @@ class ExpDeltaModel:
                                correctable_only=correctable_only)
     n = 0
     model_error = 0
-    for pred,meas in zip(predictions,dataset.ideal_mean):
+    for pred,meas in zip(predictions,dataset.meas_mean):
+      print("pred=%f meas=%f" % (pred,meas))
       model_error += pow(pred-meas,2)
       n += 1
 
     return np.sqrt(model_error/n)
 
   def get_subexpr(self,init_cond=False, \
-                  correctable_only=False):
+                  correctable_only=False, concrete=True):
     params = dict(self.params)
+    if not concrete:
+       params = dict(map(lambda p: (p,None), self.params.keys()))
+       params = {}
+
     if correctable_only:
       rel = self.spec.get_correctable_model(params)
     else:
