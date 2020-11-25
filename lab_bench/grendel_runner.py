@@ -8,9 +8,11 @@ class GrendelRunner:
   def __init__(self, \
                board_name="board6", \
                file_desc=None, \
-               native=False):
+               native=False, \
+               quiet=False):
     self.due = ArduinoDue(file_desc,native=native)
     self.board_name = board_name
+    self.quiet = quiet
 
   def initialize(self):
     self.due.open()
@@ -19,7 +21,7 @@ class GrendelRunner:
     self.due.close()
 
   def result(self):
-    return grendel_util.get_response(self.due)
+    return grendel_util.get_response(self.due,quiet=quiet)
 
   def execute(self,cmd):
     self.due.write_bytes(cmd)
