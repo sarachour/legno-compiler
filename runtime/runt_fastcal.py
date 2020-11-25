@@ -51,8 +51,10 @@ class MinimizationObjective:
         return objfun_expr
 
 
+    def min_samples(self):
+        return len(self.random_sample([]))
+
     def random_sample(self,samples):
-        new_samples = []
         expr_vars = self.expr.vars()
         nodes = map(lambda tup: tup[1], \
                     filter(lambda tup: tup[0] in self.expr.vars(),  \
@@ -133,7 +135,7 @@ def bootstrap_phys_model(runtime,board,blk,cfg,objfun,grid_size):
 
     print("---> Bootstrapping model")
     print("   current-samples: %d" % len(samples))
-
+    input()
     new_samples = objfun.random_sample(samples)
     print("   new-samples: %d" % (len(new_samples)))
     for idx,sample in enumerate(new_samples):
@@ -161,7 +163,10 @@ def bootstrap_phys_model(runtime,board,blk,cfg,objfun,grid_size):
                                                                     cfg.inst.loc, \
                                                                     cfg, \
                                                                     hidden=False)
-
+    npts,_,_,_ = objfun.get_data(board)
+    if npts < objfun.min_samples():
+       print("not enough points: %d/%d" % (npts,objfun.min_samples()))
+       bootstrap_phys_model(runtime,board,blk,cfg,objfun,grid_size)
 
 def fast_calibrate_adp(args):
     board = runt_util.get_device(args.model_number)
@@ -204,7 +209,6 @@ def fast_calibrate_adp(args):
                                  objfun, \
                                  args.grid_size)
             #concrete physical model
-
             print("==== fitting model ====")
             if not objfun.fit(char_board):
                 print("[[error]] could not fit physical model")

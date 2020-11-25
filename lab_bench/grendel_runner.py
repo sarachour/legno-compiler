@@ -21,7 +21,7 @@ class GrendelRunner:
     self.due.close()
 
   def result(self):
-    return grendel_util.get_response(self.due,quiet=quiet)
+    return grendel_util.get_response(self.due,quiet=self.quiet)
 
   def execute(self,cmd):
     self.due.write_bytes(cmd)
