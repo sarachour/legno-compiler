@@ -15,7 +15,8 @@ class RegressionNodeCollection:
   def random_sample(self,samples=[]):
     new_samples = []
     for node in self.nodes:
-      new_samples += node.random_sample(samples+new_samples)
+      samps = node.random_sample(samples+new_samples)
+      new_samples += samps
 
     return new_samples
 
@@ -105,10 +106,9 @@ class DecisionNode(Node):
     return self.left.min_sample() + self.left.min_sample()
 
   def random_sample(self,samples=[]):
-    results = []
-    results += self.left.random_sample(samples)
-    results += self.right.random_sample(samples)
-    return results
+    r1 = self.left.random_sample(samples)
+    r2 = self.right.random_sample(samples+r1)
+    return r1+r2
 
 
  
@@ -181,14 +181,15 @@ class RegressionLeafNode(Node):
 
 
   def random_sample(self,samples):
-    result = []
     # count number of already valid samples
-    n_valid_samples = len(list(filter(lambda samp: self.region.valid_code(samp), \
-                                    samples)))
+    n_valid_samples = len(list(filter(lambda samp:
+                                      self.region.valid_code(samp), \
+                                      samples)))
 
     if n_valid_samples >= self.min_sample():
-      return result
+      return []
 
+    result = []
     for i in range(self.min_sample()-n_valid_samples):
       result.append(self.region.random_code())
 

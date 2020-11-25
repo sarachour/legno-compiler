@@ -134,10 +134,10 @@ def bootstrap_phys_model(runtime,board,blk,cfg,objfun,grid_size):
         samples.append(sample)
 
     print("---> Bootstrapping model")
-    print("   current-samples: %d" % len(samples))
-    input()
     new_samples = objfun.random_sample(samples)
-    print("   new-samples: %d" % (len(new_samples)))
+    print("   samples curr=%d new=%d total=%d" \
+          % (len(samples),len(new_samples),objfun.min_samples()))
+    input()
     for idx,sample in enumerate(new_samples):
         for output in blk.outputs:
             for method,n,m,reps in runtime_util.get_profiling_steps(output, \
@@ -173,8 +173,9 @@ def fast_calibrate_adp(args):
     char_board = runt_util.get_device(args.char_data)
     adp = runtime_util.get_adp(board,args.adp)
 
-    runtime = GrendelRunner()
-    runtime.initialize()
+    #runtime = GrendelRunner()
+    #runtime.initialize()
+    runtime = None
     calib_obj = llenums.CalibrateObjective.FAST
     for cfg in adp.configs:
         blk = board.get_block(cfg.inst.block)
