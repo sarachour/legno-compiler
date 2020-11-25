@@ -110,7 +110,7 @@ class ExpDeltaModel:
     n = 0
     model_error = 0
     for pred,meas in zip(predictions,dataset.meas_mean):
-      print("pred=%f meas=%f" % (pred,meas))
+      #print("pred=%f meas=%f" % (pred,meas))
       model_error += pow(pred-meas,2)
       n += 1
 
