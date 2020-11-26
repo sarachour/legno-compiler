@@ -175,13 +175,14 @@ def exec_lexec(args):
         for adp_file in filelist:
             if adp_file.endswith('.adp'):
                 adp_path = dirname+"/"+adp_file
+                print(adp_path)
                 with open(adp_path,'r') as fh:
                     print("===== %s =====" % (adp_file))
                     adp = ADP.from_json(board, \
                                         json.loads(fh.read()))
                     args = {
                         'adp_path': adp_path,
-                        'model_number': adp.metadata[ADPMetadata.Keys.RUNT_PHYS_DB]
+                        'model_number': adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB]
                     }
                     cmd = EXEC_CMD.format(**args)
                     os.system(cmd)

@@ -59,8 +59,14 @@ lscale_subp.add_argument('--scale-adps', type=int,default=5, \
 lscale_subp.add_argument('program', type=str,help='benchmark to compile')
 
 
-sim_subp = subparsers.add_parser('lexec', help='execute circuit using grendel.')
-sim_subp.add_argument('program', help='program to execute.')
+lcal_subp = subparsers.add_parser('lcal', help='execute circuit using grendel.')
+lcal_subp.add_argument('program', help='program to execute.')
+lcal_subp.add_argument('--model-number', type=str, \
+                       help='identifier for board.')
+
+
+lexec_subp = subparsers.add_parser('lexec', help='execute circuit using grendel.')
+lexec_subp.add_argument('program', help='program to execute.')
 
 
 sim_subp = subparsers.add_parser('lsim', help='simulate circuit.')
@@ -87,6 +93,8 @@ elif args.subparser_name == "lscale":
 elif args.subparser_name == "lexec":
    legno_util.exec_lexec(args)
 
+elif args.subparser_name == "lcal":
+   legno_util.exec_lcal(args)
 
 elif args.subparser_name == "lsim":
    legno_util.exec_lsim(args)

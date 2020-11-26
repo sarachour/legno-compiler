@@ -125,6 +125,7 @@ class HardwareInfo:
         return None
 
       if not exp_model.complete:
+        print(cfg)
         print(exp_model)
         raise Exception("experimental model must be complete")
 
