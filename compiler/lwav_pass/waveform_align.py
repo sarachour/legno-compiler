@@ -52,7 +52,7 @@ def align(scaffold,sig,xform_spec):
                            xform=x)
 
   time_coeff,time_offset = optimize.brute(objfun,xform_spec,Ns=n)
-  tmeas_xform = time_coeff*np.array(sig.times) + time_offset
+  tmeas_xform = time_coeff*np.array(sig.times) - time_offset
   print("scale=%f offset=%f" % (time_coeff,time_offset))
   return wavelib.Waveform(variable=sig.variable, \
                           times=tmeas_xform, \

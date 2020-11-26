@@ -164,6 +164,21 @@ def exec_lcal(args):
                     cmd = MKDELTAS_CMD.format(**args)
                     os.system(cmd)
 
+def _lexec_already_ran(adp,trial=0):
+    for var,scf,chans in adp.observable_ports(board):
+        filename = ph.measured_waveform_file(graph_index=adp.metadata[adplib.ADPMetadata.Keys.LGRAPH_ID], \
+                                             scale_index=adp.metadata[adplib.ADPMetadata.Keys.LSCALE_ID], \
+                                             model=adp.metadata[adplib.ADPMetadata.Keys.LSCALE_SCALE_METHOD], \
+                                             opt=adp.metadata[adplib.ADPMetadata.Keys.LSCALE_OBJECTIVE], \
+                                             phys_db=adp.metadata[adplib.ADPMetadata.Keys.RUNTIME_PHYS_DB], \
+                                             calib_obj=adp.metadata[adplib.ADPMetadata.Keys.RUNTIME_CALIB_OBJ], \
+                                             variable=var, \
+                                             trial=trial)
+
+        if not util.file_exists(filename):
+            return False
+    return True
+
 def exec_lexec(args):
     EXEC_CMD = "python3 grendel.py exec {adp_path} --model-number {model_number}"
     board = get_device(None)
@@ -184,8 +199,10 @@ def exec_lexec(args):
                         'adp_path': adp_path,
                         'model_number': adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB]
                     }
-                    cmd = EXEC_CMD.format(**args)
-                    os.system(cmd)
+                    if not _lexec_already_ran(adp,trial=0) or \
+                       args.force:
+                        cmd = EXEC_CMD.format(**args)
+                        os.system(cmd)
 
 def exec_lsim(args):
     from compiler import lsim
