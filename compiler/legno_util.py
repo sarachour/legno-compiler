@@ -151,7 +151,7 @@ def exec_lexec(args):
                                         json.loads(fh.read()))
                     args = {
                         'adp_path': adp_path,
-                        'model_number': adp.metadata[ADPMetadata.Keys.MODEL_NUMBER]
+                        'model_number': adp.metadata[ADPMetadata.Keys.RUNT_PHYS_DB]
                     }
                     cmd = EXEC_CMD.format(**args)
                     os.system(cmd)
