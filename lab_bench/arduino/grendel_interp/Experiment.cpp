@@ -32,24 +32,19 @@ namespace experiment {
   }
 
 
-  void run_experiment_and_collect_data(experiment_t * expr, Fabric * fab, uint32_t& freq){
+  void run_experiment_and_collect_data(experiment_t * expr, Fabric * fab, uint32_t& samples, uint32_t& freq){
     if(expr->use_analog_chip){
       // this actually calls start and stop.
       fab->cfgCommit();
     }
 
     dma::dma_info_t info;
-    dma::setup(info,expr->sim_time_sec,(uint16_t*) DATABUF[0], DATABUF_SIZ);
-    freq = dma::get_frequency();
+    dma::setup(info,expr->sim_time_sec*1.2,(uint16_t*) DATABUF[0], DATABUF_SIZ,samples,freq);
     print_info("running experiment!\n");
     set_SDA(HIGH);
-    fab->execStart();
-    dma::run();
-    fab->execStop();
+    dma::run(fab);
     dma::teardown(info);
     set_SDA(LOW);
-    return freq;
-    //dma::print_buffer(buf,256);
   }
 
   void run_experiment(experiment_t * expr, Fabric * fab){
@@ -97,10 +92,10 @@ namespace experiment {
     set_SDA(LOW);
   }
 
-  void write_dataset(uint32_t freq){
+  void write_dataset(uint32_t samples, uint32_t freq){
     print_info("sending dataset!\n");
 
-    uint32_t dataset_size = DATABUF_SIZ*N_CHANS+N_CHANS+2;
+    uint32_t dataset_size = samples*N_CHANS+N_CHANS+2;
     sprintf(FMTBUF,"%d",dataset_size+2);
     comm::data(FMTBUF,"I");
     comm::payload();
@@ -110,11 +105,11 @@ namespace experiment {
     Serial.print(" ");
     Serial.print(freq,DEC);
     Serial.print(" ");
-    Serial.print(DATABUF_SIZ,DEC);
+    Serial.print(samples,DEC);
     for(unsigned int ch = 0; ch < N_CHANS; ch +=1){
       Serial.print(" ");
       Serial.print(ch,DEC);
-      for(unsigned int i = 0; i < DATABUF_SIZ; i+=1){
+      for(unsigned int i = 0; i < samples; i+=1){
         Serial.print(" ");
         Serial.print(DATABUF[ch][i],DEC);
       }
@@ -130,11 +125,10 @@ namespace experiment {
       break;
     case cmd_type_t::RUN:
       //run_experiment(expr,fab);
-      uint32_t freq;
-      float volt_scale,volt_offset;
-      run_experiment_and_collect_data(expr,fab,freq);
+      uint32_t freq,samples;
+      run_experiment_and_collect_data(expr,fab,samples,freq);
       comm::response("ran experiment",1);
-      write_dataset(freq);
+      write_dataset(samples,freq);
       break;
     case cmd_type_t::USE_ANALOG_CHIP:
       expr->use_analog_chip = true;

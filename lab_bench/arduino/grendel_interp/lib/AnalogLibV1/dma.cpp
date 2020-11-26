@@ -30,82 +30,96 @@ namespace dma {
     while ((ADC->ADC_ISR & 0x1000000) == 0);
   }
 
-  uint32_t get_frequency(){
-    return adc_get_actual_adc_clock(ADC,SystemCoreClock);
-  }
-
-  uint32_t find_prescalar(float runtime, uint32_t bufsiz){
+  uint32_t find_prescalar(float runtime, uint32_t bufsiz, uint32_t& samples, uint32_t& clock_freq){
+    const uint32_t sys_core_clock = SystemCoreClock;
+    const float adc_clock_to_sample_freq = 1.0/39;
     uint32_t presc = 0;
+    uint32_t clk;
     float n_samples;
     sprintf(FMTBUF,"runtime=%f buffer-size=%d\n",runtime,bufsiz);
+    print_info(FMTBUF);
+    sprintf(FMTBUF,"system-clock=%d khz\n", sys_core_clock/1000);
     print_info(FMTBUF);
     do{
       ADC->ADC_MR &= ~ADC_MR_PRESCAL_Msk;
       ADC->ADC_MR |= ADC_MR_PRESCAL(presc);// set prescaler to fastest
-      uint32_t clk = adc_get_actual_adc_clock(ADC,SystemCoreClock);
+      clk = adc_get_actual_adc_clock(ADC,sys_core_clock)*adc_clock_to_sample_freq;
       n_samples = runtime*clk;
       sprintf(FMTBUF,"  prescalar=%d clk=%d khz samps=%f\n", presc, clk/1000,n_samples);
       print_info(FMTBUF);
       presc += 1;
-    } while(n_samples > bufsiz);
+    } while(n_samples > bufsiz || clk > ADC_FREQ_MAX);
+    samples = floor(n_samples);
+    clock_freq = clk;
     return presc;
+  }
+  void track_adc_0(){
+    ADC->ADC_COR = ADC_COR_DIFF1 | ADC_COR_DIFF0 | ADC_COR_OFF0 | ADC_COR_OFF1;
+    ADC->ADC_CHER |= ADC_CHER_CH0 | ADC_CHER_CH1;
+    // enable interrupt
+    uint32_t interrupts = ADC_IER_EOC0;
+    adc_disable_interrupt(ADC, ~interrupts);
+    adc_enable_interrupt(ADC, interrupts);
+  }
+
+  void track_adc_6(){
+    ADC->ADC_COR = ADC_COR_DIFF7 | ADC_COR_DIFF6 | ADC_COR_OFF6 | ADC_COR_OFF7;
+    ADC->ADC_CHER |= ADC_CHER_CH6 | ADC_CHER_CH7;
+    // enable interrupt
+    uint32_t interrupts = ADC_IER_EOC6;
+    adc_enable_interrupt(ADC, interrupts);
   }
 
   void setup(dma_info_t& info,
              float runtime,
-             uint16_t * buf, uint32_t siz){
+             uint16_t * buf, uint32_t siz, uint32_t& samples, uint32_t& clock_freq){
     dma::dma_info_t new_info;
     // Set up ADC
     print_info("configuring DMA\n");
     store_dma_state(info);
     summarize_dma_state(info);
-
+    adc_stop(ADC);
     print_info("  -> reset data buffer\n");
     memset(buf,0,siz*sizeof(uint16_t));
-
     print_info("  -> configure adc sampler\n");
     ADC->ADC_MR |= ADC_MR_FREERUN_ON; // set free running mode on ADC
-    //ADC->ADC_MR &= 0xFFFF00FF; // set prescaler to fastest
     ADC->ADC_MR &= ~ADC_MR_PRESCAL_Msk;
-    int presc = find_prescalar(runtime,siz);
+    int presc = find_prescalar(runtime,siz,samples,clock_freq);
     ADC->ADC_MR |= ADC_MR_PRESCAL(presc);// set prescaler to fastest
+    if(ADC->ADC_ISR & ADC_ISR_ENDRX){
+    	print_info("post clock... buffer is populated?\n");
+    }
+    adc_enable_anch(ADC);
+    track_adc_6();    
 
-    adc_enable_channel_differential_input(ADC, ADC_CHANNEL_0);
-    //ADC->ADC_COR = 0x10000;  // enable differential ADC for all channels
-    //ADC->ADC_COR = 0x00000; // single ended mode for all channels
-    adc_enable_channel(ADC,ADC_CHANNEL_0);
-    adc_enable_channel(ADC,ADC_CHANNEL_2);
-    adc_enable_channel(ADC,ADC_CHANNEL_4);
-    adc_enable_channel(ADC,ADC_CHANNEL_6);
-
-    // enable interrupt
-    uint32_t interrupts = ADC_IER_DRDY | ADC_IER_EOC0 | ADC_IER_EOC2
-      | ADC_IER_EOC4 | ADC_IER_EOC6;
-    adc_enable_interrupt(ADC, interrupts);
-    store_dma_state(new_info);
-    summarize_dma_state(new_info);
- 
     print_info("  -> instantiated buffers\n");
     // configure the buffer to fill
     ADC->ADC_RPR = (uint32_t) buf;
-    ADC->ADC_RCR = siz;
-    ADC->ADC_PTCR = ADC_PTCR_RXTEN;
-    //
-    while ((adc_get_status(ADC) & ADC_ISR_DRDY) == 0);
+    ADC->ADC_RCR = samples;
 
+    print_info("  -> checking adc config\n");
+    sprintf(FMTBUF, "min adc freq: %d khz\n", ADC_FREQ_MIN/1000);
+    print_info(FMTBUF);
+    sprintf(FMTBUF, "max adc freq: %d khz\n", ADC_FREQ_MAX/1000);
+    print_info(FMTBUF);
+    uint32_t clk = adc_get_actual_adc_clock(ADC,SystemCoreClock);
+    sprintf(FMTBUF, "max adc freq: %d khz\n", clk/1000);
+    print_info(FMTBUF);
     print_info("...done\n");
   }
 
-  void run(){
-    ADC->ADC_CR |= ADC_CR_START;
+  void run(Fabric* fab){
+    unsigned long start = micros();
+    ADC->ADC_PTCR = ADC_PTCR_RXTEN;
+    adc_start(ADC);
+    fab->execStart();
     while(!(ADC->ADC_ISR & ADC_ISR_ENDRX)){
-      delay(1);
+      delayMicroseconds(25);
     }
-  }
-
-  void get_voltage_transform(float& scale, float& offset){
-    scale = 2.0/2048;
-    offset = -1.0;
+    fab->execStop();
+    unsigned long end = micros();
+    sprintf(FMTBUF, "time-elapsed: %d us, %f sec\n", (end-start), (end-start)/1.0e6);
+    print_info(FMTBUF);
   }
   inline float dma_val_to_voltage(uint16_t val){
     return 2.0*(val-2048)/2048;

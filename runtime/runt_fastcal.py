@@ -51,8 +51,20 @@ class MinimizationObjective:
         return objfun_expr
 
 
+    def enough_data(self,samples):
+        expr_vars = self.expr.vars()
+        nodes = map(lambda tup: tup[1], \
+                    filter(lambda tup: tup[0] in self.expr.vars(),  \
+                           self.variables.items()))
+        return sum(map(lambda n: n.enough_data(samples), nodes))
+
+
     def min_samples(self):
-        return len(self.random_sample([]))
+        expr_vars = self.expr.vars()
+        nodes = map(lambda tup: tup[1], \
+                    filter(lambda tup: tup[0] in self.expr.vars(),  \
+                           self.variables.items()))
+        return sum(map(lambda n: n.min_sample(), nodes))
 
     def random_sample(self,samples):
         expr_vars = self.expr.vars()
@@ -66,8 +78,10 @@ class MinimizationObjective:
         if npts > 0:
             for var in self.expr.vars():
                 dectree = self.variables[var]
-                dectree.fit({'inputs':hidden_codes, \
-                             'meas_mean':deltavar_vals[var]})
+                if not dectree.fit({'inputs':hidden_codes, \
+                             'meas_mean':deltavar_vals[var]}):
+                    return False
+
             return True
         else:
             return False
@@ -122,29 +136,29 @@ def build_objective_function(blk,cfg,phys_model):
     print("minimization objective: %s" % objfun.expr)
     return objfun
 
-def bootstrap_phys_model(runtime,board,blk,cfg,objfun,grid_size):
-    print("---> Retrieve Existing Samples")
-
+def bootstrap_get_samples(board,objfun):
     samples = []
     npts,hidden_codes,_,_ = objfun.get_data(board)
-    samples = []
     for idx in range(npts):
         sample = dict(map(lambda tup: (tup[0],tup[1][idx]), \
                           hidden_codes.items()))
         samples.append(sample)
+    return samples
 
-    print("---> Bootstrapping model")
-    new_samples = objfun.random_sample(samples)
-    print("   samples curr=%d new=%d total=%d" \
-          % (len(samples),len(new_samples),objfun.min_samples()))
-    input()
-    for idx,sample in enumerate(new_samples):
+def bootstrap_phys_model(runtime,board,blk,cfg,objfun,grid_size):
+    print("---> Retrieve Existing Samples")
+
+    samples =bootstrap_get_samples(board,objfun)
+    print("---> Bootstrapping model [%d]" % len(samples))
+    while not objfun.enough_data(samples):
+        sample = objfun.random_sample(samples)[0]
+        print("random sample: %s" % str(sample))
         for output in blk.outputs:
             for method,n,m,reps in runtime_util.get_profiling_steps(output, \
                                                                cfg, \
                                                                grid_size):
-                print("=> [[sample %d/%d]] n=%d m=%d hidden_codes=%s" \
-                      %(idx,len(new_samples),n,m,sample))
+                print("=> [[samples=%d]] n=%d m=%d hidden_codes=%s" \
+                      %(len(samples),n,m,sample))
                 planner = planlib.SingleTargetedPointPlanner(blk, \
                                                              loc=cfg.inst.loc, \
                                                              output=output, \
@@ -156,26 +170,23 @@ def bootstrap_phys_model(runtime,board,blk,cfg,objfun,grid_size):
                                                              hidden_codes=sample)
                 proflib.profile_all_hidden_states(runtime,board,planner)
 
-    if len(new_samples) > 0:
         print("=== update delta models ===")
         runt_mkdeltamodels.update_delta_models_for_configured_block(board, \
                                                                     blk, \
                                                                     cfg.inst.loc, \
                                                                     cfg, \
                                                                     hidden=False)
-    npts,_,_,_ = objfun.get_data(board)
-    if npts < objfun.min_samples():
-       print("not enough points: %d/%d" % (npts,objfun.min_samples()))
-       bootstrap_phys_model(runtime,board,blk,cfg,objfun,grid_size)
+        samples =bootstrap_get_samples(board,objfun)
+        print("=> num-samples: %d" % len(samples))
+
 
 def fast_calibrate_adp(args):
     board = runt_util.get_device(args.model_number)
     char_board = runt_util.get_device(args.char_data)
     adp = runtime_util.get_adp(board,args.adp)
 
-    #runtime = GrendelRunner()
-    #runtime.initialize()
-    runtime = None
+    runtime = GrendelRunner()
+    runtime.initialize()
     calib_obj = llenums.CalibrateObjective.FAST
     for cfg in adp.configs:
         blk = board.get_block(cfg.inst.block)
@@ -212,9 +223,10 @@ def fast_calibrate_adp(args):
             #concrete physical model
             print("==== fitting model ====")
             if not objfun.fit(char_board):
-                print("[[error]] could not fit physical model")
+                print("[[error]] could not fit physical model.. skipping..")
                 continue
 
+            print("==== minimizing model ====")
             minval, best_hidden_codes = objfun.minimize()
             print("---- found next prediction ----")
             print("minimum: %s" % str(minval))

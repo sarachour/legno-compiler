@@ -11,7 +11,7 @@ def count_valid(dectrees,sample):
 def random_sample(dectrees,samples):
     new_samples = []
     for idx,node in enumerate(dectrees):
-        samps = node.random_sample(new_samples + samples)
+        samps = node.random_sample(samples)
         new_samples += samps
 
     return new_samples

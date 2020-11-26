@@ -42,12 +42,13 @@ def unpack_arduino_waveform(dataset):
     times = list(map(lambda i: time_delta*i, range(siz)))
     voltages = {}
     offset = 2
+    print("clock-freq: %d" % freq)
     while offset < siz:
         chan = dataset[offset]
         offset+=1
         assert(not chan in voltages)
         values = dataset[offset:offset+siz]
-        volts = list(map(lambda v: 2.0*(v-2048.0)/2048.0, values))
+        volts = list(map(lambda v: -3.3*(v-2048.0)/2048.0, values))
         voltages[chan] = volts
         offset+=siz
 
@@ -66,11 +67,13 @@ def save_data_from_arduino(dataset,board,dsprog,adp,sim_time,trial=0):
     for var,scf,chans in adp.observable_ports(board):
         chan_id = get_ard_chan_for_pin(chans[llenums.Channels.POS].pin)
         voltages = voltages_by_chan[chan_id]
+        for i,(t,v) in enumerate(zip(times,voltages)):
+            print("%d: %e\t%f" % (i,t,v))
         print("voltages[%s,%d]: [%f,%f]" % (var,chan_id, \
                                           min(voltages),max(voltages)))
 
         json_data = {'times':times,  \
-                     'values':voltages_by_chan[chan_id],  \
+                     'values':voltages,  \
                      'time_units': 'wall_clock_sec', \
                      'ampl_units': 'voltage', \
                      'runtime': sim_time/tc,\
