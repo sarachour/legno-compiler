@@ -67,7 +67,7 @@ lcal_subp.add_argument('--model-number', type=str, \
 
 lexec_subp = subparsers.add_parser('lexec', help='execute circuit using grendel.')
 lexec_subp.add_argument('program', help='program to execute.')
-lscale_subp.add_argument('--force', action='store_true', \
+lexec_subp.add_argument('--force', action='store_true', \
                        help='force reexecution.')
 
 
