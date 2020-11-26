@@ -82,8 +82,8 @@ prof_subp.add_argument('method', type=str, \
 prof_subp.add_argument('--model-number',type=str,help='model number')
 prof_subp.add_argument('--grid-size',type=int,default=15, \
                        help="number of inputs to sample along each axis")
-prof_subp.add_argument('--max-points',type=int,default=100, \
-                       help="maximum number of dataset points")
+prof_subp.add_argument('--min-points',type=int,default=0, \
+                       help="minimum number of dataset points")
 
 
 vis_subp = subparsers.add_parser('vis', help='build delta model visualizations')
