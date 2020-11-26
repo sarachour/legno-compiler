@@ -143,6 +143,7 @@ def fit_model(all_vars,expr,data):
       variables.append(varname)
 
   if len(variables) == 0:
+    print("no variables to fit... all-vars=%s expr=%s" % (all_vars,expr))
     return
 
   #print("inputs:", inputs)

@@ -429,9 +429,14 @@ def generate_constraint_problem(dev,program,adp, \
       deviation_modes = []
       print(config)
       for mode in hwinfo.modes(block.name):
-        dev_rel = hwinfo.get_empirical_relation(config.inst, \
-                                                    mode, \
-                                                    out.name)
+        try:
+           dev_rel = hwinfo.get_empirical_relation(config.inst, \
+							    mode, \
+							    out.name)
+        except Exception as e:
+           print("[could not get deviation] %s" % e)
+           dev_rel = None
+
         if not dev_rel is None:
           deviations.append(dev_rel)
           deviation_modes.append(mode)
