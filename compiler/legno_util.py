@@ -134,6 +134,36 @@ def exec_lgraph(args):
     print(timer)
     timer.save()
 
+def exec_lcal(args):
+    calib_objs = [
+        llenums.CalibrateObjective.MINIMIZE_ERROR,
+        llenums.CalibrateObjective.MAXIMIZE_FIT
+    ]
+    CAL_CMD = "python3 grendel.py cal {adp_path} --model-number {model_number} {calib_obj}"
+    PROF_CMD = "python3 grendel.py prof {adp_path} --model-number {model_number} {calib_obj}"
+    MKDELTAS_CMD = "python3 grendel.py mkdeltas --model-number {model_number} {adp_path}"
+    board = get_device(None)
+    path_handler = paths.PathHandler(args.subset,args.program)
+    program = DSProgDB.get_prog(args.program)
+    timer = util.Timer('lsim',path_handler)
+    for calib_obj in calib_objs:
+        for dirname, subdirlist, filelist in \
+            os.walk(path_handler.lgraph_adp_dir()):
+            for adp_file in filelist:
+                if adp_file.endswith('.adp'):
+                    adp_path = dirname+"/"+adp_file
+                    args = {
+                        'adp_path':adp_path,
+                        'calib_obj':calib_obj.value,
+                        'model_number':args.model_number
+                    }
+                    cmd = CAL_CMD.format(**args)
+                    os.system(cmd)
+                    cmd = PROF_CMD.format(**args)
+                    os.system(cmd)
+                    cmd = MKDELTAS_CMD.format(**args)
+                    os.system(cmd)
+
 def exec_lexec(args):
     EXEC_CMD = "python3 grendel.py exec {adp_path} --model-number {model_number}"
     board = get_device(None)
