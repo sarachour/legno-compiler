@@ -84,6 +84,10 @@ if args.subparser_name == "lgraph":
 elif args.subparser_name == "lscale":
     legno_util.exec_lscale(args)
 
+elif args.subparser_name == "lexec":
+   legno_util.exec_lexec(args)
+
+
 elif args.subparser_name == "lsim":
    legno_util.exec_lsim(args)
 
