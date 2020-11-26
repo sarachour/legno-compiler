@@ -79,19 +79,19 @@ def solve(prob):
 
   ident_assign_by_name = {}
   for ident_assign in prob.identifier_assigns:
-    ident_assign.ilpvar = pulp.LpVariable(ident_assign,
+    ident_assign.ilpvar = pulp.LpVariable(str(ident_assign),
                                           cat='Binary')
     ident_assign_by_name[str(ident_assign)] = ident_assign
 
 
   for conn_assign in prob.conn_assigns:
-    conn_assign.ilpvar = pulp.LpVariable(conn_assign,
+    conn_assign.ilpvar = pulp.LpVariable(str(conn_assign),
                                          cat='Binary')
 
 
   resource_by_name = {}
   for resource in prob.resources:
-    resource.ilpvar = pulp.LpVariable(resource,
+    resource.ilpvar = pulp.LpVariable(str(resource),
                                       lowBound=0,
                                       upBound=resource.limit(),
                                       cat='Integer')
@@ -139,6 +139,14 @@ def solve(prob):
       ilp += sum(map(lambda ident: ident.ilpvar, idents)) \
              == resource_var,resource_name
 
+
+  # don't repeat old models
+  for idx,neg in enumerate(prob.get_negations()):
+    if len(neg) > 1:
+      total_assigns = len(neg)
+      assign_clause = sum(map(lambda ident: ident.ilpvar, neg)) + 1
+      print(assign_clause <= total_assigns)
+      ilp += assign_clause <= total_assigns,"negate-model-%d" % idx
 
 
   ilp.solve()

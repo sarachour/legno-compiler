@@ -127,8 +127,11 @@ def compile(board,prob,
 
 
     print("> routing circuit")
+    adp_circuits = []
     for circ in vadp_circuits:
-        for _ in range(routes):
-            vadp = routelib.route(board,circ)
-            if not vadp is None:
-                yield vadplib.to_adp(vadp)
+        for vadp in routelib.route(board,circ):
+            adp = vadplib.to_adp(vadp)
+            adp_circuits.append(adp)
+            yield adp
+            if len(adp_circuits) > adps:
+                break

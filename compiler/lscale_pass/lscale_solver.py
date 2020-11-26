@@ -163,6 +163,7 @@ class LScaleSolutionGenerator:
     symtbl = self.symtbl
     adp = self.adp.copy(self.dev)
     quality = None
+    model_to_negate = {}
     for var_name,value in result.items():
       var = symtbl.get(var_name)
       if isinstance(var,scalelib.ModeVar):
@@ -171,6 +172,8 @@ class LScaleSolutionGenerator:
         mode = blk.modes[int(value)]
         assert(isinstance(mode,blocklib.BlockMode))
         blkcfg.modes = [mode]
+        if len(blk.modes) > 1:
+          model_to_negate[var_name] = value
 
       elif isinstance(var,scalelib.PortScaleVar):
         if not value is None:
@@ -202,7 +205,7 @@ class LScaleSolutionGenerator:
       else:
         raise Exception("unimpl: %s" % var)
 
-    self.z3ctx.negate_model(result)
+    self.z3ctx.negate_model(model_to_negate)
     return adp
 
 
