@@ -39,7 +39,11 @@ def profile_adp(args):
                                                     method)
 
                     if not dataset is None and \
-                    len(dataset) >= args.max_points:
+                    len(dataset) >= args.min_points and \
+                    len(dataset) >= n*m*reps:
+                        print("<===========")
+                        print(cfg)
+                        print("===> <%s> already profiled" % method)
                         continue
 
                     planner = planlib.SingleDefaultPointPlanner(blk, \

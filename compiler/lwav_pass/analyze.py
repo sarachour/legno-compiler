@@ -40,12 +40,12 @@ def analyze(adp,waveform):
     vis.add_waveform("meas",rec_experimental)
     yield vis
 
-    rec_aligned = rec_experimental.align(reference)
+    rec_exp_aligned = reference.align(rec_experimental)
     vis = wavelib.WaveformVis("align",ylabel,program.name)
     vis.add_waveform("ref",reference)
     vis.set_style('ref',"#E74C3C",'-')
     vis.set_style('meas',"#5758BB",'--')
-    vis.add_waveform("meas",rec_aligned)
+    vis.add_waveform("meas",rec_exp_aligned)
     yield vis
 
 
