@@ -102,6 +102,9 @@ class DecisionNode(Node):
   def leaves(self):
     return self.left.leaves() + self.right.leaves()
 
+  def enough_data(self,d):
+    return self.left.enough_data(d) and self.right.enough_data(d)
+
   def min_sample(self):
     return self.left.min_sample() + self.left.min_sample()
 
@@ -126,10 +129,9 @@ class DecisionNode(Node):
     return dictionary
 
   def fit(self,dataset):
-    hidden_codes = ['pmos', 'nmos', 'gain_cal', 'bias_in0', 'bias_in1', 'bias_out'] 
-
-    self.left.fit(dataset)
-    self.right.fit(dataset)
+    succ = self.left.fit(dataset)
+    succ &= self.right.fit(dataset)
+    return succ
 
   def find_minimum(self):
     left_minimum,left_min_code = self.left.find_minimum()
@@ -179,6 +181,11 @@ class RegressionLeafNode(Node):
   def min_sample(self):
     return len(self.params) + 1
 
+  def enough_data(self,samples):
+    n_valid_samples = len(list(filter(lambda samp:
+                                      self.region.valid_code(samp), \
+                                      samples)))
+    return self.min_sample() <= n_valid_samples
 
   def random_sample(self,samples):
     # count number of already valid samples
