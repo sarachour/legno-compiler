@@ -1,6 +1,7 @@
 #ifndef DMA_H
 #define DMA_H
 #include <cstdint>
+#include "AnalogLib.h"
 
 namespace dma {
 
@@ -13,7 +14,7 @@ namespace dma {
 
   void print_buffer(uint16_t* buf,uint32_t siz);
   void setup(dma_info_t& info,float sample_rate, uint16_t* buf, uint32_t siz);
-  void run();
+  void run(Fabric* fab);
   void teardown(dma_info_t& info);
   void summarize_dma_state(dma_info_t& info);
   uint32_t get_frequency();

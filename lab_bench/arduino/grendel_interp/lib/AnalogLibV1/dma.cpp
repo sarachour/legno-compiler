@@ -59,6 +59,7 @@ namespace dma {
     adc_disable_interrupt(ADC, ~interrupts);
     adc_enable_interrupt(ADC, interrupts);
   }
+
   void track_adc_6(){
     ADC->ADC_COR = ADC_COR_DIFF7 | ADC_COR_DIFF6 | ADC_COR_OFF6 | ADC_COR_OFF7;
     ADC->ADC_CHER |= ADC_CHER_CH6 | ADC_CHER_CH7;
@@ -66,6 +67,7 @@ namespace dma {
     uint32_t interrupts = ADC_IER_EOC6;
     adc_enable_interrupt(ADC, interrupts);
   }
+
   void setup(dma_info_t& info,
              float runtime,
              uint16_t * buf, uint32_t siz){
@@ -101,12 +103,14 @@ namespace dma {
     print_info("...done\n");
   }
 
-  void run(){
+  void run(Fabric* fab){
     ADC->ADC_PTCR = ADC_PTCR_RXTEN;
     adc_start(ADC);
+    fab->execStart();
     while(!(ADC->ADC_ISR & ADC_ISR_ENDRX)){
       delay(1);
     }
+    fab->execStop();
   }
 
   void get_voltage_transform(float& scale, float& offset){
