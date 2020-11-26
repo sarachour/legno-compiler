@@ -90,7 +90,7 @@ class Waveform:
 
         #time_slack = 0.02
         time_slack = 0.02
-        time_jitter = other.max_time*0.20
+        time_jitter = other.max_time*0.10
         xform_spec = [
             (1.0-time_slack,1.0+time_slack),
             #(0.0,max(tmeas)*0.25)

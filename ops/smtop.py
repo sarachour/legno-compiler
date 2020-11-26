@@ -134,12 +134,12 @@ class Z3Ctx:
 
   def negate_model(self,model):
     clauses = []
-    for v in self._z3vars.values():
-      if z3.is_bool(v):
-        value = model[v]
-        clauses.append(value != v)
+    for var,value in model.items():
+      clause = SMTNeq(SMTVar(var),SMTConst(value))
+      clauses.append(clause)
 
-    self.cstr(z3.Or(clauses))
+    neg_cstr = SMTMapOr(clauses)
+    self.cstr(neg_cstr.to_z3(self))
 
   def next_solution(self):
     assert(self._sat)

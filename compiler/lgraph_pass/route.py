@@ -1,13 +1,28 @@
 import compiler.lgraph_pass.vadp as vadplib 
 import compiler.lgraph_pass.route_solver as route_solver
-from compiler.lgraph_pass.route_problem import RoutingProblem
+import compiler.lgraph_pass.route_problem as routeproblib
 import hwlib.device as devlib
 import hwlib.block as blocklib
 
 class LocAssignmentStack:
 
+  class Entry:
+
+    def __init__(self,assigns):
+      assert(isinstance(assigns,routeproblib.LocAssignments))
+      self.assigns = assigns
+      self.negations = []
+
+    def add_negation(self,neg):
+      assert(isinstance(neg,routeproblib.LocAssignments))
+      self.negations.append(neg)
+
   def __init__(self):
     self._stack =  []
+
+  @property
+  def ptr(self):
+    return len(self._stack)
 
   def top(self):
     if len(self._stack) == 0:
@@ -16,6 +31,8 @@ class LocAssignmentStack:
       return self._stack[-1]
 
   def push(self,v):
+    assert(isinstance(v,LocAssignmentStack.Entry))
+    assert(not v is None)
     self._stack.append(v)
 
   def pop(self):
@@ -25,8 +42,15 @@ class LocAssignmentStack:
     tmp = self._stack[:-1]
     self._stack = tmp
 
-def routing_problem(board,view,vadp,assignments):
-  prob = RoutingProblem(board,view,assignments)
+def routing_problem(board,view,vadp,entry):
+  if not entry is None:
+    prob = routeproblib.RoutingProblem(board,view, \
+                                       entry.assigns, \
+                                       entry.negations)
+
+  else:
+    prob = routeproblib.RoutingProblem(board,view)
+
   for vadpstmt in vadp:
     if isinstance(vadpstmt, vadplib.VADPConfig):
       prob.add_virtual_instance(vadpstmt.target.block, \
@@ -154,36 +178,43 @@ def finalize(board,vadp,assigns):
 
   return new_vadp
 
-def route(board,vadp):
-  # assign each block to a chip
-  # assign each block to a tile, given chip assignments
-  # assign each block to a slice, given tile assignments
-  # assign each block to a index, given slice assignments
+def route_next_solution(board,vadp,assign_stack):
   views = board.layout.views
-  assign_stack = LocAssignmentStack()
-
-  idx = 0
-  while idx <= len(views)-1 and idx >= 0:
-    print("--> routing view %s" % views[idx])
-    view = views[idx]
+  while assign_stack.ptr <= len(views)-1 and assign_stack.ptr >= 0:
+    print("--> routing view %s" % views[assign_stack.ptr])
+    view = views[assign_stack.ptr]
+    # build routing problem
     prob = routing_problem(board,view,vadp, \
                            assign_stack.top())
     assigns = route_solver.solve(prob)
     if assigns is None:
       assign_stack.pop()
-      idx -= 1
     else:
-      assign_stack.push(assigns)
-      idx += 1
+      assert(not assigns is None)
+      assign_stack.push(LocAssignmentStack.Entry(assigns))
 
-  if assigns is None:
-    assign_stack.pop()
-  else:
-    assign_stack.push(assigns)
-
-  if idx < 0 or assign_stack.top() is None:
+  if assign_stack.top() is None:
     return None
   else:
-    return finalize(board,vadp,assign_stack.top())
+    return assign_stack.top()
 
 
+
+def route(board,vadp):
+  # assign each block to a chip
+  # assign each block to a tile, given chip assignments
+  # assign each block to a slice, given tile assignments
+  # assign each block to a index, given slice assignments
+  assign_stack = LocAssignmentStack()
+
+  has_solution = True
+  negations = []
+  while has_solution:
+    result = route_next_solution(board,vadp,assign_stack)
+    if not result is None:
+      yield finalize(board,vadp,result.assigns)
+      # remove result
+      assign_stack.pop()
+      assign_stack.top().add_negation(result.assigns)
+    else:
+      has_solution = False

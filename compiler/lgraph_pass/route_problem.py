@@ -176,7 +176,7 @@ class LocAssignments:
 class RoutingProblem:
 
 
-  def __init__(self,board,view,assignments=None):
+  def __init__(self,board,view,assignments=None,negations=[]):
     self.dev = board
     self.view = view
     self.identifier_assigns = []
@@ -185,23 +185,46 @@ class RoutingProblem:
     self.valid = True
     self.message = None
     self.assignments = assignments
+    self.negations = negations
 
   def fail(self,msg):
     self.message = msg
     self.valid = False
 
 
+  def _get_matching_instance_variable(self,variables ,v):
+    assert(isinstance(v,BlockIdentifierAssignVar))
+
+    for assign in variables:
+      assert(isinstance(assign,BlockIdentifierAssignVar))
+      if assign.block.name == v.block.name and \
+         assign.ident == v.ident and \
+         not devlib.Layout.intersection(assign.loc.address, \
+                                        v.loc.address) is None:
+           return assign
+
+    return None
+
+
   def is_valid_instance_assignment(self,block,identifier,loc):
-    if self.assignments is None:
-      return True
+    v = BlockIdentifierAssignVar(self.dev,block,identifier,loc)
+    return self.assignments is None or \
+      not self._get_matching_instance_variable(self.assignments,v) is None
 
-    for assign in self.assignments:
-      if assign.block.name == block.name and \
-         assign.ident == identifier and \
-         not devlib.Layout.intersection(assign.loc.address,loc.address) is None:
-           return True
 
-    return False
+  def get_negations(self):
+    for neg in self.negations:
+      prev_assigns = []
+      for assign in neg:
+        assert(isinstance(assign,BlockIdentifierAssignVar))
+        mvar = self._get_matching_instance_variable(self.identifier_assigns,assign)
+        if not mvar is None:
+          prev_assigns.append(mvar)
+        else:
+          input("could not find matching var")
+          continue
+
+      yield prev_assigns
 
 
   def add_virtual_instance(self,block,identifier):
@@ -219,9 +242,9 @@ class RoutingProblem:
         continue
 
       assign = BlockIdentifierAssignVar(self.dev, \
-                                            block, \
-                                            identifier, \
-                                            loc)
+                                        block, \
+                                        identifier, \
+                                        loc)
       self.identifier_assigns \
           .append(assign)
 
