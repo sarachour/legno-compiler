@@ -152,17 +152,17 @@ def exec_lcal(args):
             for adp_file in filelist:
                 if adp_file.endswith('.adp'):
                     adp_path = dirname+"/"+adp_file
-                    args = {
+                    kwargs = {
                         'adp_path':adp_path,
                         'calib_obj':calib_obj.value,
                         'model_number':args.model_number
                     }
-                    cmd = CAL_CMD.format(**args)
+                    cmd = CAL_CMD.format(**kwargs)
                     os.system(cmd)
-                    cmd = PROF_CMD.format(**args)
-                    os.system(cmd)
-                    cmd = MKDELTAS_CMD.format(**args)
-                    os.system(cmd)
+                    #cmd = PROF_CMD.format(**kwargs)
+                    #os.system(cmd)
+                    #cmd = MKDELTAS_CMD.format(**kwargs)
+                    #os.system(cmd)
 
 def exec_lexec(args):
     EXEC_CMD = "python3 grendel.py exec {adp_path} --model-number {model_number}"
