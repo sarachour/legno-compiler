@@ -164,18 +164,18 @@ def exec_lcal(args):
                     #cmd = MKDELTAS_CMD.format(**kwargs)
                     #os.system(cmd)
 
-def _lexec_already_ran(adp,trial=0):
+def _lexec_already_ran(ph,board,adp,trial=0):
     for var,scf,chans in adp.observable_ports(board):
-        filename = ph.measured_waveform_file(graph_index=adp.metadata[adplib.ADPMetadata.Keys.LGRAPH_ID], \
-                                             scale_index=adp.metadata[adplib.ADPMetadata.Keys.LSCALE_ID], \
-                                             model=adp.metadata[adplib.ADPMetadata.Keys.LSCALE_SCALE_METHOD], \
-                                             opt=adp.metadata[adplib.ADPMetadata.Keys.LSCALE_OBJECTIVE], \
-                                             phys_db=adp.metadata[adplib.ADPMetadata.Keys.RUNTIME_PHYS_DB], \
-                                             calib_obj=adp.metadata[adplib.ADPMetadata.Keys.RUNTIME_CALIB_OBJ], \
+        filename = ph.measured_waveform_file(graph_index=adp.metadata[ADPMetadata.Keys.LGRAPH_ID], \
+                                             scale_index=adp.metadata[ADPMetadata.Keys.LSCALE_ID], \
+                                             model=adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD], \
+                                             opt=adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE], \
+                                             phys_db=adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB], \
+                                             calib_obj=adp.metadata[ADPMetadata.Keys.RUNTIME_CALIB_OBJ], \
                                              variable=var, \
                                              trial=trial)
 
-        if not util.file_exists(filename):
+        if not os.path.exists(filename):
             return False
     return True
 
@@ -195,13 +195,13 @@ def exec_lexec(args):
                     print("===== %s =====" % (adp_file))
                     adp = ADP.from_json(board, \
                                         json.loads(fh.read()))
-                    args = {
+                    kwargs = {
                         'adp_path': adp_path,
                         'model_number': adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB]
                     }
-                    if not _lexec_already_ran(adp,trial=0) or \
+                    if not _lexec_already_ran(path_handler,board,adp,trial=0) or \
                        args.force:
-                        cmd = EXEC_CMD.format(**args)
+                        cmd = EXEC_CMD.format(**kwargs)
                         os.system(cmd)
 
 def exec_lsim(args):
