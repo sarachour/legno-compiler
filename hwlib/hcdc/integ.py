@@ -9,7 +9,7 @@ integ = Block('integ',BlockType.COMPUTE, \
              enums.SignType])
 
 
-integ.modes.add_all([
+MODES = [
   ['m','m','+'],
   ['m','m','-'],
   ['m','h','+'],
@@ -19,7 +19,19 @@ integ.modes.add_all([
   ['h','h','+'],
   ['h','h','-']
 
-])
+]
+
+MODES = [
+  ['m','m','+'],
+  ['m','m','-'],
+  ['h','m','+'],
+  ['h','m','-'],
+  ['h','h','+'],
+  ['h','h','-']
+]
+
+
+integ.modes.add_all(MODES)
 LOW_NOISE = 0.01
 HIGH_NOISE = 0.1
 
