@@ -59,6 +59,10 @@ lscale_subp.add_argument('--scale-adps', type=int,default=5, \
 lscale_subp.add_argument('program', type=str,help='benchmark to compile')
 
 
+sim_subp = subparsers.add_parser('lexec', help='execute circuit using grendel.')
+sim_subp.add_argument('program', help='program to execute.')
+
+
 sim_subp = subparsers.add_parser('lsim', help='simulate circuit.')
 sim_subp.add_argument('program', help='program to simulate.')
 

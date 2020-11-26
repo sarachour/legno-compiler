@@ -134,6 +134,28 @@ def exec_lgraph(args):
     print(timer)
     timer.save()
 
+def exec_lexec(args):
+    EXEC_CMD = "python3 grendel.py exec {adp_path} --model-number {model_number}"
+    board = get_device(None)
+    path_handler = paths.PathHandler(args.subset,args.program)
+    program = DSProgDB.get_prog(args.program)
+    timer = util.Timer('lsim',path_handler)
+    for dirname, subdirlist, filelist in \
+        os.walk(path_handler.lscale_adp_dir()):
+        for adp_file in filelist:
+            if adp_file.endswith('.adp'):
+                adp_path = dirname+"/"+adp_file
+                with open(adp_path,'r') as fh:
+                    print("===== %s =====" % (adp_file))
+                    adp = ADP.from_json(board, \
+                                        json.loads(fh.read()))
+                    args = {
+                        'adp_path': adp_path,
+                        'model_number': adp.metadata[ADPMetadata.Keys.MODEL_NUMBER]
+                    }
+                    cmd = EXEC_CMD.format(**args)
+                    os.system(cmd)
+
 def exec_lsim(args):
     from compiler import lsim
 
