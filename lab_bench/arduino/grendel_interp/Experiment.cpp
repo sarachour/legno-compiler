@@ -43,9 +43,7 @@ namespace experiment {
     freq = dma::get_frequency();
     print_info("running experiment!\n");
     set_SDA(HIGH);
-    fab->execStart();
-    dma::run();
-    fab->execStop();
+    dma::run(fab);
     dma::teardown(info);
     set_SDA(LOW);
     return freq;
