@@ -335,7 +335,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperFindBiasCodes(cutil::
   }
   this->m_state.port_cal[out0Id] = out_table.state[0];
 
-  cutil::update_calib_table(table_bias,out_table.error,3,
+  cutil::update_calib_table(table_bias,0.0,3,
                             this->m_state.port_cal[in0Id],
                             this->m_state.port_cal[in1Id],
                             this->m_state.port_cal[out0Id]
