@@ -396,6 +396,7 @@ float Fabric::Chip::Tile::Slice::Dac::fastMeasureHighValue(float& variance){
   float meas = find_ref_dac_code(ref_dac,
                                  ref_dac->m_state.const_code,
                                  max_ref_dist);
+  util::meas_dist_chip_out(this,meas,variance);
 
   dac_model_t model = ref_dac->m_dac_model;
   float ref = ref_dac->m_state.const_code*model.alpha + model.beta;
