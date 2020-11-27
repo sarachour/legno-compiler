@@ -62,7 +62,8 @@ def visualize(args):
                                         str(delta_model.static_cfg), \
                                         str(delta_model.hidden_cfg), \
                                         delta_model.calib_obj)
-
+            print(delta_model.config)
+            print(delta_model)
             if delta_model.is_integration_op:
                 dataset = dataset_lib.load(board, delta_model.block, \
                                            delta_model.loc, \

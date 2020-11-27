@@ -120,10 +120,10 @@ class ExpDeltaModel:
     predictions = self.predict(dataset, \
                                init_cond=init_cond, \
                                correctable_only=correctable_only)
-    n = 0
-    model_error = sum(map(lambda err: pow(err,2), self.errors(dataset,init_cond,\
-                                                              correctable_only)))
-    return np.sqrt(model_error/n)
+    errors = self.errors(dataset,init_cond,\
+                         correctable_only)
+    model_error = sum(map(lambda err: pow(err,2), errors))
+    return np.sqrt(model_error/len(errors))
 
   def get_subexpr(self,init_cond=False, \
                   correctable_only=False, concrete=True):
