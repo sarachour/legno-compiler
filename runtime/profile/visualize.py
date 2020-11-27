@@ -99,7 +99,7 @@ def heatmap(physblk,output_file,inputs,output,n,relative=False, \
                                   bounds[physblk.output.name][1])
   normalize_out = 1.0
   if relative:
-    normalize_out = output_ival.bound
+    normalize_out = output_ival.bound/100.0
 
   surf = ParametricSurface(n)
   colormap_name = "coolwarm"
@@ -145,7 +145,7 @@ def heatmap(physblk,output_file,inputs,output,n,relative=False, \
 
 
     cbar = ax.figure.colorbar(im, ax=ax)
-    hm_label = "error (rel)" if relative else "error (abs)"
+    hm_label = "error (%)" if relative else "error (uA)"
     cbar.ax.set_ylabel(hm_label, rotation=-90, va="bottom")
     fig.tight_layout()
     plt.savefig(output_file)
@@ -173,7 +173,8 @@ def heatmap(physblk,output_file,inputs,output,n,relative=False, \
                     vmax=amplitude)
 
     cbar = ax.figure.colorbar(im, ax=ax)
-    cbar.ax.set_ylabel("value", rotation=-90, va="bottom")
+    hm_label = "error (%)" if relative else "error (uA)"
+    cbar.ax.set_ylabel(hm_label, rotation=-90, va="bottom")
     fig.tight_layout()
     plt.savefig(output_file)
     plt.close()
@@ -206,9 +207,8 @@ def deviation_(delta_model,dataset,output_file, \
     inps[k] = v
 
   errors = []
-  ampl = max(np.abs(ref)) if relative and len(ref) > 0 else 1.0
   for pred,meas in zip(ref, dataset.meas_mean):
-    errors.append((meas-pred)/ampl)
+    errors.append((meas-pred))
 
   heatmap(delta_model,output_file,inps,errors,n=num_bins, \
           amplitude=amplitude, \
@@ -243,8 +243,9 @@ def model_error_histogram(delta_models,png_file,num_bins=10):
     return
 
   fig, axs = plt.subplots(1, 1, tight_layout=True)
-  model_errors = list(map(lambda dm: dm.model_error, \
-                          delta_models))
+  model_errors = list(filter(lambda err: err < 20, \
+                             map(lambda dm: dm.model_error, \
+                                 delta_models)))
   # We can set the number of bins with the `bins` kwarg
   axs.hist(model_errors, bins=num_bins)
   fig.tight_layout()

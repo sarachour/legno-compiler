@@ -248,8 +248,11 @@ class ExpDeltaModel:
 
 def __to_delta_models(dev,matches):
   for match in matches:
-    yield ExpDeltaModel.from_json(dev, \
-                                  runtime_util.decode_dict(match['model']))
+    try:
+      yield ExpDeltaModel.from_json(dev, \
+                                    runtime_util.decode_dict(match['model']))
+    except Exception as e:
+      continue
 
 def update(dev,model):
     assert(isinstance(model,ExpDeltaModel))
