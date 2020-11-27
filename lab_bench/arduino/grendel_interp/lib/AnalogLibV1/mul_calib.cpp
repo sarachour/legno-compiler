@@ -335,7 +335,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperFindBiasCodes(cutil::
   }
   this->m_state.port_cal[out0Id] = out_table.state[0];
 
-  cutil::update_calib_table(table_bias,0.0,3,
+  cutil::update_calib_table(table_bias,out_table.error,3,
                             this->m_state.port_cal[in0Id],
                             this->m_state.port_cal[in1Id],
                             this->m_state.port_cal[out0Id]
@@ -487,8 +487,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
                                 this->m_state.port_cal[in0Id],
                                 this->m_state.port_cal[in1Id],
                                 this->m_state.port_cal[out0Id],
-                                this->m_state.gain_cal
-                                loss);
+                                this->m_state.gain_cal);
       sprintf(FMTBUF,"best-pm nmos=%d pmos=%d port_cal=(%d,%d,%d) gain_cal=%d loss=%f",
               calib_table.state[0],
               calib_table.state[1],
@@ -496,7 +495,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
               calib_table.state[3],
               calib_table.state[4],
               calib_table.state[5],
-              loss);
+              calib_table.loss);
       print_info(FMTBUF);
 
     }
@@ -547,8 +546,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
                               this->m_state.port_cal[in0Id],
                               this->m_state.port_cal[in1Id],
                               this->m_state.port_cal[out0Id],
-                              gain_cal,
-                              loss);
+                              gain_cal);
     sprintf(FMTBUF,"nmos=%d pmos=%d port_cal=(%d,%d,%d) gain_cal=%d loss=%f",
             this->m_state.nmos,
             this->m_state.pmos,
