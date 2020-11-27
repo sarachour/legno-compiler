@@ -470,11 +470,12 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
       int gain_points[3] = {32,0,63};
       float losses[3];
       int n_gains =  this->m_state.vga ? 3 : 1;
-      for(int i=0; i < 3; i += 1){
+      for(int i=0; i < n_gains; i += 1){
         this->m_state.gain_cal = gain_points[i];
         this->update(this->m_state);
         losses[i] = getLoss(obj,val0_dac,val1_dac,ref_dac,false);
-        sprintf(FMTBUF,"gain=%d loss=%f",gain_points[i],losses[i]);
+        sprintf(FMTBUF,"pmos=%d, nmos=%d gain=%d loss=%f",
+                pmos,nmos,gain_points[i],losses[i]);
         print_info(FMTBUF);
       }
       int best_code;
