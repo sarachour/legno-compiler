@@ -182,7 +182,7 @@ namespace util {
       float pred = A*i*i + B*i + C;
       if(point < 0 || pred < loss){
         point = i;
-        loss = pred; 
+        loss = pred;
       }
     }
     return loss;
@@ -193,6 +193,10 @@ namespace util {
     int min_i = find_int_minimum(p,n);
     int max_i = find_int_maximum(p,n);
     bool is_poly = false;
+    if(n == 1){
+      point = p[0];
+      return v[0];
+    }
     for(int i=0; i < n; i+= 1){
       if(p[i] > p[min_i] && p[i] < p[max_i]){
         is_poly |= v[i] < v[min_i] && v[i] < v[max_i];
