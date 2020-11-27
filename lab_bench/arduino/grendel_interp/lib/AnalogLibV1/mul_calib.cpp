@@ -10,7 +10,7 @@ const float TEST0_POINTS[CALIB_NPTS] = {-0.9,0.9,-0.75,0.75,-0.5,0.5,0.0};
 const float TEST1_MULT_POINTS[CALIB_NPTS] = {-0.9,0.9,-0.75,0.75,-0.5,0.5,0.0};
 const float TEST1_VGA_POINTS[CALIB_NPTS] = {-0.9,0.9,-0.75,0.75,-0.5,0.5,0.0};
 
-#define DEBUG_MULT_CAL
+//#define DEBUG_MULT_CAL
 
 unsigned int N_MULT_POINTS_TESTED = 0;
 float Fabric::Chip::Tile::Slice::Multiplier::getLoss(calib_objective_t obj,
@@ -467,8 +467,9 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
     for(int pmos=0; pmos < MAX_PMOS; pmos += 1){
       float loss = 0.0;
       this->m_state.pmos = pmos;
-      int gain_points[3] = {0,32,63};
+      int gain_points[3] = {32,0,63};
       float losses[3];
+      int n_gains =  this->m_state.vga ? 3 : 1;
       for(int i=0; i < 3; i += 1){
         this->m_state.gain_cal = gain_points[i];
         this->update(this->m_state);
