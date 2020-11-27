@@ -566,7 +566,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
   this->update(state_mult);
   tileout_to_chipout.brkConn();
   mult_to_tileout.brkConn();
-  //cutil::restore_conns(calib);
+  cutil::restore_conns(calib);
 
   print_info("set state");
   this->m_state.nmos = calib_table.state[0];
