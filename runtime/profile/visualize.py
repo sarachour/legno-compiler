@@ -191,10 +191,10 @@ def deviation_(delta_model,dataset,output_file, \
                relative=False):
 
   if baseline == ReferenceType.MODEL_PREDICTION:
-    ref = delta_model.predict(dataset, \
+    errors = delta_model.errors(dataset, \
                               init_cond=init_cond)
   elif baseline == ReferenceType.CORRECTABLE_MODEL_PREDICTION:
-    ref = delta_model.predict(dataset, \
+    errors = delta_model.errors(dataset, \
                               correctable_only=True, \
                               init_cond=init_cond)
   else:
@@ -206,9 +206,6 @@ def deviation_(delta_model,dataset,output_file, \
   for k,v in dataset.data.items():
     inps[k] = v
 
-  errors = []
-  for pred,meas in zip(ref, dataset.meas_mean):
-    errors.append((meas-pred))
 
   heatmap(delta_model,output_file,inps,errors,n=num_bins, \
           amplitude=amplitude, \
