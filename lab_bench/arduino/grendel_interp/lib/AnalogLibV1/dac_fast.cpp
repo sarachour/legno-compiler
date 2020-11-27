@@ -6,7 +6,7 @@
 #include "dac.h"
 
 // this model for the high-mode dac.
-//#define DEBUG_DAC_FAST
+#define DEBUG_DAC_FAST
 
 void fast_calibrate_dac(Fabric::Chip::Tile::Slice::Dac * aux_dac){
   if(!aux_dac->m_is_calibrated){
@@ -396,13 +396,14 @@ float Fabric::Chip::Tile::Slice::Dac::fastMeasureHighValue(float& variance){
   float meas = find_ref_dac_code(ref_dac,
                                  ref_dac->m_state.const_code,
                                  max_ref_dist);
-  util::meas_dist_chip_out(this,meas,variance);
+  float meas2;
+  util::meas_dist_chip_out(this,meas2,variance);
 
   dac_model_t model = ref_dac->m_dac_model;
   float ref = ref_dac->m_state.const_code*model.alpha + model.beta;
   float out = meas - ref;
 #ifdef DEBUG_DAC_FAST
-  sprintf(FMTBUF,"ref=%f meas=%f out=%f", ref,meas,out);
+  sprintf(FMTBUF,"ref=%f meas=%f meas2=%f out=%f", ref,meas,meas2,out);
   print_info(FMTBUF);
 #endif
 
