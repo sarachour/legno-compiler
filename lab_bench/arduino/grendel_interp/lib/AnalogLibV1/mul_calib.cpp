@@ -488,7 +488,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
                                 this->m_state.port_cal[in1Id],
                                 this->m_state.port_cal[out0Id],
                                 this->m_state.gain_cal
-                                );
+                                loss);
       sprintf(FMTBUF,"best-pm nmos=%d pmos=%d port_cal=(%d,%d,%d) gain_cal=%d loss=%f",
               calib_table.state[0],
               calib_table.state[1],
