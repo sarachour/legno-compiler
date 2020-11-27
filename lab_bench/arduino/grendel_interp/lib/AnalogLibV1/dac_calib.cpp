@@ -10,7 +10,7 @@
 const float TEST_POINTS[CALIB_NPTS] = {0,0.875,0.5,-0.875,-0.5,0.25,-0.25};
 unsigned int N_DAC_POINTS_TESTED = 0;
 
-//#define DEBUG_DAC_CAL
+#define DEBUG_DAC_CAL
 float Fabric::Chip::Tile::Slice::Dac::getLoss(calib_objective_t obj){
   float loss = 0;
   switch(obj){
