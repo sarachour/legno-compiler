@@ -103,17 +103,26 @@ class ExpDeltaModel:
   def set_model_error(self,error):
     self._model_error = error
 
+  def errors(self,dataset,init_cond=False,correctable_only=False):
+    predictions = self.predict(dataset, \
+                               init_cond=init_cond, \
+                               correctable_only=correctable_only)
+    n = 0
+    errors = []
+    for pred,meas in zip(predictions,dataset.meas_mean):
+      print("pred=%f meas=%f" % (pred,meas))
+      errors.append(pred-meas)
+
+    return errors
+
+
   def error(self,dataset,init_cond=False,correctable_only=False):
     predictions = self.predict(dataset, \
                                init_cond=init_cond, \
                                correctable_only=correctable_only)
     n = 0
-    model_error = 0
-    for pred,meas in zip(predictions,dataset.meas_mean):
-      #print("pred=%f meas=%f" % (pred,meas))
-      model_error += pow(pred-meas,2)
-      n += 1
-
+    model_error = sum(map(lambda err: pow(err,2), self.errors(dataset,init_cond,\
+                                                              correctable_only)))
     return np.sqrt(model_error/n)
 
   def get_subexpr(self,init_cond=False, \
