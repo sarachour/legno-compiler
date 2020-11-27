@@ -395,6 +395,8 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
 
   float target_pos = 0.0;
   float target_neg = 0.0;
+  float target_pos_in = 0.0;
+  float target_neg_in = 0.0;
   float dummy,dac_out0,dac_out1;
   int bias_bounds[6];
   bias_bounds[0] = bias_bounds[2] = bias_bounds[4] = 0;
@@ -405,9 +407,11 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
     fast_calibrate_dac(val0_dac);
     val0_dac->setConstant(0.0);
     dac_out0 = val0_dac->fastMeasureValue(dummy);
-    this->setGain(1.0);
+    target_pos_in = 1.0;
+    this->setGain(target_pos_in);
     target_pos = computeOutput(this->m_state, dac_out0, 0.0);
-    this->setGain(-1.0);
+    target_neg_in = 1.0;
+    this->setGain(target_neg_in);
     target_neg = computeOutput(this->m_state, dac_out0, 0.0);
 
   }
@@ -419,10 +423,12 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
     val1_dac->setRange(util::range_to_dac_range(this->m_state.range[in1Id]));
     val0_dac->setConstant(0.0);
     dac_out0 = val0_dac->fastMeasureValue(dummy);
-    val1_dac->setConstant(1.0);
+    target_pos_in = 0.5;
+    val1_dac->setConstant(target_pos_in);
     dac_out1 = val1_dac->fastMeasureValue(dummy);
     target_pos = computeOutput(this->m_state, dac_out0, dac_out1);
-    val1_dac->setConstant(-1.0);
+    target_neg_in = -0.5;
+    val1_dac->setConstant(target_neg_in);
     dac_out1 = val1_dac->fastMeasureValue(dummy);
     target_neg = computeOutput(this->m_state, dac_out0, dac_out1);
   }
@@ -447,9 +453,9 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
                                        val1_dac,
                                        ref_dac,
                                        bias_bounds,
-                                       1.0,
+                                       target_pos_in,
                                        target_pos,
-                                       -1.0,
+                                       target_neg_in,
                                        target_neg);
 
     this->m_state.port_cal[in0Id] = table_bias.state[0];
@@ -510,9 +516,9 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
                                      val1_dac,
                                      ref_dac,
                                      bias_bounds,
-                                     1.0,
+                                     target_pos_in,
                                      target_pos,
-                                     -1.0,
+                                     target_neg_in,
                                      target_neg);
   bias_bounds[0] = max(table_bias.state[0]-4,0);
   bias_bounds[1] = min(table_bias.state[0]+4,MAX_BIAS_CAL);
@@ -525,9 +531,9 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
                                      val1_dac,
                                      ref_dac,
                                      bias_bounds,
-                                     1.0,
+                                     target_pos_in,
                                      target_pos,
-                                     -1.0,
+                                     target_neg_in,
                                      target_neg);
 
   this->m_state.port_cal[in0Id] = table_bias.state[0];
