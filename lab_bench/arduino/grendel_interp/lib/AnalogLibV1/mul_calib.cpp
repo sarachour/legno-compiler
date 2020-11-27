@@ -474,8 +474,8 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
         this->m_state.gain_cal = gain_points[i];
         this->update(this->m_state);
         losses[i] = getLoss(obj,val0_dac,val1_dac,ref_dac,false);
-        sprintf(FMTBUF,"pmos=%d, nmos=%d gain=%d loss=%f",
-                pmos,nmos,gain_points[i],losses[i]);
+        sprintf(FMTBUF,"pn nmos=%d, pmos=%d, gain=%d loss=%f",
+                nmos,pmos,gain_points[i],losses[i]);
         print_info(FMTBUF);
       }
       int best_code;
@@ -489,7 +489,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
                                 this->m_state.port_cal[out0Id],
                                 this->m_state.gain_cal
                                 );
-      sprintf(FMTBUF,"nmos=%d pmos=%d port_cal=(%d,%d,%d) gain_cal=%d loss=%f",
+      sprintf(FMTBUF,"best-pn nmos=%d pmos=%d port_cal=(%d,%d,%d) gain_cal=%d loss=%f",
               this->m_state.nmos,
               this->m_state.pmos,
               this->m_state.port_cal[in0Id],
