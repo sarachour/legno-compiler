@@ -479,7 +479,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
         print_info(FMTBUF);
       }
       int best_code;
-      loss = util::find_best_gain_cal(gain_points,losses,3,best_code);
+      loss = util::find_best_gain_cal(gain_points,losses,n_gains,best_code);
       this->m_state.gain_cal = best_code;
       cutil::update_calib_table(calib_table,loss,6,
                                 nmos,
