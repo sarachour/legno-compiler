@@ -4,13 +4,13 @@
 #include "calib_util.h"
 #include <float.h>
 
-#define CALIB_NPTS 4
+#define CALIB_NPTS 7
 #define TOTAL_NPTS (1 + CALIB_NPTS*CALIB_NPTS)
-const float TEST0_POINTS[CALIB_NPTS] = {-0.75,0.75,0.5,0.0};
-const float TEST1_MULT_POINTS[CALIB_NPTS] = {-0.75,0.75,0.5,0.0};
-const float TEST1_VGA_POINTS[CALIB_NPTS] = {-0.75,0.75,0.5,0.0};
+const float TEST0_POINTS[CALIB_NPTS] = {-0.9,0.9,-0.75,0.75,-0.5,0.5,0.0};
+const float TEST1_MULT_POINTS[CALIB_NPTS] = {-0.9,0.9,-0.75,0.75,-0.5,0.5,0.0};
+const float TEST1_VGA_POINTS[CALIB_NPTS] = {-0.9,0.9,-0.75,0.75,-0.5,0.5,0.0};
 
-//#define DEBUG_MULT_CAL
+#define DEBUG_MULT_CAL
 
 unsigned int N_MULT_POINTS_TESTED = 0;
 float Fabric::Chip::Tile::Slice::Multiplier::getLoss(calib_objective_t obj,
@@ -311,6 +311,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperFindBiasCodes(cutil::
     }
     this->m_state.port_cal[in1Id] = in1_table.state[0];
   }
+
   cutil::calib_table_t out_table = cutil::make_calib_table();
   for(int i=0; i < MAX_BIAS_CAL; i += 1){
     this->m_state.port_cal[out0Id] = i;
@@ -448,7 +449,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
     this->m_state.pmos = 3;
     this->m_state.gain_cal = 32;
     cutil::calib_table_t table_bias = cutil::make_calib_table();
-    this->calibrateHelperFindBiasCodes(table_bias, this->m_state.vga ? 8 : 4,
+    this->calibrateHelperFindBiasCodes(table_bias, 8,
                                        val0_dac,
                                        val1_dac,
                                        ref_dac,
@@ -466,24 +467,18 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
     for(int pmos=0; pmos < MAX_PMOS; pmos += 1){
       float loss = 0.0;
       this->m_state.pmos = pmos;
-      if(this->m_state.vga){
-	      int gain_points[3] = {0,32,63};
-	      float losses[3];
-	      for(int i=0; i < 3; i += 1){
-          this->m_state.gain_cal = gain_points[i];
-          this->update(this->m_state);
-          losses[i] = getLoss(obj,val0_dac,val1_dac,ref_dac,false);
-          sprintf(FMTBUF,"gain=%d loss=%f",gain_points[i],losses[i]);
-	      }
-	      int best_code;
-	      loss = util::find_best_gain_cal(gain_points,losses,3,best_code);
-	      this->m_state.gain_cal = best_code;
+      int gain_points[3] = {0,32,63};
+      float losses[3];
+      for(int i=0; i < 3; i += 1){
+        this->m_state.gain_cal = gain_points[i];
+        this->update(this->m_state);
+        losses[i] = getLoss(obj,val0_dac,val1_dac,ref_dac,false);
+        sprintf(FMTBUF,"gain=%d loss=%f",gain_points[i],losses[i]);
+        print_info(FMTBUF);
       }
-      else{
-          this->m_state.gain_cal = 32;
-          this->update(this->m_state);
-          loss = getLoss(obj,val0_dac,val1_dac,ref_dac,false);
-      }
+      int best_code;
+      loss = util::find_best_gain_cal(gain_points,losses,3,best_code);
+      this->m_state.gain_cal = best_code;
       cutil::update_calib_table(calib_table,loss,6,
                                 nmos,
                                 pmos,
