@@ -74,8 +74,8 @@ float Fabric::Chip::Tile::Slice::Dac::fastMakeMedValue(float target,
                               ->parentTile->parentChip->tiles[3].slices[2].chipOutput);
   cutil::break_conns(calib);
 
-	Connection this_dac_to_tile = Connection ( out0, parentSlice->tileOuts[3].in0 );
-	Connection tile_to_chip = Connection ( parentSlice->tileOuts[3].out0,
+  Connection this_dac_to_tile = Connection ( out0, parentSlice->tileOuts[3].in0 );
+  Connection tile_to_chip = Connection ( parentSlice->tileOuts[3].out0,
                                          parentSlice->parentTile
                                          ->parentChip->tiles[3].slices[2].chipOutput->in0 );
   this->setEnable(true);
@@ -140,10 +140,10 @@ float Fabric::Chip::Tile::Slice::Dac::fastMakeHighValue(float target,
                               ->parentTile->parentChip->tiles[3].slices[2].chipOutput);
   cutil::break_conns(calib);
 
-	Connection this_dac_to_tile = Connection ( out0, parentSlice->tileOuts[3].in0 );
-	Connection ref_dac_to_tile = Connection ( ref_dac->out0, parentSlice->tileOuts[3].in0 );
+  Connection this_dac_to_tile = Connection ( out0, parentSlice->tileOuts[3].in0 );
+  Connection ref_dac_to_tile = Connection ( ref_dac->out0, parentSlice->tileOuts[3].in0 );
   // conn3
-	Connection tile_to_chip = Connection ( parentSlice->tileOuts[3].out0,
+  Connection tile_to_chip = Connection ( parentSlice->tileOuts[3].out0,
                                          parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->in0 );
 
 
