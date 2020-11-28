@@ -293,7 +293,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperFindMultBiasCodes(cut
 
     val1_dac->setConstant(neg);
     meas2 = util::meas_fast_chip_out(this);
-    error += max(fabs(meas2 - target_neg), error);
+    error = max(fabs(meas2 - target_neg), error);
     N_MULT_POINTS_TESTED += 2;
 #ifdef DEBUG_MULT_CAL
     sprintf(FMTBUF,"zero-in0 code=%d error=%f targ=(%f,%f) meas=(%f,%f)\n", i, error,
@@ -324,7 +324,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperFindMultBiasCodes(cut
 
     val1_dac->setConstant(neg);
     meas2 = util::meas_fast_chip_out(this);
-    error = max(fabs(meas2 - target_pos), error);
+    error = max(fabs(meas2 - target_neg), error);
     cutil::update_calib_table(in1_table,error,1,i);
     N_MULT_POINTS_TESTED += 2;
 #ifdef DEBUG_MULT_CAL
@@ -355,7 +355,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperFindMultBiasCodes(cut
 
     val1_dac->setConstant(neg);
     meas2 = util::meas_fast_chip_out(this);
-    error = max(fabs(meas2 - target_pos), error);
+    error = max(fabs(meas2 - target_neg), error);
 
     N_MULT_POINTS_TESTED += 2;
 #ifdef DEBUG_MULT_CAL
@@ -413,11 +413,11 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperFindVgaBiasCodes(cuti
 
     this->setGain(pos);
     meas1 = util::meas_fast_chip_out(this);
-    error += fabs(meas1 - target_pos);
+    error = max(fabs(meas1 - target_pos),error);
 
     this->setGain(neg);
     meas2 = util::meas_fast_chip_out(this);
-    error += fabs(meas2 - target_neg);
+    error = max(fabs(meas2 - target_neg),error);
     N_MULT_POINTS_TESTED += 2;
 #ifdef DEBUG_MULT_CAL 
     sprintf(FMTBUF,"zero-in0 code=%d error=%f targ=(%f,%f) meas=(%f,%f)\n", i, error,
@@ -442,11 +442,11 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperFindVgaBiasCodes(cuti
 
     this->setGain(pos);
     meas1 = util::meas_fast_chip_out(this);
-    error += fabs(meas1 - target_pos);
+    error = max(fabs(meas1 - target_pos),error);
 
     this->setGain(neg);
     meas2 = util::meas_fast_chip_out(this);
-    error += fabs(meas2 - target_neg);
+    error = max(fabs(meas2 - target_neg),error);
     N_MULT_POINTS_TESTED += 2;
 
 #ifdef DEBUG_MULT_CAL
