@@ -80,7 +80,7 @@ void Fabric::Chip::Tile::Slice::Dac::calibrate (calib_objective_t obj)
     cutil::update_calib_table(calib_table,loss,2,
                               this->m_state.nmos,
                               gain_cal);
-    sprintf(FMTBUF,"dac-cal nmos=%d\tgain_cal=%d\tloss=%f",nmos,gain_cal,loss);
+    sprintf(FMTBUF,"dac-cal nmos=%d\tgain_cal=%d\tloss=%f",this->m_state.nmos,gain_cal,loss);
     print_info(FMTBUF);
   }
 
