@@ -15,7 +15,7 @@ def dsinfo():
 def dsprog(prob):
   # dummy diffeq
   prob.decl_var("X","1.0")
-  prob.decl_var("Z","1.0*X")
+  prob.decl_var("Z","0.3*X")
   prob.emit("Z","TestPoint")
   prob.check()
 
