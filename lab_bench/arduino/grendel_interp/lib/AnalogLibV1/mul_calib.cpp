@@ -261,7 +261,7 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMinErrorMult(Dac * val0_da
   return total_loss/npts;
 }
 
-void Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperFindBiasCodes(cutil::calib_table_t & table_bias, int stride,
+void Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperFindMultBiasCodes(cutil::calib_table_t & table_bias, int stride,
                                                                          Dac* val0_dac,
                                                                          Dac* val1_dac,
                                                                          Dac* ref_dac,
@@ -280,26 +280,148 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperFindBiasCodes(cutil::
   this->m_state.port_cal[in1Id] = 32;
   this->m_state.port_cal[out0Id] = 32;
   for(int i=0; i < MAX_BIAS_CAL; i += 1){
+    float error = 0.0;
+    float meas1, meas2;
     this->m_state.port_cal[in0Id] = i;
     this->update(this->m_state);
+
     val0_dac->setConstant(0);
+
+    val1_dac->setConstant(pos);
+    meas1 = util::meas_fast_chip_out(this);
+    error += fabs(meas1 - target_pos);
+
+    val1_dac->setConstant(neg);
+    meas2 = util::meas_fast_chip_out(this);
+    error += fabs(meas2 - target_neg);
+    N_MULT_POINTS_TESTED += 2;
+#ifdef DEBUG_MULT_CAL
+    sprintf(FMTBUF,"zero-in0 code=%d error=%f targ=(%f,%f) meas=(%f,%f)\n", i, error,
+            target_neg,target_pos,meas1,meas2);
+    print_info(FMTBUF);
+#endif
+    cutil::update_calib_table(in0_table,error,1,i);
+  }
+  this->m_state.port_cal[in0Id] = in0_table.state[0];
+
+  sprintf(FMTBUF,"BEST-zero-in0 code=%d error=%f\n", in0_table.state[0], in0_table.loss);
+  print_info(FMTBUF);
+
+
+  cutil::calib_table_t in1_table = cutil::make_calib_table();
+  for(int i=0; i < MAX_BIAS_CAL; i += 1){
     float error = 0.0;
-    if(this->m_state.vga){
-      this->setGain(pos);
-      error += fabs(util::meas_fast_chip_out(this) - target_pos);
-      this->setGain(neg);
-      error += fabs(util::meas_fast_chip_out(this) - target_neg);
-      N_MULT_POINTS_TESTED += 2;
-    }
-    else{
-      val1_dac->setConstant(pos);
-      error += fabs(util::meas_fast_chip_out(this) - target_pos);
-      val1_dac->setConstant(neg);
-      error += fabs(util::meas_fast_chip_out(this) - target_neg);
-      N_MULT_POINTS_TESTED += 2;
-    }
-#ifdef DEBUG_MULT_CAL    
-sprintf(FMTBUF,"zero-in0 code=%d error=%f\n", i, error);
+    float meas1,meas2;
+
+    this->m_state.port_cal[in1Id] = i;
+    this->update(this->m_state);
+
+    val0_dac->setConstant(0);
+
+    val1_dac->setConstant(pos);
+    meas1 = util::meas_fast_chip_out(this);
+    error += fabs(meas1 - target_pos);
+
+    val1_dac->setConstant(neg);
+    meas2 = util::meas_fast_chip_out(this);
+    error += fabs(meas2 - target_neg);
+    cutil::update_calib_table(in1_table,error,1,i);
+    N_MULT_POINTS_TESTED += 2;
+#ifdef DEBUG_MULT_CAL
+    sprintf(FMTBUF,"zero-in0 code=%d error=%f targ=(%f,%f) meas=(%f,%f)\n", i, error,
+            target_neg,target_pos,meas1,meas2);
+    print_info(FMTBUF);
+#endif
+  }
+  this->m_state.port_cal[in1Id] = in1_table.state[0];
+
+  sprintf(FMTBUF,"BEST-zero-out code=%d error=%f\n", in1_table.state[0], in1_table.loss);
+  print_info(FMTBUF);
+
+
+  cutil::calib_table_t out_table = cutil::make_calib_table();
+  for(int i=0; i < MAX_BIAS_CAL; i += 1){
+    float error = 0.0;
+    float meas1,meas2;
+
+    this->m_state.port_cal[out0Id] = i;
+    this->update(this->m_state);
+
+    val0_dac->setConstant(0);
+
+    val1_dac->setConstant(pos);
+    meas1 = util::meas_fast_chip_out(this);
+    error += fabs(util::meas_fast_chip_out(this) - target_pos);
+
+    val1_dac->setConstant(neg);
+    meas2 = util::meas_fast_chip_out(this);
+    error += fabs(util::meas_fast_chip_out(this) - target_neg);
+
+    N_MULT_POINTS_TESTED += 2;
+#ifdef DEBUG_MULT_CAL
+    sprintf(FMTBUF,"zero-in0 code=%d error=%f targ=(%f,%f) meas=(%f,%f)\n", i, error,
+            target_neg,target_pos,meas1,meas2);
+    print_info(FMTBUF);
+#endif
+    cutil::update_calib_table(out_table,error,1,i);
+  }
+  this->m_state.port_cal[out0Id] = out_table.state[0];
+
+  sprintf(FMTBUF,"BEST-zero-out code=%d error=%f\n", out_table.state[0], out_table.loss);
+  print_info(FMTBUF);
+
+
+  cutil::update_calib_table(table_bias,out_table.loss,3,
+                            this->m_state.port_cal[in0Id],
+                            this->m_state.port_cal[in1Id],
+                            this->m_state.port_cal[out0Id]
+                            );
+  sprintf(FMTBUF,"BEST-ZERO targ=%f/%f nmos=%d pmos=%d port_cal=(%d,%d,%d) loss=%f",
+          target_pos,target_neg,this->m_state.nmos,this->m_state.pmos,
+          table_bias.state[0],table_bias.state[1],table_bias.state[2],
+          table_bias.loss);
+  print_info(FMTBUF);
+  ref_to_tileout.setConn();
+}
+
+
+void Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperFindVgaBiasCodes(cutil::calib_table_t & table_bias, int stride,
+                                                                         Dac* val0_dac,
+                                                                         Dac* ref_dac,
+                                                                         int bounds[6],
+                                                                         float pos,
+                                                                         float target_pos,
+                                                                         float neg,
+                                                                         float target_neg){
+
+  Fabric::Chip::Connection ref_to_tileout =
+    Fabric::Chip::Connection ( ref_dac->out0, parentSlice->tileOuts[3].in0);
+  ref_to_tileout.brkConn();
+
+  cutil::calib_table_t in0_table = cutil::make_calib_table();
+  this->m_state.port_cal[in0Id] = 32;
+  this->m_state.port_cal[in1Id] = 32;
+  this->m_state.port_cal[out0Id] = 32;
+  for(int i=0; i < MAX_BIAS_CAL; i += 1){
+    float error = 0.0;
+    float meas1,meas2;
+
+    this->m_state.port_cal[in0Id] = i;
+    this->update(this->m_state);
+
+    val0_dac->setConstant(0);
+
+    this->setGain(pos);
+    meas1 = util::meas_fast_chip_out(this);
+    error += fabs(meas1 - target_pos);
+
+    this->setGain(neg);
+    meas2 = util::meas_fast_chip_out(this);
+    error += fabs(meas2 - target_neg);
+    N_MULT_POINTS_TESTED += 2;
+#ifdef DEBUG_MULT_CAL 
+    sprintf(FMTBUF,"zero-in0 code=%d error=%f targ=(%f,%f) meas=(%f,%f)\n", i, error,
+            target_neg,target_pos,meas1,meas2);
     print_info(FMTBUF);
 #endif
     cutil::update_calib_table(in0_table,error,1,i);
@@ -309,52 +431,27 @@ sprintf(FMTBUF,"zero-in0 code=%d error=%f\n", i, error);
 
   this->m_state.port_cal[in0Id] = in0_table.state[0];
 
-  if(!this->m_state.vga){
-    cutil::calib_table_t in1_table = cutil::make_calib_table();
-    val0_dac->setConstant(0);
-    for(int i=0; i < MAX_BIAS_CAL; i += 1){
-      this->m_state.port_cal[in1Id] = i;
-      this->update(this->m_state);
-      float error = 0.0;
-      val1_dac->setConstant(pos);
-      error += fabs(util::meas_fast_chip_out(this) - target_pos);
-      val1_dac->setConstant(neg);
-      error += fabs(util::meas_fast_chip_out(this) - target_neg);
-      cutil::update_calib_table(in1_table,error,1,i);
-      N_MULT_POINTS_TESTED += 2;
-#ifdef DEBUG_MULT_CAL    
-      sprintf(FMTBUF,"zero-in1 code=%d error=%f\n", i, error);
-      print_info(FMTBUF);
-#endif
-    }
-    this->m_state.port_cal[in1Id] = in1_table.state[0];
-    sprintf(FMTBUF,"BEST-zero-in1 code=%d error=%f\n", in1_table.state[0], in1_table.loss);
-    print_info(FMTBUF);
-
-  }
 
   cutil::calib_table_t out_table = cutil::make_calib_table();
   val0_dac->setConstant(0);
   for(int i=0; i < MAX_BIAS_CAL; i += 1){
+    float error = 0.0;
+    float meas1,meas2;
     this->m_state.port_cal[out0Id] = i;
     this->update(this->m_state);
-    float error = 0.0;
-    if(this->m_state.vga){
-      this->setGain(pos);
-      error += fabs(util::meas_fast_chip_out(this) - target_pos);
-      this->setGain(neg);
-      error += fabs(util::meas_fast_chip_out(this) - target_neg);
-      N_MULT_POINTS_TESTED += 2;
-    }
-    else{
-      val1_dac->setConstant(pos);
-      error += fabs(util::meas_fast_chip_out(this) - target_pos);
-      val1_dac->setConstant(neg);
-      error += fabs(util::meas_fast_chip_out(this) - target_neg);
-      N_MULT_POINTS_TESTED += 2;
-    }
+
+    this->setGain(pos);
+    meas1 = util::meas_fast_chip_out(this);
+    error += fabs(meas1 - target_pos);
+
+    this->setGain(neg);
+    meas2 = util::meas_fast_chip_out(this);
+    error += fabs(meas2 - target_neg);
+    N_MULT_POINTS_TESTED += 2;
+
 #ifdef DEBUG_MULT_CAL
-    sprintf(FMTBUF,"zero-out  code=%d error=%f\n", i, error);
+    sprintf(FMTBUF,"zero-in1 code=%d error=%f targ=(%f,%f) meas=(%f,%f)\n", i, error,
+            target_neg,target_pos,meas1,meas2);
     print_info(FMTBUF);
 #endif
     cutil::update_calib_table(out_table,error,1,i);
@@ -458,9 +555,8 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateVga (calib_objective_t obj)
     this->m_state.pmos = 3;
     this->m_state.gain_cal = 32;
     cutil::calib_table_t table_bias = cutil::make_calib_table();
-    this->calibrateHelperFindBiasCodes(table_bias, 8,
+    this->calibrateHelperFindVgaBiasCodes(table_bias, 8,
                                        val0_dac,
-                                       NULL,
                                        ref_dac,
                                        bias_bounds,
                                        target_pos_in,
@@ -518,9 +614,8 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateVga (calib_objective_t obj)
   // fine grain bias calculation
   cutil::calib_table_t table_bias = cutil::make_calib_table();
   int stride=4;
-  this->calibrateHelperFindBiasCodes(table_bias, stride,
+  this->calibrateHelperFindVgaBiasCodes(table_bias, stride,
                                      val0_dac,
-                                     NULL,
                                      ref_dac,
                                      bias_bounds,
                                      target_pos_in,
@@ -533,9 +628,8 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateVga (calib_objective_t obj)
   bias_bounds[3] = min(table_bias.state[1]+4,MAX_BIAS_CAL);
   bias_bounds[4] = max(table_bias.state[2]-4,0);
   bias_bounds[5] = min(table_bias.state[2]+4,MAX_BIAS_CAL);
-  this->calibrateHelperFindBiasCodes(table_bias, 1,
+  this->calibrateHelperFindVgaBiasCodes(table_bias, 1,
                                      val0_dac,
-                                     NULL,
                                      ref_dac,
                                      bias_bounds,
                                      target_pos_in,
@@ -676,7 +770,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateMult(calib_objective_t obj)
       this->m_state.gain_cal = 32; 
       this->update(this->m_state);
       cutil::calib_table_t table_bias = cutil::make_calib_table();
-      this->calibrateHelperFindBiasCodes(table_bias, 8,
+      this->calibrateHelperFindMultBiasCodes(table_bias, 8,
                                          val0_dac,
                                          val1_dac,
                                          ref_dac,
@@ -725,7 +819,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateMult(calib_objective_t obj)
   this->m_state.gain_cal = calib_table.state[5];
   // fine grain bias calculation
   cutil::calib_table_t table_bias = cutil::make_calib_table();
-  this->calibrateHelperFindBiasCodes(table_bias, 4,
+  this->calibrateHelperFindMultBiasCodes(table_bias, 4,
                                      val0_dac,
                                      val1_dac,
                                      ref_dac,
@@ -740,7 +834,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateMult(calib_objective_t obj)
   bias_bounds[3] = min(table_bias.state[1]+4,MAX_BIAS_CAL);
   bias_bounds[4] = max(table_bias.state[2]-4,0);
   bias_bounds[5] = min(table_bias.state[2]+4,MAX_BIAS_CAL);
-  this->calibrateHelperFindBiasCodes(table_bias, 1,
+  this->calibrateHelperFindMultBiasCodes(table_bias, 1,
                                      val0_dac,
                                      val1_dac,
                                      ref_dac,
