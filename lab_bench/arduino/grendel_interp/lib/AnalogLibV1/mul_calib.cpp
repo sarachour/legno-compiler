@@ -131,8 +131,8 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperMult(Dac * val0_dac,
       float in1 = TEST1_MULT_POINTS[j];
       float variance,mean;
       val0_dac->setConstant(in0);
-      val1_dac->setConstant(in1);
       float target_in0 = val0_dac->fastMeasureValue(dummy);
+      val1_dac->setConstant(in1);
       float target_in1 = val1_dac->fastMeasureValue(dummy);
       float target_out = this->computeOutput(this->m_state,
                                              target_in0,
@@ -180,7 +180,7 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitMult(Dac * val0
     errors[i] = observed[i]-expected[i];
   }
   float gain_mean,rsq,bias,max_error,avg_error;
-  util::linear_regression(expected,errors,npts,
+  util::linear_regression(expected,observed,npts,
                           gain_mean,bias,rsq,max_error,avg_error);
   float min,max;
   this->computeInterval(this->m_state, out0Id, min, max);
