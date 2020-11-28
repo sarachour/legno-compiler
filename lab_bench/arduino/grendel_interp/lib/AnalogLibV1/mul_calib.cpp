@@ -349,8 +349,226 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperFindBiasCodes(cutil::
 }
 
 
+void Fabric::Chip::Tile::Slice::Multiplier::calibrate(calib_objective_t obj) {
+  if(this->m_state.vga){
+    this->calibrateVga(obj);
+  }
+  else{
+    this->calibrateMult(obj);
+  }
+}
 
-void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
+void Fabric::Chip::Tile::Slice::Multiplier::calibrateVga (calib_objective_t obj) {
+  mult_state_t codes_self = this->m_state;
+
+  int next_slice1 = (slice_to_int(parentSlice->sliceId) + 1) % 4;
+  int next_slice2 = (slice_to_int(parentSlice->sliceId) + 2) % 4;
+  Dac * ref_dac = parentSlice->parentTile->slices[next_slice2].dac;
+  Dac * val0_dac = parentSlice->dac;
+
+  mult_state_t state_mult = this->m_state;
+  dac_state_t state_dac_val0 = val0_dac->m_state;
+  dac_state_t state_dac_ref = ref_dac->m_state;
+
+  N_MULT_POINTS_TESTED = 0;
+  cutil::calibrate_t calib;
+  cutil::initialize(calib);
+  cutil::buffer_mult_conns(calib,this);
+  cutil::buffer_dac_conns(calib,ref_dac);
+  cutil::buffer_dac_conns(calib,val0_dac);
+  cutil::buffer_tileout_conns(calib,&parentSlice->tileOuts[3]);
+  cutil::buffer_chipout_conns(calib,parentSlice->parentTile
+                              ->parentChip->tiles[3].slices[2].chipOutput);
+  cutil::break_conns(calib);
+
+  Connection dac0_to_in0 = Connection (val0_dac->out0, this->in0);
+  Connection mult_to_tileout = Connection (this->out0, parentSlice->tileOuts[3].in0);
+	Connection tileout_to_chipout = Connection ( parentSlice->tileOuts[3].out0,
+                                               parentSlice->parentTile
+                                               ->parentChip->tiles[3].slices[2].chipOutput->in0 );
+  Fabric::Chip::Connection ref_to_tileout =
+    Fabric::Chip::Connection ( ref_dac->out0, parentSlice->tileOuts[3].in0);
+
+
+  float min_gain_code,n_gain_codes;
+  min_gain_code=0;
+  n_gain_codes=MAX_GAIN_CAL;
+
+  ref_dac->setRange(util::range_to_dac_range(this->m_state.range[out0Id]));
+
+  float target_pos = 0.0;
+  float target_neg = 0.0;
+  float target_pos_in = 0.0;
+  float target_neg_in = 0.0;
+  float dummy,dac_out0;
+  int bias_bounds[6];
+  bias_bounds[0] = bias_bounds[2] = bias_bounds[4] = 0;
+  bias_bounds[1] = bias_bounds[3] = bias_bounds[5] = MAX_BIAS_CAL;
+
+  val0_dac->setRange(util::range_to_dac_range(this->m_state.range[in0Id]));
+  fast_calibrate_dac(val0_dac);
+  val0_dac->setConstant(0.0);
+  dac_out0 = val0_dac->fastMeasureValue(dummy);
+  target_pos_in = 1.0;
+  this->setGain(target_pos_in);
+  target_pos = computeOutput(this->m_state, dac_out0, 0.0);
+  target_neg_in = 1.0;
+  this->setGain(target_neg_in);
+  target_neg = computeOutput(this->m_state, dac_out0, 0.0);
+
+
+  mult_to_tileout.setConn();
+  ref_to_tileout.setConn();
+	tileout_to_chipout.setConn();
+  dac0_to_in0.setConn();
+
+  cutil::calib_table_t calib_table = cutil::make_calib_table();
+  /*nmos, gain_cal, port_cal in0,in1,out*/
+  for(int nmos=0; nmos < MAX_NMOS; nmos += 1){
+    this->m_state.nmos = nmos;
+    this->m_state.pmos = 3;
+    this->m_state.gain_cal = 32;
+    cutil::calib_table_t table_bias = cutil::make_calib_table();
+    this->calibrateHelperFindBiasCodes(table_bias, 8,
+                                       val0_dac,
+                                       NULL,
+                                       ref_dac,
+                                       bias_bounds,
+                                       target_pos_in,
+                                       target_pos,
+                                       target_neg_in,
+                                       target_neg);
+
+    this->m_state.port_cal[in0Id] = table_bias.state[0];
+    this->m_state.port_cal[in1Id] = table_bias.state[1];
+    this->m_state.port_cal[out0Id] = table_bias.state[2];
+
+
+    for(int pmos=0; pmos < MAX_PMOS; pmos += 1){
+      float loss = 0.0;
+      this->m_state.pmos = pmos;
+      int gain_points[3] = {32,0,63};
+      float losses[3];
+      for(int i=0; i < 3; i += 1){
+        this->m_state.gain_cal = gain_points[i];
+        this->update(this->m_state);
+        losses[i] = getLoss(obj,val0_dac,NULL,ref_dac,false);
+        sprintf(FMTBUF,"pn nmos=%d, pmos=%d, gain=%d loss=%f",
+                nmos,pmos,gain_points[i],losses[i]);
+        print_info(FMTBUF);
+      }
+      int best_code;
+      loss = util::find_best_gain_cal(gain_points,losses,3,best_code);
+      this->m_state.gain_cal = best_code;
+      cutil::update_calib_table(calib_table,loss,6,
+                                nmos,
+                                pmos,
+                                this->m_state.port_cal[in0Id],
+                                this->m_state.port_cal[in1Id],
+                                this->m_state.port_cal[out0Id],
+                                this->m_state.gain_cal);
+      sprintf(FMTBUF,"best-pm nmos=%d pmos=%d port_cal=(%d,%d,%d) gain_cal=%d loss=%f",
+              calib_table.state[0],
+              calib_table.state[1],
+              calib_table.state[2],
+              calib_table.state[3],
+              calib_table.state[4],
+              calib_table.state[5],
+              calib_table.loss);
+      print_info(FMTBUF);
+
+    }
+  }
+
+  this->m_state.nmos = calib_table.state[0];
+  this->m_state.pmos = calib_table.state[1];
+  this->m_state.port_cal[in0Id] = calib_table.state[2];
+  this->m_state.port_cal[in1Id] = calib_table.state[3];
+  this->m_state.port_cal[out0Id] = calib_table.state[4];
+  this->m_state.gain_cal = calib_table.state[5];
+  // fine grain bias calculation
+  cutil::calib_table_t table_bias = cutil::make_calib_table();
+  int stride=4;
+  this->calibrateHelperFindBiasCodes(table_bias, stride,
+                                     val0_dac,
+                                     NULL,
+                                     ref_dac,
+                                     bias_bounds,
+                                     target_pos_in,
+                                     target_pos,
+                                     target_neg_in,
+                                     target_neg);
+  bias_bounds[0] = max(table_bias.state[0]-4,0);
+  bias_bounds[1] = min(table_bias.state[0]+4,MAX_BIAS_CAL);
+  bias_bounds[2] = max(table_bias.state[1]-4,0);
+  bias_bounds[3] = min(table_bias.state[1]+4,MAX_BIAS_CAL);
+  bias_bounds[4] = max(table_bias.state[2]-4,0);
+  bias_bounds[5] = min(table_bias.state[2]+4,MAX_BIAS_CAL);
+  this->calibrateHelperFindBiasCodes(table_bias, 1,
+                                     val0_dac,
+                                     NULL,
+                                     ref_dac,
+                                     bias_bounds,
+                                     target_pos_in,
+                                     target_pos,
+                                     target_neg_in,
+                                     target_neg);
+
+  this->m_state.port_cal[in0Id] = table_bias.state[0];
+  this->m_state.port_cal[in1Id] = table_bias.state[1];
+  this->m_state.port_cal[out0Id] = table_bias.state[2];
+  // do a thorough search for best nmos code.
+  for(int gain_cal=0; gain_cal < MAX_GAIN_CAL; gain_cal+=1){
+    this->m_state.gain_cal = gain_cal;
+    this->update(this->m_state);
+    float loss = getLoss(obj,val0_dac,NULL,ref_dac,false);
+    cutil::update_calib_table(calib_table,loss,6,
+                              this->m_state.nmos,
+                              this->m_state.pmos,
+                              this->m_state.port_cal[in0Id],
+                              this->m_state.port_cal[in1Id],
+                              this->m_state.port_cal[out0Id],
+                              gain_cal);
+    sprintf(FMTBUF,"nmos=%d pmos=%d port_cal=(%d,%d,%d) gain_cal=%d loss=%f",
+            this->m_state.nmos,
+            this->m_state.pmos,
+            this->m_state.port_cal[in0Id],
+            this->m_state.port_cal[in1Id],
+            this->m_state.port_cal[out0Id],
+            this->m_state.gain_cal,
+            loss);
+    print_info(FMTBUF);
+  }
+
+  val0_dac->update(state_dac_val0);
+  ref_dac->update(state_dac_ref);
+  this->update(state_mult);
+  tileout_to_chipout.brkConn();
+  mult_to_tileout.brkConn();
+  cutil::restore_conns(calib);
+
+  print_info("set state");
+  this->m_state.nmos = calib_table.state[0];
+  this->m_state.pmos = calib_table.state[1];
+  this->m_state.port_cal[in0Id] = calib_table.state[2];
+  this->m_state.port_cal[in1Id] = calib_table.state[3];
+  this->m_state.port_cal[out0Id] = calib_table.state[4];
+  this->m_state.gain_cal = calib_table.state[5];
+
+  sprintf(FMTBUF,"BEST nmos=%d pmos=%d port_cal=(%d,%d,%d) gain_cal=%d loss=%f",
+          this->m_state.nmos,
+          this->m_state.pmos,
+          this->m_state.port_cal[in0Id],
+          this->m_state.port_cal[in1Id],
+          this->m_state.port_cal[out0Id],
+          this->m_state.gain_cal,
+          calib_table.loss);
+  print_info(FMTBUF);
+  sprintf(FMTBUF,"Tested Points: %d\n", N_MULT_POINTS_TESTED);
+  print_info(FMTBUF);
+}
+
+void Fabric::Chip::Tile::Slice::Multiplier::calibrateMult(calib_objective_t obj) {
   mult_state_t codes_self = this->m_state;
 
   int next_slice1 = (slice_to_int(parentSlice->sliceId) + 1) % 4;
@@ -387,11 +605,6 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
 
 
   float min_gain_code=32,n_gain_codes=1;
-  if(this->m_state.vga){
-    min_gain_code=0;
-    n_gain_codes=MAX_GAIN_CAL;
-  }
-
   ref_dac->setRange(util::range_to_dac_range(this->m_state.range[out0Id]));
 
   float target_pos = 0.0;
@@ -403,44 +616,28 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
   bias_bounds[0] = bias_bounds[2] = bias_bounds[4] = 0;
   bias_bounds[1] = bias_bounds[3] = bias_bounds[5] = MAX_BIAS_CAL;
 
-  if(this->m_state.vga){
-    val0_dac->setRange(util::range_to_dac_range(this->m_state.range[in0Id]));
-    fast_calibrate_dac(val0_dac);
-    val0_dac->setConstant(0.0);
-    dac_out0 = val0_dac->fastMeasureValue(dummy);
-    target_pos_in = 1.0;
-    this->setGain(target_pos_in);
-    target_pos = computeOutput(this->m_state, dac_out0, 0.0);
-    target_neg_in = 1.0;
-    this->setGain(target_neg_in);
-    target_neg = computeOutput(this->m_state, dac_out0, 0.0);
-
-  }
-  else{
-    // 0.5*0*2.0
-    fast_calibrate_dac(val0_dac);
-    fast_calibrate_dac(val1_dac);
-    val0_dac->setRange(util::range_to_dac_range(this->m_state.range[in0Id]));
-    val1_dac->setRange(util::range_to_dac_range(this->m_state.range[in1Id]));
-    val0_dac->setConstant(0.0);
-    dac_out0 = val0_dac->fastMeasureValue(dummy);
-    target_pos_in = 0.5;
-    val1_dac->setConstant(target_pos_in);
-    dac_out1 = val1_dac->fastMeasureValue(dummy);
-    target_pos = computeOutput(this->m_state, dac_out0, dac_out1);
-    target_neg_in = -0.5;
-    val1_dac->setConstant(target_neg_in);
-    dac_out1 = val1_dac->fastMeasureValue(dummy);
-    target_neg = computeOutput(this->m_state, dac_out0, dac_out1);
-  }
+  // 0.5*0*2.0
+  fast_calibrate_dac(val0_dac);
+  fast_calibrate_dac(val1_dac);
+  val0_dac->setRange(util::range_to_dac_range(this->m_state.range[in0Id]));
+  val1_dac->setRange(util::range_to_dac_range(this->m_state.range[in1Id]));
+  val0_dac->setConstant(0.0);
+  dac_out0 = val0_dac->fastMeasureValue(dummy);
+  target_pos_in = 0.5;
+  val1_dac->setConstant(target_pos_in);
+  dac_out1 = val1_dac->fastMeasureValue(dummy);
+  target_pos = computeOutput(this->m_state, dac_out0, dac_out1);
+  target_neg_in = -0.5;
+  val1_dac->setConstant(target_neg_in);
+  dac_out1 = val1_dac->fastMeasureValue(dummy);
+  target_neg = computeOutput(this->m_state, dac_out0, dac_out1);
 
 
   mult_to_tileout.setConn();
   ref_to_tileout.setConn();
 	tileout_to_chipout.setConn();
   dac0_to_in0.setConn();
-  if(!this->m_state.vga)
-    dac1_to_in1.setConn();
+  dac1_to_in1.setConn();
 
   cutil::calib_table_t calib_table = cutil::make_calib_table();
   /*nmos, gain_cal, port_cal in0,in1,out*/
@@ -448,39 +645,30 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
     this->m_state.nmos = nmos;
     this->m_state.pmos = 3;
     this->m_state.gain_cal = 32;
-    cutil::calib_table_t table_bias = cutil::make_calib_table();
-    this->calibrateHelperFindBiasCodes(table_bias, 8,
-                                       val0_dac,
-                                       val1_dac,
-                                       ref_dac,
-                                       bias_bounds,
-                                       target_pos_in,
-                                       target_pos,
-                                       target_neg_in,
-                                       target_neg);
-
-    this->m_state.port_cal[in0Id] = table_bias.state[0];
-    this->m_state.port_cal[in1Id] = table_bias.state[1];
-    this->m_state.port_cal[out0Id] = table_bias.state[2];
-
-
     for(int pmos=0; pmos < MAX_PMOS; pmos += 1){
-      float loss = 0.0;
       this->m_state.pmos = pmos;
-      int gain_points[3] = {32,0,63};
-      float losses[3];
-      int n_gains =  this->m_state.vga ? 3 : 1;
-      for(int i=0; i < n_gains; i += 1){
-        this->m_state.gain_cal = gain_points[i];
-        this->update(this->m_state);
-        losses[i] = getLoss(obj,val0_dac,val1_dac,ref_dac,false);
-        sprintf(FMTBUF,"pn nmos=%d, pmos=%d, gain=%d loss=%f",
-                nmos,pmos,gain_points[i],losses[i]);
-        print_info(FMTBUF);
-      }
-      int best_code;
-      loss = util::find_best_gain_cal(gain_points,losses,n_gains,best_code);
-      this->m_state.gain_cal = best_code;
+      this->update(this->m_state);
+      cutil::calib_table_t table_bias = cutil::make_calib_table();
+      this->calibrateHelperFindBiasCodes(table_bias, 8,
+                                         val0_dac,
+                                         val1_dac,
+                                         ref_dac,
+                                         bias_bounds,
+                                         target_pos_in,
+                                         target_pos,
+                                         target_neg_in,
+                                         target_neg);
+
+      this->m_state.port_cal[in0Id] = table_bias.state[0];
+      this->m_state.port_cal[in1Id] = table_bias.state[1];
+      this->m_state.port_cal[out0Id] = table_bias.state[2];
+
+      this->update(this->m_state);
+      float loss = getLoss(obj,val0_dac,val1_dac,ref_dac,false);
+      sprintf(FMTBUF,"pn nmos=%d, pmos=%d, loss=%f",
+              nmos,pmos,loss);
+      print_info(FMTBUF);
+
       cutil::update_calib_table(calib_table,loss,6,
                                 nmos,
                                 pmos,
@@ -488,26 +676,27 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
                                 this->m_state.port_cal[in1Id],
                                 this->m_state.port_cal[out0Id],
                                 this->m_state.gain_cal);
-      sprintf(FMTBUF,"best-pm nmos=%d pmos=%d port_cal=(%d,%d,%d) gain_cal=%d loss=%f",
-              calib_table.state[0],
-              calib_table.state[1],
-              calib_table.state[2],
-              calib_table.state[3],
-              calib_table.state[4],
-              calib_table.state[5],
-              calib_table.loss);
-      print_info(FMTBUF);
-
     }
+    sprintf(FMTBUF,"BEST-pm nmos=%d pmos=%d port_cal=(%d,%d,%d) gain_cal=%d loss=%f",
+            calib_table.state[0],
+            calib_table.state[1],
+            calib_table.state[2],
+            calib_table.state[3],
+            calib_table.state[4],
+            calib_table.state[5],
+            calib_table.loss);
+    print_info(FMTBUF);
   }
 
   this->m_state.nmos = calib_table.state[0];
   this->m_state.pmos = calib_table.state[1];
+  this->m_state.port_cal[in0Id] = calib_table.state[2];
+  this->m_state.port_cal[in1Id] = calib_table.state[3];
+  this->m_state.port_cal[out0Id] = calib_table.state[4];
   this->m_state.gain_cal = calib_table.state[5];
   // fine grain bias calculation
   cutil::calib_table_t table_bias = cutil::make_calib_table();
-  int stride=4;
-  this->calibrateHelperFindBiasCodes(table_bias, stride,
+  this->calibrateHelperFindBiasCodes(table_bias, 4,
                                      val0_dac,
                                      val1_dac,
                                      ref_dac,
@@ -535,28 +724,6 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrate (calib_objective_t obj) {
   this->m_state.port_cal[in0Id] = table_bias.state[0];
   this->m_state.port_cal[in1Id] = table_bias.state[1];
   this->m_state.port_cal[out0Id] = table_bias.state[2];
-  // do a thorough search for best nmos code.
-  for(int gain_cal=min_gain_code; gain_cal < min_gain_code+n_gain_codes; gain_cal+=1){
-    this->m_state.gain_cal = gain_cal;
-    this->update(this->m_state);
-    float loss = getLoss(obj,val0_dac,val1_dac,ref_dac,false);
-    cutil::update_calib_table(calib_table,loss,6,
-                              this->m_state.nmos,
-                              this->m_state.pmos,
-                              this->m_state.port_cal[in0Id],
-                              this->m_state.port_cal[in1Id],
-                              this->m_state.port_cal[out0Id],
-                              gain_cal);
-    sprintf(FMTBUF,"nmos=%d pmos=%d port_cal=(%d,%d,%d) gain_cal=%d loss=%f",
-            this->m_state.nmos,
-            this->m_state.pmos,
-            this->m_state.port_cal[in0Id],
-            this->m_state.port_cal[in1Id],
-            this->m_state.port_cal[out0Id],
-            this->m_state.gain_cal,
-            loss);
-    print_info(FMTBUF);
-  }
 
   val0_dac->update(state_dac_val0);
   val1_dac->update(state_dac_val1);
