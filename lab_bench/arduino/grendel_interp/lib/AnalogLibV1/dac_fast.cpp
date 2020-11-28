@@ -6,7 +6,7 @@
 #include "dac.h"
 
 // this model for the high-mode dac.
-#define DEBUG_DAC_FAST
+//#define DEBUG_DAC_FAST
 
 void fast_calibrate_dac(Fabric::Chip::Tile::Slice::Dac * aux_dac){
   if(!aux_dac->m_is_calibrated){
