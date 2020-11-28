@@ -48,9 +48,8 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measure(profile_spec_t spec) {
 
 #else
   mult_state_t backup = m_state;
-  this->m_state = spec.state.mult;
   profile_t result = result;
-  if(this->m_state.vga){
+  if(spec.state.mult.vga){
     result = measureVga(spec);
   }
   else{
@@ -83,32 +82,35 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(profile_spec_t spec)
   cutil::break_conns(calib);
 
 
-  Connection dac_to_in0 = Connection(val1_dac->out0, in0);
-  Connection mult_to_tileout = Connection ( out0, parentSlice->tileOuts[3].in0 );
+  Connection dac_to_in0 = Connection(val1_dac->out0, this->in0);
   Connection tileout_to_chipout = Connection ( parentSlice->tileOuts[3].out0,
                                                parentSlice->parentTile
                                                ->parentChip->tiles[3].slices[2].chipOutput->in0 );
-  Connection ref_to_tileout = Connection ( ref_dac->out0, parentSlice->tileOuts[3].in0 );
-
-  spec.inputs[in0Id]= val1_dac->fastMakeValue(spec.inputs[in0Id]);
-  float target_vga = computeOutput(this->m_state,
-                                   spec.inputs[in0Id],
-                                   VAL_DONT_CARE);
-  if(fabs(target_vga) > 20.0){
-    sprintf(FMTBUF, "can't fit %f", target_vga);
-    calib.success = false;
-  }
+  Connection mult_to_tileout = Connection ( this->out0, parentSlice->tileOuts[3].in0 );
+  Connection ref_to_tileout = Connection ( ref_dac->out0, parentSlice->tileOuts[3].in0 ); 
 
   dac_to_in0.setConn();
   mult_to_tileout.setConn();
-  tileout_to_chipout.setConn();
   ref_to_tileout.setConn();
+  tileout_to_chipout.setConn();
+
+  this->m_state = spec.state.mult;
+  this->update(this->m_state);
   float mean,variance;
   const bool meas_steady = false;
+
+  spec.inputs[in0Id]= val1_dac->fastMakeValue(spec.inputs[in0Id]);
+  float target_out = computeOutput(this->m_state,
+                                   spec.inputs[in0Id],
+                                   VAL_DONT_CARE);
+  if(fabs(target_out) > 20.0){
+    sprintf(FMTBUF, "can't fit %f", target_out);
+    calib.success = false;
+  }
   if(calib.success){
     calib.success &= cutil::measure_signal_robust(this,
                                                   ref_dac,
-                                                  target_vga,
+                                                  target_out,
                                                   meas_steady,
                                                   mean,
                                                   variance);
@@ -122,7 +124,7 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(profile_spec_t spec)
   sprintf(FMTBUF,"prof-vga input=%f coeff=%f target=%f mean=%f\n",
           spec.inputs[in0Id],
           coeff,
-          target_vga,
+          target_out,
           mean);
   print_info(FMTBUF);
 #endif
@@ -181,7 +183,9 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureMult(profile_spec_t spec
   mult_to_tileout.setConn();
   tileout_to_chipout.setConn();
   ref_to_tileout.setConn();
-
+  
+  this->m_state = spec.state.mult;
+  this->update(this->m_state);
 
   spec.inputs[in0Id ]= val1_dac->fastMakeValue(spec.inputs[in0Id]);
   spec.inputs[in1Id] = val2_dac->fastMakeValue(spec.inputs[in1Id]);
@@ -210,7 +214,7 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureMult(profile_spec_t spec
     prof.status = FAILED_TO_CALIBRATE;
   }
 #ifdef DEBUG_MULT_PROF
-  sprintf(FMTBUF,"prof-vga in0=%f in1=%f target=%f mean=%f\n",
+  sprintf(FMTBUF,"prof-mult in0=%f in1=%f target=%f mean=%f\n",
           spec.inputs[in0Id],
           spec.inputs[in1Id],
           target_mult,
