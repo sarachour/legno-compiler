@@ -64,8 +64,10 @@ void Fabric::Chip::Tile::Slice::Dac::calibrate (calib_objective_t obj)
       //compute loss for combo
       float loss = getLoss(obj);
       cutil::update_calib_table(calib_table,loss,2,nmos,gain_cal);
+#ifdef DEBUG_DAC_CAL
       sprintf(FMTBUF,"dac-cal nmos=%d\tgain_cal=%d\tloss=%f\n",nmos,gain_cal,loss);
       print_info(FMTBUF);
+#endif
     }
   }
   sprintf(FMTBUF,"BEST-nmos dac-cal nmos=%d\tloss=%f\n",
@@ -80,8 +82,10 @@ void Fabric::Chip::Tile::Slice::Dac::calibrate (calib_objective_t obj)
     cutil::update_calib_table(calib_table,loss,2,
                               this->m_state.nmos,
                               gain_cal);
+#ifdef DEBUG_DAC_CAL
     sprintf(FMTBUF,"dac-cal nmos=%d\tgain_cal=%d\tloss=%f",this->m_state.nmos,gain_cal,loss);
     print_info(FMTBUF);
+#endif
   }
 
   int best_nmos = calib_table.state[0];

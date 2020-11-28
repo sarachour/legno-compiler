@@ -16,7 +16,7 @@ const float TEST1_MULT_POINTS[MULT_CALIB_NPTS] = {-0.5,0.5,0.0};
 const float TEST0_VGA_POINTS[VGA_CALIB_NPTS] = {-0.75,0.75,-0.5,0.5,0.0};
 const float TEST1_VGA_POINTS[VGA_CALIB_NPTS] = {-0.75,0.75,-0.5,0.5,0.0};
 
-//#define DEBUG_MULT_CAL
+#define DEBUG_MULT_CAL
 
 unsigned int N_MULT_POINTS_TESTED = 0;
 float Fabric::Chip::Tile::Slice::Multiplier::getLoss(calib_objective_t obj,
