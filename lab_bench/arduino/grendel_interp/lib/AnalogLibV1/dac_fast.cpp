@@ -118,6 +118,8 @@ float Fabric::Chip::Tile::Slice::Dac::fastMakeMedValue(float target,
   this_dac_to_tile.brkConn();
   tile_to_chip.brkConn();
   cutil::restore_conns(calib);
+  codes_dac.const_code = this->m_state.const_code;
+  this->update(codes_dac);
   return mean;
 
 
@@ -244,6 +246,8 @@ float Fabric::Chip::Tile::Slice::Dac::fastMakeHighValue(float target,
   tile_to_chip.brkConn();
   cutil::restore_conns(calib);
   ref_dac->update(codes_ref);
+  codes_dac.const_code = this->m_state.const_code;
+  this->update(codes_dac);
 
   return mean - ref_value;
 }
@@ -411,7 +415,7 @@ float Fabric::Chip::Tile::Slice::Dac::fastMeasureHighValue(float& variance){
   this_dac_to_tile.brkConn();
   tile_to_chip.brkConn();
   cutil::restore_conns(calib);
-  update(codes_dac);
   ref_dac->update(codes_ref);
+  this->update(codes_dac);
   return out;
 }

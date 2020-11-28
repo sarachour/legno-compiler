@@ -188,7 +188,7 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitMult(Dac * val0
   return cutil::compute_loss(ignore_bias ? 0.0 : bias,
                              max_std,
                              avg_error,
-                             1.0 + gain_mean,
+                             gain_mean,
                              max,
                              0.0, 10.0);
 }
