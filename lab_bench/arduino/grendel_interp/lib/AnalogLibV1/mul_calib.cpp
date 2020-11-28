@@ -4,11 +4,17 @@
 #include "calib_util.h"
 #include <float.h>
 
-#define CALIB_NPTS 7
-#define TOTAL_NPTS (1 + CALIB_NPTS*CALIB_NPTS)
-const float TEST0_POINTS[CALIB_NPTS] = {-0.9,0.9,-0.75,0.75,-0.5,0.5,0.0};
-const float TEST1_MULT_POINTS[CALIB_NPTS] = {-0.9,0.9,-0.75,0.75,-0.5,0.5,0.0};
-const float TEST1_VGA_POINTS[CALIB_NPTS] = {-0.9,0.9,-0.75,0.75,-0.5,0.5,0.0};
+#define MULT_CALIB_NPTS 3
+#define MULT_TOTAL_NPTS (1 + MULT_CALIB_NPTS*MULT_CALIB_NPTS)
+
+#define VGA_CALIB_NPTS 5
+#define VGA_TOTAL_NPTS (1 + VGA_CALIB_NPTS*VGA_CALIB_NPTS)
+
+const float TEST0_MULT_POINTS[MULT_CALIB_NPTS] = {0.75,-0.5,0.5};
+const float TEST1_MULT_POINTS[MULT_CALIB_NPTS] = {-0.5,0.5,0.0};
+
+const float TEST0_VGA_POINTS[VGA_CALIB_NPTS] = {-0.75,0.75,-0.5,0.5,0.0};
+const float TEST1_VGA_POINTS[VGA_CALIB_NPTS] = {-0.75,0.75,-0.5,0.5,0.0};
 
 //#define DEBUG_MULT_CAL
 
@@ -71,9 +77,9 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperVga(Dac * val_dac,
 
   ref_to_tileout.setConn();
   dac0_to_in0.setConn();
-  for(int i=0; i < CALIB_NPTS; i += 1){
-    for(int j=0; j < CALIB_NPTS; j += 1){
-      float in0 = TEST0_POINTS[i];
+  for(int i=0; i < VGA_CALIB_NPTS; i += 1){
+    for(int j=0; j < VGA_CALIB_NPTS; j += 1){
+      float in0 = TEST0_VGA_POINTS[i];
       float in1 = TEST1_VGA_POINTS[j];
       val_dac->setConstant(in0);
       this->setGain(in1);
@@ -125,9 +131,9 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperMult(Dac * val0_dac,
   dac1_to_in1.setConn();
 
   npts = 0;
-  for(int i=0; i < CALIB_NPTS; i += 1){
-    for(int j=0; j < CALIB_NPTS; j += 1){
-      float in0 = TEST0_POINTS[i];
+  for(int i=0; i < MULT_CALIB_NPTS; i += 1){
+    for(int j=0; j < MULT_CALIB_NPTS; j += 1){
+      float in0 = TEST0_MULT_POINTS[i];
       float in1 = TEST1_MULT_POINTS[j];
       float variance,mean;
       val0_dac->setConstant(in0);
@@ -167,9 +173,9 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitMult(Dac * val0
                                                                       Dac * ref_dac,
                                                                       bool ignore_bias){
   int npts;
-  float observed[TOTAL_NPTS];
-  float expected[TOTAL_NPTS];
-  float errors[TOTAL_NPTS];
+  float observed[MULT_TOTAL_NPTS];
+  float expected[MULT_TOTAL_NPTS];
+  float errors[MULT_TOTAL_NPTS];
   float max_std = this->calibrateHelperMult(val0_dac,
                             val1_dac,
                             ref_dac,
@@ -196,9 +202,9 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitVga(Dac * val_d
                                                                      Dac * ref_dac,
                                                                      bool ignore_bias){
   int npts;
-  float observed[TOTAL_NPTS];
-  float expected[TOTAL_NPTS];
-  float errors[TOTAL_NPTS];
+  float observed[VGA_TOTAL_NPTS];
+  float expected[VGA_TOTAL_NPTS];
+  float errors[VGA_TOTAL_NPTS];
   float highest_std = this->calibrateHelperVga(val_dac,ref_dac,
                                                 observed,
                                                 expected,
@@ -224,8 +230,8 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitVga(Dac * val_d
 float Fabric::Chip::Tile::Slice::Multiplier::calibrateMinErrorVga(Dac * val_dac,
                                                                   Dac * ref_dac){
   int npts;
-  float observed[TOTAL_NPTS];
-  float expected[TOTAL_NPTS];
+  float observed[VGA_TOTAL_NPTS];
+  float expected[VGA_TOTAL_NPTS];
   this->calibrateHelperVga(val_dac,ref_dac,
                            observed,
                            expected,
@@ -240,8 +246,8 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMinErrorMult(Dac * val0_da
                                                                    Dac * val1_dac,
                                                                    Dac * ref_dac){
   int npts;
-  float observed[TOTAL_NPTS];
-  float expected[TOTAL_NPTS];
+  float observed[MULT_TOTAL_NPTS];
+  float expected[MULT_TOTAL_NPTS];
   this->calibrateHelperMult(val0_dac,
                             val1_dac,
                             ref_dac,
@@ -276,6 +282,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperFindBiasCodes(cutil::
   for(int i=0; i < MAX_BIAS_CAL; i += 1){
     this->m_state.port_cal[in0Id] = i;
     this->update(this->m_state);
+    val0_dac->setConstant(0);
     float error = 0.0;
     if(this->m_state.vga){
       this->setGain(pos);
@@ -291,13 +298,20 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperFindBiasCodes(cutil::
       error += fabs(util::meas_fast_chip_out(this) - target_neg);
       N_MULT_POINTS_TESTED += 2;
     }
+#ifdef DEBUG_MULT_CAL    
+sprintf(FMTBUF,"zero-in0 code=%d error=%f\n", i, error);
+    print_info(FMTBUF);
+#endif
     cutil::update_calib_table(in0_table,error,1,i);
   }
+  sprintf(FMTBUF,"BEST-zero-in0 code=%d error=%f\n", in0_table.state[0], in0_table.loss);
+  print_info(FMTBUF);
 
   this->m_state.port_cal[in0Id] = in0_table.state[0];
 
   if(!this->m_state.vga){
     cutil::calib_table_t in1_table = cutil::make_calib_table();
+    val0_dac->setConstant(0);
     for(int i=0; i < MAX_BIAS_CAL; i += 1){
       this->m_state.port_cal[in1Id] = i;
       this->update(this->m_state);
@@ -308,11 +322,19 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperFindBiasCodes(cutil::
       error += fabs(util::meas_fast_chip_out(this) - target_neg);
       cutil::update_calib_table(in1_table,error,1,i);
       N_MULT_POINTS_TESTED += 2;
+#ifdef DEBUG_MULT_CAL    
+      sprintf(FMTBUF,"zero-in1 code=%d error=%f\n", i, error);
+      print_info(FMTBUF);
+#endif
     }
     this->m_state.port_cal[in1Id] = in1_table.state[0];
+    sprintf(FMTBUF,"BEST-zero-in1 code=%d error=%f\n", in1_table.state[0], in1_table.loss);
+    print_info(FMTBUF);
+
   }
 
   cutil::calib_table_t out_table = cutil::make_calib_table();
+  val0_dac->setConstant(0);
   for(int i=0; i < MAX_BIAS_CAL; i += 1){
     this->m_state.port_cal[out0Id] = i;
     this->update(this->m_state);
@@ -331,8 +353,15 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperFindBiasCodes(cutil::
       error += fabs(util::meas_fast_chip_out(this) - target_neg);
       N_MULT_POINTS_TESTED += 2;
     }
+#ifdef DEBUG_MULT_CAL
+    sprintf(FMTBUF,"zero-out  code=%d error=%f\n", i, error);
+    print_info(FMTBUF);
+#endif
     cutil::update_calib_table(out_table,error,1,i);
   }
+  sprintf(FMTBUF,"BEST-zero-out code=%d error=%f\n", out_table.state[0], out_table.loss);
+  print_info(FMTBUF);
+
   this->m_state.port_cal[out0Id] = out_table.state[0];
 
   cutil::update_calib_table(table_bias,0.0,3,
@@ -642,11 +671,9 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateMult(calib_objective_t obj)
   cutil::calib_table_t calib_table = cutil::make_calib_table();
   /*nmos, gain_cal, port_cal in0,in1,out*/
   for(int nmos=0; nmos < MAX_NMOS; nmos += 1){
-    this->m_state.nmos = nmos;
-    this->m_state.pmos = 3;
-    this->m_state.gain_cal = 32;
-    for(int pmos=0; pmos < MAX_PMOS; pmos += 1){
-      this->m_state.pmos = pmos;
+      this->m_state.nmos = nmos;
+      this->m_state.pmos = 3;
+      this->m_state.gain_cal = 32; 
       this->update(this->m_state);
       cutil::calib_table_t table_bias = cutil::make_calib_table();
       this->calibrateHelperFindBiasCodes(table_bias, 8,
@@ -659,11 +686,13 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateMult(calib_objective_t obj)
                                          target_neg_in,
                                          target_neg);
 
+    for(int pmos=0; pmos < MAX_PMOS; pmos += 1){
+      this->m_state.pmos = pmos;
+      this->update(this->m_state);
+      
       this->m_state.port_cal[in0Id] = table_bias.state[0];
       this->m_state.port_cal[in1Id] = table_bias.state[1];
       this->m_state.port_cal[out0Id] = table_bias.state[2];
-
-      this->update(this->m_state);
       float loss = getLoss(obj,val0_dac,val1_dac,ref_dac,false);
       sprintf(FMTBUF,"pn nmos=%d, pmos=%d, loss=%f",
               nmos,pmos,loss);
