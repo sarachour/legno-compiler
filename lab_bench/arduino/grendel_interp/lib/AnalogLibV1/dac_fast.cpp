@@ -270,8 +270,8 @@ float Fabric::Chip::Tile::Slice::Dac::fastMeasureMedValue(float& variance){
   cutil::buffer_chipout_conns(calib,parentSlice
                               ->parentTile->parentChip->tiles[3].slices[2].chipOutput);
   cutil::break_conns(calib);
-	Connection this_dac_to_tile = Connection ( out0, parentSlice->tileOuts[3].in0 );
-	Connection tile_to_chip = Connection ( parentSlice->tileOuts[3].out0,
+  Connection this_dac_to_tile = Connection ( out0, parentSlice->tileOuts[3].in0 );
+  Connection tile_to_chip = Connection ( parentSlice->tileOuts[3].out0,
                                          parentSlice->parentTile->parentChip->tiles[3].slices[2].chipOutput->in0 );
 
 
@@ -283,8 +283,8 @@ float Fabric::Chip::Tile::Slice::Dac::fastMeasureMedValue(float& variance){
 
   this_dac_to_tile.brkConn();
   tile_to_chip.brkConn();
-  cutil::restore_conns(calib);
   update(codes_dac);
+  cutil::restore_conns(calib);
   return mean;
 
 
