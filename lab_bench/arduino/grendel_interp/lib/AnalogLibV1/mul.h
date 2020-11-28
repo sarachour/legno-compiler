@@ -26,6 +26,8 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
                                 float& max);
     static float computeOutput(mult_state_t& m_codes, float in0, float in1);
     void calibrate (calib_objective_t obj);
+    void calibrateVga (calib_objective_t obj);
+    void calibrateMult (calib_objective_t obj);
     profile_t measure(profile_spec_t spec);
 
     mult_state_t m_state;
