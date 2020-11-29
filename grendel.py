@@ -84,6 +84,9 @@ prof_subp.add_argument('--grid-size',type=int,default=15, \
                        help="number of inputs to sample along each axis")
 prof_subp.add_argument('--min-points',type=int,default=0, \
                        help="minimum number of dataset points")
+prof_subp.add_argument('--missing',type=int,action='store_true', \
+                       help="calibrate missing")
+
 
 
 vis_subp = subparsers.add_parser('vis', help='build delta model visualizations')
