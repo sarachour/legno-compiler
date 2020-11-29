@@ -55,7 +55,7 @@ void Fabric::Chip::Tile::Slice::Dac::fastMakeDacModel(){
 }
 float Fabric::Chip::Tile::Slice::Dac::fastMakeValue(float target){
   //NOTE: from diff. Delete this to test.
-  update(this->m_state);
+  //update(this->m_state);
   //NOTE: end diff
 
   if(fabs(target) < 1.8){
@@ -123,7 +123,7 @@ float Fabric::Chip::Tile::Slice::Dac::fastMakeMedValue(float target,
   tile_to_chip.brkConn();
   cutil::restore_conns(calib);
   //NOTE: this is from the commit. Remove this to test sanity.
-  this->update(codes_dac);
+  //this->update(codes_dac);
   //NOTE: end commit
   return mean;
 
@@ -253,7 +253,7 @@ float Fabric::Chip::Tile::Slice::Dac::fastMakeHighValue(float target,
   cutil::restore_conns(calib);
   ref_dac->update(codes_ref);
   //NOTE: this is from a commit. remove this to test.
-  this->update(codes_dac);
+  //this->update(codes_dac);
   //NOTE: end of commit
   return mean - ref_value;
 }

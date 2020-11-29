@@ -158,11 +158,14 @@ def exec_lcal(args):
                         'model_number':args.model_number
                     }
                     cmd = CAL_CMD.format(**kwargs)
+                    print(cmd)
                     os.system(cmd)
-                    #cmd = PROF_CMD.format(**kwargs)
-                    #os.system(cmd)
-                    #cmd = MKDELTAS_CMD.format(**kwargs)
-                    #os.system(cmd)
+                    cmd = PROF_CMD.format(**kwargs)
+                    print(cmd)
+                    os.system(cmd)
+                    cmd = MKDELTAS_CMD.format(**kwargs)
+                    print(cmd)
+                    os.system(cmd)
 
 def _lexec_already_ran(ph,board,adp,trial=0):
     for var,scf,chans in adp.observable_ports(board):
