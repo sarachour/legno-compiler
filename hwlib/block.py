@@ -162,6 +162,10 @@ class BlockMode:
       if pat_m != pat_e and pat_e != None:
           return False
     return True
+  
+  def __iter__(self):
+    for v in self._values:
+       yield v
 
   def __repr__(self):
     return "(%s)" % self.key

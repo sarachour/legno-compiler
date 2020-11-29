@@ -43,6 +43,9 @@ def profile_adp(args):
                     len(dataset) >= n*m*reps:
                         print("<===========")
                         print(cfg)
+                        print("===========>")
+                        print("output=%s" % dataset.output.name);
+                        print("npts=%d" % len(dataset));
                         print("===> <%s> already profiled" % method)
                         continue
 
