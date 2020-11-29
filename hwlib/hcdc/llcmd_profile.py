@@ -15,7 +15,7 @@ def profile(runtime,dev, \
     values = [0.0]*2
     for input_ident,input_val in inputs.items():
         values[input_ident.code()] = input_val
-
+    print("profile-inputs: %s" % values)
     profile_data = {"method": method.name, \
                     "inst": loc_d,
                     "in_vals": values, \
@@ -35,17 +35,18 @@ def profile(runtime,dev, \
     new_adp.add_instance(blk,loc)
     state = resp['spec']['state'][blk.name]
     blk.state.lift(new_adp,loc,dict(state))
+    blkcfg = new_adp.configs.get(blk.name,loc)
 
     # retrieve parameters for new result
     inputs = {}
     port = llutil.get_by_ll_identifier(blk.inputs,llenums.PortType.IN0)
     if not port is None:
         inputs[port.name] = resp['spec']['in_vals'][llenums.PortType.IN0.code()]
-
+        print("in %s = %f" % (port.name,inputs[port.name]))
     port = llutil.get_by_ll_identifier(blk.inputs,llenums.PortType.IN1)
     if not port is None:
         inputs[port.name]= resp['spec']['in_vals'][llenums.PortType.IN1.code()]
-
+    
     new_out = llutil.get_by_ll_identifier(blk.outputs,  \
                                 llenums.PortType \
                                    .from_code(int(resp['spec']['output'])))
@@ -54,9 +55,9 @@ def profile(runtime,dev, \
     out_mean = resp['mean']
     out_std = resp['stdev']
     out_status = llenums.ProfileStatus.from_code(int(resp['status']))
-
+    print("datum inputs=%s out=%f std=%f status=%s" % (inputs,out_mean,out_std,out_status.value))
+    print(blkcfg)
     # insert into database
-    blkcfg = new_adp.configs.get(blk.name,loc)
     if out_status == llenums.ProfileStatus.SUCCESS:
         dataset= exp_profile_lib.load(dev,blk,loc,new_out,blkcfg,method)
         if dataset is None:
