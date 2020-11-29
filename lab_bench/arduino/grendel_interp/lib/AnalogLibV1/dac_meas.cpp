@@ -70,7 +70,7 @@ profile_t Fabric::Chip::Tile::Slice::Dac::measureConstVal(profile_spec_t spec)
                                          ->parentChip->tiles[3].slices[2].chipOutput->in0 );
 
   dac_to_tile.setConn();
-	tile_to_chip.setConn();
+  tile_to_chip.setConn();
   float target = this->computeOutput(this->m_state);
   float mean,variance;
   mean = this->fastMeasureValue(variance);
