@@ -83,6 +83,7 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperVga(Dac * val_dac,
       float in1 = TEST1_VGA_POINTS[j];
       val_dac->setConstant(in0);
       this->setGain(in1);
+      this->update(this->m_state);
       float target_in0 = val_dac->fastMeasureValue(variance);
       float target_out = this->computeOutput(this->m_state,
                                              target_in0,
@@ -450,7 +451,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperFindVgaBiasCodes(cuti
     N_MULT_POINTS_TESTED += 2;
 
 #ifdef DEBUG_MULT_CAL
-    sprintf(FMTBUF,"zero-in1 code=%d error=%f targ=(%f,%f) meas=(%f,%f)\n", i, error,
+    sprintf(FMTBUF,"zero-out code=%d error=%f targ=(%f,%f) meas=(%f,%f)\n", i, error,
             target_neg,target_pos,meas1,meas2);
     print_info(FMTBUF);
 #endif
@@ -461,7 +462,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateHelperFindVgaBiasCodes(cuti
 
   this->m_state.port_cal[out0Id] = out_table.state[0];
 
-  cutil::update_calib_table(table_bias,0.0,3,
+  cutil::update_calib_table(table_bias,out_table.loss,3,
                             this->m_state.port_cal[in0Id],
                             this->m_state.port_cal[in1Id],
                             this->m_state.port_cal[out0Id]
@@ -538,7 +539,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateVga (calib_objective_t obj)
   target_pos_in = 1.0;
   this->setGain(target_pos_in);
   target_pos = computeOutput(this->m_state, dac_out0, 0.0);
-  target_neg_in = 1.0;
+  target_neg_in = -1.0;
   this->setGain(target_neg_in);
   target_neg = computeOutput(this->m_state, dac_out0, 0.0);
 
@@ -744,6 +745,7 @@ void Fabric::Chip::Tile::Slice::Multiplier::calibrateMult(calib_objective_t obj)
   fast_calibrate_dac(val1_dac);
   val0_dac->setRange(util::range_to_dac_range(this->m_state.range[in0Id]));
   val1_dac->setRange(util::range_to_dac_range(this->m_state.range[in1Id]));
+  
   val0_dac->setConstant(0.0);
   dac_out0 = val0_dac->fastMeasureValue(dummy);
   target_pos_in = 0.5;
