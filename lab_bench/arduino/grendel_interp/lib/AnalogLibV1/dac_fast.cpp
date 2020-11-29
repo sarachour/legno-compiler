@@ -54,7 +54,10 @@ void Fabric::Chip::Tile::Slice::Dac::fastMakeDacModel(){
   print_info(FMTBUF);
 }
 float Fabric::Chip::Tile::Slice::Dac::fastMakeValue(float target){
+  //NOTE: from diff. Delete this to test.
   update(this->m_state);
+  //NOTE: end diff
+
   if(fabs(target) < 1.8){
     return fastMakeMedValue(target, 0.02);
   }
@@ -119,7 +122,9 @@ float Fabric::Chip::Tile::Slice::Dac::fastMakeMedValue(float target,
   this_dac_to_tile.brkConn();
   tile_to_chip.brkConn();
   cutil::restore_conns(calib);
+  //NOTE: this is from the commit. Remove this to test sanity.
   this->update(codes_dac);
+  //NOTE: end commit
   return mean;
 
 
@@ -247,8 +252,9 @@ float Fabric::Chip::Tile::Slice::Dac::fastMakeHighValue(float target,
   tile_to_chip.brkConn();
   cutil::restore_conns(calib);
   ref_dac->update(codes_ref);
+  //NOTE: this is from a commit. remove this to test.
   this->update(codes_dac);
-
+  //NOTE: end of commit
   return mean - ref_value;
 }
 
@@ -283,8 +289,8 @@ float Fabric::Chip::Tile::Slice::Dac::fastMeasureMedValue(float& variance){
 
   this_dac_to_tile.brkConn();
   tile_to_chip.brkConn();
-  cutil::restore_conns(calib);
   update(codes_dac);
+  cutil::restore_conns(calib);
   return mean;
 
 
@@ -388,7 +394,6 @@ float Fabric::Chip::Tile::Slice::Dac::fastMeasureHighValue(float& variance){
   ref_dac_to_tile.setConn();
   tile_to_chip.setConn();
 
-  const float max_meas_val = 1.8;
   const float max_ref_dist = 1.8;
   //compute the floating point value from the dac code.
   int distance = fabs(this->m_state.const_code-128);
