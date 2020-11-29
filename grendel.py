@@ -84,7 +84,7 @@ prof_subp.add_argument('--grid-size',type=int,default=15, \
                        help="number of inputs to sample along each axis")
 prof_subp.add_argument('--min-points',type=int,default=0, \
                        help="minimum number of dataset points")
-prof_subp.add_argument('--missing',type=int,action='store_true', \
+prof_subp.add_argument('--missing',action='store_true', \
                        help="calibrate missing")
 
 

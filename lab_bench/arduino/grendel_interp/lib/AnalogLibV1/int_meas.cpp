@@ -201,13 +201,13 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measureOpenLoopCircuit(profile_
   switch(spec.type){
   case INTEG_DERIVATIVE_GAIN:
 #ifdef DEBUG_INTEG_PROF
-    sprintf(FMTBUF,"prof-integ-gain targ=%f meas=%f tc=%f\n",
-            target_tc, tc_stats.tc,
-            tc_stats.tc/target_tc);
+    sprintf(FMTBUF,"prof-integ-gain targ=%f meas=%f\n",
+            target_tc/NOMINAL_TIME_CONSTANT, 
+            tc_stats.tc/NOMINAL_TIME_CONSTANT);
     print_info(FMTBUF);
 #endif
     result = prof::make_profile(spec,
-                                tc_stats.tc/target_tc,
+                                tc_stats.tc/NOMINAL_TIME_CONSTANT,
                                 sqrt(tc_stats.R2_k));
     break;
   case INTEG_DERIVATIVE_BIAS:

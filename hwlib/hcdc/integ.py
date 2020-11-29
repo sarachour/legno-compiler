@@ -18,9 +18,7 @@ MODES = [
   ['h','m','-'],
   ['h','h','+'],
   ['h','h','-']
-
 ]
-
 MODES = [
   ['m','m','+'],
   ['m','m','-'],
@@ -29,8 +27,6 @@ MODES = [
   ['h','h','+'],
   ['h','h','-']
 ]
-
-
 integ.modes.add_all(MODES)
 LOW_NOISE = 0.01
 HIGH_NOISE = 0.1

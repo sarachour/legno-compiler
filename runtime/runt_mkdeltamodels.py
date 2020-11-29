@@ -80,6 +80,7 @@ def _update_delta_models_for_configured_block(dev,delta_models,blk,loc,output,co
         print("avg-err: %f" % avg_error)
         delta_model.set_model_error(avg_error)
         if delta_model.complete:
+            print("%s %s %s" % (blk.name,loc,config.mode))
             print(delta_model)
         exp_delta_model_lib.update(dev,delta_model)
 
@@ -102,10 +103,6 @@ def update_delta_models_for_configured_block(dev,blk,loc,cfg,hidden=True,force=F
                                                          loc,output, \
                                                          dataset.config, force=force):
                 num_deltas += 1
-    if num_deltas > 0:
-        print(cfg)
-        print("# updated deltas: %s" % num_deltas)
-
 
 def derive_delta_models_adp(args):
     board = runtime_util.get_device(args.model_number)

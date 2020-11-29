@@ -75,13 +75,17 @@ class BruteForcePlanner(ProfilePlanner):
                                      .relation[self.config.mode]).vars()
 
     dynamic = {}
+    counts = [self.n,self.m]
+    index = 0
     for inp in filter(lambda inp: inp.name in variables, self.block.inputs):
-      dynamic[inp.name] = runtime_util.select_from_interval(inp.interval[self.config.mode],self.m)
+      dynamic[inp.name] = runtime_util.select_from_interval(inp.interval[self.config.mode],counts[index])
+      index += 1
 
     for data in filter(lambda dat: dat.name in variables, self.block.data):
       dynamic[data.name] = runtime_util.select_from_quantized_interval(data.interval[self.config.mode],  \
                                                                     data.quantize[self.config.mode], \
-                                                                    self.m)
+                                                                    counts[index])
+      index +=  1
 
 
     self._dynamic_fields = list(dynamic.keys())
