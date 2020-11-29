@@ -8,6 +8,9 @@ def _compute_pct_nrmsd(ref_t,ref_x,meas_t,meas_x,debug=False):
   RMSD = math.sqrt(MSE)
   # root mean squared error relative to full scale
   FS = float(max(ref_x) - min(ref_x))
+  if FS == 0:
+    FS = max(abs(ref_x))
+
   NRMSD = RMSD/FS
   PCT_NRMSD = NRMSD*100.0
   if debug:
