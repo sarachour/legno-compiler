@@ -30,6 +30,8 @@ def update_delta_model(dev,delta_model,dataset):
     if not fitlib.fit_delta_model_to_data(delta_model, \
                                           rel, \
                                           dataset):
+        print(delta_model.config)
+        print(delta_model)
         print("can't fit model <%s>" % dataset.method)
         return False,-1
 
