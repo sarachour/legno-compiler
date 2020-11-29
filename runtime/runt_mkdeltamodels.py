@@ -40,8 +40,7 @@ def update_delta_model(dev,delta_model,dataset):
     else:
         return True, delta_model.error(dataset)
 
-
-def _update_delta_models_for_configured_block(dev,blk,loc,output,config,force=False):
+def _get_delta_models(dev,blk,loc,output,config):
     delta_models = exp_delta_model_lib.get_fully_configured_outputs(dev, \
                                                                    blk, \
                                                                    loc, \
@@ -53,9 +52,9 @@ def _update_delta_models_for_configured_block(dev,blk,loc,output,config,force=Fa
                                                         output, \
                                                         config)]
 
-    if all(map(lambda model: model.complete, delta_models)) and not force:
-        return False
+    return delta_models
 
+def _update_delta_models_for_configured_block(dev,delta_models,blk,loc,output,config,force=False):
     model_errors = []
     for dataset in \
         exp_profile_dataset_lib.get_datasets_by_configured_block_instance(dev, \
@@ -63,7 +62,7 @@ def _update_delta_models_for_configured_block(dev,blk,loc,output,config,force=Fa
                                                                           loc, \
                                                                           output, \
                                                                           config):
-        print("# data points: %d" % len(dataset))
+        print("# data points %s (%s): %d" % (blk.name,dataset.method,len(dataset)))
         for delta_model in delta_models:
             succ,error = update_delta_model(dev,delta_model,dataset)
         if succ:
@@ -88,11 +87,18 @@ def _update_delta_models_for_configured_block(dev,blk,loc,output,config,force=Fa
 
 def update_delta_models_for_configured_block(dev,blk,loc,cfg,hidden=True,force=False):
     num_deltas = 0
+
     for output in blk.outputs:
+        delta_models = _get_delta_models(dev,blk,loc,output,cfg)
+        if all(map(lambda model: model.complete, delta_models)) and not force:
+            continue
+        for model in delta_models:
+            model.clear()
+
         for dataset in exp_profile_dataset_lib \
             .get_datasets_by_configured_block_instance(dev,blk,loc,output,cfg, \
                                                        hidden=hidden):
-            if _update_delta_models_for_configured_block(dev,blk, \
+            if _update_delta_models_for_configured_block(dev,delta_models,blk, \
                                                          loc,output, \
                                                          dataset.config, force=force):
                 num_deltas += 1

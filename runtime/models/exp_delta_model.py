@@ -90,8 +90,8 @@ class ExpDeltaModel:
     return True
 
   def clear(self):
-    self.params = {}
-    self.model_error = ExpDeltaModel.MAX_MODEL_ERROR
+    self._params = {}
+    self._model_error = ExpDeltaModel.MAX_MODEL_ERROR
 
   def bind(self,par,value):
     if not (par in self.spec.params):
