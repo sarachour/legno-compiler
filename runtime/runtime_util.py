@@ -19,11 +19,12 @@ def get_profiling_steps(output_port,cfg,grid_size):
         yield llenums.ProfileOpType.INTEG_DERIVATIVE_BIAS,0,0,3
         yield llenums.ProfileOpType.INTEG_DERIVATIVE_GAIN,0,0,3
         yield llenums.ProfileOpType.INTEG_DERIVATIVE_STABLE,0,0,3
-        yield llenums.ProfileOpType.INTEG_INITIAL_COND,grid_size,grid_size,1
+        yield llenums.ProfileOpType.INTEG_INITIAL_COND,grid_size,1,1
 
-
-    else:
+    elif cfg.inst.block == "mult":
         yield llenums.ProfileOpType.INPUT_OUTPUT,grid_size,grid_size,1
+    else:
+        yield llenums.ProfileOpType.INPUT_OUTPUT,grid_size,1,1
 
 
 
