@@ -141,7 +141,7 @@ def exec_lcal(args):
     ]
     CAL_CMD = "python3 grendel.py cal {adp_path} --model-number {model_number} {calib_obj}"
     PROF_CMD = "python3 grendel.py prof {adp_path} --model-number {model_number} {calib_obj}"
-    MKDELTAS_CMD = "python3 grendel.py mkdeltas --model-number {model_number} {adp_path}"
+    MKDELTAS_CMD = "python3 grendel.py mkdeltas --model-number {model_number} {adp_path} --force"
     board = get_device(None)
     path_handler = paths.PathHandler(args.subset,args.program)
     program = DSProgDB.get_prog(args.program)

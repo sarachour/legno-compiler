@@ -25,19 +25,20 @@ def profile_kernel(runtime,board,blk,cfg,calib_obj,min_points,grid_size):
             dataset = prof_dataset_lib.load(board,blk,cfg.inst.loc, \
                                             exp_delta_model.output, \
                                             exp_delta_model.config, \
-                                            method)
+                                            method) 
+            print("<===========")
+            print(cfg)
+            print("===========>")
+            print("output=%s method=%s" % (exp_delta_model.output.name,method));
+            print("npts=%d" % (len(dataset) if not dataset is None else 0));
+            print("n=%d m=%d reps=%d" % (n,m,reps))
 
             if not dataset is None and \
             len(dataset) >= min_points and \
             len(dataset) >= n*m*reps:
-                print("<===========")
-                print(cfg)
-                print("===========>")
-                print("output=%s" % dataset.output.name);
-                print("npts=%d" % len(dataset));
                 print("===> <%s> already profiled" % method)
                 continue
-
+         
             planner = planlib.SingleDefaultPointPlanner(blk, \
                                                         cfg.inst.loc, \
                                                         exp_delta_model.output, \
@@ -62,6 +63,7 @@ def profile_adp(args):
                            exp_delta_model.block, \
                            exp_delta_model.config, \
                            calib_obj, \
+                           min_points=args.min_points, \
                            grid_size=args.grid_size)
 
     else:

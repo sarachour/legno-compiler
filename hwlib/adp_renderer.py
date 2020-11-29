@@ -133,13 +133,7 @@ def render(board,adp,filename):
         render_instance(board,graph,cfg,scale=True,source=True)
         render_config_info(board,graph,cfg)
 
-        #for stmt in cfg.stmts_of_type(adplib.ConfigStmtType.PORT):
-            #if not stmt.source is None:
-            #    render_source_label(board,graph,cfg.inst,stmt)
-            #else:
-                #render_port_scf(board,graph,cfg.inst,stmt)
-
     for conn in adp.conns:
         render_conn(graph,conn)
-
+    graph.node("time_const", "tau:%f" % adp.tau)
     graph.render()
