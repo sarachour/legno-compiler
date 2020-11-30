@@ -20,7 +20,7 @@ def dsprog(prob):
   }
   prob.decl_lambda("ident","sgn(X)*sqrt(abs(X))")
   prob.decl_var("Q","emit(ident(P))")
-  prob.decl_extvar("P","A0")
+  prob.decl_var("P","0.5")
   prob.interval("P",-1.0,1.0)
   prob.check()
   return prob

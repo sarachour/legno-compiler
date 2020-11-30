@@ -32,14 +32,15 @@ def get_osc_chan_for_pin(pin):
 
 def get_wall_clock_time(board,dsprog,adp,sim_time):
     hwtime = board.time_constant
-    time_us = sim_time*adp.tau*hwtime
+    time_us = sim_time*1.0/adp.tau*hwtime
     return time_us
 
 def unpack_arduino_waveform(dataset):
     freq = dataset[0]
     time_delta = 1.0/freq;
     siz = dataset[1]
-    times = list(map(lambda i: time_delta*i, range(siz)))
+    warm_up_time = 0.00005; 
+    times = list(map(lambda i: time_delta*i-warm_up_time, range(siz)))
     voltages = {}
     offset = 2
     print("clock-freq: %d" % freq)
@@ -61,7 +62,8 @@ def save_data_from_arduino(dataset,board,dsprog,adp,sim_time,trial=0):
 
 
     times,voltages_by_chan = unpack_arduino_waveform(dataset)
-    tc = board.time_constant*adp.tau
+    # seconds per time unit
+    tc = board.time_constant/adp.tau
     print("num-samps: %d" % len(times))
     print("wall-clock-time: [%f,%f]" % (min(times),max(times)))
     for var,scf,chans in adp.observable_ports(board):

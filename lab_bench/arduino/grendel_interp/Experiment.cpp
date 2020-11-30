@@ -39,8 +39,8 @@ namespace experiment {
     }
 
     dma::dma_info_t info;
-    float warm_up = 0.00003;
-    dma::setup(info,expr->sim_time_sec+warm_up,(uint16_t*) DATABUF[0], DATABUF_SIZ,samples,freq);
+    float warm_up = 0.00005;
+    dma::setup(info,expr->sim_time_sec*1.3+warm_up,(uint16_t*) DATABUF[0], DATABUF_SIZ,samples,freq);
     print_info("running experiment!\n");
     set_SDA(HIGH);
     dma::run(fab);
