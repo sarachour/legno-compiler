@@ -128,7 +128,7 @@ def set_conn(runtime,src_blk,src_loc,src_port, \
     ident = src_blk.outputs[src_port].ll_identifier
     sloc_t,sloc_d = make_port_loc(src_blk,src_loc,ident)
 
-    ident = src_blk.inputs[dest_port].ll_identifier
+    ident = dest_blk.inputs[dest_port].ll_identifier
     dloc_t,dloc_d = make_port_loc(dest_blk,dest_loc, \
                                   ident)
     conn_data = {"src":sloc_d, "dest":dloc_d}
