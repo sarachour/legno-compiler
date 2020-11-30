@@ -148,6 +148,11 @@ class Emit(Op):
         self._loc = loc
         pass
 
+    def substitute(self,bindings={}):
+        inp = self.arg(0).substitute(bindings)
+        return Emit(inp,self._loc)
+
+
     @property
     def loc(self):
         return self._loc

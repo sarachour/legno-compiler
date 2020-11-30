@@ -58,7 +58,6 @@ class Op:
 
         return child_nodes
 
-
     def count(self):
         child_nodes = sum(map(lambda a: a.count(), self._args))
         return 1 + child_nodes
@@ -70,6 +69,8 @@ class Op:
         child_depth = max(map(lambda a: a.depth(), self._args))
         return 1 + child_depth
 
+    def concretize(self):
+        return self
 
     def __repr__(self):
         argstr = " ".join(map(lambda arg: str(arg),self._args))
