@@ -187,7 +187,7 @@ float Fabric::Chip::Tile::Slice::Multiplier::calibrateMaxDeltaFitMult(Dac * val0
     errors[i] = observed[i]-expected[i];
   }
   float gain_mean,rsq,bias,max_error,avg_error;
-  util::linear_regression(expected,observed,npts,
+  util::linear_regression(expected,errors,npts,
                           gain_mean,bias,rsq,max_error,avg_error);
   float min,max;
   this->computeInterval(this->m_state, out0Id, min, max);

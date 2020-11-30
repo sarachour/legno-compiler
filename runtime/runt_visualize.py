@@ -34,7 +34,8 @@ def make_histogram(args):
                                         lbl)
         vizlib.model_error_histogram(models, \
                                      png_file, \
-                                     num_bins=10)
+                                     num_bins=10, \
+                                     relative=True)
 
         png_file = ph.get_histogram_vis('objf', \
                                         blk.name, \
