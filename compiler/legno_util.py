@@ -136,12 +136,15 @@ def exec_lgraph(args):
 
 def exec_lcal(args):
     calib_objs = [
-        llenums.CalibrateObjective.MINIMIZE_ERROR,
-        llenums.CalibrateObjective.MAXIMIZE_FIT
+        llenums.CalibrateObjective.MAXIMIZE_FIT,
+        llenums.CalibrateObjective.MINIMIZE_ERROR
     ]
     CAL_CMD = "python3 grendel.py cal {adp_path} --model-number {model_number} {calib_obj}"
     PROF_CMD = "python3 grendel.py prof {adp_path} --model-number {model_number} {calib_obj}"
     MKDELTAS_CMD = "python3 grendel.py mkdeltas --model-number {model_number} {adp_path} --force"
+    if args.model_number is None:
+       raise Exception("model number must be provided!!")
+
     board = get_device(None)
     path_handler = paths.PathHandler(args.subset,args.program)
     program = DSProgDB.get_prog(args.program)
