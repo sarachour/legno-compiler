@@ -1,5 +1,5 @@
 from dslang.dsprog import DSProg
-from dslang.dssim import DSSim
+from dslang.dssim import DSSim,DSInfo
 
 def dsname():
   return "dbgadc"
@@ -22,6 +22,7 @@ def dsprog(prob):
   prob.decl_var("Q","emit(ident(P))")
   prob.decl_var("P","0.5")
   prob.interval("P",-1.0,1.0)
+  prob.interval("Q",-1.0,1.0)
   prob.check()
   return prob
 
