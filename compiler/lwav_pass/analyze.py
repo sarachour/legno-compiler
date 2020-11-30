@@ -28,19 +28,16 @@ def analyze(adp,waveform):
 
     reference = ref_waveforms[waveform.variable]
     # start from zero
-    min_time = min(waveform.times)
-    waveform.times = list(map(lambda t : t-min_time, waveform.times))
     rec_experimental = waveform.recover()
 
     ylabel = "%s (%s)" % (dsinfo.observation,dsinfo.units)
-    vis = wavelib.WaveformVis("unalign",ylabel,program.name)
-    vis.add_waveform("ref",reference)
-    vis.set_style('ref',"#E74C3C",'-')
+    vis = wavelib.WaveformVis("meas",ylabel,program.name)
     vis.set_style('meas',"#5758BB",'--')
-    vis.add_waveform("meas",rec_experimental)
+    vis.add_waveform("meas",waveform)
     yield vis
 
     rec_exp_aligned = reference.align(rec_experimental)
+    rec_exp_aligned.trim(reference.min_time, reference.max_time)
     vis = wavelib.WaveformVis("align",ylabel,program.name)
     vis.add_waveform("ref",reference)
     vis.set_style('ref',"#E74C3C",'-')

@@ -44,8 +44,29 @@ class Waveform:
     def max_time(self):
         return max(self.times)
 
+    @property
+    def min_time(self):
+        return min(self.times)
+
+
+    def trim(self,min_time,max_time):
+        start = 0
+        for i,t in enumerate(self.times):
+            if t >= min_time:
+                start = i
+                break;
+
+        end = len(self.times)
+        for i,t in enumerate(self.times):
+            if t > max_time:
+                end = i
+                break;
+
+        self.times = self.times[start:end]
+        self.values = self.values[start:end]
 
     def rec_time(self,t):
+        base = 1.0/126000
         if self.time_units == Waveform.TimeUnits.WALL_CLOCK_SECONDS:
             return t/self.time_scale
         else:
@@ -90,13 +111,18 @@ class Waveform:
 
         #time_slack = 0.02
         time_slack = 0.02
-        time_jitter = other.max_time*0.10
+        time_jitter = other.max_time*0.1
         xform_spec = [
             (1.0-time_slack,1.0+time_slack),
             #(0.0,max(tmeas)*0.25)
             (-time_jitter,time_jitter)
         ]
         return alignutil.align(self,other,xform_spec)
+
+
+
+
+
 
 class WaveformVis:
 
