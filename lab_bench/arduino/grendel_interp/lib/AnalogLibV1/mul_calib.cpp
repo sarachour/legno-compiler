@@ -4,17 +4,20 @@
 #include "calib_util.h"
 #include <float.h>
 
-#define MULT_CALIB_NPTS 3
+#define MULT_CALIB_NPTS 6
 #define MULT_TOTAL_NPTS (1 + MULT_CALIB_NPTS*MULT_CALIB_NPTS)
 
-#define VGA_CALIB_NPTS 5
+#define VGA_CALIB_NPTS 6
 #define VGA_TOTAL_NPTS (1 + VGA_CALIB_NPTS*VGA_CALIB_NPTS)
 
-const float TEST0_MULT_POINTS[MULT_CALIB_NPTS] = {0.75,-0.5,0.5};
-const float TEST1_MULT_POINTS[MULT_CALIB_NPTS] = {-0.5,0.5,0.0};
+const float TEST0_MULT_POINTS[MULT_CALIB_NPTS] = {0.9,-0.9,0.75,-0.75,-0.5,0.5};
+const float TEST1_MULT_POINTS[MULT_CALIB_NPTS] = {0.9,-0.9,0.75,-0.75,-0.5,0.5};
 
-const float TEST0_VGA_POINTS[VGA_CALIB_NPTS] = {-0.75,0.75,-0.5,0.5,0.0};
-const float TEST1_VGA_POINTS[VGA_CALIB_NPTS] = {-0.75,0.75,-0.5,0.5,0.0};
+const float TEST0_VGA_POINTS[VGA_CALIB_NPTS] = {0.9,-0.9,-0.75,0.75,-0.5,0.5};
+const float TEST1_VGA_POINTS[VGA_CALIB_NPTS] = {0.9,-0.9,-0.75,0.75,-0.5,0.5};
+//const float TEST0_VGA_POINTS[VGA_CALIB_NPTS] = {-0.75,0.75,-0.5,0.5,0.0};
+//const float TEST1_VGA_POINTS[VGA_CALIB_NPTS] = {-0.75,0.75,-0.5,0.5,0.0};
+
 
 //#define DEBUG_MULT_CAL
 
