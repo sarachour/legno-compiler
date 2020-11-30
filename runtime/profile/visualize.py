@@ -91,15 +91,19 @@ def remove_nans(arr):
   nparr = np.array(arr)
   return nparr[:,~np.isnan(nparr).any(axis=0)]
 
+def get_maximum_value(physblk):
+  bounds = physblk.get_bounds()
+  output_ival = ivallib.Interval(bounds[physblk.output.name][0], \
+                                  bounds[physblk.output.name][1])
+  return output_ival.bound
+
 def heatmap(physblk,output_file,inputs,output,n,relative=False, \
             amplitude=None):
   bounds = physblk.get_bounds()
 
-  output_ival = ivallib.Interval(bounds[physblk.output.name][0], \
-                                  bounds[physblk.output.name][1])
   normalize_out = 1.0
   if relative:
-    normalize_out = output_ival.bound/100.0
+    normalize_out = get_maximum_value(physblk)/100.0
 
   surf = ParametricSurface(n)
   colormap_name = "coolwarm"
@@ -192,7 +196,7 @@ def deviation_(delta_model,dataset,output_file, \
 
   if baseline == ReferenceType.MODEL_PREDICTION:
     errors = delta_model.errors(dataset, \
-                              init_cond=init_cond)
+                                init_cond=init_cond)
   elif baseline == ReferenceType.CORRECTABLE_MODEL_PREDICTION:
     errors = delta_model.errors(dataset, \
                               correctable_only=True, \
@@ -206,6 +210,14 @@ def deviation_(delta_model,dataset,output_file, \
   for k,v in dataset.data.items():
     inps[k] = v
 
+  if delta_model.block.name == "mult" \
+     and str(delta_model.config.mode) == "(h,m,m)":
+    print(delta_model)
+    for idx in range(len(errors)):
+      ix = dict(map(lambda v: (v,inps[v][idx]), inps.keys()))
+      print("inps=%s meas=%f err=%f" % (ix,dataset.meas_mean[idx],errors[idx]))
+    print("max-val=%s" % get_maximum_value(delta_model))
+    input("continue")
 
   heatmap(delta_model,output_file,inps,errors,n=num_bins, \
           amplitude=amplitude, \
@@ -235,16 +247,28 @@ def deviation(delta_model,dataset,output_file, \
 
 
 
-def model_error_histogram(delta_models,png_file,num_bins=10):
+def model_error_histogram(delta_models,png_file,num_bins=10,relative=False):
   if len(delta_models) < 3:
     return
 
+  normalize_out = 1.0
+  if relative:
+    limit = max(map(lambda physblk: get_maximum_value(physblk), delta_models))
+    normalize_out = limit/100.0
+
+
+
   fig, axs = plt.subplots(1, 1, tight_layout=True)
   model_errors = list(filter(lambda err: err < 20, \
-                             map(lambda dm: dm.model_error, \
+                             map(lambda dm: dm.model_error / normalize_out, \
                                  delta_models)))
-  # We can set the number of bins with the `bins` kwarg
+
   axs.hist(model_errors, bins=num_bins)
+
+  hm_label = "error (%)" if relative else "error (uA)"
+  axs.set_xlabel(hm_label)
+
+  # We can set the number of bins with the `bins` kwarg
   fig.tight_layout()
   plt.savefig(png_file)
   plt.close()
