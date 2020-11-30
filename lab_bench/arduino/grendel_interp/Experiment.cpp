@@ -10,7 +10,7 @@ namespace experiment {
   volatile int SDA_VAL = LOW;
 
   #define N_CHANS 1
-  #define DATABUF_SIZ 4096
+  #define DATABUF_SIZ 2048
   uint16_t DATABUF[N_CHANS][DATABUF_SIZ];
 
   inline void set_SDA(int SDA_VAL){
