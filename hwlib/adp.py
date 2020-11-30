@@ -191,7 +191,7 @@ class ExprDataConfig(ConfigStmt):
 
     for v in e.vars():
       if not v in self.args:
-        raise Exception("%s is not a valid input. Expected" \
+        raise Exception("%s is not a valid input. Expected %s" \
                         % (v,self.args))
 
     self._expr = e
