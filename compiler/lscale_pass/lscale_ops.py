@@ -77,13 +77,19 @@ class HardwareInfo:
 
 
   def get_noise(self,instance,mode,port_name):
+    ZERO_NOISE = 1e-6
     assert(isinstance(port_name,str))
     port = self._get_port(instance,port_name)
     if not hasattr(port,'noise'):
-      return None
+      return ZERO_NOISE
 
     if port.noise is None:
-      return None
+      return ZERO_NOISE
+    
+    if not port.noise is None and \
+       port.noise[mode] is None:
+      print("[WARN] %s:%s has no noise in mode %s" % (instance,port_name,mode))
+      return ZERO_NOISE
 
     return port.noise[mode]
 

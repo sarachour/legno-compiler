@@ -39,19 +39,23 @@ def _generate_dsinfo_backprop(dev,dsinfo,adp):
           count += 1
 
   for cfg in adp.configs:
-    intervals = _get_intervals(dev,dsinfo,cfg)
     blk = dev.get_block(cfg.inst.block)
     bl_mode = list(cfg.modes)[0]
 
     for out in blk.outputs:
+      intervals = _get_intervals(dev,dsinfo,cfg)
       fxns = dict(map(lambda st: (st.name,st.expr), \
                  filter(lambda st: isinstance(st, adplib.ExprDataConfig), cfg.stmts)))
       rel = out.relation[bl_mode].substitute(fxns).concretize()
-      print(rel.vars())
-      all_inputs_bound = all(map(lambda v: dsinfo.has_interval(cfg.inst,v),rel.vars()))
-      if all_inputs_bound:
-          out_interval = ivallib.propagate_intervals(rel,intervals)
-          dsinfo.set_interval(cfg.inst,out_interval,out_interval)
+      all_inputs_bound = all(map(lambda v: v in intervals,rel.vars()))
+      if all_inputs_bound and not out.name in intervals:
+          try:
+             out_interval = ivallib.propagate_intervals(rel,intervals)
+             dsinfo.set_interval(cfg.inst,out.name,out_interval)
+             print("%s:%s : %s" % (cfg.inst, out.name,out_interval))
+             count += 1
+          except ivallib.UnknownIntervalError as e:
+             continue
 
       elif out.name in intervals and not all_inputs_bound:
            try:
@@ -61,8 +65,10 @@ def _generate_dsinfo_backprop(dev,dsinfo,adp):
              continue
 
            for port_name,ival in inp_intervals.items():
-             dsinfo.set_interval(cfg.inst,port_name,ival)
-             count += 1
+             if not port_name in intervals:
+                dsinfo.set_interval(cfg.inst,port_name,ival)
+                print("%s:%s : %s" % (cfg.inst, port_name,ival))
+                count += 1
 
   return count
 
@@ -101,7 +107,6 @@ def _generate_dsinfo_recurse(dev,dsinfo,adp):
       rel = rel.substitute(subs)
       try:
         out_interval = ivallib.propagate_intervals(rel,intervals)
-        print(out_interval)
         dsinfo.set_interval(cfg.inst,out.name,out_interval)
         count += 1
       except ivallib.UnknownIntervalError as e:
