@@ -210,14 +210,6 @@ def deviation_(delta_model,dataset,output_file, \
   for k,v in dataset.data.items():
     inps[k] = v
 
-  if delta_model.block.name == "mult" \
-     and str(delta_model.config.mode) == "(h,m,m)":
-    print(delta_model)
-    for idx in range(len(errors)):
-      ix = dict(map(lambda v: (v,inps[v][idx]), inps.keys()))
-      print("inps=%s meas=%f err=%f" % (ix,dataset.meas_mean[idx],errors[idx]))
-    print("max-val=%s" % get_maximum_value(delta_model))
-    input("continue")
 
   heatmap(delta_model,output_file,inps,errors,n=num_bins, \
           amplitude=amplitude, \
