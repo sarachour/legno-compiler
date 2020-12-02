@@ -3,8 +3,10 @@ import os
 import time
 import json
 import shutil
+import signal
 import numpy as np
 import itertools
+
 import util.util as util
 import util.paths as paths
 from hwlib.adp import ADP,ADPMetadata
@@ -12,6 +14,7 @@ from dslang.dsprog import DSProgDB
 import json
 import hwlib.adp_renderer as adprender
 import hwlib.hcdc.llenums as llenums
+
 
 def get_device(model_number):
     import hwlib.hcdc.hcdcv2 as hcdclib
@@ -160,15 +163,12 @@ def exec_lcal(args):
                         'calib_obj':calib_obj.value,
                         'model_number':args.model_number
                     }
-                    cmd = CAL_CMD.format(**kwargs)
-                    print(cmd)
-                    os.system(cmd)
-                    cmd = PROF_CMD.format(**kwargs)
-                    print(cmd)
-                    os.system(cmd)
-                    cmd = MKDELTAS_CMD.format(**kwargs)
-                    print(cmd)
-                    os.system(cmd)
+                    for CURR_CMD in [CAL_CMD,PROF_CMD,MKDELTAS_CMD]:
+                        cmd = CURR_CMD.format(**kwargs)
+                        print(cmd)
+                        code = os.system(cmd)
+                        if code == signal.SIGINT:
+                            raise Exception("User terminated process")
 
 def _lexec_already_ran(ph,board,adp,trial=0):
     for var,scf,chans in adp.observable_ports(board):
