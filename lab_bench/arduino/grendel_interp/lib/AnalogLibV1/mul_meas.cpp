@@ -3,23 +3,64 @@
 #include "calib_util.h"
 #include "profile.h"
 #include "oscgen.h"
+#include "emulator.h"
 #include <float.h>
 
-profile_t Fabric::Chip::Tile::Slice::Multiplier::measure(int mode,float in0val,float in1val) {
-  if(mode == 0){
-    if(this->m_codes.vga){
-      return measureVga(in0val,in1val);
-    }
-    else{
-      return measureMult(in0val,in1val);
-    }
-  }
-  else {
-    error("unknown mode");
-  }
+#define DEBUG_MULT_PROF
+
+emulator::physical_model_t mult_draw_random_model(profile_spec_t spec){
+  emulator::physical_model_t model;
+  emulator::ideal(model);
+  Fabric::Chip::Tile::Slice::Multiplier::computeInterval(spec.state.mult,
+                                                     in0Id,
+                                                     model.in0.min,
+                                                     model.in0.max);
+  Fabric::Chip::Tile::Slice::Multiplier::computeInterval(spec.state.mult,
+                                                         in1Id,
+                                                         model.in1.min,
+                                                         model.in1.max);
+
+  return model;
 }
 
-profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(float normalized_in0val,float gain) {
+profile_t Fabric::Chip::Tile::Slice::Multiplier::measure(profile_spec_t spec) {
+#ifdef EMULATE_HARDWARE
+  float gain_val = (spec.state.mult.gain_code - 128.0)/128.0;
+  float std;
+  float * input0 = prof::get_input(spec,port_type_t::in0Id);
+  float * input1 = prof::get_input(spec,port_type_t::in1Id);
+  float output = Fabric::Chip::Tile::Slice::Multiplier::computeOutput(spec.state.mult,
+                                                                      *input0,
+                                                                      *input1);
+  sprintf(FMTBUF,"inputs in=(%f,%f) gain=%f out=%f\n",  \
+          spec.inputs[0], \
+          spec.inputs[1], \
+          gain_val, output);
+  print_info(FMTBUF);
+
+  emulator::physical_model_t model = mult_draw_random_model(spec);
+  float result = emulator::draw(model,*input0,*input1,output,std);
+  sprintf(FMTBUF,"output=%f result=%f\n", output,result);
+  print_info(FMTBUF);
+  profile_t prof = prof::make_profile(spec, result,
+                                      std);
+  return prof;
+
+#else
+  mult_state_t backup = m_state;
+  profile_t result = result;
+  if(spec.state.mult.vga){
+    result = measureVga(spec);
+  }
+  else{
+    result = measureMult(spec);
+  }
+  this->m_state = backup;
+  return result;
+#endif
+}
+
+profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(profile_spec_t spec) {
   int next_slice = (slice_to_int(parentSlice->sliceId) + 1) % 4;
   Dac * ref_dac = parentSlice->parentTile->slices[next_slice].dac;
   Dac * val1_dac = parentSlice->dac;
@@ -27,11 +68,10 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(float normalized_in0
   cutil::calibrate_t calib;
   cutil::initialize(calib);
   // backup state of each component that will be clobbered
-  mult_code_t codes_mult = m_codes;
-  dac_code_t codes_val1 = val1_dac->m_codes;
-  dac_code_t codes_ref = ref_dac->m_codes;
+  mult_state_t state_mult = this->m_state;
+  dac_state_t state_val1 = val1_dac->m_state;
+  dac_state_t state_ref = ref_dac->m_state;
 
-  setGain(gain);
   // backup connections
   cutil::buffer_mult_conns(calib,this);
   cutil::buffer_dac_conns(calib,ref_dac);
@@ -42,69 +82,69 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureVga(float normalized_in0
   cutil::break_conns(calib);
 
 
-  Connection dac_to_in0 = Connection(val1_dac->out0, in0);
-  Connection mult_to_tileout = Connection ( out0, parentSlice->tileOuts[3].in0 );
+  Connection dac_to_in0 = Connection(val1_dac->out0, this->in0);
   Connection tileout_to_chipout = Connection ( parentSlice->tileOuts[3].out0,
                                                parentSlice->parentTile
                                                ->parentChip->tiles[3].slices[2].chipOutput->in0 );
-  Connection ref_to_tileout = Connection ( ref_dac->out0, parentSlice->tileOuts[3].in0 );
-
-  float in0val = util::range_to_coeff(this->m_codes.range[in0Id])*(normalized_in0val);
-  float target_in0 = val1_dac->fastMakeValue(in0val);
-  float target_vga = computeOutput(this->m_codes,
-                                   target_in0,
-                                   0.0);
-  if(fabs(target_vga) > 10.0){
-    sprintf(FMTBUF, "can't fit %f", target_vga);
-    calib.success = false;
-  }
+  Connection mult_to_tileout = Connection ( this->out0, parentSlice->tileOuts[3].in0 );
+  Connection ref_to_tileout = Connection ( ref_dac->out0, parentSlice->tileOuts[3].in0 ); 
 
   dac_to_in0.setConn();
   mult_to_tileout.setConn();
-  tileout_to_chipout.setConn();
   ref_to_tileout.setConn();
+  tileout_to_chipout.setConn();
+
+  this->m_state = spec.state.mult;
+  this->update(this->m_state);
   float mean,variance;
-  float target_gain = (m_codes.gain_code-128.0)/128.0;
-  bool meas_steady = false;
+  const bool meas_steady = false;
+
+  spec.inputs[in0Id]= val1_dac->fastMakeValue(spec.inputs[in0Id]);
+  float target_out = computeOutput(this->m_state,
+                                   spec.inputs[in0Id],
+                                   VAL_DONT_CARE);
+  if(fabs(target_out) > 20.0){
+    sprintf(FMTBUF, "can't fit %f", target_out);
+    calib.success = false;
+  }
   if(calib.success){
     calib.success &= cutil::measure_signal_robust(this,
                                                   ref_dac,
-                                                  target_vga,
+                                                  target_out,
                                                   meas_steady,
                                                   mean,
                                                   variance);
   }
-  float bias = (mean-target_vga);
-  sprintf(FMTBUF,"PARS input=%f/%f gain=%f/%f target=%f meas=%f",
-          in0val,target_in0,gain,target_gain,
-          target_vga,mean);
   print_info(FMTBUF);
-  const int mode = 0;
-  profile_t prof = prof::make_profile(out0Id,
-                                      mode,
-                                      target_vga,
-                                      target_in0,
-                                      gain,
-                                      bias,
-                                      variance);
+  profile_t prof = prof::make_profile(spec,
+                                      mean,
+                                      sqrt(variance));
+#ifdef DEBUG_MULT_PROF
+  float coeff = (this->m_state.gain_code - 128.0)/128.0;
+  sprintf(FMTBUF,"prof-vga input=%f coeff=%f target=%f mean=%f\n",
+          spec.inputs[in0Id],
+          coeff,
+          target_out,
+          mean);
+  print_info(FMTBUF);
+#endif
   if(!calib.success){
-    prof.mode = 255;
+    prof.status = FAILED_TO_CALIBRATE;
   }
   dac_to_in0.brkConn();
   mult_to_tileout.brkConn();
   tileout_to_chipout.brkConn();
   ref_to_tileout.brkConn();
   cutil::restore_conns(calib);
-  ref_dac->update(codes_ref);
-  val1_dac->update(codes_val1);
-  this->update(codes_mult);
+  ref_dac->update(state_ref);
+  val1_dac->update(state_val1);
+  this->update(state_mult);
   return prof;
 
 }
 
 
-profile_t Fabric::Chip::Tile::Slice::Multiplier::measureMult(float normalized_in0val,
-                                                             float normalized_in1val) {
+profile_t Fabric::Chip::Tile::Slice::Multiplier::measureMult(profile_spec_t spec) {
   int next_slice = (slice_to_int(parentSlice->sliceId) + 1) % 4;
   int next2_slice = (slice_to_int(parentSlice->sliceId) + 2) % 4;
   Dac * val2_dac = parentSlice->parentTile->slices[next_slice].dac;
@@ -114,10 +154,10 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureMult(float normalized_in
   cutil::calibrate_t calib;
   cutil::initialize(calib);
   // backup state of each component that will be clobbered
-  mult_code_t codes_self = m_codes;
-  dac_code_t codes_val1 = val1_dac->m_codes;
-  dac_code_t codes_val2 = val2_dac->m_codes;
-  dac_code_t codes_ref = ref_dac->m_codes;
+  mult_state_t state_self = m_state;
+  dac_state_t state_val1 = val1_dac->m_state;
+  dac_state_t state_val2 = val2_dac->m_state;
+  dac_state_t state_ref = ref_dac->m_state;
 
   // backup connections
   cutil::buffer_mult_conns(calib,this);
@@ -143,18 +183,20 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureMult(float normalized_in
   mult_to_tileout.setConn();
   tileout_to_chipout.setConn();
   ref_to_tileout.setConn();
+  
+  this->m_state = spec.state.mult;
+  this->update(this->m_state);
 
-
-  float in0val = util::range_to_coeff(this->m_codes.range[in0Id])*(normalized_in0val);
-  float in1val = util::range_to_coeff(this->m_codes.range[in1Id])*(normalized_in1val);
-  float target_in0 = val1_dac->fastMakeValue(in0val);
-  float target_in1 = val2_dac->fastMakeValue(in1val);
-  float target_mult = computeOutput(m_codes,target_in0,target_in1);
-  if(fabs(target_mult) > 10.0){
+  spec.inputs[in0Id ]= val1_dac->fastMakeValue(spec.inputs[in0Id]);
+  spec.inputs[in1Id] = val2_dac->fastMakeValue(spec.inputs[in1Id]);
+  float target_mult = computeOutput(m_state,
+                                    spec.inputs[in0Id],
+                                    spec.inputs[in1Id]);
+  if(fabs(target_mult) > 20.0){
     calib.success = false;
   }
   float mean,variance;
-  const bool meas_steady;
+  const bool meas_steady = false;
   if(calib.success){
     calib.success &= cutil::measure_signal_robust(this,
                                                   ref_dac,
@@ -164,32 +206,31 @@ profile_t Fabric::Chip::Tile::Slice::Multiplier::measureMult(float normalized_in
                                                   variance);
 
   }
-  sprintf(FMTBUF,"config inps=(%f,%f) in0=%f in1=%f output=%f meas=%f",
-          in0val,in1val,target_in0,target_in1,target_mult,mean);
-  print_info(FMTBUF);
-
-  float bias = mean-target_mult;
-  const int mode = 0;
-  profile_t prof = prof::make_profile(out0Id,
-                                      mode,
-                                      target_mult,
-                                      target_in0,
-                                      target_in1,
-                                      bias,
-                                      variance);
+  profile_t prof = prof::make_profile(spec,
+                                      mean,
+                                      sqrt(variance));
 
   if(!calib.success){
-    prof.mode = 255;
+    prof.status = FAILED_TO_CALIBRATE;
   }
+#ifdef DEBUG_MULT_PROF
+  sprintf(FMTBUF,"prof-mult in0=%f in1=%f target=%f mean=%f\n",
+          spec.inputs[in0Id],
+          spec.inputs[in1Id],
+          target_mult,
+          mean);
+  print_info(FMTBUF);
+#endif
+  print_info(FMTBUF);
   dac_to_in0.brkConn();
   dac_to_in1.brkConn();
   mult_to_tileout.brkConn();
   tileout_to_chipout.brkConn();
   ref_to_tileout.brkConn();
   cutil::restore_conns(calib);
-  ref_dac->update(codes_ref);
-  val1_dac->update(codes_val1);
-  val2_dac->update(codes_val2);
-  this->update(codes_self);
+  ref_dac->update(state_ref);
+  val1_dac->update(state_val1);
+  val2_dac->update(state_val2);
+  this->update(state_self);
   return prof;
 }

@@ -2,9 +2,9 @@
 #include <Arduino.h>
 
 namespace comm {
-#define BUFSIZ 512
+#define GRENDEL_BUFSIZ 512
 
-byte INBUF[BUFSIZ];
+byte INBUF[GRENDEL_BUFSIZ];
 int WPOS=0;
 int RPOS=0;
 int MSGNO = 0;
@@ -55,7 +55,7 @@ void response(const char * msg,int args){
 void error(const char * msg){
   while(1){
      header();
-     Serial.print("[msg] ERROR");
+     Serial.print("[msg] ERROR : ");
      Serial.println(msg);
      Serial.flush();
      delay(100);

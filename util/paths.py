@@ -4,7 +4,56 @@ import util.config as config
 import util.util as util
 import parse as parselib
 
+class PlotType(Enum):
+    SIMULATION = "sim"
+    MEASUREMENT = "meas"
+
+class DeviceStatePathHandler:
+    DEVICE_STATE_DIR = "device-state"
+
+    def __init__(self,board,model,make_dirs=True):
+        self.board = board
+        self.model = model
+        self.set_root_dir(DeviceStatePathHandler.DEVICE_STATE_DIR + "/%s/%s"  \
+                          % (board,model))
+        for path in [
+                self.ROOT_DIR,
+                self.PHYS_MODEL_DIR,
+                self.SRC_DIR,
+                self.VISUALIZATIONS
+        ]:
+            if make_dirs:
+                util.mkdir_if_dne(path)
+
+
+    def get_histogram_vis(self,name,block,output,static_cfg,label):
+        rel_path = "%s/%s/%s/" % (self.VISUALIZATIONS,block,static_cfg)
+        util.mkdir_if_dne(rel_path)
+        if label.value == 'none':
+            return "%s/hist_%s_%s.png" \
+                % (rel_path,name,output)
+        else:
+            return "%s/hist_%s_%s_%s.png" \
+                % (rel_path,name,output,label.value)
+
+
+    def get_delta_vis(self,block,output,loc,static_cfg,hidden_cfg,label):
+        rel_path = "%s/%s/%s/" % (self.VISUALIZATIONS,block,static_cfg)
+        util.mkdir_if_dne(rel_path)
+        if label.value == 'none':
+            return "%s/del_%s_%s_%s.png" % (rel_path,loc,output,hidden_cfg)
+        else:
+            return "%s/del_%s_%s_%s.png" % (rel_path,loc,output,label.value)
+
+    def set_root_dir(self,root):
+        self.ROOT_DIR = root
+        self.DATABASE = self.ROOT_DIR + "/%s-%s.db" % (self.board,self.model)
+        self.PHYS_MODEL_DIR = self.ROOT_DIR + "/models"
+        self.SRC_DIR = self.ROOT_DIR + "/models-src"
+        self.VISUALIZATIONS = self.ROOT_DIR + "/viz"
+
 class PathHandler:
+
     def __init__(self,subset,prog,make_dirs=True):
         self.set_root_dir(subset,prog)
         for path in [
@@ -15,9 +64,6 @@ class PathHandler:
                 self.LSCALE_ADP_DIR,
                 self.LSCALE_ADP_DIAG_DIR,
                 self.MEAS_WAVEFORM_FILE_DIR,
-                self.GRENDEL_FILE_DIR,
-                self.REF_SIM_DIR,
-                self.ADP_SIM_DIR,
                 self.PLOT_DIR,
                 self.TIME_DIR
         ]:
@@ -59,25 +105,19 @@ class PathHandler:
         self.REF_SIM_DIR = self.PROG_DIR + "/sim/ref"
         self.ADP_SIM_DIR = self.PROG_DIR + "/sim/adp"
 
-
-    def adp_sim_plot(self,lgraph,lscale,opt,model,varname):
-        dirpath = "{path}/{lgraph}_{lscale}_{opt}_{model}"
-        cdir = dirpath.format(path=self.ADP_SIM_DIR, \
-                              lgraph=lgraph, \
-                              lscale=lscale, \
-                              opt=opt, \
-                              model=model)
+    def adp_sim_plot(self,plot_type,prog,lgraph,lscale,opt,model):
+        assert(isinstance(plot_type,PlotType))
+        filepath = "{path}/{plot_type}"
+        cdir = filepath.format(path=self.PLOT_DIR, \
+                               plot_type=plot_type.value)
         util.mkdir_if_dne(cdir)
-        filename = "{dirpath}/{name}.png"
-        cfilename = filename.format(dirpath=cdir, \
-                                name=varname)
+        filepat = "{path}/{prog}_{lgraph}_{lscale}_{opt}_{model}.png"
+        cfilename = filepat.format(path=cdir, \
+                                   prog=prog, \
+                                   lgraph=lgraph, \
+                                   lscale=lscale, \
+                                   opt=opt, model=model)
         return cfilename
-
-    def ref_sim_plot(self,varname):
-        path = "{path}/{name}.png"
-        return path.format(path=self.REF_SIM_DIR, \
-                           name=varname)
-
 
     def time_file(self,name):
         path = "{path}/{name}.txt"
@@ -87,7 +127,7 @@ class PathHandler:
 
 
     def lgraph_adp_diagram_file(self,graph_index):
-        path = "{path}/{prog}_g{lgraph}.dot"
+        path = "{path}/{prog}_g{lgraph}.gv"
         return path.format(path=self.LGRAPH_ADP_DIAG_DIR,
                            prog=self._prog,
                            lgraph=graph_index)
@@ -99,130 +139,89 @@ class PathHandler:
                            prog=self._prog,
                            lgraph=graph_index)
 
-    @staticmethod
-    def lgraph_adp_to_args(path):
-        name = path.split("/")[-1]
-        cmd = "{prog:w}_g{lgraph:w}.adp"
-        result = parselib.parse(cmd,name)
-        assert(not result is None)
-        return result
 
-    def lscale_adp_file(self,graph_index,scale_index,model,opt):
-        path ="{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}.adp"
+    def lscale_adp_diagram_file(self,graph_index,scale_index,model,opt,calib_obj=None):
+        model_tag = model
+        if not calib_obj is None:
+            model_tag += "_%s" % calib_obj
+        path ="{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}.gv"
+        filepath = path.format(path=self.LSCALE_ADP_DIAG_DIR, \
+                               prog=self._prog, \
+                               lgraph=graph_index, \
+                               lscale=scale_index, \
+                               model=model_tag, \
+                               opt=opt)
+
+ 
+    def lscale_adp_file(self,graph_index,scale_index,model,opt,calib_obj,phys_db):
+        path ="{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}_{calib_obj}_{physdb}.adp"
         filepath = path.format(path=self.LSCALE_ADP_DIR, \
                                prog=self._prog, \
                                lgraph=graph_index, \
                                lscale=scale_index, \
                                model=model, \
+                               calib_obj=calib_obj, \
+                               physdb=phys_db, \
                                opt=opt)
 
         return filepath
 
-    @staticmethod
-    def lscale_adp_to_args(path):
-        name = path.split("/")[-1]
-        for model_cmd in util.model_format():
-            cmd = "{prog:w}_g{lgraph:w}_s{lscale:d}_%s_{opt:w}.adp"  \
-                  % model_cmd
-            result = parselib.parse(cmd,name)
-            if not result is None:
-                result = dict(result.named.items())
-                result['model']= util.pack_parsed_model(result)
-                assert(not result is None)
-                return result
-
-        raise Exception("could not parse: %s" % name)
-
-    def lscale_adp_diagram_file(self,graph_index,scale_index,model,opt,tag="notag"):
-        path = "{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}_{tag}.dot"
+    def lscale_adp_diagram_file(self,graph_index,scale_index,model,opt,calib_obj,phys_db):
+        path = "{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}_{calib_obj}_{physdb}.dot"
         return path.format(path=self.LSCALE_ADP_DIAG_DIR,
                            prog=self._prog, \
                            lgraph=graph_index, \
                            lscale=scale_index, \
                            model=model, \
-                           opt=opt,
-                           tag=tag)
+                           calib_obj=calib_obj, \
+                           physdb=phys_db, \
+                           opt=opt)
 
-
-
-    def plot(self,graph_index,scale_index,model,opt, \
-             menv_subset,henv_subset,tag):
-        path = "{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}_{dssim}_{hwenv}_{tag}.png"
-        return path.format(path=self.PLOT_DIR,
-                           prog=self._prog,
-                           lgraph=graph_index,
-                           lscale=scale_index,
-                           model=model,
-                           opt=opt,
-                           dssim=menv_subset,
-                           hwenv=henv_subset, \
-                           tag=tag)
-
-
-
-    def grendel_file(self,graph_index,scale_index,model,opt, \
-                     menv_subset,henv_subset):
-        path = "{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}_{dssim}_{hwenv}.grendel"
-        return path.format(path=self.GRENDEL_FILE_DIR,
-                           prog=self._prog,
-                           lgraph=graph_index,
-                           lscale=scale_index,
-                           model=model,
-                           opt=opt,
-                           dssim=menv_subset,
-                           hwenv=henv_subset)
-
-
-    @staticmethod
-    def grendel_file_to_args(path):
-        name = path.split("/")[-1]
-        for model_cmd in util.model_format():
-            cmd = "{prog:w}_g{lgraph:w}_s{lscale:d}_%s_{opt:w}_{dssim:w}_{hwenv:w}.grendel" % \
-                   model_cmd
-            result = parselib.parse(cmd,name)
-            if not result is None:
-                result = dict(result.named.items())
-                result['model'] = util.pack_parsed_model(result)
-                assert(not result is None)
-                return result
-
-        raise Exception("could not parse: %s" % name)
 
 
     def measured_waveform_file(self,graph_index,scale_index, \
                                model,opt,\
-                               dssim, \
-                               hwenv, \
+                               calib_obj, phys_db, \
                                variable,trial):
-        path = "{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}"
-        path += "_{dssim}_{hwenv}_{var}_{trial}.json"
+        path = "{path}/{prog}_g{lgraph}_s{lscale}_{model}_{calib_obj}_{opt}"
+        path += "_{var}_{trial}.json"
 
         return path.format(path=self.MEAS_WAVEFORM_FILE_DIR,
                            prog=self._prog,
                            lgraph=graph_index,
                            lscale=scale_index,
                            model=model,
+                           calib_obj=calib_obj, \
+                           physdb=phys_db, \
                            opt=opt,
-                           dssim=dssim,
-                           hwenv=hwenv,
                            var=variable,
                            trial=trial)
 
+    def waveform_plot_file(self,graph_index,scale_index, \
+                           model,opt,\
+                           calib_obj, phys_db, \
+                           variable,trial, \
+                           plot):
+        filepath = "{path}/{plot_type}"
+        cdir = filepath.format(path=self.PLOT_DIR, \
+                               plot_type='wave')
+        util.mkdir_if_dne(cdir)
 
+        path = "{path}/{prog}_g{lgraph}_s{lscale}_{model}_{calib_obj}_{opt}"
+        path += "_{var}_{trial}_{plot}.pdf"
 
-    def measured_waveform_file_to_args(self,path):
-        name = path.split("/")[-1]
-        for model_cmd in util.model_format():
-            cmd = "{prog:w}_g{lgraph:w}_s{lscale:d}_%s_{opt:w}" % model_cmd
-            cmd += "_{dssim:w}_{hwenv:w}_{var:w}_{trial:d}.json"
-            result = parselib.parse(cmd,name)
-            if not result is None:
-                result = dict(result.named.items())
-                result['model'] = util.pack_parsed_model(result)
-                assert(not result is None)
-                return result
+        return path.format(path=cdir,
+                           prog=self._prog,
+                           lgraph=graph_index,
+                           lscale=scale_index,
+                           model=model,
+                           calib_obj=calib_obj, \
+                           physdb=phys_db, \
+                           opt=opt,
+                           var=variable,
+                           trial=trial, \
+                           plot=plot)
 
-        raise Exception("could not parse: %s" % name)
 
 
 

@@ -5,6 +5,7 @@
 #include "profile.h"
 #include <float.h>
 
+//#define DEBUG_CALIB_UTIL
 
 namespace cutil {
 
@@ -39,9 +40,8 @@ namespace cutil {
   }
 
   float compute_loss(float bias, float noise_std, float pred_err,
-                     float gain, range_t range,
+                     float gain, float mag,
                      float deviation_weight, float max_gain){
-    float mag = util::range_to_coeff(range);
     float error = max(max(fabs(bias),noise_std),pred_err);
     float pct_deviate = fabs(gain-1.0)/1.0;
     float pct_error = error/mag;
@@ -67,39 +67,48 @@ namespace cutil {
                              bool steady,
                              float& mean,
                              float& variance){
+    const float thresh = 2.6;
+    const float step = 0.24;
     float delta = 0.0;
-    float thresh = 1.3;
-    float step = 0.12;
     float measurement = 0;
     float ref_dac_val;
     float targ_dac_val;
 
-    dac_code_t codes_dac = ref_dac->m_codes;
+    dac_state_t codes_dac = ref_dac->m_state;
 
+    const float MED_CURRENT_AMPL = 2.0;
+    const float DAC_VAL_AMPL = 1.0;
     // configure reference dac to maximize gain
-    ref_dac->setRange(fabs(target) > 1.0 ? RANGE_HIGH : RANGE_MED);
-
+    ref_dac->setRange(fabs(target) > MED_CURRENT_AMPL
+                      ? RANGE_HIGH : RANGE_MED);
     fast_calibrate_dac(ref_dac);
     targ_dac_val = Fabric::Chip::Tile::Slice::Dac
-      ::computeInput(ref_dac->m_codes,
-                     -target);
+      ::computeInput(ref_dac->m_state, -target);
 
     do {
-      ref_dac->setConstant(max(min(targ_dac_val,1.0),-1.0));
+      //initialize the dac digital value ([-1,1]) to the target value
+      //the dac emits a current that is 2*digital value
+      ref_dac_val = max(min(targ_dac_val,DAC_VAL_AMPL),-DAC_VAL_AMPL);
+      ref_dac->setConstant(ref_dac_val);
       if(steady){
         util::meas_steady_chip_out(fu,measurement,variance);
       }
       else{
         util::meas_dist_chip_out(fu,measurement,variance);
       }
+#ifdef DEBUG_CALIB_UTIL
+      sprintf(FMTBUF, "cutil targ=%f ref-dac=%f meas=%f\n", target, ref_dac_val, measurement);
+      print_info(FMTBUF);
+#endif
+      // tune measurement if we saturated the range
       if(fabs(measurement) > thresh){
         delta += measurement < 0 ? -step : step;
         targ_dac_val = Fabric::Chip::Tile::Slice::Dac
-                               ::computeInput(ref_dac->m_codes,
+                               ::computeInput(ref_dac->m_state,
                                               -(target+delta));
       }
     } while(fabs(measurement) > thresh &&
-            fabs(targ_dac_val) <= 1.0);
+            fabs(targ_dac_val) <= DAC_VAL_AMPL);
 
     if(fabs(measurement) > thresh){
       sprintf(FMTBUF,
@@ -108,8 +117,12 @@ namespace cutil {
       print_info(FMTBUF);
     }
     float dummy;
-    ref_dac_val = ref_dac->fastMeasureValue(dummy);
-    mean = measurement-ref_dac_val;
+    float ref_dac_out = ref_dac->fastMeasureValue(dummy);
+#ifdef DEBUG_CALIB_UTIL
+    sprintf(FMTBUF, "final cutil targ=%f ref-dac=%f ref=%f meas=%f\n", target, ref_dac_val, ref_dac_out, measurement);
+    print_info(FMTBUF);
+#endif
+    mean = measurement-ref_dac_out;
     variance = variance;
 
     ref_dac->update(codes_dac);
@@ -125,6 +138,10 @@ namespace cutil {
       calib.conn_buf[i][0] = conn.sourceIfc;
       calib.conn_buf[i][1] = conn.destIfc;
       calib.nconns += 1;
+#ifdef DEBUG_CALIB_UTIL
+      sprintf(FMTBUF,"buffer %s -> %s\n",conn.sourceIfc, conn.destIfc);
+      print_info(FMTBUF);
+#endif
     }
     else{
       error("ran out of connections.");
@@ -138,7 +155,7 @@ namespace cutil {
     if(n_ins >= 1){
       Fabric::Chip::Connection c_in0 = Fabric::Chip::Connection (fo->in0->userSourceDest,
                                                                  fo->in0);
-      if(c_in0.sourceIfc && c_in0.destIfc){
+      if(c_in0.sourceIfc){
         buffer_conn(calib,c_in0);
       }
     }
@@ -207,6 +224,10 @@ namespace cutil {
     for(int i=0; i < calib.nconns; i+=1){
       Fabric::Chip::Connection c = Fabric::Chip::Connection(calib.conn_buf[i][0],
                                                             calib.conn_buf[i][1]);
+#ifdef DEBUG_CALIB_UTIL
+      sprintf(FMTBUF,"break %s -> %s\n",c.sourceIfc, c.destIfc);
+      print_info(FMTBUF);
+#endif
       c.brkConn();
     }
   }
@@ -214,6 +235,11 @@ namespace cutil {
     for(int i=0; i < calib.nconns; i+=1){
       Fabric::Chip::Connection c = Fabric::Chip::Connection(calib.conn_buf[i][0],
                                                             calib.conn_buf[i][1]);
+#ifdef DEBUG_CALIB_UTIL
+      sprintf(FMTBUF,"restore %s -> %s\n",c.sourceIfc, c.destIfc);
+      print_info(FMTBUF);
+#endif
+
       c.setConn();
     }
   }

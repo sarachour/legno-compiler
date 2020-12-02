@@ -6,28 +6,21 @@
 
 namespace calibrate {
   profile_t measure(Fabric * fab,
-                         uint16_t blk,
-                         circ::circ_loc_idx1_t loc,
-                         uint8_t mode,
-                         float in0,
-                         float in1);
+                    profile_spec_t& spec);
 
 
   void calibrate(Fabric * fab,
-                 uint16_t blk,
-                 circ::circ_loc_idx1_t loc,
+                 block_loc_t loc,
                  calib_objective_t obj);
 
 
-  void get_codes(Fabric * fab,
-                 uint16_t blk,
-                 circ::circ_loc_idx1_t loc,
-                 block_code_t& buf);
+  void get_state(Fabric * fab,
+                 block_loc_t loc,
+                 block_state_t& buf);
 
-  void set_codes(Fabric * fab,
-                 uint16_t blk,
-                 circ::circ_loc_idx1_t loc,
-                 block_code_t& buf);
+  void set_state(Fabric * fab,
+                 block_loc_t loc,
+                 block_state_t& buf);
 
 }
 

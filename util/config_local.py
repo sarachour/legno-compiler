@@ -25,6 +25,7 @@ EXPERIMENT_DB="%s/experiments.db" % OUTPUT_PATH
 LEGNO_PATH="%s/legno" % OUTPUT_PATH
 
 OSC_IP="128.30.71.225"
+OSC_PORT=5024
 ARDUINO_FILE_DESC=get_arduino_path()
 
 DEVSTATE_PATH="device-state"

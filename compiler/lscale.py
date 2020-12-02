@@ -1,117 +1,92 @@
-import util.util as util
+import compiler.lscale_pass.lscale_problem as lscaleprob
+import compiler.lscale_pass.lscale_ops as scalelib
+import compiler.lscale_pass.lscale_solver as lscale_solver
+import hwlib.adp as adplib
 
-import ops.scop as scop
-import ops.op as ops
-import ops.interval as interval
+def get_objective(objective):
+  aqm= scalelib.QualityVar(scalelib.QualityMeasure.AQM)
+  dqm= scalelib.QualityVar(scalelib.QualityMeasure.DQM)
+  timescale = scalelib.TimeScaleVar()
 
-import hwlib.model as hwmodel
-import hwlib.props as props
-from hwlib.adp import AnalogDeviceProg
+  if scalelib.ObjectiveFun.QUALITY == objective:
+    monom = scalelib.SCMonomial()
+    monom.add_term(aqm,-1.0)
+    monom.add_term(dqm,-1.0)
+    return monom
 
+  elif scalelib.ObjectiveFun.QUALITY_SPEED == objective:
+    monom = scalelib.SCMonomial()
+    monom.add_term(aqm,-1.0)
+    monom.add_term(dqm,-1.0)
+    monom.add_term(timescale)
+    return monom
 
-import compiler.common.prop_interval as prop_interval
+  elif scalelib.ObjectiveFun.SPEED == objective:
+    monom = scalelib.SCMonomial()
+    monom.add_term(timescale)
+    return monom
 
-import compiler.lscale_pass.lscale_util as lscale_util
-import compiler.lscale_pass.lscale_common as lscale_common
-import compiler.lscale_pass.scenv as scenvlib
-import compiler.lscale_pass.scenv_gpkit as scenv_gpkit
-import compiler.lscale_pass.scenv_linear as scenv_linear
-import compiler.lscale_pass.scenv_smt as scenv_smt
+  else:
+    raise Exception("unknown objective: %s" % objective)
 
-import compiler.lscale_pass.expr_visitor as exprvisitor
-import compiler.lscale_pass.lscale_util as lscale_util
-import compiler.lscale_pass.lscale_common as lscale_common
-import compiler.lscale_pass.lscale_infer as lscale_infer
-import compiler.lscale_pass.lscale_physlog as lscale_physlog
-from compiler.lscale_pass.objective.obj_mgr import LScaleObjectiveFunctionManager
+def adp_summary(adp):
+  templ = ["=========", \
+           "Method: {method}", \
+           "Objective: {objective}", \
+           "AQM: {aqm}", \
+           "DQM: {dqm}", \
+           "TAU: {tau}"]
 
+  args = {
+    'tau':adp.tau,
+    'aqm':adp.metadata.get(adplib.ADPMetadata.Keys.LSCALE_AQM),
+    'dqm':adp.metadata.get(adplib.ADPMetadata.Keys.LSCALE_DQM),
+    'method':adp.metadata.get(adplib.ADPMetadata.Keys.LSCALE_SCALE_METHOD),
+    'objective':adp.metadata.get(adplib.ADPMetadata.Keys.LSCALE_OBJECTIVE),
+  }
+  st = ""
+  for stmt in templ:
+    st += "%s\n" % (stmt.format(**args))
+  return st
 
+def scale(dev, program, adp, \
+          objective=scalelib.ObjectiveFun.QUALITY, \
+          scale_method=scalelib.ScaleMethod.IDEAL, \
+          calib_obj=None):
 
-def report_missing_models(model,circ):
-    for block,loc,port,comp_mode,scale_mode in hwmodel.ModelDB.MISSING:
-        lscale_physlog.log(circ,block,loc, \
-                          comp_mode,
-                          scale_mode)
-        msg = "NO model: %s[%s].%s %s %s error" % \
-              (block,loc,port, \
-               comp_mode,scale_mode)
-
-def scale(prog,adp,nslns, \
-          model, \
-          mdpe, \
-          mape, \
-          vmape, \
-          mc, \
-          ignore_models=[], \
-          max_freq_khz=None, \
-          do_log=True, \
-          test_existence=False):
-    def gen_models(model):
-        models = [model]
-        #if model.uses_delta_model():
-        #    models.append(model.naive_model())
-
-        return models
-
-    assert(isinstance(model,util.DeltaModel))
-    prop_interval.clear_intervals(adp)
-    prop_interval.compute_intervals(prog,adp)
-    objs = LScaleObjectiveFunctionManager.basic_methods()
-    n_missing = 0
-    has_solution = False
-    for this_model in gen_models(model):
-        for obj in objs:
-            for idx,adp in enumerate(lscale_infer.infer_scale_config(prog, \
-                                                                     adp, \
-                                                                     nslns, \
-                                                                     model=this_model, \
-                                                                     max_freq_khz=max_freq_khz, \
-                                                                     ignore_models=ignore_models, \
-                                                                     mdpe=mdpe, \
-                                                                     mape=mape, \
-                                                                     vmape=vmape, \
-                                                                     obj_fun=obj, \
-                                                                     mc=mc)):
-                if test_existence:
-                    has_solution = True
-                    break
-
-                #for this_model in gen_models(model):
-                scenv = scenvlib.LScaleEnv(model=this_model, \
-                                           max_freq_khz=max_freq_khz, \
-                                           mdpe=mdpe, \
-                                           mape=mape, \
-                                           vmape=vmape, \
-                                           mc=mc)
-                yield idx,obj.name(),scenv.params.tag(),adp
-
-            if test_existence:
-                break
+  def set_metadata(adp):
+    adp.metadata.set(adplib.ADPMetadata.Keys.LSCALE_SCALE_METHOD, \
+                     scale_method.value)
+    adp.metadata.set(adplib.ADPMetadata.Keys.LSCALE_OBJECTIVE, \
+                           objective.value)
+    adp.metadata.set(adplib.ADPMetadata.Keys.RUNTIME_CALIB_OBJ, \
+                           calib_obj.value)
+    adp.metadata.set(adplib.ADPMetadata.Keys.RUNTIME_PHYS_DB, \
+                           dev.model_number)
 
 
-        if test_existence:
-            break
+  cstr_prob = []
+  for stmt in lscaleprob. \
+      generate_constraint_problem(dev,program,adp, \
+                                  scale_method=scale_method, \
+                                  calib_obj=calib_obj):
+    cstr_prob.append(stmt)
 
-    if test_existence:
-        if has_solution:
-            yield None
+  obj = get_objective(objective)
 
-        if not do_log:
-            return
+  if scale_method == scalelib.ScaleMethod.NOSCALE:
+    for cfg in adp.configs:
+      cfg.modes = [cfg.modes[0]]
 
+    set_metadata(adp)
+    yield adp
+    return
 
-    if do_log:
-        print("logging missing models: %s" % do_log)
-        pars = scenvlib.LScaleEnvParams(model=model,
-                                        max_freq_khz=max_freq_khz, \
-                                        mdpe=mdpe,
-                                        mape=mape,
-                                        vmape=vmape,
-                                        mc=mc)
-        report_missing_models(model,adp)
-        lscale_physlog.save(pars.calib_obj)
-        if not lscale_physlog.is_empty() and \
-           model.uses_delta_model():
-            raise Exception("must calibrate components")
+  for adp in lscale_solver.solve(dev,adp,cstr_prob,obj):
+    set_metadata(adp)
+    for cfg in adp.configs:
+      assert(cfg.complete())
 
-        lscale_physlog.clear()
+    print(adp_summary(adp))
+    yield adp
+

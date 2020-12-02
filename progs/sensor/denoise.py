@@ -1,7 +1,7 @@
 from dslang.dsprog import DSProg
 from dslang.dssim import DSSim,DSInfo
 import progs.sensor.sensor_util as sensor_util
-import hwlib.units as units
+#import hwlib.units as units
 
 def dsname():
   return "adenoise"

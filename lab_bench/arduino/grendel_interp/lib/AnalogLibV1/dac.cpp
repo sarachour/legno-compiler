@@ -5,34 +5,49 @@
 #include "slice.h"
 #include "dac.h"
 
+void Fabric::Chip::Tile::Slice::Dac::computeInterval(dac_state_t& state,
+                                                     port_type_t port, float& min, float& max){
+  float ampl = 2.0;
+  switch(port){
+  case out0Id:
+    ampl = state.range == RANGE_HIGH ? 20.0 : 2.0;
+    break;
+  default:
+    error("dac was supplied unknown port");
+  }
+  min = -ampl;
+  max = ampl;
+}
 
-float Fabric::Chip::Tile::Slice::Dac::computeInput(dac_code_t& codes, float output){
+float Fabric::Chip::Tile::Slice::Dac::computeInput(dac_state_t& codes, float output){
   float sign = util::sign_to_coeff(codes.inv);
   float rng = util::range_to_coeff(codes.range);
-  return output/(sign*rng);
+  float input = output/(sign*rng*2.0);
+  return input;
 }
-float Fabric::Chip::Tile::Slice::Dac::computeOutput(dac_code_t& codes){
+
+float Fabric::Chip::Tile::Slice::Dac::computeOutput(dac_state_t& codes){
   float sign = util::sign_to_coeff(codes.inv);
   float rng = util::range_to_coeff(codes.range);
   float const_val = (codes.const_code - 128.0)/128.0;
-  return sign*rng*const_val;
+  return sign*rng*const_val*2.0;
 }
-void Fabric::Chip::Tile::Slice::Dac::update(dac_code_t codes){
-  m_codes = codes;
+void Fabric::Chip::Tile::Slice::Dac::update(dac_state_t codes){
+  this->m_state = codes;
   updateFu();
   if(codes.source == DSRC_MEM){
     setConstantCode(codes.const_code);
   }
   setSource(codes.source);
   // restore exact state. The gain_val field clobbered a bit by setConstantCode
-  m_codes = codes;
+  this->m_state = codes;
 }
 
 void Fabric::Chip::Tile::Slice::Dac::setEnable (
 	bool enable
 )
 {
-	m_codes.enable = enable;
+	this->m_state.enable = enable;
 	setParam0 ();
 	setParam1 ();
 }
@@ -40,7 +55,7 @@ void Fabric::Chip::Tile::Slice::Dac::setEnable (
 void Fabric::Chip::Tile::Slice::Dac::setInv (
                                              bool inverse // whether output is negated
 ) {
-  m_codes.inv = inverse;
+  this->m_state.inv = inverse;
 	setParam0();
 }
 
@@ -49,13 +64,13 @@ void Fabric::Chip::Tile::Slice::Dac::setRange (
 	range_t range // 20 uA mode
 ) {
   assert(range != RANGE_LOW);
-  m_codes.range = range;
-	setEnable (m_codes.enable);
+  this->m_state.range = range;
+	setEnable (this->m_state.enable);
 }
 
 void Fabric::Chip::Tile::Slice::Dac::setSource (dac_source_t src) {
 	/*record*/
-  m_codes.source = src;
+  this->m_state.source = src;
   bool memory = (src == DSRC_MEM);
   bool external = (src == DSRC_EXTERN);
 	switch (parentSlice->sliceId) {
@@ -76,7 +91,7 @@ void Fabric::Chip::Tile::Slice::Dac::setSource (dac_source_t src) {
 	parentSlice->parentTile->controllerHelperTile ( 11, cfgTile );
 
 	setEnable (
-		m_codes.enable
+		this->m_state.enable
 	);
 }
 
@@ -84,7 +99,7 @@ void Fabric::Chip::Tile::Slice::Dac::setConstantCode (
 	unsigned char constantCode // fixed point representation of desired constant
 	// 0 to 255 are valid
 ) {
-  m_codes.const_code = constantCode;
+  this->m_state.const_code = constantCode;
   setSource(DSRC_MEM);
 	parentSlice->parentTile->parentChip->parentFabric->cfgCommit();
 	unsigned char selLine = 0;
@@ -109,14 +124,14 @@ void Fabric::Chip::Tile::Slice::Dac::setConstant(float constant){
 }
 
 void Fabric::Chip::Tile::Slice::Dac::defaults(){
-  m_codes.inv = false;
-  m_codes.range = RANGE_MED;
-  m_codes.pmos = 0;
-  m_codes.nmos = 0;
-  m_codes.gain_cal = 0;
-  m_codes.const_code = 128;
-  m_codes.enable = false;
-  calibrated = false;
+  this->m_state.inv = false;
+  this->m_state.range = RANGE_MED;
+  this->m_state.pmos = 0;
+  this->m_state.nmos = 0;
+  this->m_state.gain_cal = 0;
+  this->m_state.const_code = 128;
+  this->m_state.enable = false;
+  this->m_is_calibrated = false;
 	setAnaIrefNmos ();
 }
 Fabric::Chip::Tile::Slice::Dac::Dac (
@@ -133,12 +148,13 @@ Fabric::Chip::Tile::Slice::Dac::Dac (
 /*Set enable, invert, range, clock select*/
 void Fabric::Chip::Tile::Slice::Dac::setParam0 () const {
 	unsigned char cfgTile = 0;
-  bool external = (m_codes.source == DSRC_EXTERN or m_codes.source == DSRC_MEM);
-  bool lut0 = (m_codes.source == DSRC_LUT0);
-  bool is_hiRange = (m_codes.range == RANGE_HIGH);
-  //bool is_inverse = (m_codes.inv);
-  bool is_inverse = (m_codes.inv);
-	cfgTile += m_codes.enable ? 1<<7 : 0;
+  bool external = (this->m_state.source == DSRC_EXTERN
+                   or this->m_state.source == DSRC_MEM);
+  bool lut0 = (this->m_state.source == DSRC_LUT0);
+  bool is_hiRange = (this->m_state.range == RANGE_HIGH);
+  //bool is_inverse = (this->m_state.inv);
+  bool is_inverse = (this->m_state.inv);
+	cfgTile += this->m_state.enable ? 1<<7 : 0;
 	cfgTile += (is_inverse) ? 1<<6 : 0;
 	cfgTile += (is_hiRange ? dacHi : dacMid) ? 1<<5 : 0;
 	cfgTile += (external) ? extDac : ( lut0 ? lutL : lutR )<<0;
@@ -147,11 +163,12 @@ void Fabric::Chip::Tile::Slice::Dac::setParam0 () const {
 
 /*Set calDac, input select*/
 void Fabric::Chip::Tile::Slice::Dac::setParam1 () const {
-	unsigned char calDac =  m_codes.gain_cal;
+	unsigned char calDac =  this->m_state.gain_cal;
 	if (calDac<0||63<calDac) error ("calDac out of bounds");
 	unsigned char cfgTile = 0;
-  bool external = (m_codes.source == DSRC_EXTERN or m_codes.source == DSRC_MEM);
-  bool lut0 = (m_codes.source == DSRC_LUT0);
+  bool external = (this->m_state.source == DSRC_EXTERN
+                   or this->m_state.source == DSRC_MEM);
+  bool lut0 = (this->m_state.source == DSRC_LUT0);
 	cfgTile += calDac<<2;
   cfgTile += (external) ? extDac : ( lut0 ? lutL : lutR )<<0;
 	setParamHelper (1, cfgTile);
@@ -194,7 +211,7 @@ void Fabric::Chip::Tile::Slice::Dac::setAnaIrefNmos () const {
 	unsigned char selRow;
 	unsigned char selCol=2;
 	unsigned char selLine;
-  util::test_iref(m_codes.nmos);
+  util::test_iref(this->m_state.nmos);
 	switch (parentSlice->sliceId) {
   case slice0: selRow=0; selLine=3; break;
   case slice1: selRow=1; selLine=0; break;
@@ -203,7 +220,7 @@ void Fabric::Chip::Tile::Slice::Dac::setAnaIrefNmos () const {
   default: error ("DAC invalid slice"); break;
 	}
 	unsigned char cfgTile = endian(parentSlice->parentTile->parentChip->cfgBuf[parentSlice->parentTile->tileRowId][parentSlice->parentTile->tileColId][selRow][selCol][selLine]);
-	cfgTile = (cfgTile & 0b00111000) + (m_codes.nmos & 0b00000111);
+	cfgTile = (cfgTile & 0b00111000) + (this->m_state.nmos & 0b00000111);
 
 	Chip::Vector vec = Vector (
                              *this,

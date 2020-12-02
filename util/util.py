@@ -227,6 +227,12 @@ def pos_inf(f):
 def equals(f1,f2):
   return abs(f1-f2) <= 1e-5
 
+def nearest_value(values,value):
+    scores = list(map(lambda v: abs(value-v),\
+                      values))
+    idx = np.argmin(scores)
+    return values[idx]
+
 def decompress_json(hexstr):
   byte_obj = binascii.unhexlify(hexstr)
   comp_obj = zlib.decompress(byte_obj)

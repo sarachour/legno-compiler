@@ -2,20 +2,41 @@ from enum import Enum
 import z3
 import math
 
+def unbox_z3_value(value):
+  if value is None:
+    unboxed = None
+  elif isinstance(value,z3.IntNumRef):
+    unboxed = value.as_long()
+  elif isinstance(value,z3.BoolRef):
+    if str(value) == 'True':
+      unboxed = True
+    else:
+      unboxed = False
+  elif isinstance(value,z3.RatNumRef):
+    fltstr = value.as_decimal(12).split('?')[0]
+    unboxed = float(str(fltstr))
+  else:
+    raise Exception("unknown class <%s> " % (model[v].__class__.__name__))
+
+  return unboxed
+
 class Z3Ctx:
-  def __init__(self,env,optimize):
+  def __init__(self,env,optimize=False):
     if optimize:
       self._solver = z3.Optimize()
     else:
       self._solver = z3.Solver()
-
-    self._optimize = optimize
+    self._do_optimize = False
     self._z3vars = {}
     self._smtvars = {}
     self._smtenv = env
     self._sat = None
     self._model = None
 
+  def set_objective(self,objfun):
+    self._objective_fun = objfun
+    self._do_optimize = True
+ 
   def sat(self):
     return self._sat
 
@@ -48,9 +69,10 @@ class Z3Ctx:
     self._solver.add(cstr)
 
   def z3var(self,name):
+    assert(isinstance(name,str))
     if not name in self._z3vars:
       for v in self._z3vars.keys():
-        print(v)
+        print("var %s" % v)
 
       raise Exception("not declared: <%s>" % str(name))
 
@@ -60,41 +82,23 @@ class Z3Ctx:
     assigns = {}
     for v in self._z3vars.values():
       smtvar = self._smtvars[v]
-      jvar = self._smtenv.from_smtvar(smtvar)
       value = model[v]
-      if value is None:
-        unboxed = None
-      elif isinstance(value,z3.IntNumRef):
-        unboxed = value.as_long()
-      elif isinstance(value,z3.BoolRef):
-        if str(value) == 'True':
-          unboxed = True
-        else:
-          unboxed = False
-      elif isinstance(value,z3.RatNumRef):
-        fltstr = value.as_decimal(12).split('?')[0]
-        unboxed = float(str(fltstr))
-      else:
-        raise Exception("unknown class <%s> " % (model[v].__class__.__name__))
-
-      assigns[jvar] = unboxed
+      unboxed = unbox_z3_value(value)
+      assigns[smtvar] = unboxed
 
     return assigns
 
-  def optimize(self,z3expr,minimize=True):
+  def optimize(self):
     rmap = {
       'unsat': False,
       'unknown': False,
       'sat': True
     }
-    assert(self._optimize)
-    h = self._solver.minimize(z3expr)
+    assert(self._do_optimize)
+    handle = self._solver.minimize(self._objective_fun)
     result = self._solver.check()
     self._sat = rmap[str(result)]
     if self.sat():
-      minval = self._solver.lower(h)
-      fltstr = minval.as_decimal(12).split('?')[0]
-      unboxed = float(str(fltstr))
       m = self._solver.model()
       self._model = m
       return self.translate(m)
@@ -115,14 +119,27 @@ class Z3Ctx:
       self._model = m
       return self.translate(m)
 
+  def solutions(self):
+    def solve_once():
+      if self._do_optimize:
+        return self.optimize()
+      else:
+        return self.solve()
+
+    sln = solve_once()
+    while not sln is None:
+      yield sln
+      self.next_solution()
+      sln = solve_once()
+
   def negate_model(self,model):
     clauses = []
-    for v in self._z3vars.values():
-      if z3.is_bool(v):
-        value = model[v]
-        clauses.append(value != v)
+    for var,value in model.items():
+      clause = SMTNeq(SMTVar(var),SMTConst(value))
+      clauses.append(clause)
 
-    self.cstr(z3.Or(clauses))
+    neg_cstr = SMTMapOr(clauses)
+    self.cstr(neg_cstr.to_z3(self))
 
   def next_solution(self):
     assert(self._sat)
@@ -137,9 +154,7 @@ class SMTEnv:
   def __init__(self):
     self._decls = []
     self._cstrs = []
-    self._index = 0
-    self._to_smtvar = {}
-    self._from_smtvar = {}
+    self._vars = []
 
   def num_vars(self):
     return len(self._to_smtvar)
@@ -149,25 +164,12 @@ class SMTEnv:
 
 
   def decl(self,name,typ):
-    if name in self._to_smtvar:
-      return self._to_smtvar[name]
+    if name in self._vars:
+      return
 
     assert(isinstance(typ, SMTEnv.Type))
-    vname = "v%d" % self._index
-    self._index += 1
-    self._decls.append(SMTDecl(vname,typ))
-    self._to_smtvar[name] = vname
-    self._from_smtvar[vname] = name
-    return vname
-
-  def from_smtvar(self,name):
-    return self._from_smtvar[name]
-
-  def has_smtvar(self,name):
-    return name in self._to_smtvar
-
-  def get_smtvar(self,name):
-    return self._to_smtvar[name]
+    self._vars.append(name)
+    self._decls.append(SMTDecl(name,typ))
 
   def eq(self,e1,e2):
     self._cstrs.append(SMTAssert(SMTEq(e1,e2)))
@@ -188,15 +190,23 @@ class SMTEnv:
     self._cstrs.append(SMTAssert(c))
 
   def to_z3(self,optimize=None):
-    ctx = Z3Ctx(self,optimize=not optimize is None)
+    do_optimize = True if not optimize is None else False
+    ctx = Z3Ctx(self,optimize=do_optimize)
+
     for decl in self._decls:
       decl.to_z3(ctx)
+
+    if not optimize is None:
+      ctx.set_objective(optimize.to_z3(ctx))
 
     for cstr in self._cstrs:
       cstr.to_z3(ctx)
 
     if not optimize is None:
       z3opt = optimize.to_z3(ctx)
+    else:
+      z3opt = None
+
     return ctx,z3opt
 
   def to_smtlib2(self):
@@ -222,6 +232,7 @@ class SMTOp:
 class SMTVar(SMTOp):
 
   def __init__(self,name):
+    assert(isinstance(name,str))
     SMTOp.__init__(self)
     self._name = name
 

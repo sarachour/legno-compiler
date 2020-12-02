@@ -18,25 +18,42 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
 		);
 
 		void setRange (ifc port, range_t range);
-    mult_code_t m_codes;
-    void update(mult_code_t codes);
+    void update(mult_state_t codes);
     void defaults();
-    static float computeOutput(mult_code_t& m_codes, float in0, float in1);
+    static void computeInterval(mult_state_t& state,
+                                port_type_t port, \
+                                float& min, \
+                                float& max);
+    static float computeOutput(mult_state_t& m_codes, float in0, float in1);
     void calibrate (calib_objective_t obj);
-    profile_t measure(int mode,float in0, float in1);
-	private:
-    profile_t measureVga(float in0,float gain);
-    profile_t measureOscVga(float gain);
+    void calibrateVga (calib_objective_t obj);
+    void calibrateMult (calib_objective_t obj);
+    profile_t measure(profile_spec_t spec);
 
-    profile_t measureMult(float in0,float in1);
+    mult_state_t m_state;
+	private:
+    profile_t measureVga(profile_spec_t spec);
+    profile_t measureOscVga(profile_spec_t spec);
+    profile_t measureMult(profile_spec_t spec);
+
     float getLoss(calib_objective_t obj,
                   Dac * val0_dac,
                   Dac * val1_dac,
                   Dac * ref_dac,
+                  float gain_tradeoff,
                   bool ignore_bias);
-    void calibrateHelperFindBiasCodes(cutil::calib_table_t& tbl, int stride,
+    void calibrateHelperFindMultBiasCodes(cutil::calib_table_t& tbl, int stride,
                                       Dac * val0_dac,
                                       Dac * val1_dac,
+                                      Dac * ref_dac,
+                                      int bounds[6],
+                                      float pos,
+                                      float target_pos,
+                                      float neg,
+                                      float target_neg);
+
+    void calibrateHelperFindVgaBiasCodes(cutil::calib_table_t& tbl, int stride,
+                                      Dac * val0_dac,
                                       Dac * ref_dac,
                                       int bounds[6],
                                       float pos,
@@ -66,13 +83,16 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
     float calibrateMaxDeltaFit(Dac * val0_dac,
                                Dac * val1_dac,
                                Dac * ref_dac,
+                               float gain_tradeoff,
                                bool ignore_bias);
     float calibrateMaxDeltaFitVga(Dac * val_dac,
                                   Dac * ref_dac,
+                                  float gain_tradeoff,
                                   bool ignore_bias);
     float calibrateMaxDeltaFitMult(Dac * val0_dac,
-                                Dac * val1_dac,
+                                   Dac * val1_dac,
                                    Dac * ref_dac,
+                                   float gain_tradeoff,
                                    bool ignore_bias);
 		Multiplier (Slice * parentSlice, unit unitId);
 		~Multiplier () override {

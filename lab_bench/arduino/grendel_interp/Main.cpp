@@ -7,6 +7,7 @@ experiment::experiment_t this_experiment;
 Fabric * this_fabric;
 
 typedef enum cmd_type {
+  NULL_CMD,
   CIRC_CMD,
   EXPERIMENT_CMD,
   FLUSH_CMD
@@ -20,7 +21,6 @@ typedef union cmd_data {
 } cmd_data_t;
 
 typedef struct cmd_{
-  uint8_t test;
   uint8_t type;
   cmd_data_t data;
 } cmd_t;
@@ -39,42 +39,26 @@ void loop() {
     cmd_t cmd;
     int nbytes = comm::read_bytes((byte *) &cmd,sizeof(cmd_t));
     float * inbuf = NULL;
-    bool debug = cmd.test == 0 ? false : true;
     comm::process_command();
 
     switch(cmd.type){
       case cmd_type_t::CIRC_CMD:
         assert(this_fabric != NULL);
         inbuf = (float*) comm::get_data_ptr(nbytes);
-        sprintf(FMTBUF, "inbuf-offset-by: %d", nbytes);
-        print_log(FMTBUF);
-        if(!debug){
-          circ::print_command(cmd.data.circ_cmd);
-          circ::exec_command(this_fabric,cmd.data.circ_cmd,inbuf);
-        }
-        else{
-          circ::print_command(cmd.data.circ_cmd);
-
-          circ::debug_command(this_fabric,cmd.data.circ_cmd,inbuf);
-        }
+        circ::print_command(cmd.data.circ_cmd);
+        circ::exec_command(this_fabric,cmd.data.circ_cmd,inbuf);
         break;
       case cmd_type_t::EXPERIMENT_CMD:
         inbuf = (float*) comm::get_data_ptr(nbytes);
-        if(!debug){
-          experiment::print_command(cmd.data.exp_cmd,inbuf);
-          experiment::exec_command(&this_experiment,this_fabric,cmd.data.exp_cmd,inbuf);
-        }
-        else{
-          experiment::print_command(cmd.data.exp_cmd,inbuf);
-          experiment::debug_command(&this_experiment,this_fabric,cmd.data.exp_cmd,inbuf);
-        }
+        experiment::print_command(cmd.data.exp_cmd,inbuf);
+        experiment::exec_command(&this_experiment,this_fabric,cmd.data.exp_cmd,inbuf);
         // in the event the fabric has not been initialized, initialize it
         break;
       case cmd_type_t::FLUSH_CMD:
         comm::response("flushed",0);
         break;
       default:
-        sprintf(FMTBUF,"unknown command: %d", cmd.type);
+        sprintf(FMTBUF,": unknown toplevel command: %d", cmd.type);
         comm::error(FMTBUF);
         break;
     }

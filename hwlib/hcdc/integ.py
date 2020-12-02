@@ -1,108 +1,236 @@
-import util.util as gutil
-import ops.op as ops
-from hwlib.block import Block
-import hwlib.props as props
-import hwlib.units as units
-import hwlib.hcdc.util as util
-import hwlib.hcdc.enums as enums
-import hwlib.hcdc.globals as glb
+import hwlib.hcdc.llenums as enums
+from hwlib.block import *
+import ops.opparse as parser
+import ops.interval as interval
 
-import itertools
-
-def get_comp_modes():
-  return enums.SignType.options()
-
-def get_scale_modes():
-  opts = [
-    enums.RangeType.options(),
-    enums.RangeType.options()
-  ]
-  blacklist = [
-    (enums.RangeType.LOW,enums.RangeType.HIGH),
-    (enums.RangeType.HIGH,enums.RangeType.LOW)
-  ]
-  modes = list(util.apply_blacklist(itertools.product(*opts),\
-                                    blacklist))
-  return modes
+integ = Block('integ',BlockType.COMPUTE, \
+            [enums.RangeType, \
+             enums.RangeType, \
+             enums.SignType])
 
 
-def is_standard(scale_mode):
-  i,o = scale_mode
-  return i == enums.RangeType.MED and \
-    o == enums.RangeType.MED
+MODES = [
+  ['m','m','+'],
+  ['m','m','-'],
+  ['m','h','+'],
+  ['m','h','-'],
+  ['h','m','+'],
+  ['h','m','-'],
+  ['h','h','+'],
+  ['h','h','-']
+]
+MODES = [
+  ['m','m','+'],
+  ['m','m','-'],
+  ['h','m','+'],
+  ['h','m','-'],
+  ['h','h','+'],
+  ['h','h','-']
+]
+integ.modes.add_all(MODES)
+LOW_NOISE = 0.01
+HIGH_NOISE = 0.1
 
-def is_extended(scale_mode):
-  i,o = scale_mode
-  disabled = []
-  # difficult to measure high values
-  #disabled.append((enums.RangeType.MED,enums.RangeType.HIGH))
-  for (ci,co) in disabled:
-    if i == ci and o == co:
-      return False
+integ.inputs.add(BlockInput('x',BlockSignalType.ANALOG, \
+                           ll_identifier=enums.PortType.IN0))
+integ.inputs['x'] \
+    .interval.bind(['m','_','_'],interval.Interval(-2,2))
+integ.inputs['x'] \
+     .noise.bind(['m','_','_'],LOW_NOISE)
 
-  return i != enums.RangeType.LOW and \
-         o != enums.RangeType.LOW
+integ.inputs['x'] \
+    .interval.bind(['h','_','_'],interval.Interval(-20,20))
+integ.inputs['x'] \
+     .noise.bind(['h','_','_'],HIGH_NOISE)
+
+integ.outputs.add(BlockOutput('z',BlockSignalType.ANALOG, \
+                             ll_identifier=enums.PortType.OUT0))
+integ.outputs['z'] \
+    .interval.bind(['_','m','_'],interval.Interval(-2,2))
+integ.outputs['z'] \
+     .noise.bind(['_','m','_'],LOW_NOISE)
+
+integ.outputs['z'] \
+    .interval.bind(['_','h','_'],interval.Interval(-20,20))
+integ.outputs['z'] \
+     .noise.bind(['_','h','_'],HIGH_NOISE)
 
 
-def scale_model(integ):
-  comp_modes = get_comp_modes()
-  scale_modes = list(get_scale_modes())
-  for comp_mode in comp_modes:
-    standard,nonstandard = gutil.partition(is_standard,scale_modes)
-    extended,_ = gutil.partition(is_extended,scale_modes)
-    integ.set_scale_modes(comp_mode,standard,glb.HCDCSubset.all_subsets())
-    integ.set_scale_modes(comp_mode,nonstandard,[glb.HCDCSubset.UNRESTRICTED])
-    integ.add_subsets(comp_mode,extended,[glb.HCDCSubset.EXTENDED])
-    for scale_mode in scale_modes:
-      get_prop = lambda p : glb.CTX.get(p, integ.name,
-                                    comp_mode,scale_mode,None)
-      inrng,outrng = scale_mode
-      analog_in = util.make_ana_props(inrng, \
-                                      get_prop(glb.GLProp.CURRENT_INTERVAL))
-      analog_in.set_bandwidth(0,get_prop(glb.GLProp.MAX_FREQ),units.hz)
+integ.data.add(BlockData('z0',BlockDataType.CONST))
+integ.data['z0'] \
+    .interval.bind(['_','_','_'],interval.Interval(-1,0.9921875))
+integ.data['z0'] \
+    .quantize.bind(['_','_','_'],Quantize(256,QuantizeType.LINEAR))
 
-      analog_out = util.make_ana_props(outrng, \
-                                       get_prop(glb.GLProp.CURRENT_INTERVAL))
-      dig_props = util.make_dig_props(enums.RangeType.MED,
-                                      get_prop(glb.GLProp.DIGITAL_INTERVAL), \
-                                      get_prop(glb.GLProp.DIGITAL_QUANTIZE))
-      dig_props.set_constant()
-      integ.set_props(comp_mode,scale_mode,['in'],analog_in)
-      integ.set_props(comp_mode,scale_mode,["ic"], dig_props)
-      integ.set_props(comp_mode,scale_mode,["out"],\
-                      analog_out,
-                      handle=":z[0]")
-      integ.set_props(comp_mode,scale_mode,["out"],\
-                      analog_out,
-                      handle=":z")
-      integ.set_props(comp_mode,scale_mode,["out"],
-                      analog_out,
-                      handle=":z'")
-      integ.set_props(comp_mode,scale_mode,["out"],
-                      analog_out)
 
-      scf_inout = outrng.coeff()/inrng.coeff()
-      # alteration: initial condition, is not scaled
-      scf_ic = outrng.coeff()*2.0
-      integ.set_coeff(comp_mode,scale_mode,"out",scf_inout,handle=':z\'')
-      integ.set_coeff(comp_mode,scale_mode,"out",scf_ic,':z[0]')
-      integ.set_coeff(comp_mode,scale_mode,"out",1.0,handle=':z')
-      integ.set_coeff(comp_mode,scale_mode,"out",1.0)
+integ.outputs['z'].relation \
+                 .bind(['m','m','+'],parser.parse_expr('integ(x,(2.0*z0))'))
 
-block = Block('integrator',) \
-.set_comp_modes(get_comp_modes(),glb.HCDCSubset.all_subsets()) \
-.add_inputs(props.CURRENT,["in","ic"]) \
-.add_outputs(props.CURRENT,["out"]) \
-.set_op(enums.SignType.POS,"out",
-        ops.Integ(ops.Var("in"), ops.Var("ic"),
-                  handle=':z'
-        )
-) \
-.set_op(enums.SignType.NEG,"out",
-        ops.Integ(ops.Mult(ops.Const(-1),ops.Var("in")), \
-        ops.Var("ic"),
-        handle=':z')
-)
-scale_model(block)
-block.check()
+integ.outputs['z'].relation \
+                 .bind(['h','h','+'],parser.parse_expr('integ(x,(20.0*z0))'))
+
+
+integ.outputs['z'].relation \
+                 .bind(['m','h','+'],parser.parse_expr('integ((10.0*x),(20.0*z0))'))
+
+integ.outputs['z'].relation \
+                 .bind(['h','m','+'],parser.parse_expr('integ((0.1*x),(2.0*z0))'))
+integ.outputs['z'].relation \
+                 .bind(['m','m','-'],parser.parse_expr('-integ(x,(2.0*z0))'))
+
+integ.outputs['z'].relation \
+                 .bind(['h','h','-'],parser.parse_expr('-integ(x,(20.0*z0))'))
+
+
+integ.outputs['z'].relation \
+                 .bind(['m','h','-'],parser.parse_expr('-integ((10.0*x),(20.0*z0))'))
+
+integ.outputs['z'].relation \
+                 .bind(['h','m','-'],parser.parse_expr('-integ((0.1*x),(2.0*z0))'))
+
+#calib_obj = parser.parse_expr('abs((a)^(-1)*(modelError + d))')
+calib_obj = parser.parse_expr('(abs(a)+abs(b))^(-1)*(modelError)')
+spec = DeltaSpec(parser.parse_expr('integ((a*x),(2.0*(b*z0+c)))'), \
+                 calib_obj)
+spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
+spec.param('b',DeltaParamType.CORRECTABLE,ideal=1.0)
+spec.param('c',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
+integ.outputs['z'].deltas.bind(['m','m','+'],spec)
+
+
+spec = DeltaSpec(parser.parse_expr('integ((a*x),(20.0*(b*z0+c)))'), \
+                 calib_obj)
+spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
+spec.param('b',DeltaParamType.CORRECTABLE,ideal=1.0)
+spec.param('c',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
+integ.outputs['z'].deltas.bind(['h','h','+'],spec)
+
+
+
+spec = DeltaSpec(parser.parse_expr('integ((10.0*a*x),(20.0*(b*z0+c)))'), \
+                 calib_obj)
+spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
+spec.param('b',DeltaParamType.CORRECTABLE,ideal=1.0)
+spec.param('c',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
+integ.outputs['z'].deltas.bind(['m','h','+'],spec)
+
+
+spec = DeltaSpec(parser.parse_expr('integ((0.1*a*x),(2.0*(b*z0+c)))'), \
+                 calib_obj)
+spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
+spec.param('b',DeltaParamType.CORRECTABLE,ideal=1.0)
+spec.param('c',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
+integ.outputs['z'].deltas.bind(['h','m','+'],spec)
+
+
+
+integ.state.add(BlockState('ic_code',
+                          values=range(0,256), \
+                          state_type=BlockStateType.DATA))
+integ.state['ic_code'].impl.set_variable('z0')
+integ.state['ic_code'].impl.set_default(128)
+
+
+
+for field in ['enable','exception']:
+  integ.state.add(BlockState(field,
+                          values=enums.BoolType, \
+                          state_type=BlockStateType.CONSTANT))
+  integ.state[field].impl.bind(enums.BoolType.TRUE)
+
+bcarr = BlockStateArray('cal_enable', \
+                        indices=enums.IntegCalEnIndex, \
+                        values=enums.BoolType, \
+                        length=3,\
+                        default=enums.BoolType.FALSE)
+
+
+for en_number in range(0,3):
+  field = "cal_enable%d" % en_number
+  integ.state.add(BlockState(field,
+                             values=enums.BoolType, \
+                             array=bcarr,
+                             index=enums.IntegCalEnIndex.from_index(en_number),
+                             state_type=BlockStateType.CONSTANT))
+  integ.state[field].impl.bind(enums.BoolType.FALSE)
+
+
+integ.state.add(BlockState('inv',  \
+                           state_type= BlockStateType.MODE, \
+                           values=enums.SignType))
+
+integ.state['inv'] \
+   .impl.bind(['_','_','+'], enums.SignType.POS)
+
+integ.state['inv'] \
+   .impl.bind(['_','_','-'], enums.SignType.NEG)
+
+
+
+bcarr = BlockStateArray('range', \
+                        indices=enums.PortType, \
+                        values=enums.RangeType, \
+                        length=3,\
+                        default=enums.RangeType.MED)
+
+integ.state.add(BlockState('range_in',  \
+                        state_type= BlockStateType.MODE, \
+                         values=enums.RangeType, \
+                         array=bcarr, \
+                         index=enums.PortType.IN0))
+
+integ.state['range_in'] \
+   .impl.bind(['m','_','_'], enums.RangeType.MED)
+integ.state['range_in'] \
+   .impl.bind(['h','_','_'], enums.RangeType.HIGH)
+
+
+integ.state.add(BlockState('range_out',  \
+                          state_type= BlockStateType.MODE, \
+                          values=enums.RangeType, \
+                          array=bcarr, \
+                          index=enums.PortType.OUT0))
+
+integ.state['range_out'] \
+   .impl.bind(['_','m','_'], enums.RangeType.MED)
+integ.state['range_out'] \
+   .impl.bind(['_','h','_'], enums.RangeType.HIGH)
+
+
+bcarr = BlockStateArray('port_cal', \
+                        indices=enums.PortType, \
+                        values=range(0,64), \
+                        length=3,\
+                        default=16)
+
+
+integ.state.add(BlockState('port_cal_in',  \
+                           state_type= BlockStateType.CALIBRATE, \
+                           values=range(0,64), \
+                           array=bcarr, \
+                           index=enums.PortType.IN0))
+integ.state['port_cal_in'].impl.set_default(16)
+
+
+integ.state.add(BlockState('port_cal_out',  \
+                           state_type= BlockStateType.CALIBRATE, \
+                           values=range(0,64), \
+                           array=bcarr, \
+                           index=enums.PortType.OUT0))
+integ.state['port_cal_out'].impl.set_default(16)
+
+integ.state.add(BlockState('ic_cal',
+                        values=range(0,64), \
+                        state_type=BlockStateType.CALIBRATE))
+integ.state['ic_cal'].impl.set_default(16)
+
+integ.state.add(BlockState('pmos',
+                        values=range(0,8), \
+                        state_type=BlockStateType.CALIBRATE))
+integ.state['pmos'].impl.set_default(3)
+integ.state.add(BlockState('nmos',
+                        values=range(0,8), \
+                        state_type=BlockStateType.CALIBRATE))
+integ.state['nmos'].impl.set_default(3)
+
 

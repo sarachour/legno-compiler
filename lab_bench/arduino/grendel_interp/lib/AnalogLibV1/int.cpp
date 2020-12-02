@@ -4,38 +4,56 @@
 #include "fu.h"
 #include "assert.h"
 
-float Fabric::Chip::Tile::Slice::Integrator::computeInitCond(integ_code_t& m_codes){
-  float sign = m_codes.inv ? -1.0 : 1.0;
-  float rng = util::range_to_coeff(m_codes.range[out0Id]);
-  float ic = (m_codes.ic_code-128.0)/128.0;
+void Fabric::Chip::Tile::Slice::Integrator::computeInterval(integ_state_t& state,
+                                                            port_type_t port, float& min, float& max){
+  float ampl = 2.0;
+  switch(port){
+  case in0Id:
+    ampl = state.range[in0Id] == RANGE_HIGH ? 20.0 : 2.0;
+    break;
+  case out0Id:
+    ampl = state.range[out0Id] == RANGE_HIGH ? 20.0 : 2.0;
+    break;
+  default:
+    error("multiplier was supplied unknown port");
+  }
+  min = -ampl;
+  max = ampl;
+}
+
+
+float Fabric::Chip::Tile::Slice::Integrator::computeInitCond(integ_state_t& state){
+  float sign = state.inv ? -1.0 : 1.0;
+  float rng = util::range_to_coeff(state.range[out0Id])*2.0;
+  float ic = (state.ic_code-128.0)/128.0;
   return rng*sign*ic;
 }
 
-float Fabric::Chip::Tile::Slice::Integrator::computeOutput(integ_code_t& m_codes,float val){
-  float sign = m_codes.inv ? -1.0 : 1.0;
-  float rng = util::range_to_coeff(m_codes.range[out0Id])
-    /util::range_to_coeff(m_codes.range[in0Id]);
+float Fabric::Chip::Tile::Slice::Integrator::computeOutput(integ_state_t& state,float val){
+  float sign = state.inv ? -1.0 : 1.0;
+  float rng = util::range_to_coeff(state.range[out0Id])
+    /util::range_to_coeff(state.range[in0Id]);
   return rng*sign*val;
 }
 
 
-float Fabric::Chip::Tile::Slice::Integrator::computeTimeConstant(integ_code_t& m_codes){
-  float rng = util::range_to_coeff(m_codes.range[out0Id])
-    /util::range_to_coeff(m_codes.range[in0Id]);
+float Fabric::Chip::Tile::Slice::Integrator::computeTimeConstant(integ_state_t& state){
+  float rng = util::range_to_coeff(state.range[out0Id])
+    /util::range_to_coeff(state.range[in0Id]);
   const float TIME_CONSTANT = NOMINAL_TIME_CONSTANT;
   return TIME_CONSTANT*rng;
 }
 
 
 
-void Fabric::Chip::Tile::Slice::Integrator::update(integ_code_t codes){
-  m_codes = codes;
+void Fabric::Chip::Tile::Slice::Integrator::update(integ_state_t state){
+  this->m_state = state;
   updateFu();
 }
 void Fabric::Chip::Tile::Slice::Integrator::setEnable (
 	bool enable
 ) {
-	m_codes.enable = enable;
+	this->m_state.enable = enable;
 	setParam0 ();
 	setParam1 ();
 	setParam3 ();
@@ -46,9 +64,9 @@ void Fabric::Chip::Tile::Slice::Integrator::setInv (
                                                     bool inverse // whether output is negated
                                                     )
 {
-	m_codes.inv = inverse;
+	this->m_state.inv = inverse;
 	setEnable (
-		m_codes.enable
+		this->m_state.enable
 	);
 }
 
@@ -58,15 +76,15 @@ void Fabric::Chip::Tile::Slice::Integrator::setRange (ifc port,
   if(!(port == out0Id || port == in0Id)){
     error("cannot set range. invalid port");
   }
-  m_codes.range[port] = range;
-	setEnable (m_codes.enable);
+  this->m_state.range[port] = range;
+	setEnable (this->m_state.enable);
 }
 
 
 void Fabric::Chip::Tile::Slice::Integrator::setInitialCode (
 	unsigned char initialCode // fixed point representation of initial condition
 ) {
-  m_codes.ic_code = initialCode;
+  this->m_state.ic_code = initialCode;
 	setParam2 ();
 }
 
@@ -85,7 +103,7 @@ void Fabric::Chip::Tile::Slice::Integrator::setException (
 	bool exception // turn on overflow detection
 	// turning false overflow detection saves power if it is known to be unnecessary
 ) {
-	m_codes.exception = exception;
+	this->m_state.exception = exception;
 	setParam1 ();
 }
 
@@ -98,21 +116,21 @@ bool Fabric::Chip::Tile::Slice::Integrator::getException () const {
 	return bitRead (exceptionVector, parentSlice->sliceId);
 }
 void Fabric::Chip::Tile::Slice::Integrator::defaults (){
-  m_codes.pmos = 5;
-  m_codes.nmos = 0;
-  m_codes.ic_code = 128;
-  m_codes.inv = false;
-  m_codes.range[in0Id] = RANGE_MED;
-  m_codes.range[in1Id] = RANGE_UNKNOWN;
-  m_codes.range[out0Id] = RANGE_MED;
-  m_codes.cal_enable[in0Id] = false;
-  m_codes.cal_enable[in1Id] = false;
-  m_codes.cal_enable[out0Id] = false;
-  m_codes.port_cal[in0Id] = 31;
-  m_codes.port_cal[in1Id] = 0;
-  m_codes.port_cal[out0Id] = 31;
-  m_codes.exception = false;
-  m_codes.gain_cal = 32;
+  this->m_state.pmos = 5;
+  this->m_state.nmos = 0;
+  this->m_state.ic_code = 128;
+  this->m_state.inv = false;
+  this->m_state.range[in0Id] = RANGE_MED;
+  this->m_state.range[in1Id] = RANGE_UNKNOWN;
+  this->m_state.range[out0Id] = RANGE_MED;
+  this->m_state.cal_enable[in0Id] = false;
+  this->m_state.cal_enable[in1Id] = false;
+  this->m_state.cal_enable[out0Id] = false;
+  this->m_state.port_cal[in0Id] = 31;
+  this->m_state.port_cal[in1Id] = 0;
+  this->m_state.port_cal[out0Id] = 31;
+  this->m_state.exception = false;
+  this->m_state.gain_cal = 32;
 	setAnaIrefNmos();
 	setAnaIrefPmos();
 }
@@ -132,10 +150,10 @@ Fabric::Chip::Tile::Slice::Integrator::Integrator (
 /*Set enable, invert, range*/
 void Fabric::Chip::Tile::Slice::Integrator::setParam0 () const {
 	intRange intRange;
-  bool out0_loRange = (m_codes.range[out0Id] == RANGE_LOW);
-  bool out0_hiRange = (m_codes.range[out0Id] == RANGE_HIGH);
-  bool in0_loRange = (m_codes.range[in0Id] == RANGE_LOW);
-  bool in0_hiRange = (m_codes.range[in0Id] == RANGE_HIGH);
+  bool out0_loRange = (this->m_state.range[out0Id] == RANGE_LOW);
+  bool out0_hiRange = (this->m_state.range[out0Id] == RANGE_HIGH);
+  bool in0_loRange = (this->m_state.range[in0Id] == RANGE_LOW);
+  bool in0_hiRange = (this->m_state.range[in0Id] == RANGE_HIGH);
 
 	if (out0_loRange) {
 		if (in0_loRange) {
@@ -164,47 +182,47 @@ void Fabric::Chip::Tile::Slice::Integrator::setParam0 () const {
 	}
 
 	unsigned char cfgTile = 0;
-	cfgTile += m_codes.enable ? 1<<7 : 0;
-	cfgTile += (m_codes.inv) ? 1<<6 : 0;
+	cfgTile += this->m_state.enable ? 1<<7 : 0;
+	cfgTile += (this->m_state.inv) ? 1<<6 : 0;
 	cfgTile += intRange<<3;
 	setParamHelper (0, cfgTile);
 }
 
 /*Set calIc, overflow enable*/
 void Fabric::Chip::Tile::Slice::Integrator::setParam1 () const {
-	unsigned char cfgCalIc = m_codes.gain_cal;
+	unsigned char cfgCalIc = this->m_state.gain_cal;
 	if (cfgCalIc<0||63<cfgCalIc) error ("cfgCalIc out of bounds");
 	unsigned char cfgTile = 0;
 	cfgTile += cfgCalIc<<2;
-	cfgTile += (m_codes.exception) ? 1<<1 : 0;
+	cfgTile += (this->m_state.exception) ? 1<<1 : 0;
 	setParamHelper (1, cfgTile);
 }
 
 /*Set initial condition*/
 void Fabric::Chip::Tile::Slice::Integrator::setParam2 () const {
-	setParamHelper (2, m_codes.ic_code);
+	setParamHelper (2, this->m_state.ic_code);
 }
 
 /*Set calOutOs, calOutEn*/
 void Fabric::Chip::Tile::Slice::Integrator::setParam3 () const {
-	unsigned char calOutOs = m_codes.port_cal[out0Id];
+	unsigned char calOutOs = this->m_state.port_cal[out0Id];
 	if (calOutOs<0||63<calOutOs) error ("calOutOs out of bounds");
 	unsigned char cfgTile = 0;
 	cfgTile += calOutOs<<2;
-	cfgTile += (m_codes.cal_enable[out0Id]) ? 1<<1 : 0;
+	cfgTile += (this->m_state.cal_enable[out0Id]) ? 1<<1 : 0;
 	setParamHelper (3, cfgTile);
 }
 
 /*Set calInOs, calInEn*/
 void Fabric::Chip::Tile::Slice::Integrator::setParam4 () const {
-	unsigned char calInOs = m_codes.port_cal[in0Id];
+	unsigned char calInOs = this->m_state.port_cal[in0Id];
 	if (calInOs<0||63<calInOs){
     sprintf(FMTBUF, "calInOs out of bounds <%d>", calInOs);
     error (FMTBUF);
   }
 	unsigned char cfgTile = 0;
 	cfgTile += calInOs<<2;
-	cfgTile += (m_codes.cal_enable[in0Id]) ? 1<<1 : 0;
+	cfgTile += (this->m_state.cal_enable[in0Id]) ? 1<<1 : 0;
 	setParamHelper (4, cfgTile);
 }
 
@@ -243,7 +261,7 @@ void Fabric::Chip::Tile::Slice::Integrator::setAnaIrefNmos () const {
 	unsigned char selRow=0;
 	unsigned char selCol=2;
 	unsigned char selLine;
-  util::test_iref(m_codes.nmos);
+  util::test_iref(this->m_state.nmos);
 	switch (parentSlice->sliceId) {
 		case slice0: selLine=1; break;
 		case slice1: selLine=2; break;
@@ -252,7 +270,7 @@ void Fabric::Chip::Tile::Slice::Integrator::setAnaIrefNmos () const {
 		default: error ("INT invalid slice"); break;
 	}
 	unsigned char cfgTile = endian(parentSlice->parentTile->parentChip->cfgBuf[parentSlice->parentTile->tileRowId][parentSlice->parentTile->tileColId][selRow][selCol][selLine]);
-	cfgTile = (cfgTile & 0b00000111) + ((m_codes.nmos<<3) & 0b00111000);
+	cfgTile = (cfgTile & 0b00000111) + ((this->m_state.nmos<<3) & 0b00111000);
 
 	Vector vec = Vector (
 		*this,
@@ -273,7 +291,7 @@ void Fabric::Chip::Tile::Slice::Integrator::setAnaIrefPmos () const {
 	unsigned char selRow=0;
 	unsigned char selCol;
 	unsigned char selLine;
-  util::test_iref(m_codes.pmos);
+  util::test_iref(this->m_state.pmos);
 	switch (parentSlice->sliceId) {
 		case slice0: selCol=3; selLine=4; break;
 		case slice1: selCol=3; selLine=5; break;
@@ -283,10 +301,10 @@ void Fabric::Chip::Tile::Slice::Integrator::setAnaIrefPmos () const {
 	}
 	unsigned char cfgTile = endian(parentSlice->parentTile->parentChip->cfgBuf[parentSlice->parentTile->tileRowId][parentSlice->parentTile->tileColId][selRow][selCol][selLine]);
 	switch (parentSlice->sliceId) {
-		case slice0: cfgTile = (cfgTile & 0b00111000) + (m_codes.pmos & 0b00000111); break;
-		case slice1: cfgTile = (cfgTile & 0b00000111) + ((m_codes.pmos<<3) & 0b00111000); break;
-		case slice2: cfgTile = (cfgTile & 0b00111000) + (m_codes.pmos & 0b00000111); break;
-		case slice3: cfgTile = (cfgTile & 0b00111000) + (m_codes.pmos & 0b00000111); break;
+		case slice0: cfgTile = (cfgTile & 0b00111000) + (this->m_state.pmos & 0b00000111); break;
+		case slice1: cfgTile = (cfgTile & 0b00000111) + ((this->m_state.pmos<<3) & 0b00111000); break;
+		case slice2: cfgTile = (cfgTile & 0b00111000) + (this->m_state.pmos & 0b00000111); break;
+		case slice3: cfgTile = (cfgTile & 0b00111000) + (this->m_state.pmos & 0b00000111); break;
 		default: error ("INT invalid slice"); break;
 	}
 

@@ -34,11 +34,11 @@ def report(clause,msg):
   if not clause:
     raise Exception("when parsing : %s" % (msg))
 
-def function_to_dslang_ast(dsprog,name,arguments):
-  print(arguments)
+
+def function_to_ast(name,arguments,lambda_impl,handle_enumerator,ignore_missing_func=False):
   n = len(arguments)
-  if dsprog.has_lambda(name):
-    freevars,impl = dsprog.lambda_spec(name);
+  if name in lambda_impl:
+    freevars,impl = lambda_impl[name];
     report(len(freevars) == n, \
            "expected <%d> args, got <%d>" % (len(freevars),n))
     return op.Call(arguments, \
@@ -46,6 +46,13 @@ def function_to_dslang_ast(dsprog,name,arguments):
   elif name == "sin":
     report(n == 1, "expected 1 argument to sin function")
     return op.Sin(arguments[0])
+  elif name == "emit":
+    report(n == 1, "expected 1 argument to emit function")
+    return op.Emit(arguments[0])
+  elif name == "extvar":
+    report(n == 1, "expected 1 argument to extvar function")
+    assert(arguments[0].op == op.OpType.VAR)
+    return op.ExtVar(arguments[0].name)
   elif name == "sgn":
     report(n == 1, "expected 1 argument to sgn function")
     return op.Sgn(arguments[0])
@@ -55,6 +62,9 @@ def function_to_dslang_ast(dsprog,name,arguments):
   elif name == "abs":
     report(n == 1, "expected 1 argument to abs function")
     return op.Abs(arguments[0])
+  elif name == "integ":
+    report(n == 2, "expected 2 arguments to integ function")
+    return op.Integ(arguments[0],arguments[1])
   elif name == "max":
     report(n == 2, "expected 2 arguments to max function")
     return op.Max(arguments[0],arguments[1])
@@ -62,13 +72,16 @@ def function_to_dslang_ast(dsprog,name,arguments):
     report(n == 2, "expected 2 arguments to min function")
     return op.Min(arguments[0],arguments[1])
 
-  else:
+  elif ignore_missing_func:
     raise Exception("unknown built-in function <%s>" % name)
+  else:
+    args = list(map(lambda i: "x%d" % i, range(n)))
+    return op.Call(arguments, op.Func(args,None))
 
-
-def lark_to_dslang_ast(dsprog,node):
+def lark_to_ast(node,lambda_impls,handle_enumerator):
   def recurse(ch):
-    return lark_to_dslang_ast(dsprog,ch)
+    return lark_to_ast(ch,lambda_impls, \
+                       handle_enumerator)
 
   n = len(node.children)
   if node.data == "neg":
@@ -86,7 +99,9 @@ def lark_to_dslang_ast(dsprog,node):
     arguments = recurse(node.children[1])
     if not isinstance(arguments,list):
       arguments = [arguments]
-    return function_to_dslang_ast(dsprog,func_name.value,arguments);
+    return function_to_ast(func_name.value,arguments, \
+                           lambda_impls,
+                           handle_enumerator=handle_enumerator);
 
   if node.data == "number":
     number = node.children[0]
@@ -144,7 +159,28 @@ def lark_to_dslang_ast(dsprog,node):
     raise Exception("unknown operator: %s" % node.data);
 
 
+class HandleEnumerator():
+  def __init__(self):
+    self._idx = 0
+
+  @property
+  def index(self):
+    v = self._idx
+    self._idx += 1
+    return v
+
 def parse(dsprog,strrepr):
+  lambda_impls = {}
+  for func_name,args,expr in dsprog.lambda_specs():
+    lambda_impls[func_name] = (args,expr)
+
   lark_ast = PARSER.parse(strrepr)
-  obj = lark_to_dslang_ast(dsprog,lark_ast)
+  obj = lark_to_ast(lark_ast,lambda_impls, \
+                    HandleEnumerator())
+  return obj
+
+def parse_expr(strrepr,lambda_impls={}):
+  lark_ast = PARSER.parse(strrepr)
+  obj = lark_to_ast(lark_ast, lambda_impls, \
+                    HandleEnumerator())
   return obj

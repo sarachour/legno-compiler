@@ -107,6 +107,7 @@ def simulate(args):
   dssim = DSProgDB.get_sim(args.program)
   path_handler = paths.PathHandler(args.subset,args.program)
 
+  
   if args.reference:
     ref_prog = DSProgDB.get_prog(args.program)
     if args.runtime:
@@ -124,8 +125,8 @@ def simulate(args):
                                                   adp,
                                                   args.mode)
     V,T,Y = run_adp_simulation(board, \
-                           adp, \
-                           init_conds, \
-                           derivs, \
+                               adp, \
+                               init_conds, \
+                               derivs, \
                                dssim)
     plot_adp_simulation(path_handler,dssim,args.adp,V,T,Y)

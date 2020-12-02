@@ -7,7 +7,7 @@ import util.util as util
 
 import ops.op as op
 import ops.opparse as opparse
-from ops.interval import Interval
+import ops.interval as intervallib
 import os
 import subprocess
 
@@ -83,7 +83,6 @@ class DSProg:
         self.__order = None
         self.__order_integs = None
         self.__types = None
-        self.__handles = 0
 
 
     def speed(self,tmin,tmax):
@@ -158,9 +157,7 @@ class DSProg:
     def decl_stvar(self,var,deriv,ic="0.0",params={}):
         deriv = opparse.parse(self,deriv.format(**params))
         ic = opparse.parse(self,ic.format(**params))
-        handle = ":h%d" % self.__handles
-        expr = op.Integ(deriv,ic,handle=handle)
-        self.__handles += 1
+        expr = op.Integ(deriv,ic)
         self._bind(var,expr)
 
     def decl_var(self,var,expr,params={}):
@@ -184,6 +181,10 @@ class DSProg:
 
         variables,expr = self._lambdas[lambda_name]
         return variables,expr
+
+    def lambda_specs(self):
+        for name,(variables,expr) in self._lambdas.items():
+            yield name,variables,expr
 
     def has_lambda(self,name):
         return name in self._lambdas
@@ -212,7 +213,7 @@ class DSProg:
         assert(min_v <= max_v)
         if not v in self._variables:
             self._variables.append(v)
-        self._intervals[v] = Interval.type_infer(min_v,max_v)
+        self._intervals[v] = intervallib.Interval.type_infer(min_v,max_v)
 
     def intervals(self):
         for v,ival in self._intervals.items():
@@ -226,8 +227,8 @@ class DSProg:
                     raise Exception("cannot infer ival: <%s> has no expression" \
                                     % variable)
 
-                icoll = expr.infer_interval(self._intervals)
-                self._intervals[variable] = icoll.interval
+                interval = intervallib.propagate_intervals(expr,self._intervals)
+                self._intervals[variable] = interval
 
 
         if not (util.keys_in_dict(self._bindings.keys(), self._intervals)):
@@ -261,10 +262,10 @@ class DSProg:
         stvars,ics,derivs,fnvars,fns = self.build_ode_prob()
 
         def dt_func(t,values):
-            vs = dict(zip(map(lambda v: "%s_" % v, stvars), \
+            vs = dict(zip(map(lambda v: "%s" % v, stvars), \
                         values))
             for fvar in fnvars:
-                vs["%s_" % fvar] = _evaluate(fns[fvar],vs)
+                vs["%s" % fvar] = _evaluate(fns[fvar],vs)
 
             next_vs = {}
             for stvar in stvars:
@@ -360,14 +361,15 @@ class DSProg:
         T,Y = self._execute(dssim)
         stvars,ics,derivs,fnvars,fns = self.build_ode_prob()
         def fn_func(t,values):
-            vs = dict(zip(map(lambda v: "%s_" % v, stvars), \
+            vs = dict(zip(map(lambda v: v, stvars), \
                             values))
             vals = {}
             for fvar in fnvars:
                 vals[fvar] = _evaluate(fns[fvar],vs)
-                vs["%s_" % fvar] = vals[fvar]
+                vs[fvar] = vals[fvar]
+
             for v in stvars:
-                vals[v] = vs['%s_' % v]
+                vals[v] = vs[v]
             return vals
 
         if(len(stvars) == 0):

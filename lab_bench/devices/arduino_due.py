@@ -3,85 +3,98 @@ import time
 import re
 from tqdm import tqdm
 import numpy as np
-import util.config as CONFIG
+import os
+
 
 class ArduinoDue:
+  def __init__(self, file_desc, native=True):
+    self._baud_rate = 115200
+    if file_desc is None:
+      file_desc = ArduinoDue.find_device()
 
-    def __init__(self,native=True):
-        self._baud_rate = 115200
-        self._serial_port = CONFIG.ARDUINO_FILE_DESC
-        self._comm = None
+    if file_desc is None:
+      raise Exception("could not find arduino")
 
-    def close(self):
-        if not self._comm is None:
-            self._comm.close()
+    self._serial_port = file_desc
+    self._comm = None
 
-    def ready(self):
-        return not self._comm is None
+  @staticmethod
+  def find_device():
+    for root, dirs, files in os.walk("/dev/", topdown=False):
+      for name in files:
+        if "tty.usbmodem" in name:
+          return "/dev/%s" % name
+        elif "ttyACM" in name:
+          return "/dev/%s" % name
 
-    def open(self):
-        print("%s:%s" % (self._serial_port,self._baud_rate))
-        try:
-            self._comm= serial.Serial(self._serial_port, self._baud_rate)
-        except serial.SerialException as e:
-            print("[ArduinoDue][setup][ERROR] %s" % e)
-            self._comm = None
-            return
+    return None
 
-        startup_time = 2.0
-        n_divs = 100
-        delta = startup_time/n_divs
-        for _ in tqdm(np.linspace(0,startup_time,n_divs)):
-            time.sleep(delta)
+  def close(self):
+    if not self._comm is None:
+      self._comm.close()
 
-        line = self.try_readline()
-        while not line is None:
-            print(line)
-            line = self.try_readline()
+  def ready(self):
+    return not self._comm is None
 
-        self.flush()
-        return True
+  def open(self):
+    print("%s:%s" % (self._serial_port, self._baud_rate))
+    try:
+      self._comm = serial.Serial(self._serial_port, self._baud_rate)
+    except serial.SerialException as e:
+      print("[ArduinoDue][setup][ERROR] %s" % e)
+      self._comm = None
+      return
 
-    def readline(self):
-        line_bytes = self._comm.readline()
-        line_valid_bytes = bytearray(filter(lambda b: b<128, line_bytes))
-        strline = line_valid_bytes.decode('utf-8')
-        return strline
+    startup_time = 2.0
+    n_divs = 100
+    delta = startup_time / n_divs
+    print("starting up...")
+    for _ in tqdm(np.linspace(0, startup_time, n_divs)):
+      time.sleep(delta)
 
-    def reads_available(self):
-        return self._comm.in_waiting > 0
+    line = self.try_readline()
+    while not line is None:
+      print(line)
+      line = self.try_readline()
 
-    def try_readline(self):
-        if self._comm.in_waiting > 0:
-            line = self.readline()
-        else:
-            line = None
+    self.flush()
+    return True
 
-        return line
+  def readline(self):
+    line_bytes = self._comm.readline()
+    line_valid_bytes = bytearray(filter(lambda b: b < 128, line_bytes))
+    strline = line_valid_bytes.decode('utf-8')
+    return strline
 
-    def writeline(self,string):
-        msg = "%s\r\n" % string
-        self.write(msg)
+  def reads_available(self):
+    return self._comm.in_waiting > 0
 
-    def write_newline(self):
-        self.write("\r\n")
+  def try_readline(self):
+    if self._comm.in_waiting > 0:
+      line = self.readline()
+    else:
+      line = None
 
-    def flush(self):
-        self._comm.flushInput()
-        self._comm.flushOutput()
+    return line
 
-    def write_bytes(self,byts):
-        isinstance(byts,bytearray)
-        nbytes = 0;
-        BATCH = 1
-        byte_gen = tqdm(range(0,len(byts)))
-        for i in byte_gen:
-            byte_gen.set_description("writing byte %d" % i)
-            nbytes += self._comm.write(byts[i:i+1])
-            self._comm.flush()
-            time.sleep(0.01)
+  def writeline(self, string):
+    msg = "%s\r\n" % string
+    self.write(msg)
 
-        self._comm.flush()
+  def write_newline(self):
+    self.write("\r\n")
 
-    def write(self,msg):
-        self.write_bytes(msg.encode())
+  def flush(self):
+    self._comm.flushInput()
+    self._comm.flushOutput()
+
+  def write_bytes(self, byts):
+    isinstance(byts, bytearray)
+    nbytes = 0
+    BATCH = 1
+    nbytes += self._comm.write(byts)
+    self._comm.flush()
+    #time.sleep(0.01)
+
+  def write(self, msg):
+    self.write_bytes(msg.encode())

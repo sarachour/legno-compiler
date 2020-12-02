@@ -11,9 +11,9 @@ namespace oscgen {
     Fabric::Chip::Tile::Slice::Fanout* fan;
     Fabric::Chip::Tile::Slice::TileInOut* tile;
     Fabric::Chip::Tile::Slice::ChipOutput * chip;
-    integ_code_t integ0_state;
-    integ_code_t integ1_state;
-    fanout_code_t fan_state;
+    integ_state_t integ0_state;
+    integ_state_t integ1_state;
+    fanout_state_t fan_state;
     bool configured;
   } osc_env_t;
 

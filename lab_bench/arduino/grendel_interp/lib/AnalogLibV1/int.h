@@ -49,27 +49,28 @@ class Fabric::Chip::Tile::Slice::Integrator : public Fabric::Chip::Tile::Slice::
 			bool exception // turn on overflow detection
 			// turning false overflow detection saves power if it is known to be unnecessary
 		);
+    void computeInterval(integ_state_t& state,
+                         port_type_t port, float& min, float& max);
 
-
-    static float computeInitCond(integ_code_t& m_codes);
-    static float computeOutput(integ_code_t& m_codes,float input);
-    static float computeTimeConstant(integ_code_t& m_codes);
+    static float computeInitCond(integ_state_t& m_codes);
+    static float computeOutput(integ_state_t& m_codes,float input);
+    static float computeTimeConstant(integ_state_t& m_codes);
     // z' = x - z
 
 		bool getException() const;
     void setInv (bool inverse ); // whether output is negated
 		void setRange (ifc port, range_t range);
-    void update(integ_code_t codes);
-    integ_code_t m_codes;
+    void update(integ_state_t codes);
+    integ_state_t m_state;
 		void calibrate (calib_objective_t obj);
-		profile_t measure(char mode, float input);
+		profile_t measure(profile_spec_t spec);
     void defaults();
 
 
 	private:
-		profile_t measureInitialCond(float input);
-		profile_t measureClosedLoopCircuit();
-		profile_t measureOpenLoopCircuit(open_loop_prop_t prop);
+		profile_t measureInitialCond(profile_spec_t spec);
+		profile_t measureClosedLoopCircuit(profile_spec_t spec);
+		profile_t measureOpenLoopCircuit(profile_spec_t spec);
 
     float calibrateHelper(Dac* ref_dac,
                          float* observations,

@@ -1,5 +1,5 @@
 from dslang.dsprog import DSProg
-from dslang.dssim import DSSim
+from dslang.dssim import DSSim,DSInfo
 
 def dsname():
   return "dbgadc"
@@ -19,11 +19,10 @@ def dsprog(prob):
     'one':0.9999
   }
   prob.decl_lambda("ident","sgn(X)*sqrt(abs(X))")
-  prob.decl_stvar("V","(-P)","{V0}",params)
-  prob.decl_stvar("P","V","{P0}",params)
-  prob.emit("ident(P)","Position",params)
+  prob.decl_var("Q","emit(ident(P))")
+  prob.decl_var("P","0.5")
   prob.interval("P",-1.0,1.0)
-  prob.interval("V",-1.0,1.0)
+  prob.interval("Q",-1.0,1.0)
   prob.check()
   return prob
 

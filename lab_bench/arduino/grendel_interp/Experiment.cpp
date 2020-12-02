@@ -2,31 +2,51 @@
 #include "Experiment.h"
 #include "Circuit.h"
 #include "Comm.h"
+#include "dma.h"
 #include <assert.h>
 
 namespace experiment {
 
-volatile int SDA_VAL = LOW;
+  volatile int SDA_VAL = LOW;
 
-inline void set_SDA(int SDA_VAL){
-  digitalWrite(SDA_PIN,SDA_VAL);
-}
+  #define N_CHANS 1
+  #define DATABUF_SIZ 2048
+  uint16_t DATABUF[N_CHANS][DATABUF_SIZ];
+
+  inline void set_SDA(int SDA_VAL){
+    digitalWrite(SDA_PIN,SDA_VAL);
+  }
+
+  void setup_experiment(experiment_t* expr) {
+    pinMode(SDA_PIN, OUTPUT);
+    // put your setup code here, to run once:
+    analogWriteResolution(12);  // set the analog output resolution to 12 bit (4096 levels)
+  }
 
 
-void setup_experiment(experiment_t* expr) {
-  pinMode(SDA_PIN, OUTPUT);
-  // put your setup code here, to run once:
-  analogWriteResolution(12);  // set the analog output resolution to 12 bit (4096 levels)
-}
+
+  void reset_experiment(experiment_t * expr){
+    expr->use_analog_chip = false;
+    expr->use_osc = false;
+    expr->sim_time_sec = 0.0;
+  }
 
 
+  void run_experiment_and_collect_data(experiment_t * expr, Fabric * fab, uint32_t& samples, uint32_t& freq){
+    if(expr->use_analog_chip){
+      // this actually calls start and stop.
+      fab->cfgCommit();
+    }
 
-void reset_experiment(experiment_t * expr){
-  expr->use_analog_chip = false;
-  expr->use_osc = false;
-  expr->sim_time_sec = 0.0;
-}
-
+    dma::dma_info_t info;
+    float warm_up = 0.00005;
+    dma::setup(info,expr->sim_time_sec*1.3+warm_up,(uint16_t*) DATABUF[0], DATABUF_SIZ,samples,freq);
+    print_info("running experiment!\n");
+    set_SDA(HIGH);
+    dma::run(fab);
+    dma::teardown(info);
+    set_SDA(LOW);
+  }
 
   void run_experiment(experiment_t * expr, Fabric * fab){
     // commit the configuration once.
@@ -73,17 +93,43 @@ void reset_experiment(experiment_t * expr){
     set_SDA(LOW);
   }
 
+  void write_dataset(uint32_t samples, uint32_t freq){
+    print_info("sending dataset!\n");
+
+    uint32_t dataset_size = samples*N_CHANS+N_CHANS+2;
+    sprintf(FMTBUF,"%d",dataset_size+2);
+    comm::data(FMTBUF,"I");
+    comm::payload();
+    Serial.print(circ::response_type_t::DATASET,DEC);
+    Serial.print(" ");
+    Serial.print((dataset_size),DEC);
+    Serial.print(" ");
+    Serial.print(freq,DEC);
+    Serial.print(" ");
+    Serial.print(samples,DEC);
+    for(unsigned int ch = 0; ch < N_CHANS; ch +=1){
+      Serial.print(" ");
+      Serial.print(ch,DEC);
+      for(unsigned int i = 0; i < samples; i+=1){
+        Serial.print(" ");
+        Serial.print(DATABUF[ch][i],DEC);
+      }
+    }
+    Serial.println("");
+  }
 
   void exec_command(experiment_t* expr, Fabric* fab, cmd_t& cmd, float * inbuf){
-    char buf[128];
     switch(cmd.type){
     case cmd_type_t::RESET:
       reset_experiment(expr);
       comm::response("resetted",0);
       break;
     case cmd_type_t::RUN:
-      run_experiment(expr,fab);
-      comm::response("ran",0);
+      //run_experiment(expr,fab);
+      uint32_t freq,samples;
+      run_experiment_and_collect_data(expr,fab,samples,freq);
+      comm::response("ran experiment",1);
+      write_dataset(samples,freq);
       break;
     case cmd_type_t::USE_ANALOG_CHIP:
       expr->use_analog_chip = true;

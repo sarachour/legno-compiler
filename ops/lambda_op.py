@@ -5,7 +5,7 @@ import math
 
 def to_python(e):
     if e.op == OpType.VAR:
-        varname = "%s_" % e.name
+        varname = "%s" % e.name
         return [varname],varname
 
     elif e.op == OpType.CONST:
@@ -16,7 +16,6 @@ def to_python(e):
         vs2,a2 = to_python(e.arg2)
         v = list(set(vs1+vs2))
         return v,"(%s)+(%s)" % (a1,a2)
-
 
     elif e.op == OpType.POW:
         vs1,a1 = to_python(e.arg(0))
@@ -108,6 +107,20 @@ class Func(Op):
     def func_args(self):
         return self._vars
 
+    def vars(self):
+        bound = self._vars
+        return list(filter(lambda v: not v in bound, \
+                           self._expr.vars()))
+
+    def substitute(self,args):
+        subargs = {}
+        for var in filter(lambda var: var in args, \
+                          self.vars()):
+            subargs[var] = args[var]
+
+        expr = self.expr.substitute(subargs)
+        return Func(self.func_args,expr)
+
     def to_json(self):
         obj = Op.to_json(self)
         obj['expr'] = self._expr.to_json()
@@ -143,12 +156,6 @@ class Max(Op):
         a1 = self.arg(1).compute(bindings)
         return max(a0,a1)
 
-    def infer_interval(self,ivals):
-        ivalcoll1 = self.arg(0).infer_interval(ivals)
-        ivalcoll2 = self.arg(1).infer_interval(ivals)
-        ivalcoll1.update(ivalcoll1.interval.max(ivalcoll2.interval))
-        return ivalcoll1
-
     @staticmethod
     def from_json(obj):
         return Max( \
@@ -174,12 +181,6 @@ class Min(Op):
         a1 = self.arg(1).compute(bindings)
         return min(a0,a1)
 
-
-    def infer_interval(self,ivals):
-        ivalcoll1 = self.arg(0).infer_interval(ivals)
-        ivalcoll2 = self.arg(1).infer_interval(ivals)
-        ivalcoll1.update(ivalcoll1.interval.min(ivalcoll2.interval))
-        return ivalcoll1
 
     @staticmethod
     def from_json(obj):
@@ -227,12 +228,6 @@ class Abs(Op):
     def substitute(self,args):
         return Abs(self.arg(0).substitute(args))
 
-    def infer_interval(self,ivals):
-        ivalcoll = self.arg(0).infer_interval(ivals)
-        ivalcoll.update(ivalcoll.interval.abs())
-        return ivalcoll
-
-
 
 class Sgn(Op):
 
@@ -250,12 +245,6 @@ class Sgn(Op):
     def compute(self,bindings):
         return math.copysign(1.0,self.arg(0).compute(bindings).real)
 
-
-    def infer_interval(self,ivals):
-        ivalcoll = self.arg(0).infer_interval(ivals)
-        new_ival = ivalcoll.interval.sgn()
-        ivalcoll.update(new_ival)
-        return ivalcoll
 
 class Ln(Op):
 
@@ -288,11 +277,6 @@ class Sin(Op):
     def from_json(obj):
         return Sin(Op.from_json(obj['args'][0]))
 
-    def infer_interval(self,ivals):
-        ivalcoll = self.arg(0).infer_interval(ivals)
-        ivalcoll.update(interval.Interval.type_infer(-1,1))
-        return ivalcoll
-
 class Cos(Op):
 
     def __init__(self,arg1):
@@ -310,11 +294,6 @@ class Cos(Op):
 
     def substitute(self,args):
         return Cos(self.arg(0).substitute(args))
-
-    def infer_interval(self,ivals):
-        ivalcoll = self.arg(0).infer_interval(ivals)
-        ivalcoll.update(interval.Interval.type_infer(-1,1))
-        return ivalcoll
 
 
 
@@ -337,12 +316,6 @@ class Pow(Op):
                    Op.from_json(obj['args'][1]))
 
 
-    def infer_interval(self,ivals):
-        bcoll = self.arg(0).infer_interval(ivals)
-        ecoll = self.arg(1).infer_interval(ivals)
-        new_ival = bcoll.interval.exponent(ecoll.interval)
-        rcoll = bcoll.merge(ecoll, new_ival)
-        return rcoll
 
     def substitute(self,args):
         return Pow(
@@ -364,3 +337,238 @@ def Square(a):
 
 def Div(a,b):
     return genop.Mult(a,Pow(b,genop.Const(-1)))
+
+
+import sympy
+
+class FromSympyFailed(Exception):
+    pass
+
+class SympyExtvar(sympy.Function):
+
+    @classmethod
+    def name(self):
+        return "extvar"
+
+    @classmethod
+    def eval(cls, x):
+        return None
+
+    def _eval_is_real(self):
+        return self.args[0].is_real
+
+    def fdiff(self, argindex=1):
+        if argindex == 1:
+            return 1.0
+        else:
+            raise ArgumentIndexError(self, argindex)
+
+
+class SympyEmit(sympy.Function):
+
+
+    @classmethod
+    def name(self):
+        return "emit"
+
+
+    @classmethod
+    def eval(cls, x):
+        return None
+
+    def _eval_is_real(self):
+        return self.args[0].is_real
+
+    def fdiff(self, argindex=1):
+        if argindex == 1:
+            return 1.0
+        else:
+            raise ArgumentIndexError(self, argindex)
+
+def to_sympy(expr,symbols={},wildcard=False,blacklist={},no_aliasing=False):
+    assert(not (no_aliasing and wildcard))
+    if expr.op == OpType.VAR:
+        if wildcard:
+            if not expr.name in symbols:
+                bl = blacklist[expr.name] if expr.name in blacklist \
+                        else []
+                symbols[expr.name] = [sympy.Wild(expr.name, \
+                                                    exclude=bl)]
+        else:
+            if not expr.name in symbols:
+                symbols[expr.name] = []
+
+            if no_aliasing:
+                name = "%s.%d" % (expr.name,len(symbols[expr.name]))
+                symbols[expr.name].append(sympy.Symbol(name))
+
+            elif len(symbols[expr.name]) == 0:
+                symbols[expr.name].append(sympy.Symbol(expr.name))
+
+        return symbols[expr.name][-1]
+
+    elif expr.op == OpType.CONST:
+        if (expr.value).is_integer():
+            return int(expr.value)
+        else:
+            return expr.value
+
+    elif expr.op == OpType.ADD:
+        args0 = to_sympy(expr.args[0],symbols,wildcard,blacklist,no_aliasing)
+        args1 = to_sympy(expr.args[1],symbols,wildcard,blacklist,no_aliasing)
+        return args0+args1
+
+    elif expr.op == OpType.MULT:
+        args0 = to_sympy(expr.args[0],symbols,wildcard,blacklist,no_aliasing)
+        args1 = to_sympy(expr.args[1],symbols,wildcard,blacklist,no_aliasing)
+        return args0*args1
+
+    elif expr.op == OpType.EMIT:
+        args0 = to_sympy(expr.args[0],symbols,wildcard,blacklist,no_aliasing)
+        return sympy.Function("emit")(args0)
+
+    elif expr.op == OpType.EXTVAR:
+        args0 = to_sympy(genop.Var(expr.name),symbols,wildcard,blacklist,no_aliasing)
+        return sympy.Function("extvar")(args0)
+
+    elif expr.op == OpType.INTEG:
+        args0 = to_sympy(expr.args[0],symbols,wildcard,blacklist,no_aliasing)
+        args1 = to_sympy(expr.args[1],symbols,wildcard,blacklist,no_aliasing)
+        return sympy.Function("integ")(args0, \
+                                    args1)
+
+    elif expr.op == OpType.POW:
+        args0 = to_sympy(expr.args[0],symbols,wildcard,blacklist,no_aliasing)
+        args1 = to_sympy(expr.args[1],symbols,wildcard,blacklist,no_aliasing)
+        if isinstance(args1,int) and args1 > 1:
+            for _ in range(args1-1):
+                args = to_sympy(expr.args[0],symbols,wildcard,blacklist,no_aliasing)
+                args0 *= args
+            return args0
+        else:
+            return sympy.Pow(args0,args1)
+
+    elif expr.op == OpType.ABS:
+        args0 = to_sympy(expr.args[0],symbols,wildcard,blacklist,no_aliasing)
+        return sympy.Function("abs")(args0)
+
+
+    elif expr.op == OpType.SGN:
+        args0 = to_sympy(expr.args[0],symbols,wildcard,blacklist,no_aliasing)
+        return sympy.Function("sgn")(args0)
+
+
+    elif expr.op == OpType.SIN:
+        args0 = to_sympy(expr.args[0],symbols,wildcard,blacklist,no_aliasing)
+        return sympy.sin(args0)
+
+    elif expr.op == OpType.FUNC:
+        args = list(map(lambda v: to_sympy(genop.Var(v), \
+                                           symbols, \
+                                           wildcard, \
+                                           blacklist,no_aliasing), \
+                        expr.func_args))
+        body = to_sympy(expr.expr,symbols,wildcard,blacklist,no_aliasing)
+        args.append(body)
+        return sympy.Function("func")(*args)
+
+    elif expr.op == OpType.CALL:
+        symargs = list(map(lambda v: to_sympy(v,symbols,wildcard,blacklist,no_aliasing),
+                           expr.values))
+        symbody = to_sympy(expr.func,symbols,wildcard,blacklist,no_aliasing)
+        args = [symbody]+symargs
+        fxn = sympy.Function("call")(*args)
+        return fxn
+    else:
+        raise Exception("unimpl: %s" % expr)
+
+def from_sympy(symexpr,no_aliasing=False):
+    if isinstance(symexpr,sympy.Function):
+        if isinstance(symexpr, sympy.sin):
+            e0 = from_sympy(symexpr.args[0],no_aliasing)
+            return Sin(e0)
+        elif symexpr.func.name == "integ":
+            assert(len(symexpr.args) == 2)
+            e1 = from_sympy(symexpr.args[0],no_aliasing)
+            e2 = from_sympy(symexpr.args[1],no_aliasing)
+            return genop.Integ(e1,e2)
+
+        elif symexpr.func.name == "abs":
+            e1 = from_sympy(symexpr.args[-1],no_aliasing)
+            return Abs(e1)
+
+        elif symexpr.func.name == "sgn":
+            e1 = from_sympy(symexpr.args[-1],no_aliasing)
+            return Sgn(e1)
+
+        elif symexpr.func.name == "call":
+            efn = from_sympy(symexpr.args[0],no_aliasing)
+            args = list(map(lambda e : from_sympy(e,no_aliasing), \
+                            symexpr.args[1:]))
+            return genop.Call(args,efn)
+
+        elif symexpr.func.name == "func":
+            ebody = from_sympy(symexpr.args[-1],no_aliasing)
+            pars = list(map(lambda e: from_sympy(e,no_aliasing).name, \
+                            symexpr.args[:-1]))
+            return Func(pars,ebody)
+
+        elif symexpr.func.name == "extvar":
+            e1 = from_sympy(symexpr.args[-1],no_aliasing)
+            assert(isinstance(e1,genop.Var))
+            return genop.ExtVar(e1.name)
+
+
+        elif symexpr.func.name == "emit":
+            e1 = from_sympy(symexpr.args[-1],no_aliasing)
+            return genop.Emit(e1)
+
+        elif symexpr.func.name == "map":
+            raise FromSympyFailed("cannot convert mapping %s back to expr" % symexpr)
+
+        else:
+            raise Exception("unhandled func: %s" % (symexpr.func))
+
+    elif isinstance(symexpr, sympy.Pow):
+        e1 = from_sympy(symexpr.args[0],no_aliasing)
+        e2 = from_sympy(symexpr.args[1],no_aliasing)
+        return Pow(e1,e2)
+
+    elif isinstance(symexpr, sympy.Symbol):
+        if no_aliasing:
+            name = symexpr.name.split(".")[0]
+        else:
+            name = symexpr.name
+
+        return genop.Var(name)
+
+    elif isinstance(symexpr, sympy.Float) or \
+         isinstance(symexpr, sympy.Integer):
+        return genop.Const(float(symexpr))
+
+    elif isinstance(symexpr, sympy.Mul):
+        args = list(map(lambda a: from_sympy(a,no_aliasing), \
+                        symexpr.args))
+        return genop.product(args)
+    elif isinstance(symexpr, sympy.Add):
+        args = list(map(lambda a: from_sympy(a,no_aliasing), \
+                        symexpr.args))
+        return genop.sum(args)
+    elif isinstance(symexpr, sympy.Rational):
+        return genop.Const(float(symexpr))
+    else:
+        print(symexpr.func)
+        raise Exception(sympy.srepr(symexpr))
+
+def equivalent(expr1,expr2):
+    e1_syms,e2_syms = {},{}
+    se1 = to_sympy(expr1,e1_syms)
+    se2 = to_sympy(expr2,e2_syms)
+    is_equal = se1 - se2 == 0
+    return is_equal
+
+def simplify(expr):
+    e_syms = {}
+    se = to_sympy(expr,e_syms)
+    se_simpl = sympy.simplify(se)
+    return from_sympy(se_simpl)

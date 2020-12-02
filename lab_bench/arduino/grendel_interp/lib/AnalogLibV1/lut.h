@@ -38,9 +38,9 @@ class Fabric::Chip::Tile::Slice::LookupTable : public Fabric::Chip::Tile::Slice:
 		void setStart () const;
 		/*Remove LUT in writing mode*/
 		// void setStop ();
-    void update(lut_code_t codes);
+    void update(lut_state_t codes);
     void defaults();
-    lut_code_t m_codes;
+    lut_state_t m_state;
 	private:
 		LookupTable (Slice * parentSlice);
 		/*Set read delay, write delay, clock select, input select*/

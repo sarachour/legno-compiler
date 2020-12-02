@@ -2,23 +2,50 @@
 #include "assert.h"
 #include "fu.h"
 #include "calib_util.h"
+#include "emulator.h"
 
+#define DEBUG_ADC_PROF
 
-
-float compute_in_adc(adc_code_t& m_codes,float target_input){
-  float coeff = util::range_to_coeff(m_codes.range);
-  return coeff*target_input;
+emulator::physical_model_t adc_draw_random_model(profile_spec_t spec){
+  emulator::physical_model_t model; 
+  emulator::ideal(model);
+  Fabric::Chip::Tile::Slice::ChipAdc::computeInterval(spec.state.adc,
+                                                      in0Id,
+                                                      model.in0.min,
+                                                      model.in0.max);
+  emulator::bound(model.in1,-1,1);
+  return model;
 }
-float compute_out_adc(adc_code_t& m_codes,float target_input){
+
+profile_t Fabric::Chip::Tile::Slice::ChipAdc::measure(profile_spec_t spec){
+#ifdef EMULATE_HARDWARE
+  float std;
+  sprintf(FMTBUF,"measured value: in=(%f,%f)\n",  \
+          spec.inputs[0], \
+          spec.inputs[1]);
+  print_info(FMTBUF);
+
+  float * input = prof::get_input(spec,port_type_t::in0Id);
+  float output = Fabric::Chip::Tile::Slice::ChipAdc::computeOutput(spec.state.adc,*input);
+
+  emulator::physical_model_t model = adc_draw_random_model(spec);
+  float result = emulator::draw(model,*input,0.0,output,std);
+  sprintf(FMTBUF,"output=%f result=%f\n", output,result);
+  print_info(FMTBUF);
+  profile_t prof = prof::make_profile(spec, result,
+                                      std);
+  return prof;
+#else
+  return this->measureConstVal(spec);
+#endif
 
 }
-profile_t Fabric::Chip::Tile::Slice::ChipAdc::measure(float input){
-  update(m_codes);
+profile_t Fabric::Chip::Tile::Slice::ChipAdc::measureConstVal(profile_spec_t spec){
+  update(this->m_state);
 
   Fabric::Chip::Tile::Slice::Dac * val_dac = parentSlice->dac;
-  Fabric* fab = parentSlice->parentTile->parentChip->parentFabric;
-  adc_code_t codes_self= m_codes;
-  dac_code_t codes_dac = val_dac->m_codes;
+  adc_state_t codes_self= this->m_state;
+  dac_state_t codes_dac = val_dac->m_state;
 
   cutil::calibrate_t calib;
   cutil::initialize(calib);
@@ -28,30 +55,25 @@ profile_t Fabric::Chip::Tile::Slice::ChipAdc::measure(float input){
 
   Connection conn0 = Connection ( val_dac->out0, in0 );
 	conn0.setConn();
-	setEnable (true);
-  val_dac->setEnable(true);
-  val_dac->setRange(this->m_codes.range);
-  val_dac->setInv(false);
-  val_dac->setConstant(input);
-  float target_input = Fabric::Chip::Tile::Slice::Dac::computeOutput(val_dac->m_codes);
-  target_input = val_dac->fastMakeValue(target_input);
-  float target_output = computeOutput(m_codes,target_input);
+	val_dac->setEnable (true);
+  spec.inputs[in0Id] = val_dac->fastMakeValue(spec.inputs[in0Id]);
+  float target = this->computeOutput(this->m_state,spec.inputs[in0Id]);
 
   float mean,variance;
   util::meas_dist_adc(this,mean,variance);
-  const int mode = 0;
-  const int in1 = 0.0;
-  profile_t prof = prof::make_profile(out0Id,
-                                      mode,
-                                      target_output,
-                                      target_input,
-                                      in1,
-                                      mean-target_output,
+  mean = this->digitalCodeToValue(mean);
+#ifdef DEBUG_ADC_PROF
+  sprintf(FMTBUF, "prof inp=%f targ=%f mean=%f\n",
+          spec.inputs[in0Id],
+          target,
+          mean);
+  print_info(FMTBUF);
+#endif
+
+  profile_t prof = prof::make_profile(spec,
+                                      mean,
                                       variance);
 
-  sprintf(FMTBUF, "MEAS target=%f input=%f / mean=%f var=%f",
-          target_output, input, mean, variance);
-  print_log(FMTBUF);
 	conn0.brkConn();
 	val_dac->setEnable(false);
 

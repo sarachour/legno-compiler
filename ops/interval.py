@@ -1,4 +1,11 @@
 import math
+import ops.base_op as oplib
+
+def same_sign(v,v1):
+    if v*v1 >= 0:
+        return True
+    else:
+        return False
 
 class Interval:
 
@@ -33,6 +40,11 @@ class Interval:
     @property
     def bound(self):
         return max(abs(self.lower),abs(self.upper))
+
+    @property
+    def middle(self):
+        return (self._upper+self._lower)/2.0
+
 
     @property
     def lower(self):
@@ -95,6 +107,9 @@ class Interval:
         else:
             return False
 
+    def is_value(self,val):
+        return self.lower == val and \
+            self.upper == val
 
     def negate(self):
         return Interval.type_infer(
@@ -115,6 +130,9 @@ class Interval:
         return max(diff1,diff2)
 
 
+    def is_constant(self):
+        return self.lower == self.upper
+
     def contains_zero(self):
         return self.lower <= 0 and self.upper >= 0
 
@@ -129,6 +147,11 @@ class Interval:
         return self.lower >= 0 and self.upper >= 0
 
 
+    def ratio(self,other):
+        assert(same_sign(other.lower,self.lower))
+        assert(same_sign(other.upper,self.upper))
+        return (self.lower/other.lower,self.upper/other.upper)
+
     def max(self,other):
         new_lower = max(self.lower,other.lower)
         new_upper = max(self.upper,other.upper)
@@ -138,6 +161,9 @@ class Interval:
         new_lower = min(self.lower,other.lower)
         new_upper = min(self.upper,other.upper)
         return Interval.type_infer(new_lower,new_upper)
+
+    def sin(self):
+        return Interval.type_infer(-1,1)
 
     def sgn(self):
         if self.crosses_zero():
@@ -166,18 +192,25 @@ class Interval:
     def sqrt(self):
         return self.simple_power(0.5)
 
+    def divide(self,other):
+        return self.mult(other.reciprocal())
+
     def reciprocal(self):
         if self.unbounded():
             return self
         if self.contains_zero():
-            print(self)
             corners = [1.0/self.lower, 1.0/self.upper]
             return Interval.type_infer(min(corners), float('inf'))
         else:
             corners = [1.0/self.lower, 1.0/self.upper]
             return Interval.type_infer(min(corners),max(corners))
 
-    def power(self,v):
+    def power(self,_v):
+        if _v.is_constant():
+            v = _v.lower
+        else:
+            v = None
+
         if v == 1.0:
             return self
         elif v == -1.0:
@@ -354,3 +387,90 @@ class IntervalCollection:
       st += "  %s: %s\n" % (bnd,ival)
 
     return st
+
+class UnknownIntervalError(Exception):
+    pass
+
+def backpropagate_intervals(expr,ival,ivals):
+    def is_conc(expr):
+        return all(map(lambda v: v in ivals, expr.vars()))
+
+    if expr.op == oplib.OpType.VAR:
+        if expr.name in ivals:
+            return {}
+
+        return {expr.name:ival}
+
+    elif expr.op == oplib.OpType.EMIT:
+        return backpropagate_intervals(expr.arg(0),ival,ivals)
+
+    elif expr.op == oplib.OpType.MULT:
+        ival0 = propagate_intervals(expr.arg(0),ivals) \
+                if is_conc(expr.arg(0)) else None
+        ival1 = propagate_intervals(expr.arg(1),ivals) \
+                if is_conc(expr.arg(1)) else None
+        if ival0 is None and ival1 is None:
+            raise UnknownIntervalError("cannot backprop through <%s>" % expr)
+
+        elif ival1 is None:
+            return backpropagate_intervals(expr.arg(1),ival.divide(ival0),ivals)
+        elif ival0 is None:
+            return backpropagate_intervals(expr.arg(0),ival.divide(ival1),ivals)
+        else:
+            return {}
+
+
+    elif expr.op == oplib.OpType.INTEG:
+        raise UnknownIntervalError("cannot backprop through <%s>" % expr)
+    else:
+        raise Exception("backprop expression: %s" % (expr))
+
+def propagate_intervals(expr,ivals):
+    if expr.op == oplib.OpType.VAR:
+        if not expr.name in ivals:
+            raise UnknownIntervalError("unknown interval for <%s>" % expr.name)
+        return ivals[expr.name]
+
+    elif expr.op == oplib.OpType.EMIT:
+        return propagate_intervals(expr.arg(0), \
+                                   ivals)
+
+    elif expr.op == oplib.OpType.ADD:
+        i0 = propagate_intervals(expr.arg(0),ivals)
+        i1 = propagate_intervals(expr.arg(1),ivals)
+        return i0.add(i1)
+
+    elif expr.op == oplib.OpType.MULT:
+        i0 = propagate_intervals(expr.arg(0),ivals)
+        i1 = propagate_intervals(expr.arg(1),ivals)
+        return i0.mult(i1)
+
+    elif expr.op == oplib.OpType.SGN:
+        i0 = propagate_intervals(expr.arg(0),ivals)
+        return i0.sgn()
+
+    elif expr.op == oplib.OpType.SIN:
+        i0 = propagate_intervals(expr.arg(0),ivals)
+        return i0.sin()
+
+    elif expr.op == oplib.OpType.ABS:
+        i0 = propagate_intervals(expr.arg(0),ivals)
+        return i0.abs()
+
+    elif expr.op == oplib.OpType.POW:
+        i0 = propagate_intervals(expr.arg(0),ivals)
+        i1 = propagate_intervals(expr.arg(1),ivals)
+        return i0.power(i1)
+
+    elif expr.op == oplib.OpType.CALL:
+        conc_expr = expr.concretize()
+        assert(len(expr.func.vars()) == 0)
+        return propagate_intervals(conc_expr,ivals)
+
+    elif expr.op == oplib.OpType.CONST:
+        return Interval(expr.value,expr.value)
+
+    elif expr.op == oplib.OpType.INTEG:
+        raise UnknownIntervalError("cannot propagate through <%s>" % expr)
+    else:
+        raise Exception("prop expression: %s" % (expr))

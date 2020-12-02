@@ -79,6 +79,8 @@ int slice_to_int(const slice slc){
   case slice2: return 2; break;
   case slice3: return 3; break;
   }
+  error("unknown slice");
+  return -1;
 }
 
 void Fabric::Chip::Tile::Slice::defaults () {

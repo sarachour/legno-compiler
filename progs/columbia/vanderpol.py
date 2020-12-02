@@ -15,17 +15,17 @@ def dsinfo():
 def dsprog(prog):
   params = {
     'mu': 0.2,
-    'Y0': 0.0,
-    'X0': -0.5,
+    'V0': 0.0,
+    'U0': -0.5,
     'one':0.9999
   }
-  dY = "({mu}*(Y*(1.0+(-X)*X)) + {one}*(-X))"
-  dX = "{one}*Y"
-  prog.decl_stvar("Y",dY,"{Y0}",params)
-  prog.decl_stvar("X",dX,"{X0}",params)
-  prog.emit("{one}*X","OSC",params)
-  prog.interval("X",-2.5,2.5)
-  prog.interval("Y",-2.5,2.5)
+  dV = "({mu}*(V*(1.0+(-U)*U)) + {one}*(-U))"
+  dU = "{one}*V"
+  prog.decl_stvar("V",dV,"{V0}",params)
+  prog.decl_stvar("U",dU,"{U0}",params)
+  prog.emit("{one}*U","OSC",params)
+  prog.interval("U",-2.5,2.5)
+  prog.interval("V",-2.5,2.5)
   prog.check()
   return prog
 

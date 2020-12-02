@@ -28,7 +28,7 @@ namespace cutil {
 
 
   float compute_loss(float bias, float noise_std, float pred_err,
-                     float gain_mean, range_t range,
+                     float gain_mean, float mag,
                      float deviation_weight, float max_gain);
 
   bool measure_signal_robust(Fabric::Chip::Tile::Slice::FunctionUnit * fu,
