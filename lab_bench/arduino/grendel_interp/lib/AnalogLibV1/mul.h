@@ -40,6 +40,7 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
                   Dac * val0_dac,
                   Dac * val1_dac,
                   Dac * ref_dac,
+                  float gain_tradeoff,
                   bool ignore_bias);
     void calibrateHelperFindMultBiasCodes(cutil::calib_table_t& tbl, int stride,
                                       Dac * val0_dac,
@@ -82,13 +83,16 @@ class Fabric::Chip::Tile::Slice::Multiplier : public Fabric::Chip::Tile::Slice::
     float calibrateMaxDeltaFit(Dac * val0_dac,
                                Dac * val1_dac,
                                Dac * ref_dac,
+                               float gain_tradeoff,
                                bool ignore_bias);
     float calibrateMaxDeltaFitVga(Dac * val_dac,
                                   Dac * ref_dac,
+                                  float gain_tradeoff,
                                   bool ignore_bias);
     float calibrateMaxDeltaFitMult(Dac * val0_dac,
-                                Dac * val1_dac,
+                                   Dac * val1_dac,
                                    Dac * ref_dac,
+                                   float gain_tradeoff,
                                    bool ignore_bias);
 		Multiplier (Slice * parentSlice, unit unitId);
 		~Multiplier () override {
