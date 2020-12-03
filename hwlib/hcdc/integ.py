@@ -97,6 +97,13 @@ spec.param('b',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('c',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
 integ.outputs['z'].deltas.bind(['m','m','+'],spec)
 
+spec = DeltaSpec(parser.parse_expr('integ((-1*a*x),(-2.0*(b*z0+c)))'), \
+                 calib_obj)
+spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
+spec.param('b',DeltaParamType.CORRECTABLE,ideal=1.0)
+spec.param('c',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
+integ.outputs['z'].deltas.bind(['m','m','-'],spec)
+
 
 spec = DeltaSpec(parser.parse_expr('integ((a*x),(20.0*(b*z0+c)))'), \
                  calib_obj)
@@ -104,6 +111,14 @@ spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('b',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('c',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
 integ.outputs['z'].deltas.bind(['h','h','+'],spec)
+
+
+spec = DeltaSpec(parser.parse_expr('integ((-1*a*x),(-20.0*(b*z0+c)))'), \
+                 calib_obj)
+spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
+spec.param('b',DeltaParamType.CORRECTABLE,ideal=1.0)
+spec.param('c',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
+integ.outputs['z'].deltas.bind(['h','h','-'],spec)
 
 
 
@@ -114,6 +129,14 @@ spec.param('b',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('c',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
 integ.outputs['z'].deltas.bind(['m','h','+'],spec)
 
+spec = DeltaSpec(parser.parse_expr('integ((-10.0*a*x),(-20.0*(b*z0+c)))'), \
+                 calib_obj)
+spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
+spec.param('b',DeltaParamType.CORRECTABLE,ideal=1.0)
+spec.param('c',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
+integ.outputs['z'].deltas.bind(['m','h','-'],spec)
+
+
 
 spec = DeltaSpec(parser.parse_expr('integ((0.1*a*x),(2.0*(b*z0+c)))'), \
                  calib_obj)
@@ -121,6 +144,14 @@ spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('b',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('c',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
 integ.outputs['z'].deltas.bind(['h','m','+'],spec)
+
+
+spec = DeltaSpec(parser.parse_expr('integ((-0.1*a*x),(-2.0*(b*z0+c)))'), \
+                 calib_obj)
+spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
+spec.param('b',DeltaParamType.CORRECTABLE,ideal=1.0)
+spec.param('c',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
+integ.outputs['z'].deltas.bind(['h','m','-'],spec)
 
 
 
