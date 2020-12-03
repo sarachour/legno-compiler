@@ -43,11 +43,16 @@ def test_block(board,block,loc,modes):
         cmd = CMD.format(adp_path=TMP_ADP, \
                             model_number=board.model_number, \
                             calib_obj=calib_obj.value)
-        print("\n\n%s.%s mode=%s calib_obj=%s" \
+        print("############################")
+        print("======== TESTING BLOCK =====");
+        print("%s.%s mode=%s calib_obj=%s" \
               % (block.name,loc,mode,calib_obj.value))
+        print("############################")
         print(cmd)
         code = os.system(cmd)
-        if code == signal.SIGINT:
+        print("############################")
+        if code == signal.SIGINT or code != 0:
+          print("status-code: %s" % code)
           raise Exception("User terminated process")
 
     print(block.name,loc,mode)

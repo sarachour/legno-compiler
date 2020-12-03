@@ -87,8 +87,10 @@ class ProfileOpType(Enum):
     def get_expr(self,block,rel):
         if self == ProfileOpType.INPUT_OUTPUT:
             return rel
+
         elif self == ProfileOpType.INTEG_INITIAL_COND:
-            return rel.init_cond
+            integ_expr = genoplib.unpack_integ(rel)
+            return integ_expr.init_cond
 
         elif self == ProfileOpType.INTEG_DERIVATIVE_GAIN:
             integ_expr = genoplib.unpack_integ(rel)

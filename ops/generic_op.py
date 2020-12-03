@@ -381,12 +381,12 @@ def factor_coefficient(expr):
         raise Exception("unimpl: %s" % expr)
 
 def unpack_integ(expr):
-    coeff,exprs = genoplib.unpack_product(expr)
+    coeff,exprs = unpack_product(expr)
     if len(exprs) == 1 and exprs[0].op == OpType.INTEG:
         integ_expr = exprs[0]
         return Integ( \
-                      Const(coeff),Mult(integ_expr.deriv), \
-                      Const(coeff),Mult(integ_expr.init_cond), \
+                      Mult(Const(coeff), integ_expr.deriv), \
+                      Mult(Const(coeff), integ_expr.init_cond), \
                      )
     else:
         raise Exception("cannot unpack: %s" % expr)

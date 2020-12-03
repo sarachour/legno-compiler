@@ -62,7 +62,8 @@ class ExpProfileDataset:
       rel = self.output.relation[self.config.mode]
       if runtime_util.is_integration_op(rel):
           if self.method == llenums.ProfileOpType.INTEG_INITIAL_COND:
-              return rel.init_cond
+              integ_expr = genoplib.unpack_integ(rel)
+              return integ_expr.init_cond
           elif self.method == llenums.ProfileOpType.INTEG_DERIVATIVE_GAIN:
               return genoplib.Const(1.0)
           else:
