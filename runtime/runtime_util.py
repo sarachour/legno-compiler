@@ -52,7 +52,10 @@ def decode_dict(data):
   return json.loads(text)
 
 def is_integration_op(rel):
-    return rel.op == oplib.OpType.INTEG
+    for node in rel.nodes():
+        if node.op == oplib.OpType.INTEG:
+            return True
+    return False
 
 
 def dict_to_identifier(dict_):

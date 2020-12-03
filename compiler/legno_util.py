@@ -151,7 +151,6 @@ def exec_lcal(args):
     board = get_device(None)
     path_handler = paths.PathHandler(args.subset,args.program)
     program = DSProgDB.get_prog(args.program)
-    timer = util.Timer('lsim',path_handler)
     for calib_obj in calib_objs:
         for dirname, subdirlist, filelist in \
             os.walk(path_handler.lgraph_adp_dir()):
@@ -167,7 +166,8 @@ def exec_lcal(args):
                         cmd = CURR_CMD.format(**kwargs)
                         print(cmd)
                         code = os.system(cmd)
-                        if code == signal.SIGINT:
+                        print("status code: %s (interrupt=%s)" % (code,signal.SIGINT))
+                        if code == signal.SIGINT or code != 0:
                             raise Exception("User terminated process")
 
 def _lexec_already_ran(ph,board,adp,trial=0):
