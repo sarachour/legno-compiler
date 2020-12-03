@@ -91,7 +91,8 @@ class ProfileOpType(Enum):
             return rel.init_cond
 
         elif self == ProfileOpType.INTEG_DERIVATIVE_GAIN:
-            coeff,exprs = genoplib.unpack_product(rel.deriv)
+            integ_expr = genoplib.unpack_integ(rel)
+            coeff,exprs = genoplib.unpack_product(integ_expr.deriv)
             assert(all(map(lambda expr: expr.op == oplib.OpType.VAR, exprs)))
             all_vars = list(map(lambda e: e.name, exprs))
 
