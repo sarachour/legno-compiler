@@ -138,6 +138,10 @@ class Op:
     def is_constant(self):
       return False
 
+    def copy(self):
+      return Op.from_json(self.to_json())
+
+
     def substitute(self,bindings={}):
       raise Exception("substitute not implemented: %s" % self)
 

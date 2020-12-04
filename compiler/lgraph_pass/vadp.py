@@ -1,6 +1,23 @@
 import hwlib.adp as adplib
 import hwlib.device as devlib
+import ops.op as oplib
 
+class MultiPortVar:
+  IDENT = 0
+  def __init__(self):
+    self.ident = MultiPortVar.IDENT
+    MultiPortVar.IDENT += 1
+
+
+  def copy(self):
+    mp = MultiPortVar()
+    mp.ident = self.ident
+    return mp
+
+  def __repr__(self):
+    return "JOIN(%s)" % (self.ident)
+
+'''
 class VirtualSourceVar:
 
   def __init__(self,var):
@@ -11,6 +28,8 @@ class VirtualSourceVar:
 
   def __repr__(self):
     return "source-var(%s)" % (self.var)
+
+'''
 
 class LawVar:
   APPLY = "app"
@@ -76,12 +95,18 @@ class VADPConn(VADPStmt):
   def __init__(self,src,snk):
     VADPStmt.__init__(self)
     assert(isinstance(src,PortVar)  \
-           or isinstance(src,LawVar))
+           or isinstance(src,LawVar) or \
+           isinstance(src,MultiPortVar))
     assert(isinstance(snk,PortVar)  \
            or isinstance(snk,LawVar) or \
-           isinstance(snk,VirtualSourceVar))
+           isinstance(snk,MultiPortVar))
     self.source = src
     self.sink = snk
+
+  def variables(self):
+    yield self.source
+    yield self.sink
+
 
   def copy(self):
     return VADPConn(self.source.copy(),self.sink.copy())
@@ -94,9 +119,14 @@ class VADPSink(VADPStmt):
   def __init__(self,target,expr):
     VADPStmt.__init__(self)
     assert(isinstance(target,PortVar) or \
-           isinstance(target,LawVar))
+           isinstance(target,LawVar) or \
+           isinstance(target,MultiPortVar))
     self.dsexpr = expr
     self.target = target
+
+  def variables(self):
+    yield self.target
+
 
   def copy(self):
     return VADPSink(self.target.copy(),self.dsexpr)
@@ -110,11 +140,15 @@ class VADPSource(VADPStmt):
     VADPStmt.__init__(self)
     if not (isinstance(target,PortVar)) and \
        not (isinstance(target,LawVar)) and \
-       not (isinstance(target,VirtualSourceVar)):
+       not (isinstance(target,MultiPortVar)):
       raise Exception("unexpected target: %s"  \
                       % target.__class__.__name__)
     self.dsexpr = expr
     self.target = target
+
+  def variables(self):
+    yield self.target
+
 
   def copy(self):
     return VADPSource(self.target.copy(),self.dsexpr)
@@ -133,6 +167,9 @@ class VADPConfig(VADPStmt):
     self.target = target
     self.mode = mode
     self.assigns = {}
+
+  def variables(self):
+    yield self.target
 
   def copy(self):
     cfg = VADPConfig(self.target.copy(),self.mode)
@@ -156,9 +193,71 @@ class VADPConfig(VADPStmt):
                                     self.mode, \
                                     self.assigns)
 
+
+def eliminate_joins(stmts):
+  target_join = None
+  for stmt in stmts:
+    for var in stmt.variables():
+      if isinstance(var,MultiPortVar):
+        target_join = var
+        break
+
+  if target_join is None:
+    return stmts
+
+  sources = []
+  sinks = []
+  dsexprs = []
+  relevent_stmts = []
+  new_vadp = []
+  for stmt in stmts:
+    if not any(map(lambda v: isinstance(v,MultiPortVar) and \
+                   v.ident == target_join.ident, \
+                   stmt.variables())):
+      new_vadp.append(stmt)
+      continue
+
+    relevent_stmts.append(stmt)
+    if isinstance(stmt,VADPConn):
+      if isinstance(stmt.source,MultiPortVar) and \
+         stmt.source.ident == target_join.ident:
+        sinks.append(stmt.sink)
+      elif isinstance(stmt.sink,MultiPortVar) and \
+         stmt.sink.ident == target_join.ident:
+        sources.append(stmt.source)
+      else:
+        raise Exception("impossible. target <%s> must appear" % target_join)
+
+    elif isinstance(stmt,VADPSource):
+      assert(isinstance(stmt.target,MultiPortVar) and \
+             stmt.target.ident == target_join.ident)
+      dsexprs.append(stmt.dsexpr)
+
+    elif isinstance(stmt,VADPSink):
+      raise Exception("cannot eliminate joins if vadp is a fragment" % stmt)
+    else:
+      raise Exception("unsupported statement: %s" % stmt)
+
+
+  if len(sinks) != 1:
+    for stmt in relevent_stmts:
+      print(stmt)
+    raise Exception("expected exactly one sink: target=%s sinks=%s" \
+                    % (target_join, sinks))
+
+  sink = sinks[0]
+  for source in sources:
+    new_vadp.append(VADPConn(source,sink))
+
+  for dsexpr in dsexprs:
+    new_vadp.append(VADPSource(sink,dsexpr))
+
+  return eliminate_joins(new_vadp)
+
+
 def is_concrete_vadp(vadp,allow_virtual=False):
   def is_concrete_node(node):
-    if isinstance(node,VirtualSourceVar):
+    if isinstance(node,MultiPortVar):
       return allow_virtual
     elif isinstance(node,PortVar):
       return True
@@ -166,11 +265,12 @@ def is_concrete_vadp(vadp,allow_virtual=False):
       return False
 
   for stmt in vadp:
+    print(stmt)
     if isinstance(stmt,VADPSource):
       if not is_concrete_node(stmt.target):
         return False
     elif isinstance(stmt,VADPSink):
-      if not isinstance(stmt.target,PortVar):
+      if not is_concrete_node(stmt.target):
         return False
     elif isinstance(stmt,VADPConn):
       if not isinstance(stmt.source,PortVar):
@@ -186,18 +286,6 @@ def is_concrete_vadp(vadp,allow_virtual=False):
       raise Exception("unhandled: %s" % stmt)
 
   return True
-
-def get_virtual_variable_sources(vadp,virtvar):
-  assert(isinstance(virtvar,VirtualSourceVar))
-
-  sources = []
-  for stmt in vadp:
-    if isinstance(stmt, VADPConn) and \
-      isinstance(stmt.sink,VirtualSourceVar) and \
-      stmt.sink.var == virtvar.var:
-      sources.append(stmt.source)
-
-  return sources
 
 
 def remap_vadp_identifiers(insts,fragment):

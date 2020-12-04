@@ -216,17 +216,15 @@ def assemble_circuit(stmts):
   assembled = []
   for stmt in stmts:
     if isinstance(stmt,vadplib.VADPSink):
-      if stmt.target.block.type == blocklib.BlockType.ASSEMBLE:
+      if isinstance(stmt.target,vadplib.PortVar) and \
+         stmt.target.block.type == blocklib.BlockType.ASSEMBLE:
         add(asm_sinks,stmt.dsexpr,stmt.target)
       else:
         add(compute_sinks,stmt.dsexpr,stmt.target)
 
     elif isinstance(stmt,vadplib.VADPSource):
-      if isinstance(stmt.target,vadplib.VirtualSourceVar):
-        srcs = vadplib.get_virtual_variable_sources(stmts,stmt.target)
-        add(compute_sources,stmt.dsexpr, srcs)
-        continue
-      elif stmt.target.block.type == blocklib.BlockType.ASSEMBLE:
+      if isinstance(stmt.target, vadplib.PortVar) and \
+         stmt.target.block.type == blocklib.BlockType.ASSEMBLE:
         add(asm_sources,stmt.dsexpr,[stmt.target])
       else:
         add(compute_sources,stmt.dsexpr,[stmt.target])
@@ -234,8 +232,7 @@ def assemble_circuit(stmts):
       assembled.append(stmt)
 
     elif isinstance(stmt,vadplib.VADPConn):
-      if not isinstance(stmt.sink,vadplib.VirtualSourceVar):
-        assembled.append(stmt)
+      assembled.append(stmt)
 
     else:
       assembled.append(stmt)
@@ -261,7 +258,7 @@ def assemble_circuit(stmts):
       for src in srcs:
         assembled.append(vadplib.VADPConn(src,sink))
 
-  return assembled
+  return vadplib.eliminate_joins(assembled)
 
 def create_vadp_frag(hierarchy,input_var,parent_vadp,instance_map={}):
   def fresh_ident(block):
@@ -315,7 +312,7 @@ def create_vadp_frag(hierarchy,input_var,parent_vadp,instance_map={}):
   assert(n_sinks <= 1)
   return vadp
 
-def assemble(blocks,fragments,n_asm_frags=3):
+def get_frag_interface(fragments):
 
   # count sinks and sources
   sources = {}
@@ -332,6 +329,10 @@ def assemble(blocks,fragments,n_asm_frags=3):
         sources[var] = stmt.dsexpr
 
 
+  return sources,sinks
+
+def assemble(blocks,fragments,n_asm_frags=3):
+  sources,sinks = get_frag_interface(fragments)
   # build assemble fragments
   asm_frags = {}
   for var,sinks in sinks.items():

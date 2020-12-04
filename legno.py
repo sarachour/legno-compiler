@@ -73,6 +73,9 @@ lexec_subp.add_argument('--force', action='store_true', \
 
 sim_subp = subparsers.add_parser('lsim', help='simulate circuit.')
 sim_subp.add_argument('program', help='program to simulate.')
+sim_subp.add_argument('--unscaled', action='store_true', \
+                       help='simulate unscaled circuit.')
+
 
 sim_subp = subparsers.add_parser('lwav', help='analyze waveforms.')
 sim_subp.add_argument('program', help='program to analyze.')

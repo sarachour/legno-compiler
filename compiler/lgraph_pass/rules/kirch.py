@@ -72,7 +72,7 @@ class KirchhoffRule(rulelib.Rule):
         elif usage == rulelib.Rule.Usage.VADP_SOURCE:
           source_dsexprs.append(st.dsexpr)
           assert(sink is None)
-          sink = tablib.VirtualSourceVar(lawvar.ident)
+          sink = tablib.MultiPortVar()
 
         elif usage == rulelib.Rule.Usage.VADP_SINK:
           sink_dsexprs.append(st.dsexpr)

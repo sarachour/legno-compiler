@@ -190,7 +190,7 @@ def exec_lexec(args):
     board = get_device(None)
     path_handler = paths.PathHandler(args.subset,args.program)
     program = DSProgDB.get_prog(args.program)
-    timer = util.Timer('lsim',path_handler)
+    timer = util.Timer('lexec',path_handler)
     for dirname, subdirlist, filelist in \
         os.walk(path_handler.lscale_adp_dir()):
         for adp_file in filelist:
@@ -217,8 +217,13 @@ def exec_lsim(args):
     path_handler = paths.PathHandler(args.subset,args.program)
     program = DSProgDB.get_prog(args.program)
     timer = util.Timer('lsim',path_handler)
+    if args.unscaled:
+        direc = path_handler.lgraph_adp_dir()
+    else:
+        direc = path_handler.lscale_adp_dir()
+
     for dirname, subdirlist, filelist in \
-        os.walk(path_handler.lscale_adp_dir()):
+        os.walk(direc):
         for adp_file in filelist:
             if adp_file.endswith('.adp'):
                 with open(dirname+"/"+adp_file,'r') as fh:
@@ -226,14 +231,27 @@ def exec_lsim(args):
                     adp = ADP.from_json(board, \
                                         json.loads(fh.read()))
 
-                    plot_file = path_handler.adp_sim_plot(
+                    if args.unscaled:
+                        for cfg in adp.configs:
+                            cfg.modes = [cfg.modes[0]]
+                        plot_file = path_handler.adp_sim_plot(
                         paths.PlotType.SIMULATION, \
                         adp.metadata[ADPMetadata.Keys.DSNAME],
                         adp.metadata[ADPMetadata.Keys.LGRAPH_ID],
-                        adp.metadata[ADPMetadata.Keys.LSCALE_ID],
-                        adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD],
-                        adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE])
+                        'na',
+                        'na',
+                        'na')
 
+                    else:
+                        plot_file = path_handler.adp_sim_plot(
+                            paths.PlotType.SIMULATION, \
+                            adp.metadata[ADPMetadata.Keys.DSNAME],
+                            adp.metadata[ADPMetadata.Keys.LGRAPH_ID],
+                            adp.metadata[ADPMetadata.Keys.LSCALE_ID],
+                            adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD],
+                            adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE])
+
+                    print(plot_file)
 
 
                     lsim.simulate(board,adp,plot_file)
