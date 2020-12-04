@@ -216,7 +216,20 @@ def exec_lsim(args):
     board = get_device(None)
     path_handler = paths.PathHandler(args.subset,args.program)
     program = DSProgDB.get_prog(args.program)
+    if args.reference:
+        plot_file = path_handler.adp_sim_plot(
+            paths.PlotType.SIMULATION, \
+            program.name, \
+            'REF',
+            'na',
+            'na',
+            'na')
+        lsim.simulate_reference(board,program,plot_file)
+        return
+
+
     timer = util.Timer('lsim',path_handler)
+
     if args.unscaled:
         direc = path_handler.lgraph_adp_dir()
     else:
@@ -235,12 +248,12 @@ def exec_lsim(args):
                         for cfg in adp.configs:
                             cfg.modes = [cfg.modes[0]]
                         plot_file = path_handler.adp_sim_plot(
-                        paths.PlotType.SIMULATION, \
-                        adp.metadata[ADPMetadata.Keys.DSNAME],
-                        adp.metadata[ADPMetadata.Keys.LGRAPH_ID],
-                        'na',
-                        'na',
-                        'na')
+                            paths.PlotType.SIMULATION, \
+                            adp.metadata[ADPMetadata.Keys.DSNAME],
+                            adp.metadata[ADPMetadata.Keys.LGRAPH_ID],
+                            'na',
+                            'na',
+                            'na')
 
                     else:
                         plot_file = path_handler.adp_sim_plot(
@@ -254,7 +267,7 @@ def exec_lsim(args):
                     print(plot_file)
 
 
-                    lsim.simulate(board,adp,plot_file)
+                    lsim.simulate_adp(board,adp,plot_file)
 
 def exec_wav(args,trials=1):
     import compiler.lwav_pass.waveform as wavelib

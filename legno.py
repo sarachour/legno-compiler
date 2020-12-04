@@ -75,6 +75,9 @@ sim_subp = subparsers.add_parser('lsim', help='simulate circuit.')
 sim_subp.add_argument('program', help='program to simulate.')
 sim_subp.add_argument('--unscaled', action='store_true', \
                        help='simulate unscaled circuit.')
+sim_subp.add_argument('--reference', action='store_true', \
+                       help='generate reference sim.')
+
 
 
 sim_subp = subparsers.add_parser('lwav', help='analyze waveforms.')
