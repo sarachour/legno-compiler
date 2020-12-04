@@ -18,7 +18,7 @@ def dsprog(prob):
     'V0' :0.0,
     'one':0.9999
   }
-  prob.decl_lambda("ident","sgn(X)*sqrt(abs(X))")
+  prob.decl_lambda("ident","sgn(T)*sqrt(abs(T))")
   prob.decl_var("Q","emit(ident(P))")
   prob.decl_var("P","0.5")
   prob.interval("P",-1.0,1.0)

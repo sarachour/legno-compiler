@@ -237,12 +237,23 @@ def next_state(sim,values):
 def run_simulation(sim,sim_time):
   state_vars = list(sim.state_variables())
 
+
+
   def dt_func(t,vs):
     return next_state(sim,vs)
 
   time = sim_time/(sim.time_scale)
   n = 300.0
   dt = time/n
+
+  res = ADPSimResult(sim)
+
+
+  if len(state_vars) == 0:
+    for t in np.linspace(0,time,int(n)):
+      res.add_point(t,[])
+
+    return res
 
   r = ode(dt_func).set_integrator('zvode', \
                                   method='bdf')
@@ -252,7 +263,6 @@ def run_simulation(sim,sim_time):
   r.set_initial_value(x0,t=0.0)
   tqdm_segs = 500
   last_seg = 0
-  res = ADPSimResult(sim)
   with tqdm.tqdm(total=tqdm_segs) as prog:
     while r.successful() and r.t < time:
         res.add_point(r.t,r.y)
@@ -285,12 +295,11 @@ def get_dsexpr_trajectories(dev,adp,sim,res):
 
 
   state_vars = {}
-  times = None
+  times = res.time
   for stvar in res.state_vars:
-    times,V = res.data(stvar)
+    _,V = res.data(stvar)
     state_vars[stvar.var_name] = V
 
-  assert(not times is None)
   npts = len(times)
   dataset = {}
   for source_name,(src,cfg,port,expr) in variables.items():
