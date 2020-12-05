@@ -68,8 +68,11 @@ class FuseLUTRule(rulelib.Rule):
     a_expr = genoplib.Mult(genoplib.Const(a_conc_coeff), \
                            genoplib.Var("y"))
     # function to write
+    assert(len(expr.vars()) == 1)
+    var_name = expr.vars()[0]
+
     impl = genoplib.Mult(b_expr, \
-                         expr.substitute({'T': a_expr}))
+                         expr.substitute({var_name: a_expr}))
 
     cfg = tablib.VADPConfig(law_var,rule.mode)
     cfg.bind('e',impl)
@@ -78,6 +81,9 @@ class FuseLUTRule(rulelib.Rule):
     new_unif = unifylib.Unification()
     new_unif.set_by_name('a', a_conc_base)
     return new_unif,stmts
+
+
+
 
 
   def simplify_once(self,vadp):

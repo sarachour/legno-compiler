@@ -285,16 +285,19 @@ def get_dsexpr_trajectories(dev,adp,sim,res):
   for cfg in adp.configs:
     blk = dev.get_block(cfg.inst.block)
     for port in cfg.stmts_of_type(adplib.ConfigStmtType.PORT):
-      if not port.source is None and blk.outputs.has(port.name):
-        if not str(port.source) in variables:
-          if sim.is_state_var(cfg.inst,port.name):
-            flatexpr = genoplib.Var(sim.state_var(cfg.inst,port.name).var_name)
-          else:
-            expr = blk.outputs[port.name].relation[cfg.mode]
-            flatexpr = build_expr(dev,sim,adp,cfg,expr)
+      if not port.source is None and not str(port.source) in variables:
+        if blk.outputs.has(port.name) and \
+           sim.is_state_var(cfg.inst,port.name):
+          flatexpr = genoplib.Var(sim.state_var(cfg.inst,port.name).var_name)
+        elif blk.outputs.has(port.name):
+          expr = blk.outputs[port.name].relation[cfg.mode]
+          flatexpr = build_expr(dev,sim,adp,cfg,expr)
+        else:
+          expr = genoplib.Var(port.name)
+          flatexpr = build_expr(dev,sim,adp,cfg,expr)
 
-          variables[str(port.source)] = (port.source,cfg,port,flatexpr)
-          print("%s = %s" % (port.source,flatexpr))
+        variables[str(port.source)] = (port.source,cfg,port,flatexpr)
+        print("fxn %s = %s" % (port.source,flatexpr))
 
 
   state_vars = {}
