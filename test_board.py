@@ -18,6 +18,31 @@ import os
 
 import argparse
 
+def test_source(board,adp,block,cfg):
+  if block.name == "dac" and 'dyn' in str(cfg.mode):
+    lut_blk = board.get_block('lut')
+    dac_loc = cfg.inst.loc
+    lut0_loc,lut1_loc = cfg.inst.loc.copy(), cfg.inst.loc.copy()
+    lut1_loc[2] = 0 if dac_loc[2] == 2 else 2
+    print("lut0=%s" % lut0_loc)
+    print("lut1=%s" % lut1_loc)
+
+    adp_lut0 = adp.copy()
+    adp_lut0.add_instance(lut_blk,lut0_loc)
+    adp_lut0.add_conn(lut_blk, lut0_loc,lut_blk.outputs[0], \
+                      block, dac_loc, dac_blk.inputs[0])
+    yield adp_lut0
+
+    adp_lut1 = adp.copy()
+    adp_lut1.add_instance(lut_blk,lut1_loc)
+    adp_lut1.add_conn(lut_blk, lut1_loc,lut_blk.outputs[0], \
+                      block, dac_loc, dac_blk.inputs[0])
+    yield adp_lut1
+
+
+  else:
+    yield adp
+
 def test_block(board,block,loc,modes):
   calib_objs = [
     llenums.CalibrateObjective.MAXIMIZE_FIT,
@@ -26,36 +51,40 @@ def test_block(board,block,loc,modes):
   assert(not board.model_number is None)
   TMP_ADP = "tmp.adp"
   CAL_CMD = "python3 grendel.py cal {adp_path} --model-number {model_number} {calib_obj}"
-  PROF_CMD = "python3 grendel.py prof {adp_path} --model-number {model_number} {calib_obj}"
-  MKDELTAS_CMD = "python3 grendel.py mkdeltas --model-number {model_number} {adp_path} --force"
+  #PROF_CMD = "python3 grendel.py prof {adp_path} --model-number {model_number} {calib_obj}"
+  PROF_CMD = "python3 grendel.py prof {adp_path} --model-number {model_number} {calib_obj} --force"
+  MKDELTAS_CMD = "python3 grendel.py mkdeltas --model-number {model_number}  --force"
 
   for mode in modes:
     new_adp = ADP()
     new_adp.add_instance(block,loc)
     blkcfg = new_adp.configs.get(block.name,loc)
     blkcfg.modes = [mode]
+    for upd_adp in test_source(board,new_adp,block,blkcfg):
+      with open(TMP_ADP,'w') as fh:
+        fh.write(json.dumps(upd_adp.to_json()))
 
-    with open(TMP_ADP,'w') as fh:
-      fh.write(json.dumps(new_adp.to_json()))
+        if block.name != 'dac' and 'dyn' in str(mode):
+          continue
 
-    for calib_obj in calib_objs:
-      for CMD in [CAL_CMD, PROF_CMD, MKDELTAS_CMD]:
-        cmd = CMD.format(adp_path=TMP_ADP, \
-                            model_number=board.model_number, \
-                            calib_obj=calib_obj.value)
-        print("############################")
-        print("======== TESTING BLOCK =====");
-        print("%s.%s mode=%s calib_obj=%s" \
-              % (block.name,loc,mode,calib_obj.value))
-        print("############################")
-        print(cmd)
-        code = os.system(cmd)
-        print("############################")
-        if code == signal.SIGINT or code != 0:
-          print("status-code: %s" % code)
-          raise Exception("User terminated process")
+      for calib_obj in calib_objs:
+        for CMD in [CAL_CMD, PROF_CMD, MKDELTAS_CMD]:
+          cmd = CMD.format(adp_path=TMP_ADP, \
+                           model_number=board.model_number, \
+                           calib_obj=calib_obj.value)
+          print("############################")
+          print("======== TESTING BLOCK =====");
+          print("%s.%s mode=%s calib_obj=%s" \
+                % (block.name,loc,mode,calib_obj.value))
+          print("############################")
+          print(cmd)
+          code = os.system(cmd)
+          print("############################")
+          if code == signal.SIGINT or code != 0:
+            print("status-code: %s" % code)
+            raise Exception("User terminated process")
 
-    print(block.name,loc,mode)
+      print(block.name,loc,mode)
 
 def test_board(args):
   board = runtime_util.get_device(args.model_number,layout=True)

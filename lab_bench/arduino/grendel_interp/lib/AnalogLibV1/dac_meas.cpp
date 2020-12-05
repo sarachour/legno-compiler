@@ -75,8 +75,10 @@ profile_t Fabric::Chip::Tile::Slice::Dac::measureConstVal(profile_spec_t spec)
   float mean,variance;
   mean = this->fastMeasureValue(variance);
 #ifdef DEBUG_DAC_PROF
-  sprintf(FMTBUF,"prof-dac in=%f code=%d targ=%f mean=%f variance=%f\n",
-          spec.inputs[in0Id], \
+  sprintf(FMTBUF,"prof-dac src=%s/%s in=%f code=%d targ=%f mean=%f variance=%f\n",
+          dac_source_to_string(spec.state.dac.source), \
+          dac_source_to_string(this->m_state.source), \
+          spec.inputs[in0Id],                             \
           this->m_state.const_code,target,mean,variance);
   print_info(FMTBUF);
 #endif
