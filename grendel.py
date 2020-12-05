@@ -86,6 +86,7 @@ prof_subp.add_argument('--min-points',type=int,default=0, \
                        help="minimum number of dataset points")
 prof_subp.add_argument('--missing',action='store_true', \
                        help="calibrate missing")
+prof_subp.add_argument('--force',action="store_true",help='force')
 
 
 
@@ -95,7 +96,6 @@ vis_subp.add_argument('method', type=str, \
 vis_subp.add_argument('--model-number',type=str,help='model number')
 
 delta_subp = subparsers.add_parser('mkdeltas', help='build delta models from profile information')
-delta_subp.add_argument('adp', type=str,help='adp to profile')
 delta_subp.add_argument('--model-number',type=str,help='model number')
 delta_subp.add_argument('--force',action="store_true",help='force')
 delta_subp.add_argument('--min-points',default=10,help='minimum number of points to fit model')

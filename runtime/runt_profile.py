@@ -11,7 +11,7 @@ from lab_bench.grendel_runner import GrendelRunner
 import hwlib.hcdc.llenums as llenums
 import hwlib.hcdc.llcmd as llcmd
 
-def profile_kernel(runtime,board,blk,cfg,calib_obj,min_points,grid_size):
+def profile_kernel(runtime,board,blk,cfg,calib_obj,min_points,grid_size,force=False):
     for exp_delta_model in delta_model_lib.get_calibrated(board, \
                                                           blk, \
                                                           cfg.inst.loc, \
@@ -36,7 +36,8 @@ def profile_kernel(runtime,board,blk,cfg,calib_obj,min_points,grid_size):
 
             if not dataset is None and \
             len(dataset) >= min_points and \
-            len(dataset) >= n*m*reps:
+            len(dataset) >= n*m*reps and \
+            not force:
                 print("===> <%s> already profiled" % method)
                 continue
          
@@ -75,4 +76,5 @@ def profile_adp(args):
             for mode in cfg_modes:
                 cfg.modes = [mode]
                 profile_kernel(runtime,board,blk,cfg,calib_obj, \
-                               args.min_points, args.grid_size)
+                               args.min_points, args.grid_size, \
+                               force=args.force)
