@@ -40,8 +40,9 @@ float Fabric::Chip::Tile::Slice::Integrator::computeOutput(integ_state_t& state,
 float Fabric::Chip::Tile::Slice::Integrator::computeTimeConstant(integ_state_t& state){
   float rng = util::range_to_coeff(state.range[out0Id])
     /util::range_to_coeff(state.range[in0Id]);
+  float sign = state.inv ? -1.0 : 1.0;
   const float TIME_CONSTANT = NOMINAL_TIME_CONSTANT;
-  return TIME_CONSTANT*rng;
+  return sign*TIME_CONSTANT*rng;
 }
 
 
