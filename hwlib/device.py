@@ -10,6 +10,9 @@ class Location:
                    item == Location.WILDCARD, \
                    address)))
     self.address = address
+  
+  def copy(self):
+    return Location(list(self.address))
 
   def to_json(self):
     return self.address
@@ -46,6 +49,16 @@ class Location:
   def __iter__(self):
     for it in self.address:
       yield it
+
+  def __setitem__(self,idx,val):
+     assert(isinstance(idx,int))
+     assert(isinstance(val,int))
+     self.address[idx] = val
+
+
+  def __getitem__(self,idx):
+     assert(isinstance(idx,int))
+     return self.address[idx]
 
 class Layer:
 

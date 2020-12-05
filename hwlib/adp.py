@@ -219,7 +219,7 @@ class ExprDataConfig(ConfigStmt):
     return {
       'name':self.name,
       'type': self.type.value,
-      'expr': self.expr.to_json(),
+      'expr': self.expr.to_json() if not self.expr is None else None,
       'scfs': dict(self.scfs),
       'injs': dict(self.injs),
       'args': list(self.args)
@@ -569,6 +569,10 @@ class ADPMetadata:
       raise Exception("key <%s> not in metadata (%s)" \
                       % (k,self._meta.keys()))
     return self._meta[k]
+
+  def __iter__(self):
+    for k,v in self._meta.items():
+      yield k,v
 
   def __repr__(self):
     st = ""

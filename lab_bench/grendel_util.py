@@ -322,7 +322,7 @@ def get_response(ard,quiet=False):
 
       elif resp.type == ArduinoResponseType.MESSAGE:
         if not quiet:
-          print("[msg] %s" % resp.message)
+          print("[msg] %s" % resp.message, flush=True)
         if "ERROR:" in line:
           print("ERROR DETECTED..QUITTING...")
           ard.close()

@@ -24,19 +24,20 @@ def test_source(board,adp,block,cfg):
     dac_loc = cfg.inst.loc
     lut0_loc,lut1_loc = cfg.inst.loc.copy(), cfg.inst.loc.copy()
     lut1_loc[2] = 0 if dac_loc[2] == 2 else 2
-    print("lut0=%s" % lut0_loc)
-    print("lut1=%s" % lut1_loc)
 
-    adp_lut0 = adp.copy()
+    lut_out = list(lut_blk.outputs)[0]
+    dac_in = list(block.inputs)[0]
+
+    adp_lut0 = adp.copy(board)
     adp_lut0.add_instance(lut_blk,lut0_loc)
-    adp_lut0.add_conn(lut_blk, lut0_loc,lut_blk.outputs[0], \
-                      block, dac_loc, dac_blk.inputs[0])
+    adp_lut0.add_conn(lut_blk, lut0_loc, lut_out, \
+                      block, dac_loc, dac_in)
     yield adp_lut0
 
-    adp_lut1 = adp.copy()
+    adp_lut1 = adp.copy(board)
     adp_lut1.add_instance(lut_blk,lut1_loc)
-    adp_lut1.add_conn(lut_blk, lut1_loc,lut_blk.outputs[0], \
-                      block, dac_loc, dac_blk.inputs[0])
+    adp_lut1.add_conn(lut_blk, lut1_loc, lut_out, \
+                      block, dac_loc, dac_in)
     yield adp_lut1
 
 
@@ -51,8 +52,7 @@ def test_block(board,block,loc,modes):
   assert(not board.model_number is None)
   TMP_ADP = "tmp.adp"
   CAL_CMD = "python3 grendel.py cal {adp_path} --model-number {model_number} {calib_obj}"
-  #PROF_CMD = "python3 grendel.py prof {adp_path} --model-number {model_number} {calib_obj}"
-  PROF_CMD = "python3 grendel.py prof {adp_path} --model-number {model_number} {calib_obj} --force"
+  PROF_CMD = "python3 grendel.py prof {adp_path} --model-number {model_number} {calib_obj}"
   MKDELTAS_CMD = "python3 grendel.py mkdeltas --model-number {model_number}  --force"
 
   for mode in modes:
@@ -60,12 +60,10 @@ def test_block(board,block,loc,modes):
     new_adp.add_instance(block,loc)
     blkcfg = new_adp.configs.get(block.name,loc)
     blkcfg.modes = [mode]
+
     for upd_adp in test_source(board,new_adp,block,blkcfg):
       with open(TMP_ADP,'w') as fh:
         fh.write(json.dumps(upd_adp.to_json()))
-
-        if block.name != 'dac' and 'dyn' in str(mode):
-          continue
 
       for calib_obj in calib_objs:
         for CMD in [CAL_CMD, PROF_CMD, MKDELTAS_CMD]:
