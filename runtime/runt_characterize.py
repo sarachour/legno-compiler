@@ -45,8 +45,12 @@ def continue_characterization(runtime,board,datasets,block,config, \
                              grid_size,new_locs,num_hidden_codes)
 
 def new_characterization(runtime,board,block,config, \
-                         grid_size,num_locs,num_hidden_codes):
-  locs = list(llutil.random_locs(board,block,num_locs))
+                         grid_size,num_locs,num_hidden_codes, \
+                         only_adp_locs=False):
+  if only_adp_locs:
+     locs = [config.inst.loc]
+  else:
+     locs = list(llutil.random_locs(board,block,num_locs))
   print("=== New Characterization! ===")
   upd_cfg = llcmd.characterize(runtime, \
                                board, \

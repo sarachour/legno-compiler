@@ -46,7 +46,8 @@ char_subp.add_argument('--num-hidden-codes',type=int,default=200, \
                        help="number of hidden codes to sample")
 char_subp.add_argument('--num-locs',type=int,default=1, \
                        help="number of hidden codes to sample")
-
+char_subp.add_argument('--adp-locs',action='store_true', \
+                       help="only characterize the locations which appear in the adp")
 
 
 dectree_subp = subparsers.add_parser('mkphys', help='Use characterization data to build calibration decision tree.')
