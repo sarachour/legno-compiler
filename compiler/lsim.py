@@ -16,8 +16,12 @@ def run_adp_simulation(dev, \
 
 
 def plot_simulation(times,stvars,plot_file):
-  fig, axs = plt.subplots(len(stvars.keys()))
-  for idx,(stvar,values) in enumerate(stvars.items()):
+  fig, axs = plt.subplots(len(stvars.keys()),figsize=(15,15))
+  ordered_entries = list(stvars.keys())
+  ordered_entries.sort()
+
+  for idx,stvar in enumerate(ordered_entries):
+    values = stvars[stvar]
     axs[idx].plot(times,values)
     axs[idx].set_title(stvar)
 

@@ -10,6 +10,7 @@ import tqdm
 import numpy as np
 import math
 
+
 class ADPSim:
 
   class Var:
@@ -106,7 +107,6 @@ class ADPSimResult:
     times = self.time
     if rectify:
       scale_factor = self.sim.scale_factor(state_var)
-      print(scale_factor)
       V = np.array(vals)/scale_factor
       T = np.array(times)/self.sim.time_scale
     else:
@@ -136,11 +136,14 @@ def identify_integrators(dev):
   return integs
 
 def build_const_data_field(dev,adp,cfg,field):
+  '''
   blk = dev.get_block(cfg.inst.block)
   spec = blk.data[field.name]
   dig_val = spec.round_value(cfg.mode, \
                        field.value*field.scf)
   return genoplib.Const(dig_val)
+  '''
+  return genoplib.Const(field.value*field.scf)
 
 def build_expr_data_field(dev,adp,cfg,field):
   blk = dev.get_block(cfg.inst.block)

@@ -63,12 +63,14 @@ class FuseLUTRule(rulelib.Rule):
     _,expr = unif.get_by_name('e')
     b_coeff,a_coeff = self.coeffs[rule.mode]
 
-    b_expr = genoplib.Mult(call_coeff, genoplib.Const(b_coeff))
+    b_expr = genoplib.Const(call_coeff.value)
     a_conc_coeff,a_conc_base = genoplib.factor_coefficient(call_inp)
     a_expr = genoplib.Mult(genoplib.Const(a_conc_coeff), \
                            genoplib.Var("y"))
+    # function to write
     impl = genoplib.Mult(b_expr, \
                          expr.substitute({'T': a_expr}))
+
     cfg = tablib.VADPConfig(law_var,rule.mode)
     cfg.bind('e',impl)
     stmts.append(cfg)
@@ -101,7 +103,7 @@ class FuseLUTRule(rulelib.Rule):
     new_vadp.append(lut_cfg)
 
     adc = vadplib.PortVar(dev.get_block('adc'),identifier)
-    adc_mode = adc.block.modes[["m"] if mode[1] == "m" else ["h"]]
+    adc_mode = adc.block.modes[["m"] if mode[0] == "m" else ["h"]]
     assert(isinstance(adc_mode,blocklib.BlockMode))
     adc_cfg = vadplib.VADPConfig(adc,[adc_mode])
     new_vadp.append(adc_cfg)
