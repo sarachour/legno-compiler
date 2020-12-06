@@ -34,13 +34,6 @@ def test_source(board,adp,block,cfg):
                       block, dac_loc, dac_in)
     yield adp_lut0
 
-    adp_lut1 = adp.copy(board)
-    adp_lut1.add_instance(lut_blk,lut1_loc)
-    adp_lut1.add_conn(lut_blk, lut1_loc, lut_out, \
-                      block, dac_loc, dac_in)
-    yield adp_lut1
-
-
   else:
     yield adp
 
@@ -53,7 +46,7 @@ def test_block(board,block,loc,modes):
   TMP_ADP = "tmp.adp"
   CAL_CMD = "python3 grendel.py cal {adp_path} --model-number {model_number} {calib_obj}"
   PROF_CMD = "python3 grendel.py prof {adp_path} --model-number {model_number} {calib_obj}"
-  MKDELTAS_CMD = "python3 grendel.py mkdeltas --model-number {model_number}  --force"
+  MKDELTAS_CMD = "python3 grendel.py mkdeltas --model-number {model_number}"
 
   for mode in modes:
     new_adp = ADP()
@@ -82,17 +75,16 @@ def test_block(board,block,loc,modes):
             print("status-code: %s" % code)
             raise Exception("User terminated process")
 
-      print(block.name,loc,mode)
 
 def test_board(args):
   board = runtime_util.get_device(args.model_number,layout=True)
-  for chip_id in range(2):
+  for chip_id in range(1,2):
     for tile_id in range(4):
       for slice_id in [0,2]:
         for block in board.blocks:
           if not block.requires_calibration():
             continue
-
+          
           modes = list(block.modes)
           if block.name == "fanout":
             modes = list(filter(lambda m: not "-" in str(m), block.modes))

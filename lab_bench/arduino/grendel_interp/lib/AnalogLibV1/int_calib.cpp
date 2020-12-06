@@ -331,7 +331,7 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrateClosedLoopCircuit(calib_obj
   integ_state_t backup_state_integ = this->m_state;
   float out0bias, out1bias, out2bias;
   fan->setRange(RANGE_MED);
-  fan->setInv(out0Id,true);
+  fan->setInv(out0Id, this->m_state.inv ? false : true);
   fan->setInv(out1Id,false);
   fan->setInv(out2Id,false);
   fan->measureZero(out0bias,out1bias,out2bias);
@@ -440,6 +440,8 @@ void Fabric::Chip::Tile::Slice::Integrator::calibrate(calib_objective_t obj){
 
   fast_calibrate_dac(val_dac);
 
+  // always calibrate positive integrator
+  this->m_state.inv = false;
   cutil::calib_table_t ol_calib_table[MAX_NMOS];
   cutil::calib_table_t cl_calib_table[MAX_NMOS];
 
