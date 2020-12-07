@@ -230,16 +230,17 @@ def dsinfo():
   return info
 \end{dssnippet}
 
-We can test the dynamical system by digitally simulating with using the command below:
+We can test the dynamical system by digitally simulating it using the command below:
 
 \begin{snippet}
- python3 legno.py --subset extended simulate decay --reference
+ python3 lsim.py decay --reference
 \end{snippet}
 
-The command will write plots of \tx{x} and \tx{OBS} to the following directory:
+The command will write a plot with a \tx{REF} identifier containing the
+trajectories of \tx{x} and \tx{OBS} to the following directory:
 
 \begin{snippet}
- legno-compiler/outputs/legno/extended/decay/sim/ref/
+ legno-compiler/outputs/legno/extended/decay/plots/sim/
 \end{snippet}
 
 \section{Troubleshooting}

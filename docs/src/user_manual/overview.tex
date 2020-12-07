@@ -104,11 +104,41 @@ located at the following location:
   device-state/hcdcv2/<model-number>/hcdcv2-<model-number>.db
 \end{snippet}
 
-This database maintains two key tables -- the delta model table and the
+This database maintains two important tables -- the delta model table and the
 profiling data table. The delta model table stores empirically derived symbolic
-models for each calibration strategy.
+models for each calibration strategy and the calibration information for each
+calibration strategy. The profiling data table maintains the datasets which
+capture the behavior of each calibrated block. The firmware and grendel runtime
+offer several calibration strategies which inform how the block is calibrated:
 
-XXXXXXX STOPPED HERE XXXXXXX
+\begin{itemize}
+\item \textbf{Maximize Fit} (\tx{minimize_error},\tx{minerr}): This calibration strategy allows for analog blocks
+  to have variations in the gain they introduce. It optimizes for eliminating
+  any constant offsets (biases) and eliminating any hard-to-characterize behavior (point
+  errors). This calibration strategy is executed on the device firmware using a
+  heuristic search.
+  \item\textbf{Minimize Error} (\tx{maximize_fit},\tx{maxfit}): This calibration strategy calibrates analog
+    blocks to deliver behavior that closely follows the behavior in the hardware
+    specification. This calibration strategy is executed on the device firmware
+    using a heuristic search.
+    \item\textbf{Bruteforce} (\tx{bruteforce},\tx{brute}): This calibration strategy randomly samples the
+      space of calibration codes and chooses the best one. This strategy is
+      performed on the host-side and is usually reserved for blocks which
+      perform poorly when calibrated with the previous two strategy.
+    \item\textbf{Best} (\tx{best}): This calibration strategy chooses the best performing block
+      calibration strategy.
+    
+\end{itemize}
+
+\noindent~We will walk through the various operations which can be performed
+with the \grendel runtime in this section.
+
+\noindent\textbf{Advice on device state database}: The device state database
+should be backed up regularly as it caches a great deal of calibration and
+profiling information which is time-intensive to recompute. Note that this
+database is not irreplaceable -- it can easily be repopulated if it is lost. We
+may periodically ask for end-users to submit their device state database as it
+provides valuable information on how the board is functioning.
 
 \subsection{ADP Execution}
 
@@ -127,78 +157,125 @@ firmware. This firmware is found in the following directory:
   legno-compiler/lab_bench/arduino/grendel_interp_V1
 \end{snippet}
 
+\subsection{Calibrating Blocks in an ADP}
 
-\subsection{Board Calibration and Characterization}
-
-The \grendel runtime system supports calibrating and profiles blocks
-
-that appear
-in a \grendel script. The system caches combinations of calibration codes and
-profiling information in the \textit{state database} (\tx{state.db}), which
-resides at the following location:
+Calibration is the first step to deriving the empirical models for each block.
+The grendel runtime supports invoking the on-board firmware calibration routines
+for the blocks in a target analog device program. Only the 
+\tx{maximize_Fit}/\tx{minimize_error} calibration strategies may be selected as
+they are implemented directed in the firmware. Refer to Sections~\ref{XXX} or
+Sections~\ref{XXX} for information on how to do the bruteforce or best-performing
+calibration strategies. The following invocation calibrates all the blocks in
+the file \tx{<file>.adp} using the \tx{maximize_fit} strategy and writes the
+calibration information to the board's device state database: 
 
 \begin{snippet}
-  legno-compiler/device-state/state.db
+  python3 grendel.py cal --model-number <model-number> <file>.adp maximize_fit
 \end{snippet}
 
+The calibration routine takes a long time to complete because it calibrates the
+block under each possible block configuration. All this information is written to the
+\tx{hcdc-<model_number>.db} database -- if this procedure is interrupted, it will
+pick up from where it left off. 
 
-\noindent\textbf{Calibration}: The \grendel runtime is able to calibrate blocks to
-minimize some objective function. The code values selected by the calibration
-routine are cached in the state database. The runtime and firmware currently supports
-two objective functions:
+
+\subsection{Profiling Blocks in an ADP}
+
+Calibrated blocks can be profiled with the \grendel runtime's \tx{prof}
+subcommand. It accepts as input the analog device program which contains the
+blocks to profile and the calibration strategy which was used. It looks up the
+calibration information in the state database and exercises the
+block over the input space to collect a set of input-output pairs which describe
+the behavior of the calibrated block. We write an example invocation below:
+
+\begin{snippet}
+ python3 grendel.py prof --model-number <model-number> <file>.adp maximize_fit
+ --grid-size 17
+\end{snippet}
+
+The \tx{--grid-size} argument tells the profiler how many points to break each
+input into. For example, if a block takes inputs \tx{x} and \tx{y}, the profiler
+will break up the input space for each input into 17 points. It will therefore
+try $17^2$ test points to evaluate the behavior of the block being tested. The
+profiler skips over any calibrated blocks which have already been profiled to
+save time.
+
+This routine also accepts other optional arguments, which we describe below:
 
 \begin{itemize}
-\item\tx{min_error}: This objective function minimizes the error of the output across a
-  sequence of test inputs.
-\item\tx{max_fit}: This objective function minimizes the delta model error
-  (maximizes the fit of the delta model) across a sequence of test inputs. 
+\item\textbf{\tx{--min-points} argument}: This argument tells the runtime how
+  many input-output pairs need to be in the dataset for the dataset to be
+  complete. This argument is used to determine if a block has already been
+  profiled.
+  \item\textbf{\tx{--force} argument}: This argument forces the profiler to
+    re-profile every block in the analog device program. This can be useful if
+    the profiling information is somehow incomplete or malformed.
+   \item\textbf{\tx{--missing} argument}: This argument tells the profiler to
+     ignore the analog device program and instead calibrate any blocks in the
+     database which are missing profiling data.
 \end{itemize}
 
-\noindent\textbf{Profiling}: The \grendel runtime is able to profile calibrated blocks.
-The profiling operation tests the block with 100-200 inputs and records the
-bias (error) and noise of the measured output. This profiling information is
-used to build a model that describes the behavior of the block.
 
-\section{Experiment Driver}
+\subsection{Inferring Delta Models from the Profiling Data}
 
-The experiment driver (\tx{exp_driver.py}) performs batch execution and analysis
-on the analog computer. It requires the Sigilent oscilloscope be used. The
-experiment driver has three functions:
-
-\begin{itemize}
-\item\textbf{Mass Execution}: The run routine executes any outstanding
-\tx{grendel} scripts (grendel scripts that don't have outputs) on the analog
-device.
-
-\item\textbf{Analysis}: The analysis routine applies the transform computed by the
-compiler to the measured waveform to recover the original dynamics. It then
-compares the recovered waveform with the expected dynamics (computed via digital
-simulation). The analyzer also computes the wall-clock time and power required to
-execute the simulation. 
-
-\item\textbf{Visualization}: The visualize routine is able to emit a variety of
-statistical summaries for benchmarks. All tables and figures are written to the
-\tx{PAPER} directory. 
-\end{itemize}
-
-\section{Model Inference}
-
-The model inference engine (\tx{model_builder.py}) converts the profiling data
-collected by the grendel runtime into a symbolic delta model that the \legno compiler
-can use. It infers delta models from all of the profiling data from the state database
-(\tx{state.db}). The delta models are written to the model database
-(\tx{model.db}). The model database is stored in the following location:
+The \grendel runtime uses the profiling data to construct empirically-derived
+symbolic models which describe the behavior of each block instance in practice
+in each programming mode. The model inference algorithm is executed with the
+following command:
 
 \begin{snippet}
-  legno-compiler/device-state/model.db
+python3 grendel.py mkdeltas --model-number <model-number>
 \end{snippet}
 
-The model inference engine optionally emits visualizations and text descriptions
-of the models, which can be found in the location below:
+This command fits the profiling data in the state database to the delta model
+specification from the hardware specification. It updates the delta models in
+the database to include the fitted models. The \tx{mkdeltas} subcommand skips
+over any already computed delta models -- it can be made to recompute all delta
+models with the \tx{--force} command. The \tx{mkdeltas} subcommand can also be
+forced to skip over any profiling datasets which don't have enough points with
+the \tx{--min-points} argument. 
+
+\subsection{Calibrating, Profiling, and Modelling Blocks with \tx{lcal}}
+
+The \legno compiler offers a convenience command for performing calibration,
+profiling, and delta model elicitation in one step. Simply run the following
+command to calibrate, profile, and infer models for all ADPs which
+implement a particular program \tx{<prog>}:
 
 \begin{snippet}
-  legno-compiler/device-state/models
+python3 legno.py lcal <prog> --model-number <model_number>
 \end{snippet}
 
-The models in the database are used by \lscale and \srcgen to correct for
-deviations in block behavior at compile time.
+The above command will calibrate and profile all blocks in the ADPs with both
+the \tx{minimize_error} and \tx{maximize_fit} calibration strategies.
+
+\subsection{Visualizing Block Behavior}
+
+The \grendel runtime offers a command for visualizing the errors associated with
+the profiled blocks. The following command populates the
+\tx{device-state/hcdcv2/<model-number>/viz} directory with heatmaps detailing
+the percent error of each block over the input space:
+
+\begin{snippet}
+python3 grendel.py vis --model-number <model-number> --histogram <calibrate_objective>
+\end{snippet}
+
+Because the visualization operation is time consuming, it requires the end user
+specify which calibration objective
+(\tx{minimize_error},\tx{maximize_fit},\tx{best},\tx{brute}) to investigate. The
+\tx{--histogram} argument tells the visualization algorithm to render histograms
+showing the distribution of errors across blocks. 
+
+\subsection{Characterizing Badly Behaving Blocks and Bruteforce Calibration}
+
+Some blocks are badly behaved -- we often want to take a closer look at these
+blocks to better understand why they are failing and potentially get a better
+calibration setting for them. The grendel runtime offers a
+convenience function for identifying and characterizing these blocks:
+
+
+
+\subsection{Selecting the Best Calibration Strategy}
+
+\subsection{Full-Board Testing}
+
