@@ -16,7 +16,6 @@ import json
 import math
 import os
 
-import argparse
 
 def test_source(board,adp,block,cfg):
   if block.name == "dac" and 'dyn' in str(cfg.mode):
@@ -78,7 +77,7 @@ def test_block(board,block,loc,modes):
 
 def test_board(args):
   board = runtime_util.get_device(args.model_number,layout=True)
-  for chip_id in range(1,2):
+  for chip_id in range(0,2):
     for tile_id in range(4):
       for slice_id in [0,2]:
         for block in board.blocks:
@@ -91,9 +90,3 @@ def test_board(args):
 
           loc = devlib.Location([chip_id,tile_id,slice_id,0])
           test_block(board,block,loc,modes)
-
-parser = argparse.ArgumentParser(description='Grendel runtime.')
-parser.add_argument('model_number',type=str,help='model number')
-args = parser.parse_args()
-
-test_board(args)

@@ -65,7 +65,7 @@ def new_characterization(runtime,board,block,config, \
 
 def characterize_adp(args):
     board = runtime_util.get_device(args.model_number,layout=True)
-    adp = runtime_util.get_adp(board,args.adp)
+    adp = runtime_util.get_adp(board,args.adp,widen=args.widen)
     runtime = GrendelRunner(quiet=True)
     runtime.initialize()
     for cfg in adp.configs:
@@ -73,6 +73,10 @@ def characterize_adp(args):
         cfg_modes = cfg.modes
         for mode in cfg_modes:
             cfg.modes = [mode]
+
+            if blk.name == "dac" and "dyn" in str(cfg.mode):
+                raise Exception("TODO: cannot characterize dac in dynamic mode.. need to create a staw lut-dac circuit. See profiling op.")
+
             datasets = list(exp_profile_dataset_lib.get_datasets_by_configured_block(board, \
                                                                                          blk, \
                                                                                          cfg, \
@@ -100,6 +104,7 @@ def characterize_adp(args):
                                      config=cfg, \
                                      grid_size=args.grid_size, \
                                      num_locs=args.num_locs, \
-                                     num_hidden_codes=args.num_hidden_codes
+                                     num_hidden_codes=args.num_hidden_codes, \
+                                     only_adp_locs=args.adp_locs
                 )
 

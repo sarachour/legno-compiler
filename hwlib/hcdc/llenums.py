@@ -21,21 +21,26 @@ class ExternalPins(Enum):
 class CalibrateObjective(Enum):
     MINIMIZE_ERROR = "minimize_error"
     MAXIMIZE_FIT = "maximize_fit"
-    FAST = "fast"
-    BOTH = "both"
+    DECTREE = "dectree"
+    BRUTEFORCE = "brute"
+    BEST = "best"
     NONE = "none"
 
     def tag(self):
-        if self == CalibrateObjective.FAST:
-            return "fst"
+        if self == CalibrateObjective.DECTREE:
+            return "dectree"
         elif self == CalibrateObjective.MAXIMIZE_FIT:
             return "maxfit"
         elif self == CalibrateObjective.MINIMIZE_ERROR:
             return "minerr"
-        elif self == CalibrateObjective.BOTH:
-            return "both"
-        else:
+        elif self == CalibrateObjective.BRUTEFORCE:
+            return "brute"
+        elif self == CalibrateObjective.BEST:
+            return "best"
+        elif self == CalibrateObjective.NONE:
             return "none"
+        else:
+            raise Exception("unknown")
 
 class ResponseType(Enum):
     PROFILE_RESULT = "resp_profile_result"

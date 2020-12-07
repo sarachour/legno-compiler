@@ -182,16 +182,17 @@ def mktree(args):
             continue
 
         print(mdls[0].config)
-        for mdl in mdls:
-            print(str(key))
-            intervals = get_hidden_code_intervals(mdl)
-            for varname,dectree in mdl.variables().items():
-                print("orig   var=%s min-samps=%d" % (varname,dectree.min_sample()))
-                min_tree = dectree_shrink_lib.dectree_shrink(dectree,intervals)
-                print("shrink var=%s min-samps=%d" % (varname,min_tree.min_sample()))
-                mdl.set_variable(varname,min_tree)
+        if args.shrink:
+            for mdl in mdls:
+                print(str(key))
+                intervals = get_hidden_code_intervals(mdl)
+                for varname,dectree in mdl.variables().items():
+                    print("orig   var=%s min-samps=%d" % (varname,dectree.min_sample()))
+                    min_tree = dectree_shrink_lib.dectree_shrink(dectree,intervals)
+                    print("shrink var=%s min-samps=%d" % (varname,min_tree.min_sample()))
+                    mdl.set_variable(varname,min_tree)
 
-            print("-----")
+                print("-----")
 
         print("num-models: %d" % len(mdls))
         if len(mdls) > 1:

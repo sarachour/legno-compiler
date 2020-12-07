@@ -89,7 +89,7 @@ integ.outputs['z'].relation \
                  .bind(['h','m','-'],parser.parse_expr('-integ((0.1*x),(2.0*z0))'))
 
 #calib_obj = parser.parse_expr('abs((a)^(-1)*(modelError + d))')
-calib_obj = parser.parse_expr('(abs(a)+abs(b))^(-1)*(modelError)')
+calib_obj = parser.parse_expr('(abs(a))^(-1)*(modelError)*(abs(b))^(-1)*(modelError)')
 spec = DeltaSpec(parser.parse_expr('integ((a*x),(2.0*(b*z0+c)))'), \
                  calib_obj)
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)

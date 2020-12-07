@@ -50,11 +50,16 @@ def make_histogram(args):
 
 def visualize(args):
     board = runtime_util.get_device(args.model_number,layout=True)
-    label = llenums.CalibrateObjective(args.method)
+    calib_obj = llenums.CalibrateObjective(args.calib_obj)
     ph = paths.DeviceStatePathHandler(board.name, \
                                       board.model_number,make_dirs=True)
-    make_histogram(args)
+    if args.histogram:
+        make_histogram(args)
+
     for delta_model in delta_model_lib.get_all(board):
+        if delta_model.calib_obj != calib_obj:
+            continue
+
         if delta_model.complete and \
            delta_model.calib_obj != llenums.CalibrateObjective.NONE:
             png_file = ph.get_delta_vis(delta_model.block.name, \
@@ -65,6 +70,7 @@ def visualize(args):
                                         delta_model.calib_obj)
             print(delta_model.config)
             print(delta_model)
+            print(png_file)
             if delta_model.is_integration_op:
                 dataset = dataset_lib.load(board, delta_model.block, \
                                            delta_model.loc, \
@@ -79,6 +85,7 @@ def visualize(args):
                                            llenums.ProfileOpType.INPUT_OUTPUT)
 
             if dataset is None:
+                print("-> no dataset")
                 continue
 
             assert(isinstance(dataset, dataset_lib.ExpProfileDataset))

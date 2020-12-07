@@ -78,6 +78,7 @@ class PhysicalDatabase:
     self.updateable[PhysicalDatabase.DB.PROFILE_DATASET] = ['dataset']
 
 
+
   def insert(self,db,fields):
     assert(isinstance(db,PhysicalDatabase.DB))
     row_fields = ",".join(self.keys[db])
@@ -133,6 +134,14 @@ class PhysicalDatabase:
     result = self.curs.execute(SELECT)
     for row in self.curs.fetchall():
       yield row
+
+  def delete(self,db,where_clause):
+    assert(isinstance(db,PhysicalDatabase.DB))
+    where_clause_frag = self._where_clause(db,where_clause)
+    DELETE = '''DELETE FROM {table} {where}'''
+    cmd = DELETE.format(table=db.value, where=where_clause_frag)
+    self.curs.execute(cmd)
+    self.conn.commit()
 
   def select(self,db,fields):
     assert(isinstance(db,PhysicalDatabase.DB))

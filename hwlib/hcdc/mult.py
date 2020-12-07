@@ -255,7 +255,7 @@ mult.outputs['z'].deltas.bind(['x','m','h'],spec)
 
 
 
-calib_obj = parser.parse_expr('((abs(a))^(-1))*(abs(modelError) + abs(b))')
+calib_obj = parser.parse_expr('((abs(a))^(-1))*(max(modelError,0) + abs(b))')
 spec = DeltaSpec(parser.parse_expr('0.5*a*x*y + b'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('b',DeltaParamType.GENERAL,ideal=0.0)

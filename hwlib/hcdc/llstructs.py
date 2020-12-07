@@ -221,8 +221,7 @@ def state_t():
 def calibrate_objective_t():
     kwargs = {
         llenums.CalibrateObjective.MINIMIZE_ERROR.name: 0,
-        llenums.CalibrateObjective.MAXIMIZE_FIT.name: 1,
-        llenums.CalibrateObjective.FAST.name:2
+        llenums.CalibrateObjective.MAXIMIZE_FIT.name: 1
     }
     return cstruct.Enum(cstruct.Int8ul,
                         **kwargs)

@@ -54,14 +54,18 @@ adc.state['range'] \
 
 
 
+calib_obj = parser.parse_expr('(abs(a))^(-1)*(modelError+abs(b))')
+
 spec = DeltaSpec(parser.parse_expr('a*0.5*x+b'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('b',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
+spec.objective = calib_obj
 adc.outputs['z'].deltas.bind(['m'],spec)
 
 spec = DeltaSpec(parser.parse_expr('a*0.05*x+b'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('b',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
+spec.objective = calib_obj
 adc.outputs['z'].deltas.bind(['h'],spec)
 
 

@@ -44,6 +44,12 @@ def eval_expr(e,subs,concretize=True):
 
   elif e.op == genoplib.OpType.CONST:
     return [dectreelib.RegressionLeafNode(genoplib.Const(e.value))]
+
+  elif e.op == genoplib.OpType.MAX:
+    leaves1 = eval_expr(e.args[0],subs,concretize)
+    leaves2 = eval_expr(e.args[1],subs,concretize)
+    return list(op_apply2(lambda e1,e2: lambdalib.Max(e1,e2),  \
+                          leaves1, leaves2))
   else:
     raise Exception('unsupported expr: %s' % e)
 

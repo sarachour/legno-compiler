@@ -22,7 +22,7 @@ import runtime.runt_mkphysmodels as runt_mkphys
 parser = argparse.ArgumentParser(description='Grendel runtime.')
 
 subparsers = parser.add_subparsers(dest='subparser_name',
-                                   help='compilers/compilation passes.')
+                                   help='runtime tools.')
 
 
 exec_subp = subparsers.add_parser('exec', help='execute benchmark')
@@ -48,25 +48,30 @@ char_subp.add_argument('--num-locs',type=int,default=1, \
                        help="number of hidden codes to sample")
 char_subp.add_argument('--adp-locs',action='store_true', \
                        help="only characterize the locations which appear in the adp")
+char_subp.add_argument('--widen',action='store_true', \
+                       help="widen adp modes to all modes which introduce constant coefficients")
+
 
 
 dectree_subp = subparsers.add_parser('mkphys', help='Use characterization data to build calibration decision tree.')
 dectree_subp.add_argument('--model-number',type=str,help='model number')
 dectree_subp.add_argument('--max-depth',type=int,default=2,\
-                          help='maximum depth')
+                          help='maximum depth (default=2)')
 dectree_subp.add_argument('--num-leaves',type=int,default=3,\
-                          help='number of leaves')
+                          help='number of leaves (default=3)')
+dectree_subp.add_argument('--shrink',action='store_true', help='shrink model')
 
 
 
-fastcal_subp = subparsers.add_parser('fastcal', help='fastcalrate blocks in configuration')
+'''
+fastcal_subp = subparsers.add_parser('fastcal', help='fast calibrate blocks in configuration')
 fastcal_subp.add_argument('adp', type=str,help='adp to characterize')
 #fastcal_subp.add_argument('method', type=str,help='fast calibration objective function (minimize_error/maximize_fit)')
 fastcal_subp.add_argument('--char-data',type=str,help='model number for characterization data')
 fastcal_subp.add_argument('--model-number',type=str,help='model number')
 fastcal_subp.add_argument('--grid-size',type=int,default=5,help='grid size')
 fastcal_subp.add_argument('--on-firmware',type=str,help='execute fast calibration routine resident on firmware')
-
+'''
 
 
 calib_subp = subparsers.add_parser('cal', help='calibrate blocks in configuration')
@@ -92,9 +97,11 @@ prof_subp.add_argument('--force',action="store_true",help='force')
 
 
 vis_subp = subparsers.add_parser('vis', help='build delta model visualizations')
-vis_subp.add_argument('method', type=str, \
-                       help='vis label to profile (none/maximize_fit/minimize_error/fast)')
+vis_subp.add_argument('calib_obj', type=str, \
+                       help='vis label to profile (none/maximize_fit/minimize_error/brute)')
 vis_subp.add_argument('--model-number',type=str,help='model number')
+vis_subp.add_argument('--histogram',action="store_true",help='render error histograms')
+
 
 delta_subp = subparsers.add_parser('mkdeltas', help='build delta models from profile information')
 delta_subp.add_argument('--model-number',type=str,help='model number')
