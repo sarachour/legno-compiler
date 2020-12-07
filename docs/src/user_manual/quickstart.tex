@@ -1,82 +1,91 @@
 \chapter{Legno Quickstart}
 
 The following quickstart walks through compiling a dynamical system program that
-implements the cosine (\tx{cos}) function. This section 
+implements the cosine (\tx{cos}) function. This section requires you know the
+model number of your board. Refer to the tag included with your board for this
+information.
 
 
 \section{Compiling the \tx{cos} Program}
 
 The following section describes how to compile the cosine program. We use the
-\tx{legno_runner.py} script to compile the program. This script executes all
-the necessary compiler passes (by invoking \tx{legno.py} multiple times)
-to generate \tx{grendel} scripts, using the parameters defined in
-\tx{configs/quickstart.cfg}. The cosine program is compiled by executing the following
-command from the \tx{legno-compiler} directory:
+\tx{legno.py} script to compile the program. This script  is invoked multiple
+times to produce a scaled analog device program (\tx{adp}). The first step of
+compilation is circuit synthesis. This step assembles together a circuit of
+analog blocks which implements the provided program. We will be generating one
+unscaled circuit that models the cosine function with the \tx{lgraph}
+compilation pass:
 
 \begin{snippet}
-  python3 legno_runner.py --config configs/quickstart.cfg --hwenv osc  \
-    cos --lgraph
+  python3 legno.py lgraph --adps 1 cos
 \end{snippet}
 
-This command executes all the necessary compiler passes to generate
-\tx{.grendel} scripts, using the parameters defined in
-\tx{configs/quickstart.cfg}. The grendel script can then be executed on the
-analog device.
-
-\begin{comment}
-\noindent\textbf{Without Oscilloscope}: If you would like to compile the cosine
-program without any oscilloscope support, change the \tx{--hwenv osc} argument to
-\tx{--hwenv noosc}. 
-\end{comment}
-
-\subsection{The \tx{quickstart.cfg} File}
-
-The \tx{quickstart.cfg} file is a \tx{json} dictionary with the following fields:
+This command generates one unscaled circuit (\tx{--adps 1}) which implements
+the cosine function. This circuit cannot be directly executed on the analog
+device because it may contain constant values and signals which lie outside of
+the operating range restrictions of the device. For this reason, we need to
+scale the unscaled circuit. We will be generating ten scaled circuits that
+respect the hardware restrictions with the \tx{lscale} pass:
 
 \begin{snippet}
-{
-  "subset":"extended",
-  "model":"naive-max_fit",
-  "n-lgraph":1,
-  "n-lscale":1,
-  "max-freq":80
-}
+  python3 legno.py lscale --scale-adps 10 --calib-obj minimize_error
+  --scale-method ideal --objective qty --model-number <model-number> cos
 \end{snippet}
 
-This configuration file specifies the parameters to provide to each compilation
-pass in the compilation process. We describe the fields below:
+This command generates 10 scaled circuits (\tx{--scale-adps 10}) from each
+unscaled circuit. Each of these scaled circuits take into account the operating
+range restrictions in the device. The \tx{--objective qty} argument tells the
+compiler to maximize the best-case signal-to-noise ratio on all the wires.
 
-\begin{itemize}
-\item\textbf{subset}: The subset argument is passed in at each step of the
-  compilation process. It dictates what subset of analog device features the
-  compiler should use. The \tx{extended} subset allows the compiler to use
-  medium ([-2,2] uA) and high ([-20,20] uA) modes. It is the broadest set of
-  tested features on the device. 
-\item\textbf{model}: The model argument tells the circuit scaling pass
-  (\tx{lscale}, Section~\ref{sec:lscale}) how to model the behavior of the
-  analog blocks. The \tx{naive-max_fit} model tells the circuit scaling pass
-  to assume the block behavior adheres to the behavior described in the
-  hardware specification (\tx{naive}). It also tells the compiler the blocks
-  will be calibrated using the \tx{max_fit} calibration objective (see Section
-  XXX below).
-\item\textbf{n-lgraph}: The number of unscaled circuits the graph synthesis
-  pass should generate (\tx{lgraph}, Section~\ref{sec:lgraph})
-\item\textbf{n-lscale}: The number of scaled circuits to produce per
-  unscaled circuit. This is provided to the circuit scaling pass
-  (\tx{lscale}, Section~\ref{sec:lscale}).
-\item\textbf{max-freq}: The maximum allowable speed of the simulation.
-  This is provided to the circuit scaling pass (\tx{lscale}, Section~\ref{sec:lscale}).
-\end{itemize}
+This invocation of \tx{lscale} assumes all blocks implement the promised
+functions in the hardware specification and are not subject to manufacturing variations (\tx{--scale-method ideal}). The
+resulting scaled circuit is agnostic to the underlying board and calibration
+objective. Note that we still tell the compiler which board we're targeting
+(\tx{--model-number <model-number>}) and how this board is calibrated
+(\tx{--calib-obj minimize_error}) -- this information is needed for execution
+and therefore included in the scaled circuit. Refer to Section~\ref{XXX} for
+details on circuit calibration and calibration objectives.
 
+\tx{lscale} also supports compensating for block-specific manufacturing
+variations which were not eliminated during calibration. The following command
+takes into account manufacturing variations when scaling the circuit to target
+the board \tx{<model-number>} when it has been calibrated with the
+\tx{maximize_fit} calibration objective:
+
+
+\begin{snippet}
+  python3 legno.py lscale --scale-adps 10 --calib-obj maximize_fit
+  --scale-method phys --objective qty --model-number <model-number> cos
+\end{snippet}
+
+
+The above invocation generates 10 scaled circuits which take into account the
+manufacturing variations present in the board (\tx{--scale-method phys}).
+It is directed to compensate for the manufacturing variations which exist when
+the board is calibrated with the \tx{maximize_fit} objective (\tx{--calib-obj
+  maximize_fit}).
+
+It is likely the above command will complain that it's missing empirical models
+and fail. This scaling approach requires the blocks which are in use be
+calibrated and characterized. It uses the characterization data to build models
+which capture the behavioral deviations that it needs to compensate for. Execute
+the command below to characterize any outstanding blocks.
+
+\begin{snippet}
+  python3 legno.py lcal cos --model-number <model-number>
+\end{snippet}
+
+Note that this may take several hours. Once it is finished, repeat the above
+\tx{lscale} command once it is finished.
 
 \subsection{Inspecting the Compilation Outputs}
 
-The \tx{legno_runner.py} script produces unscaled circuits, scaled circuits and
+The \tx{legno.py} script produces unscaled circuits, scaled circuits and
 grendel scripts. All compilation and execution outputs for the cosine program is
 stored in the following directory:
 
 \begin{snippet}
-  legno-compiler/outputs/legno/extended/cos/
+  legno-compiler/outputs/legno/unrestricted/cos/
 \end{snippet}
 
 We call this the \textit{program directory}. The following sub-directories in the
@@ -88,93 +97,166 @@ program directory contain compilation outputs:
   representations of the programs that are useful for debugging.
 \item\tx{lscale-adp} and \tx{lscale-diag}: These directories contain the
   scaled analog device programs and associated diagrams. 
-\item \tx{grendel}: This directory contains the compiled \tx{.grendel} scripts
-  generated by the \tx{srcgen} pass of the \legno compiler.
+\item \tx{out-waveforms}: This directory contains the waveforms collected from
+  the \hcdc board.
+\item \tx{plots}: This directory contains visualizations of the collected
+  waveforms from the \hcdc board. The \tx{wav} subdirectory contains \hcdc
+  waveform visualizations. Software simulation visualizations are written
+  to the \tx{sim} subdirectory. 
 \item\tx{times}: this directory contains the runtime information for each
   pass.
 \end{itemize}
 
-We should see one \tx{.adp} file in the \tx{lscale-adp} and \tx{lgraph-adp}
-directories, and one \tx{.png}/\tx{.dot} file in the \tx{lgraph-diag} and
-\tx{lscale-diag} directories. There should be one \tx{.grendel} file in the
-\tx{grendel} directory that should have a name similar to the one below:
+We should see one \tx{.adp} file in the \tx{lgraph-adp}
+directories, and one \tx{.gv.pdf}/\tx{.gv} file in the \tx{lgraph-diag}
+directory. These files should have the following naming scheme: 
 
 \begin{snippet}
-  cos_g0x0_s0_ngd3.00a12.28v1.77c97.00b80.00k_obsfast_t20_osc.grendel
+  cos_g0.adp
 \end{snippet}
 
-For brevity, we will refer to this file as \tx{<file>.grendel} for the rest of
-the quickstart section. 
+The \tx{g0} identifier indicates this was the first unscaled circuit generated
+by the \tx{lgraph} pass. We should see ten \tx{.adp} files in the
+\tx{lscale-adp} directory and ten \tx{.gv.pdf}/\tx{.gv} files in the
+\tx{lscale-diag} directory. These files should have the following naming scheme:
 
-\section{Running the Cosine Grendel Script}
+\begin{snippet}
+  cos_g0_s1_ideal_qty_minerr_c1.adp 
+\end{snippet}
 
-The grendel runtime (\tx{grendel.py}) executes \tx{.grendel} scripts generated
-by the \legno compiler. Before executing the script, we must calibrate any
-uncalibrated blocks. To do so, execute the following command from the
-\tx{legno-compiler} directory:
+The \tx{g0} identifier indicates this scaled circuit was derived from the
+unscaled circuit with the \tx{g0} identifier. The \tx{s1} identifier indicates
+this was the second scaled circuit generated from that particular unscaled
+circuit. The \tx{qty} identifier indicates the generated circuit maximizes
+signal quality. The \tx{ideal} identifier indicates the scaled circuit was generated
+with the \tx{--scale-method ideal} flag. The \tx{c1} identifier indicates this
+scaled circuit targets the board with model number \tx{c1}.
+
+
+\section{Running the Cosine Scaled ADPs}
+
+The \tx{lexec} subcommand in the legno compiler (\tx{legno.py}) executes
+all generated scaled circuits on the analog hardware:
+
+\begin{snippet}
+python3 legno.py lexec cos --model-number <model-number>
+\end{snippet}
+
+This command may complain that it can't find the calibration codes for a
+particular block. To rectify this, calibrate the chip with the following
+command:
 
 
 \begin{snippet}
-python3 grendel.py calibrate --calib-obj max_fit \
-  outputs/legno/extended/cos/grendel/<file>.grendel 
+  python3 legno.py lcal cos --model-number <model-number>
 \end{snippet}
 
-The \tx{--calib-obj} argument specifies which calibration objective to use.
-We use the \tx{max_fit} calibration objective.
-We can run the benchmark after all the blocks have been calibrated. Execute the
-following command to execute the program an the analog computer:
+Note that this may take several hours. Once it is finished, repeat the above
+\tx{lexec} command once it is finished.
 
-\begin{snippet}
-python3 grendel.py run --calib-obj max_fit \
-  outputs/legno/extended/cos/grendel/<file>.grendel 
-\end{snippet}
-
-If the script executed correctly, you should see a \tx{.json} file appear in
+If the \tx{lexec} command executed correctly, you should see a \tx{.json} file appear in
 the \tx{out-waveforms} directory. This file is the waveform downloaded from the
-oscilloscope:
+microcontroller:
 
 \begin{snippet}
-legno-compiler/outputs/legno/extended/cos/out-waveform/
+legno-compiler/outputs/legno/unrestricted/cos/out-waveform/
 \end{snippet}
 
-\subsection{Execution without the Sigilent 1020XE Oscilloscope}:
+\subsection{Execution with the Sigilent 1020XE Oscilloscope}:
 
-If you are not using the Sigilent 1020XE oscilloscope, include the
-\tx{--no-oscilloscope} flag to \tx{grendel.py} commands to prevent the runtime
+If you are using the Sigilent 1020XE oscilloscope, include the
+\tx{--osc} flag to \tx{lexec} commands to tell the runtime
 from attempting to communicate with the measurement device. If you would like to
-use an unsupported oscilloscope, configure the voltage and time divisions on the
-oscilloscope using the voltage and time ranges in the \tx{<file>.grendel} file
-(see Section \ref{sec:grendel}) and set it to wait for an edge trigger.
+use an unsupported oscilloscope, you will need to modify the \tx{llcmd_sim.py}
+file so that it configures the voltage, and time divisions on the oscilloscope, waits for
+an edge trigger, and retrieves the waveforms from the oscilloscope.
 
 If the script executed correctly, you should see a cosine waveform on your
-oscilloscope. Note that you will not see a \tx{.json} file in the \tx{out-waveforms}
-directory, because the runtime cannot communicate with an unsupported oscilloscope.
+oscilloscope.
 
 
-\section{Analyzing Oscilloscope Waveform Data [OSC]}
+\section{Analyzing Waveform Data}
 
-The \tx{exp_driver.py} tool is used to manage and analyze oscilloscope outputs.
-We execute the following command from the \tx{legno-compiler} directory to
-discover all the grendel scripts and oscilloscope waveforms in the \tx{output}
-directory:
+The \tx{lwav} subcommand is used to analyze and render oscilloscope outputs. We
+execute the following command to produce visualizations from the collected waveforms: 
 
 \begin{snippet}
-  python3 exp_driver.py scan
+python3 legno.py lwav cos
 \end{snippet}
 
-\noindent The discovered waveforms can then be analyzed with the following command.
-Currently, \tx{exp_driver.py} is able to automatically compare waveforms to digital
-simulations:
+This command generates plots for each measured signal and then attempts to align
+the measured signal with the reference waveform. It inverts the scaling
+transform (time and voltage scale coefficients) to recover the original
+dynamics. The oscilloscope waveforms and visual analysis results are written to the
+\tx{plots/wav} subdirectory in the program directory:
 
 \begin{snippet}
-    python3 exp_driver.py analyze
-\end{snippet}
-
-The oscilloscope waveforms and visual analysis results are written to the
-\tx{plots} directory in the program directory:
-
-\begin{snippet}
-  outputs/legno/extended/cos/plots
+  outputs/legno/unrestricted/cos/plots/wav
 \end{snippet}
 
 
+\section{Debugging Analog Device Programs}
+
+You may observe dynamics which deviate significantly from the expected dynamics.
+This may occur for a few reasons:
+
+\begin{itemize}
+\item\textbf{Incorrect Dyanamical System Program / Analog Device Program}: You
+  may have mis-specified the dynamical system or found an issue with the graph
+  synthesis or scaling procedure. Refer to the \textit{Troubleshooting ADPs and
+    Dynamical System Programs} section for hints on how to pinpoint the issue. 
+
+\item\textbf{Uncompensated Manufacturing Variations}: The ADP may have been
+  configured to ignore manufacturing variations or insufficiently compensates
+  for the manufacturing variations present in the circuit. Not all manufacturing
+  variations can be compensated for in compilation. Refer to Section~\ref{XXX}
+  for information on how to investigate the manufactuirng variations present in
+  the hardware.
+
+\item\textbf{Unmodelled Behavior}: Some behaviors (e.g. frequency-gain
+  responses) are not characterized in the device. These behaviors are not
+  captured in the hardware specification or in the empirically derived hardware
+  models. Please contact the developers if you suspect there's unmodelled behavior
+  -- some of these behaviors can be approximated by modifying the hardware
+  specification.
+\end{itemize}
+
+\noindent~We recommend generating multiple scaled circuits and running them all then
+selecting best performing circuit for further use. 
+
+\subsection{Troubleshooting ADPs and Dynamical System Programs}
+
+\tx{legno} supports simulating dynamical system programs and all ADPs in
+software. Software simulations are useful for identifying issues with the
+compiler. The following command simulates the \tx{cos} dynamical system program:
+
+\begin{snippet}
+python3 legno.py lsim cos --reference
+\end{snippet}
+
+\noindent~It produces a single plot which contains all the program variables in the
+\tx{plots/sim} directory. This plot has a \tx{REF} identifier in its file name.
+We can simulate the circuit emitted by \tx{lgraph} pass with the following command:
+
+\begin{snippet}
+python3 legno.py lsim cos --unscaled
+\end{snippet}
+
+\noindent~The following command simulates all the unscaled \tx{cos} ADPs emitted by
+\tx{lgraph} pass and
+writes a single plot (for each \tx{.adp}) containing visualizations of the trajectories to the \tx{plots/sim} directory. We
+can finally simulate circuits emitted by the \tx{lscale} pass with the following command:
+
+\begin{snippet}
+python3 legno.py lsim cos
+\end{snippet}
+
+\noindent~This again will will simulate all the scaled \tx{cos} ADPs emitted by the
+\tx{lscale} pass and writes a single plot (for each scaled \tx{adp}) containing
+visualizations of the trajectories to the \tx{plots/sim} directory.\\
+
+
+\noindent\textbf{Simulation Accuracy}: Note that the above simulation is rudimentary and does not use the board-specific
+empirical models or impose operating range restrictions when executing the
+circuit. It is therefore unwise to inspect circuit simulations for adps compiled
+with the \tx{phys} scale method. 

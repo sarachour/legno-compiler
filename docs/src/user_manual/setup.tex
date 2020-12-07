@@ -185,7 +185,8 @@ place than the device firmware. Execute the following command to move the
 \tx{ARDUINO_PLATFORM_LIB_PATH} directory).
 
 \begin{snippet}
-  mv ~/Arduino/libraries/DueTimer/ ~/.arduino15/packages/arduino/hardware/sam/1.6.12/libraries/
+  mv ~/Arduino/libraries/DueTimer/ \
+      ~/.arduino15/packages/arduino/hardware/sam/1.6.12/libraries/
 \end{snippet}
 
 \subsection{Writing Firmware to the HCDCv2 Device}
@@ -231,12 +232,10 @@ This usually happens if the microusb connector is plugged into the wrong port
 on the microcontroller. Verify that the microcontroller is properly setup
 before continuing.
 
-\subsection{Setting up the Sigilent 1020XE Oscilloscope}
-\label{sec:setup-osc}
+\subsection{Setting up the Sigilent 1020XE Oscilloscope}\label{sec:setup-osc}
 
-This toolchain works with the Sigilent 1020XE Oscilloscope. Any part of the
-manual that requires the oscilloscope be set up will be annotated 
-an \tx{[OSC]} tag. To use the oscilloscope, make the following connections
+This toolchain supports collecting signals with either the microcontroller or
+the the Sigilent 1020XE Oscilloscope. To use the oscilloscope, make the following connections
 between the oscilloscope and the board:
 
 \begin{enumerate}
@@ -260,6 +259,11 @@ reach the oscilloscope from your computer using the following command:
 \begin{snippet}
 ping <oscilloscope-ip>
 \end{snippet}
+
+\noindent\textbf{Trigger Pin (SDA1)}: While this pin is typically used to
+trigger the oscilloscope, it can be used to trigger other external peripheral
+devices (such as external signal generators) as well. 
+
 
 \section{Configuring the Legno Toolchain}
 
