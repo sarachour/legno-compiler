@@ -101,6 +101,8 @@ vis_subp.add_argument('calib_obj', type=str, \
                        help='vis label to profile (none/maximize_fit/minimize_error/brute)')
 vis_subp.add_argument('--model-number',type=str,help='model number')
 vis_subp.add_argument('--histogram',action="store_true",help='render error histograms')
+vis_subp.add_argument('--max-error',type=float, \
+                      help='max error')
 
 
 delta_subp = subparsers.add_parser('mkdeltas', help='build delta models from profile information')

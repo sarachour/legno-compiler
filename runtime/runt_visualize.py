@@ -94,5 +94,5 @@ def visualize(args):
                              png_file, \
                              baseline=vizlib.ReferenceType.MODEL_PREDICTION, \
                              num_bins=10, \
-                             amplitude=None, \
+                             amplitude=args.max_error, \
                              relative=True)
