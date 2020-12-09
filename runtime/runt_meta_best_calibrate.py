@@ -21,8 +21,9 @@ def get_best_calibration(models):
     models_by_calib = {}
     for mdl in models:
         if mdl.calib_obj == llenums.CalibrateObjective.NONE:
-            raise Exception("%s\ncalibration objective <%s> is none" \
+            print("%s\ncalibration objective <%s> is none" \
                             % (mdl.config,mdl))
+            continue
 
         obj = mdl.output.deltas[mdl.config.mode].objective
         score = obj.compute(mdl.variables())

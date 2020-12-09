@@ -144,7 +144,7 @@ def exec_lcal(args):
     ]
     CAL_CMD = "python3 grendel.py cal {adp_path} --model-number {model_number} {calib_obj}"
     PROF_CMD = "python3 grendel.py prof {adp_path} --model-number {model_number} {calib_obj}"
-    MKDELTAS_CMD = "python3 grendel.py mkdeltas --model-number {model_number} {adp_path} --force"
+    MKDELTAS_CMD = "python3 grendel.py mkdeltas --model-number {model_number} --force"
     if args.model_number is None:
        raise Exception("model number must be provided!!")
 
