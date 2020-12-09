@@ -194,8 +194,12 @@ class LScaleSolutionGenerator:
         val = undo_log(value)
         if quality == scalelib.QualityMeasure.AQM:
           adp.metadata.set(adplib.ADPMetadata.Keys.LSCALE_AQM, val)
+        elif quality == scalelib.QualityMeasure.AQMST:
+          adp.metadata.set(adplib.ADPMetadata.Keys.LSCALE_AQMST, val)
         elif quality == scalelib.QualityMeasure.DQM:
           adp.metadata.set(adplib.ADPMetadata.Keys.LSCALE_DQM, val)
+        elif quality == scalelib.QualityMeasure.DQME:
+          adp.metadata.set(adplib.ADPMetadata.Keys.LSCALE_DQME, val)
         else:
           raise Exception("unknown quality measure: %s" % quality)
 

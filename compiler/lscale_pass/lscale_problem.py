@@ -292,7 +292,8 @@ def generate_port_oprange_constraints(hwinfo,dsinfo,inst,  \
 
 def generate_port_quantize_constraints(hwinfo, dsinfo,inst,  \
                                        baseline_mode, modes, \
-                                       port,lower=False):
+                                       port,lower=False, \
+                                       digital_expr=False):
 
 
   v_scalevar = scalelib.PortScaleVar(inst,port)
@@ -316,7 +317,11 @@ def generate_port_quantize_constraints(hwinfo, dsinfo,inst,  \
   snr_term.add_term(v_scalevar)
   snr_term.add_term(v_quantize,-1)
 
-  qual = scalelib.QualityVar(scalelib.QualityMeasure.DQM)
+  if digital_expr:
+    qual = scalelib.QualityVar(scalelib.QualityMeasure.DQME)
+  else:
+    qual = scalelib.QualityVar(scalelib.QualityMeasure.DQM)
+
   cstr = scalelib.SCLTE(qual, \
                         snr_term)
   yield cstr
@@ -324,7 +329,8 @@ def generate_port_quantize_constraints(hwinfo, dsinfo,inst,  \
 
 def generate_port_noise_constraints(hwinfo, dsinfo,inst,  \
                                     baseline_mode, modes, \
-                                    port,lower=False):
+                                    port,lower=False, \
+                                    is_dsvar=False):
   v_scalevar = scalelib.PortScaleVar(inst,port)
   v_noise = scalelib.PropertyVar(scalelib.PropertyVar.Type.NOISE, \
                                  inst,port)
@@ -343,7 +349,11 @@ def generate_port_noise_constraints(hwinfo, dsinfo,inst,  \
   snr_term.add_term(v_scalevar)
   snr_term.add_term(v_noise,-1)
 
-  qual = scalelib.QualityVar(scalelib.QualityMeasure.AQM)
+  if is_dsvar:
+    qual = scalelib.QualityVar(scalelib.QualityMeasure.AQMST)
+  else:
+    qual = scalelib.QualityVar(scalelib.QualityMeasure.AQM)
+
   cstr = scalelib.SCLTE(qual, \
                         snr_term)
   yield cstr
@@ -406,18 +416,20 @@ def generate_digital_port_constraints(hwinfo,dsinfo,inst, \
 
   for do_lower in [True,False]:
     for cstr in generate_port_quantize_constraints(hwinfo, \
-                                                 dsinfo, \
-                                                 inst, \
-                                                 baseline_mode, \
-                                                 modes,
-                                                 port, \
-                                                 lower=do_lower):
+                                                   dsinfo, \
+                                                   inst, \
+                                                   baseline_mode, \
+                                                   modes,
+                                                   port, \
+                                                   lower=do_lower, \
+                                                   digital_expr=True):
       yield cstr
 
 
 
 def generate_analog_port_constraints(hwinfo,dsinfo,inst, \
-                                     baseline_mode,modes,port):
+                                     baseline_mode,modes,port, \
+                                     is_dsvar=False):
 
   for cstr in generate_port_properties(hwinfo, \
                                        dsinfo, \
@@ -450,7 +462,8 @@ def generate_analog_port_constraints(hwinfo,dsinfo,inst, \
                                                 inst, \
                                                 baseline_mode, \
                                                 modes, port, \
-                                                lower=do_lower):
+                                                lower=do_lower, \
+                                                is_dsvar=is_dsvar):
       yield cstr
 
 
@@ -531,13 +544,20 @@ def generate_constraint_problem(dev,program,adp, \
       if not adp.port_in_use(config.inst,port.name):
         continue
 
+      is_dsvar = False
+      # if this is a labelled port, preserve it!!
+      if config.has(port.name) and \
+         not config[port.name].source is None:
+        is_dsvar = True
+
       if port.type == blocklib.BlockSignalType.ANALOG:
         for cstr in generate_analog_port_constraints(hwinfo, \
-                                             dsinfo, \
-                                             config.inst, \
-                                             config.modes[0], \
-                                             block.modes,
-                                             port.name):
+                                                     dsinfo, \
+                                                     config.inst, \
+                                                     config.modes[0], \
+                                                     block.modes,
+                                                     port.name, \
+                                                     is_dsvar=is_dsvar):
           yield cstr
 
       if port.type == blocklib.BlockSignalType.DIGITAL:
@@ -566,10 +586,4 @@ def generate_constraint_problem(dev,program,adp, \
         else:
           raise NotImplementedError
 
-      # generate interval, freq limitation, and port constraints
-      for port in list(block.inputs) + list(block.outputs):
-        interval = port.interval[mode]
-        freq_lim = port.freq_limit[mode]
-        if not port.quantize is None:
-          quantize = port.quantize[mode]
-
+  

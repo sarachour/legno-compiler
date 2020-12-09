@@ -3,21 +3,30 @@ import compiler.lscale_pass.lscale_ops as scalelib
 import compiler.lscale_pass.lscale_solver as lscale_solver
 import hwlib.adp as adplib
 
-def get_objective(objective):
+def get_objective(objective,cstr_prob):
   aqm= scalelib.QualityVar(scalelib.QualityMeasure.AQM)
   dqm= scalelib.QualityVar(scalelib.QualityMeasure.DQM)
+  dqme= scalelib.QualityVar(scalelib.QualityMeasure.DQME)
+  aqmst= scalelib.QualityVar(scalelib.QualityMeasure.AQMST)
   timescale = scalelib.TimeScaleVar()
+
+  all_vars = []
+  for cstr in cstr_prob:
+    all_vars += list(map(lambda v: str(v), cstr.vars()))
+
+  quality_vars = list(filter(lambda v: str(v) in all_vars, \
+                             [aqm,dqm,dqme,aqmst]))
 
   if scalelib.ObjectiveFun.QUALITY == objective:
     monom = scalelib.SCMonomial()
-    monom.add_term(aqm,-1.0)
-    monom.add_term(dqm,-1.0)
+    for qv in quality_vars:
+      monom.add_term(qv,-1.0)
     return monom
 
   elif scalelib.ObjectiveFun.QUALITY_SPEED == objective:
     monom = scalelib.SCMonomial()
-    monom.add_term(aqm,-1.0)
-    monom.add_term(dqm,-1.0)
+    for qv in quality_vars:
+      monom.add_term(qv,-1.0)
     monom.add_term(timescale)
     return monom
 
@@ -33,14 +42,20 @@ def adp_summary(adp):
   templ = ["=========", \
            "Method: {method}", \
            "Objective: {objective}", \
-           "AQM: {aqm}", \
-           "DQM: {dqm}", \
-           "TAU: {tau}"]
+           "AQM:   {aqm}", \
+           "AQMST: {aqmst}", \
+           "DQM:   {dqm}", \
+           "DQME:  {dqme}", \
+           "TAU:   {tau}"]
 
   args = {
     'tau':adp.tau,
     'aqm':adp.metadata.get(adplib.ADPMetadata.Keys.LSCALE_AQM),
+    'aqmst':adp.metadata.get(adplib.ADPMetadata.Keys.LSCALE_AQMST) \
+    if adp.metadata.has(adplib.ADPMetadata.Keys.LSCALE_AQMST) else "<don't care>",
     'dqm':adp.metadata.get(adplib.ADPMetadata.Keys.LSCALE_DQM),
+    'dqme': adp.metadata.get(adplib.ADPMetadata.Keys.LSCALE_DQME)  \
+    if adp.metadata.has(adplib.ADPMetadata.Keys.LSCALE_DQME) else "<don't care>",
     'method':adp.metadata.get(adplib.ADPMetadata.Keys.LSCALE_SCALE_METHOD),
     'objective':adp.metadata.get(adplib.ADPMetadata.Keys.LSCALE_OBJECTIVE),
   }
@@ -72,7 +87,7 @@ def scale(dev, program, adp, \
                                   calib_obj=calib_obj):
     cstr_prob.append(stmt)
 
-  obj = get_objective(objective)
+  obj = get_objective(objective,cstr_prob)
 
   if scale_method == scalelib.ScaleMethod.NOSCALE:
     for cfg in adp.configs:

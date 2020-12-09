@@ -527,7 +527,9 @@ class ADPMetadata:
     RUNTIME_CALIB_OBJ = "runt_calib_obj"
     RUNTIME_PHYS_DB = "runt_phys_db"
     LSCALE_AQM = "aqm"
+    LSCALE_AQMST = "aqmst"
     LSCALE_DQM = "dqm"
+    LSCALE_DQME = "dqme"
     DSNAME = "dsname"
     FEATURE_SUBSET = "subset"
 
