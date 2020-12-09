@@ -4,6 +4,7 @@ update_remote.sh
 .#*
 build-*
 sim.py
+*.adp
 *.pyc
 *.elf
 *.bin
