@@ -31,6 +31,8 @@ integ.modes.add_all(MODES)
 LOW_NOISE = 0.01
 HIGH_NOISE = 0.1
 
+MAX_FREQ = 80000.0
+
 integ.inputs.add(BlockInput('x',BlockSignalType.ANALOG, \
                            ll_identifier=enums.PortType.IN0))
 integ.inputs['x'] \
@@ -55,6 +57,9 @@ integ.outputs['z'] \
 integ.outputs['z'] \
      .noise.bind(['_','h','_'],HIGH_NOISE)
 
+
+integ.outputs['z'] \
+  .freq_limit.bind(['_','_','_'], MAX_FREQ)
 
 integ.data.add(BlockData('z0',BlockDataType.CONST))
 integ.data['z0'] \

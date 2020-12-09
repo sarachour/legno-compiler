@@ -111,4 +111,4 @@ elif args.subparser_name == "lwav":
    legno_util.exec_wav(args)
 
 else:
-    raise Exception("XXX")
+    raise Exception("legno.py: unknown subcommand: <%s>" % args.subparser_name)

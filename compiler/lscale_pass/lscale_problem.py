@@ -206,7 +206,7 @@ def generate_port_properties(hwinfo,dsinfo,inst, \
   oprange = hwinfo.get_op_range(inst,baseline_mode,port)
   quantize = hwinfo.get_quantize(inst,baseline_mode,port)
   noise = hwinfo.get_noise(inst,baseline_mode,port)
-  freq = hwinfo.get_freq(inst,baseline_mode,port)
+  freq = hwinfo.get_freq_limit(inst,baseline_mode,port)
 
   v_mode = scalelib.ModeVar(inst,hwinfo.modes(inst.block))
   v_lower = scalelib.PropertyVar(scalelib.PropertyVar.Type.INTERVAL_LOWER, \
@@ -243,12 +243,38 @@ def generate_port_properties(hwinfo,dsinfo,inst, \
       assert(noise_ratio > 0.0)
       yield scalelib.SCModeImplies(v_mode,mode,v_noise,noise_ratio)
 
+    if not freq is None:
+      mode_freq = hwinfo.get_freq_limit(inst,mode,port)
+      freq_ratio = mode_freq / freq
+      assert(freq_ratio > 0.0)
+      yield scalelib.SCModeImplies(v_mode,mode,v_freq,freq_ratio)
+
+
+def generate_port_freq_limit_constraints(hwinfo,dsinfo,inst, \
+                                         baseline_mode,modes, \
+                                         port):
+  v_freq_limit = scalelib.PropertyVar(scalelib.PropertyVar.Type.MAXFREQ, \
+                                 inst,port)
+  baseline_freq_limit = hwinfo.get_freq_limit(inst,baseline_mode,port)
+  if baseline_freq_limit is None:
+    return
+
+  v_scalevar = scalelib.TimeScaleVar()
+
+  curr_freq = scalelib.SCMonomial()
+  curr_freq.coeff = hwinfo.get_board_frequency()
+  curr_freq.add_term(v_scalevar)
+
+  max_freq = scalelib.SCMonomial()
+  max_freq.coeff = baseline_freq_limit
+  max_freq.add_term(v_freq_limit)
+  yield scalelib.SCLTE(curr_freq,max_freq)
+
 def generate_port_oprange_constraints(hwinfo,dsinfo,inst,  \
                                       baseline_mode,modes, \
                                       port):
   # encode mode-dependent interval changes
   oprange = hwinfo.get_op_range(inst,baseline_mode,port)
-  v_mode = scalelib.ModeVar(inst,hwinfo.modes(inst.block))
   v_lower = scalelib.PropertyVar(scalelib.PropertyVar.Type.INTERVAL_LOWER, \
                                  inst,port)
   v_upper = scalelib.PropertyVar(scalelib.PropertyVar.Type.INTERVAL_UPPER, \
@@ -362,6 +388,14 @@ def generate_digital_port_constraints(hwinfo,dsinfo,inst, \
                                        port):
     yield cstr
 
+  for cstr in generate_port_freq_limit_constraints(hwinfo, \
+                                                   dsinfo, \
+                                                   inst, \
+                                                   baseline_mode, \
+                                                   modes, \
+                                                   port):
+    yield cstr
+
   for cstr in generate_port_oprange_constraints(hwinfo, \
                                                 dsinfo, \
                                                 inst, \
@@ -392,6 +426,15 @@ def generate_analog_port_constraints(hwinfo,dsinfo,inst, \
                                        modes,
                                        port):
     yield cstr
+
+  for cstr in generate_port_freq_limit_constraints(hwinfo, \
+                                                   dsinfo, \
+                                                   inst, \
+                                                   baseline_mode, \
+                                                   modes, \
+                                                   port):
+    yield cstr
+
 
   for cstr in generate_port_oprange_constraints(hwinfo, \
                                                 dsinfo, \

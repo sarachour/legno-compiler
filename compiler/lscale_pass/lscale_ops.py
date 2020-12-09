@@ -12,6 +12,8 @@ class QualityMeasure(Enum):
   AQM = "AQM"
   DQM = "DQM"
   DQME = "DQME"
+  AQMST = "AQMST"
+
 
 class ScaleMethod(Enum):
   IDEAL = "ideal"
@@ -67,11 +69,14 @@ class HardwareInfo:
     else:
       return blk.outputs[name]
 
-  def get_freq(self,instance,mode,port_name):
+  def get_board_frequency(self):
+    return 1.0/self.dev.time_constant
+
+  def get_freq_limit(self,instance,mode,port_name):
     assert(isinstance(port_name,str))
     port = self._get_port(instance,port_name)
-    if hasattr(port,'freq'):
-      return port.freq[mode]
+    if hasattr(port,'freq_limit'):
+      return port.freq_limit[mode]
     else:
       return None
 
@@ -222,7 +227,8 @@ class ConstCoeffVar(SCVar):
 
 class PropertyVar(SCVar):
   class Type(Enum):
-    FREQUENCY = "freq"
+    MAXFREQ = "maxfreq"
+    MINFREQ = "minfreq"
     INTERVAL_UPPER = "ivalU"
     INTERVAL_LOWER = "ivalL"
     QUANTIZE = "quantize"
