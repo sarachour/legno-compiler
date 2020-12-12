@@ -255,26 +255,33 @@ mult.outputs['z'].deltas.bind(['x','m','h'],spec)
 
 
 
-calib_obj = parser.parse_expr('((abs(a))^(-1))*(max(modelError,0) + abs(b))')
-spec = DeltaSpec(parser.parse_expr('0.5*a*x*y + b'))
+calib_obj = parser.parse_expr('max(modelError,0) + abs(u)+ abs(v)+abs(w)')
+spec = DeltaSpec(parser.parse_expr('0.5*a*(x+u)*(y+v) + w'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
-spec.param('b',DeltaParamType.GENERAL,ideal=0.0)
+spec.param('u',DeltaParamType.GENERAL,ideal=0.0)
+spec.param('v',DeltaParamType.GENERAL,ideal=0.0)
+spec.param('w',DeltaParamType.GENERAL,ideal=0.0)
 spec.objective = calib_obj
 
 mult.outputs['z'].deltas.bind(['m','m','m'],spec)
 mult.outputs['z'].deltas.bind(['h','m','h'],spec)
 mult.outputs['z'].deltas.bind(['m','h','h'],spec)
 
-spec = DeltaSpec(parser.parse_expr('5*a*x*y + b'))
+spec = DeltaSpec(parser.parse_expr('5*a*(x+u)*(y+v) + w'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
-spec.param('b',DeltaParamType.GENERAL,ideal=0.0)
+spec.param('u',DeltaParamType.GENERAL,ideal=0.0)
+spec.param('v',DeltaParamType.GENERAL,ideal=0.0)
+spec.param('w',DeltaParamType.GENERAL,ideal=0.0)
 spec.objective = calib_obj
 mult.outputs['z'].deltas.bind(['m','m','h'],spec)
 
 
-spec = DeltaSpec(parser.parse_expr('0.05*a*x*y + b'))
+spec = DeltaSpec(parser.parse_expr('0.05*a*(x+u)*(y+v) + w'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
-spec.param('b',DeltaParamType.GENERAL,ideal=0.0)
+spec.param('u',DeltaParamType.GENERAL,ideal=0.0)
+spec.param('v',DeltaParamType.GENERAL,ideal=0.0)
+spec.param('w',DeltaParamType.GENERAL,ideal=0.0)
+
 spec.objective = calib_obj
 mult.outputs['z'].deltas.bind(['h','m','m'],spec)
 mult.outputs['z'].deltas.bind(['m','h','m'],spec)

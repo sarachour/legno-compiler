@@ -17,12 +17,11 @@ def dectree_calibrate(board):
     if len(exp_delta_model_lib.get_all(board)) < 200:
         return None
 
-    PHYS_CMD = "python3 grendel.py mkphys --model-number {model} --max-depth 3 --num-leaves 10"
+    PHYS_CMD = "python3 grendel.py mkphys --model-number {model} --max-depth 0 --num-leaves 1 --shrink"
     cmd = PHYS_CMD.format(model=board.model_number)
     runtime_meta_util.run_command(cmd)
 
     calib_obj = out.deltas[cfg.mode].objective
-    calib_obj = parser.parse_expr('max(modelError,0)')
     phys_model = exp_phys_model_lib.load(board, \
                                          blk, \
                                          cfg=cfg)
@@ -36,8 +35,11 @@ def dectree_calibrate(board):
     for var,value in codes.items():
         codes[var] = blk.state[var].nearest_value(value)
 
+    print(objfun_dectree)
     print("===== best dectree (score=%f) ====" % (minval))
     print(codes)
+    input()
+    return None
 
     new_cfg = cfg.copy()
     for var,value in codes.items():

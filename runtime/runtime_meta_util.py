@@ -85,8 +85,11 @@ def profile(board,char_board,calib_obj):
                      calib_obj=calib_obj.value)
     run_command(cmd)
 
-def fit_delta_models(board):
+def fit_delta_models(board,force=False):
     CMD = "python3 grendel.py mkdeltas --model-number {model}"
+    if force:
+        CMD += " --force"
+
     cmd = CMD.format(model=board.model_number)
     run_command(cmd)
 

@@ -158,13 +158,16 @@ def mktree(args):
     tmpfile = "models.tmp"
     for key in model_errors.keys():
         (blk,loc,cfg) = key
+        num_leaves = min(pow(2,args.max_depth), \
+                         args.num_leaves)
+
         new_model = build_dectree(key, \
                                   metadata, \
                                   hidden_code_fields, \
                                   hidden_code_bounds, \
                                   hidden_codes, \
                                   params, model_errors, \
-                                  num_leaves=args.num_leaves,\
+                                  num_leaves=num_leaves,\
                                   max_depth=args.max_depth)
         if new_model is None:
             continue

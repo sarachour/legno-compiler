@@ -179,7 +179,11 @@ def finalize_tree(input_names,node):
 
 # Classification and Regression Tree Algorithm
 def fit_decision_tree(input_names,inputs, output, bounds, max_depth, min_size):
-    tree = build_tree(inputs, output, max_depth, min_size)
+    if max_depth == 0:
+      tree = to_terminal(inputs,output)
+    else:
+      tree = build_tree(inputs, output, max_depth, min_size)
+
     clstree = finalize_tree(input_names,tree)
     clstree.update(regionlib.Region(bounds))
     predictions = list()

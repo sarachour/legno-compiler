@@ -325,8 +325,10 @@ class RegressionLeafNode(Node):
     return node
 
   def __repr__(self):
-    return "%s %s (R2=%f)" % (self.expr,self.params,self.R2)
-
+    return "vars=%s params=%s region=%s R2=%f" % (self.expr.vars(), \
+                                                  self.params, \
+                                                  self.region, \
+                                                  self.R2)
 
 def make_constant(value):
   return RegressionLeafNode(genoplib.Const(value))
