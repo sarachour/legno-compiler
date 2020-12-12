@@ -83,6 +83,19 @@ def homogenous_database_get_block_info(board):
         return model.block,model.loc,model.output,model.config
 
 
+def profile_block(board,block,loc,config,calib_obj,log_file=None):
+    CMD = "python3 grendel.py prof --grid-size 15 --model-number {model} {adp} {calib_obj}"
+    if not log_file is None:
+        CMD += " > %s" % log_file
+
+    filename = generate_adp(board,block,loc,config)
+
+    cmd = CMD.format(model=board.model_number, \
+                     adp=filename, \
+                     calib_obj=calib_obj.value)
+    run_command(cmd)
+
+
 def profile(board,char_board,calib_obj,log_file=None):
     CMD = "python3 grendel.py prof --grid-size 15 --model-number {model} {adp} {calib_obj}"
     if not log_file is None:

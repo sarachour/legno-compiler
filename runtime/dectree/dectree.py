@@ -28,6 +28,7 @@ class RegressionNodeCollection:
 
   def vars(self):
     all_vars = []
+    assert(len(self.nodes) == 1)
     for node in self.nodes:
       all_vars += node.expr.vars()
     return set(all_vars)
