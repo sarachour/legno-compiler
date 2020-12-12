@@ -11,6 +11,7 @@ class ExpPhysModel:
     self.config = cfg
     self._params = {}
     self._model_error = dectreelib.make_constant(0.0)
+    self._uncertainties = {}
 
   @property
   def params(self):
@@ -25,21 +26,34 @@ class ExpPhysModel:
   def model_error(self):
       return self._model_error
 
-  def set_variable(self,name,tree):
+  def uncertainty(self,var):
+    if not var in self._uncertainties:
+      return 0.0
+
+    return self._uncertainties[var]
+
+  def set_variable(self,name,tree,uncertainty=None):
     if name == ExpPhysModel.MODEL_ERROR:
-      self.set_model_error(tree)
+      self.set_model_error(tree,uncertainty)
 
     else:
       self.set_param(name,tree)
 
+  def set_uncertainty(self,varname,unc):
+    if unc is None:
+      return
+    assert(isinstance(unc,float))
+    self._uncertainties[varname] = unc
 
-  def set_model_error(self,tree):
+  def set_model_error(self,tree,uncertainty=None):
       assert(isinstance(tree,dectreelib.Node))
       self._model_error = tree
+      self.set_uncertainty(ExpPhysModel.MODEL_ERROR, uncertainty)
 
-  def set_param(self,par,tree):
+  def set_param(self,par,tree,uncertainty=None):
       assert(isinstance(tree,dectreelib.Node))
       self._params[par] = tree
+      self.set_uncertainty(par, uncertainty)
 
   def random_sample(self):
     samples = []
@@ -71,7 +85,8 @@ class ExpPhysModel:
       'block': self.block.name,
       'config': self.config.to_json(),
       'params': param_dict,
-      'model_error':self._model_error.to_json()
+      'model_error':self._model_error.to_json(),
+      'uncertainties':self._uncertainties
     }
   #'phys_model': self.phys_models.to_json(),
 
@@ -79,7 +94,8 @@ class ExpPhysModel:
   def __repr__(self):
     st = "%s\n" % self.config
     for par,dectree in self._params.items():
-      st += "===== %s =====\n" % par
+      unc = self.uncertainty(par)
+      st += "===== %s (unc=%f) =====\n" % (par,unc)
       st += str(dectree.pretty_print())
 
     return st
@@ -94,6 +110,7 @@ class ExpPhysModel:
     for par,tree in other._params.items():
       self._params[par] = tree.copy()
     self._model_error = other.model_error.copy()
+    self._uncertainties = dict(other._uncertainties)
 
   @staticmethod
   def from_json(dev,obj):
@@ -105,6 +122,7 @@ class ExpPhysModel:
       mdl._params[par] = dectreelib.Node.from_json(subobj)
 
     mdl._model_error = dectreelib.Node.from_json(obj['model_error'])
+    mdl._uncertainties = dict(obj['uncertainties'])
     return mdl
 
 

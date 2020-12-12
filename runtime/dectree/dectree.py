@@ -26,6 +26,25 @@ class RegressionNodeCollection:
         return False
     return True
 
+  def vars(self):
+    all_vars = []
+    for node in self.nodes:
+      all_vars += node.expr.vars()
+    return set(all_vars)
+
+  def update_expr(self,lambd):
+    for node in self.nodes:
+      node.update_expr(lambd)
+
+  def evaluate(self,values):
+    result = None
+    for node in self.nodes:
+      if node.region.valid_code(values):
+        assert(result is None)
+        result = node.evaluate(values)
+
+    return result
+
   def is_concrete(self):
     return any(map(lambda n: not n.is_concrete(), \
                    self.nodes))
@@ -297,6 +316,9 @@ class RegressionLeafNode(Node):
   def update(self, reg):
     self.region = reg
 
+  def update_expr(self,lambd):
+    self.expr = lambd(self.expr)
+
   #remove
   def apply_expr_op(self,target_function, optional_arg = None):
     expr = target_function(self.expr,optional_arg)
@@ -325,10 +347,12 @@ class RegressionLeafNode(Node):
     return node
 
   def __repr__(self):
-    return "vars=%s params=%s region=%s R2=%f" % (self.expr.vars(), \
-                                                  self.params, \
-                                                  self.region, \
-                                                  self.R2)
+    st = "vars=%s params=%s region=%s R2=%f\n" % (self.expr.vars(), \
+                                                self.params, \
+                                                self.region, \
+                                                self.R2)
+    st += "   %s" % self.expr
+    return st
 
 def make_constant(value):
   return RegressionLeafNode(genoplib.Const(value))

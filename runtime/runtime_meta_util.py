@@ -1,8 +1,18 @@
 import runtime.models.exp_delta_model as exp_delta_model_lib
 import util.paths as pathlib
 import hwlib.adp as adplib
+import hwlib.block as blocklib
 import os
 import json
+import random
+
+def random_hidden_codes(block):
+    hidden_codes = {}
+    for state in filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), \
+                        block.state):
+          hidden_codes[state.name] = random.choice(state.values)
+
+    return hidden_codes
 
 def get_base_name(board,blk,loc,cfg):
     addr = "_".join(map(lambda i: str(i), loc.address))
@@ -73,8 +83,10 @@ def homogenous_database_get_block_info(board):
         return model.block,model.loc,model.output,model.config
 
 
-def profile(board,char_board,calib_obj):
+def profile(board,char_board,calib_obj,log_file=None):
     CMD = "python3 grendel.py prof --grid-size 15 --model-number {model} {adp} {calib_obj}"
+    if not log_file is None:
+        CMD += " > %s" % log_file
 
     block,loc,_,config = homogenous_database_get_block_info(char_board)
 
@@ -85,10 +97,12 @@ def profile(board,char_board,calib_obj):
                      calib_obj=calib_obj.value)
     run_command(cmd)
 
-def fit_delta_models(board,force=False):
+def fit_delta_models(board,force=False,log_file=None):
     CMD = "python3 grendel.py mkdeltas --model-number {model}"
     if force:
         CMD += " --force"
+    if not log_file is None:
+        CMD += " > %s" % log_file
 
     cmd = CMD.format(model=board.model_number)
     run_command(cmd)

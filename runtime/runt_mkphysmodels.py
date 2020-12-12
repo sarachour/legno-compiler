@@ -91,7 +91,7 @@ def build_dectree(key,metadata, \
                 min(model_errors_), \
                 max(model_errors_)))
 
-    model.set_model_error(dectree)
+    model.set_model_error(dectree,uncertainty=err)
 
     for param,param_values in params[key].items():
         assert(len(param_values) == n_samples)
@@ -101,7 +101,7 @@ def build_dectree(key,metadata, \
                                                         bounds=hidden_code_bounds_, \
                                                         max_depth=max_depth, \
                                                         min_size=min_size)
-        model.set_param(param, dectree)
+        model.set_param(param, dectree, uncertainty=err)
 
         err = dectree_fit_lib.model_error(predictions,param_values)
         pct_err = err/max(np.abs(param_values))*100.0

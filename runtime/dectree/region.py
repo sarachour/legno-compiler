@@ -46,9 +46,41 @@ class Region():
     for k,(l,u) in ranges.items():
       self.set_range(k,l,u)
 
+  def extend_range(self,var,minval,maxval):
+    assert(isinstance(var,str))
+    def wnull(fn,a,b):
+      if a is None:
+        return b
+      elif b is None:
+        return a
+      else:
+        return fn(a,b)
+
+
+    if not var in self.bounds:
+      self.bounds[var] = (minval,maxval)
+
+    else:
+      l,u = self.bounds[var]
+      self.bounds[var] = (wnull(min,l,minval),wnull(max,u,maxval))
+
+
+
+  def add_point(self,pt):
+    for var,val in pt.items():
+      self.extend_range(var,val,val)
+
   def copy(self):
     reg = Region(dict(self.bounds))
     return reg
+
+  def combinations(self):
+    combos = 1
+    for l,u in self.bounds.values():
+      if not l is None and not u is None:
+        combos *= math.ceil(u)-math.floor(l)+1
+    return combos
+
 
   def area(self):
     area = 1
