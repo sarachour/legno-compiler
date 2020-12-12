@@ -755,6 +755,12 @@ class DeltaSpec:
                    or isinstance(model,PhysicalModelSpec))
             self._model = model
 
+        def copy(self):
+            par = DeltaSpec.Parameter(self.name,self.typ,self.val)
+            if not self.model is None:
+                par._model = self.model.copy()
+            return par
+
         @property
         def model(self):
             return self._model
@@ -771,6 +777,17 @@ class DeltaSpec:
         self.relation = rel
         self._model_error = None
         self.objective = objective
+
+    def copy(self):
+        spec = DeltaSpec(self.relation.copy(), \
+                         self.objective.copy())
+        for par,val in self._params.items():
+            spec._params[par] = val.copy()
+
+        if not self.model_error is None:
+            spec._model_error = self.model_error.copy()
+
+        return spec
 
     def get_params_of_type(self,typ):
         return list(filter(lambda p: p.typ == typ, \

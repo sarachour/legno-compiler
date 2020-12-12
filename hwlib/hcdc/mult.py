@@ -2,6 +2,7 @@ import hwlib.hcdc.llenums as enums
 from hwlib.block import *
 import ops.opparse as parser
 import ops.interval as interval
+import ops.generic_op as genoplib
 
 def mkmodel(blk,terms):
   variables = list(map(lambda i: "c%d" % i, range(1,len(terms)+1))) \
@@ -255,16 +256,35 @@ mult.outputs['z'].deltas.bind(['x','m','h'],spec)
 
 
 
-calib_obj = parser.parse_expr('max(modelError,0) + abs(u)+ abs(v)+abs(w)')
+calib_obj = parser.parse_expr('gainOut*max(modelError,0)+gainX*abs(u)+ gainY*abs(v)+gainOut*abs(w)')
 spec = DeltaSpec(parser.parse_expr('0.5*a*(x+u)*(y+v) + w'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('u',DeltaParamType.GENERAL,ideal=0.0)
 spec.param('v',DeltaParamType.GENERAL,ideal=0.0)
 spec.param('w',DeltaParamType.GENERAL,ideal=0.0)
-spec.objective = calib_obj
+spec.objective = calib_obj.substitute({
+  'gainX':genoplib.Const(1.0),
+  'gainY':genoplib.Const(1.0),
+  'gainOut':genoplib.Const(1.0),
+})
 
 mult.outputs['z'].deltas.bind(['m','m','m'],spec)
+
+spec = spec.copy()
+spec.objective = calib_obj.substitute({
+  'gainX':genoplib.Const(1.0),
+  'gainY':genoplib.Const(0.1),
+  'gainOut':genoplib.Const(0.1),
+})
 mult.outputs['z'].deltas.bind(['h','m','h'],spec)
+
+
+spec = spec.copy()
+spec.objective = calib_obj.substitute({
+  'gainX':genoplib.Const(0.1),
+  'gainY':genoplib.Const(1.0),
+  'gainOut':genoplib.Const(0.1),
+})
 mult.outputs['z'].deltas.bind(['m','h','h'],spec)
 
 spec = DeltaSpec(parser.parse_expr('5*a*(x+u)*(y+v) + w'))
@@ -272,7 +292,11 @@ spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('u',DeltaParamType.GENERAL,ideal=0.0)
 spec.param('v',DeltaParamType.GENERAL,ideal=0.0)
 spec.param('w',DeltaParamType.GENERAL,ideal=0.0)
-spec.objective = calib_obj
+spec.objective = calib_obj.substitute({
+  'gainX':genoplib.Const(1.0),
+  'gainY':genoplib.Const(1.0),
+  'gainOut':genoplib.Const(0.1),
+})
 mult.outputs['z'].deltas.bind(['m','m','h'],spec)
 
 
@@ -282,6 +306,17 @@ spec.param('u',DeltaParamType.GENERAL,ideal=0.0)
 spec.param('v',DeltaParamType.GENERAL,ideal=0.0)
 spec.param('w',DeltaParamType.GENERAL,ideal=0.0)
 
-spec.objective = calib_obj
+spec.objective = calib_obj.substitute({
+  'gainX':genoplib.Const(1.0),
+  'gainY':genoplib.Const(0.1),
+  'gainOut':genoplib.Const(1.0),
+})
 mult.outputs['z'].deltas.bind(['h','m','m'],spec)
+
+spec = spec.copy()
+spec.objective = calib_obj.substitute({
+  'gainX':genoplib.Const(0.1),
+  'gainY':genoplib.Const(1.0),
+  'gainOut':genoplib.Const(1.0),
+})
 mult.outputs['z'].deltas.bind(['m','h','m'],spec)
