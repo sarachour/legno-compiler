@@ -102,9 +102,10 @@ def calibrate(args):
         for model in dectree_calibrate(char_board):
             exp_delta_model_lib.update(char_board,model)
             print("-> profiling",flush=True)
-            runtime_meta_util.profile(char_board,char_board, \
-                                      llenums.CalibrateObjective.NONE, \
-                                      log_file='profile.log')
+            runtime_meta_util.profile_block(char_board, \
+                                            model.block, model.loc, model.config,
+                                            llenums.CalibrateObjective.NONE, \
+                                            log_file='profile.log')
             print("-> fitting",flush=True)
             runtime_meta_util.fit_delta_models(board)
             print("-> done",flush=True)
