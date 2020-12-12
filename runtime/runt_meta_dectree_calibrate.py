@@ -49,7 +49,7 @@ def codes_to_delta_model(blk,loc,out,cfg,codes):
 
 
     exp_model = exp_delta_model_lib.ExpDeltaModel(blk,loc,out,new_cfg, \
-                                                  calib_obj=llenums.CalibrateObjective.NONE)
+                                                  calib_obj=llenums.CalibrateObjective.DECTREE)
     return exp_model
 
 
@@ -101,13 +101,14 @@ def calibrate(args):
         # get the best model from bruteforcing operation
         for model in dectree_calibrate(char_board):
             exp_delta_model_lib.update(char_board,model)
-            print("-> profiling",flush=True)
+            print(model.config)
+            print("-> profiling [%s]" % char_board.model_number,flush=True)
             runtime_meta_util.profile_block(char_board, \
                                             model.block, model.loc, model.config,
-                                            llenums.CalibrateObjective.NONE, \
+                                            llenums.CalibrateObjective.DECTREE, \
                                             log_file='profile.log')
             print("-> fitting",flush=True)
-            runtime_meta_util.fit_delta_models(board)
+            runtime_meta_util.fit_delta_models(char_board)
             print("-> done",flush=True)
 
         # update the original database to include the best brute force model
