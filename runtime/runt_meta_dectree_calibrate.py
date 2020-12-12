@@ -19,7 +19,7 @@ def get_good_codes(blk,calib_obj,uncertainties,phys_model,coverage=0.005):
         region = regionlib.Region()
         for sign in [1,-1]:
             offset = uncert*sign
-            print('var=%s uncert=%f' % (var,offset))
+            print('var=%s uncert=%f' % (var,offset),flush=True)
             variables = dict(map(lambda tup: (tup[0],tup[1].copy()), \
                                 phys_model.variables().items()))
             variables[var].update_expr(lambda e: genoplib.Add(e, \
@@ -32,11 +32,12 @@ def get_good_codes(blk,calib_obj,uncertainties,phys_model,coverage=0.005):
                 region.extend_range(v, int_value,int_value)
 
         n_codes = round(max(1,coverage*region.combinations()))
-        print(region.combinations(),n_codes)
-        for _ in range(n_codes):
+        print("#combos=%d #codes=%d" % (region.combinations(),n_codes),flush=True)
+        for idx in range(n_codes):
             code = region.random_code()
             key = runtime_util.dict_to_identifier(code)
             if not key in good_codes:
+                print("%d] %s" % (idx,code),flush=True)
                 yield code
                 good_codes.append(key)
 
@@ -99,15 +100,14 @@ def calibrate(args):
         # fitting any outstanding delta models
         # get the best model from bruteforcing operation
         for model in dectree_calibrate(char_board):
-            print(model)
             exp_delta_model_lib.update(char_board,model)
-            print("-> profiling")
+            print("-> profiling",flush=True)
             runtime_meta_util.profile(char_board,char_board, \
                                       llenums.CalibrateObjective.NONE, \
                                       log_file='profile.log')
-            print("-> fitting")
+            print("-> fitting",flush=True)
             runtime_meta_util.fit_delta_models(board)
-
+            print("-> done",flush=True)
 
         # update the original database to include the best brute force model
         #exp_delta_model_lib.update(board,best_model)
