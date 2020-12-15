@@ -117,15 +117,18 @@ offer several calibration strategies which inform how the block is calibrated:
   any constant offsets (biases) and eliminating any hard-to-characterize behavior (point
   errors). This calibration strategy is executed on the device firmware using a
   heuristic search.
-  \item\textbf{Minimize Error} (\tx{maximize_fit},\tx{maxfit}): This calibration strategy calibrates analog
-    blocks to deliver behavior that closely follows the behavior in the hardware
-    specification. This calibration strategy is executed on the device firmware
-    using a heuristic search.
-    \item\textbf{Bruteforce} (\tx{bruteforce},\tx{brute}): This calibration strategy randomly samples the
+
+\item\textbf{Minimize Error} (\tx{maximize_fit},\tx{maxfit}): This calibration strategy calibrates analog
+  blocks to deliver behavior that closely follows the behavior in the hardware
+  specification. This calibration strategy is executed on the device firmware
+  using a heuristic search.
+
+\item\textbf{Bruteforce} (\tx{bruteforce},\tx{brute}): This calibration strategy randomly samples the
       space of calibration codes and chooses the best one. This strategy is
       performed on the host-side and is usually reserved for blocks which
       perform poorly when calibrated with the previous two strategy.
-    \item\textbf{Best} (\tx{best}): This calibration strategy chooses the best performing block
+
+\item\textbf{Best} (\tx{best}): This calibration strategy chooses the best performing block
       calibration strategy.
     
 \end{itemize}
@@ -136,9 +139,9 @@ with the \grendel runtime in this section.
 \noindent\textbf{Advice on device state database}: The device state database
 should be backed up regularly as it caches a great deal of calibration and
 profiling information which is time-intensive to recompute. Note that this
-database is not irreplaceable -- it can easily be repopulated if it is lost. We
-may periodically ask for end-users to submit their device state database as it
-provides valuable information on how the board is functioning.
+database is not irreplaceable -- it can easily be repopulated if it is lost with
+a few commands. We may periodically ask for end-users to submit their device state database as it
+provides valuable information on how the board is functioning and can help.
 
 \subsection{ADP Execution}
 

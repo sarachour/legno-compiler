@@ -225,79 +225,73 @@ mult.state.add(BlockState('bias_out',
 mult.state['bias_out'].impl.set_default(32)
 
 
+def vga_assign_calib_obj(spec,in0,out):
+  base_expr =  "((abs(a))^(-1))*({out}*abs(modelError) + {out}*abs(v))"
+  expr = base_expr.format(out=1.0/out, \
+                          in0=1.0/in0)
+  new_spec = spec.copy()
+  new_spec.objective = parser.parse_expr(expr)
+  return new_spec
 
-calib_obj = parser.parse_expr('((abs(a))^(-1))*(abs(modelError) + abs(d))')
-
-spec = DeltaSpec(parser.parse_expr('(a*c+b)*x+d'))
+spec = DeltaSpec(parser.parse_expr('(a*c+b)*x+v'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('b',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
-spec.param('d',DeltaParamType.GENERAL,ideal=0.0)
-spec.objective = calib_obj
+spec.param('v',DeltaParamType.GENERAL,ideal=0.0)
 
-mult.outputs['z'].deltas.bind(['x','m','m'],spec)
-mult.outputs['z'].deltas.bind(['x','h','h'],spec)
+new_spec = vga_assign_calib_obj(spec,1.0,1.0)
+mult.outputs['z'].deltas.bind(['x','m','m'],new_spec)
+new_spec = vga_assign_calib_obj(spec,10.0,10.0)
+mult.outputs['z'].deltas.bind(['x','h','h'],new_spec)
 
 #calib_obj = parser.parse_expr('((a)^(-1))*(modelError+d)')
 
-spec = DeltaSpec(parser.parse_expr('0.1*(a*c+b)*x + d'))
+spec = DeltaSpec(parser.parse_expr('0.1*(a*c+b)*(x) + v'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('b',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
-spec.param('d',DeltaParamType.GENERAL,ideal=0.0)
-spec.objective = calib_obj
-mult.outputs['z'].deltas.bind(['x','h','m'],spec)
+spec.param('v',DeltaParamType.GENERAL,ideal=0.0)
+new_spec = vga_assign_calib_obj(spec,10.0,1.0)
+mult.outputs['z'].deltas.bind(['x','h','m'],new_spec)
 
 
-spec = DeltaSpec(parser.parse_expr('10.0*(a*c+b)*x + d'))
+spec = DeltaSpec(parser.parse_expr('10.0*(a*c+b)*(x) + v'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('b',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
-spec.param('d',DeltaParamType.GENERAL,ideal=0.0)
-spec.objective = calib_obj
-mult.outputs['z'].deltas.bind(['x','m','h'],spec)
+spec.param('v',DeltaParamType.GENERAL,ideal=0.0)
+new_spec = vga_assign_calib_obj(spec,1.0,10.0)
+mult.outputs['z'].deltas.bind(['x','m','h'],new_spec)
 
 
+def mul_assign_calib_obj(spec,in0,in1,out):
+  base_expr =  "((abs(a))^(-1))*({out}*abs(modelError)+{in0}*abs(u)+{in1}*abs(v)+{out}*abs(w))"
+  expr = base_expr.format(out=1.0/out, \
+                          in0=1.0/in0, \
+                          in1=1.0/in1)
+  new_spec = spec.copy()
+  new_spec.objective = parser.parse_expr(expr)
+  return new_spec
 
-calib_obj = parser.parse_expr('gainOut*max(modelError,0)+gainX*abs(u)+ gainY*abs(v)+gainOut*abs(w)')
+
 spec = DeltaSpec(parser.parse_expr('0.5*a*(x+u)*(y+v) + w'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('u',DeltaParamType.GENERAL,ideal=0.0)
 spec.param('v',DeltaParamType.GENERAL,ideal=0.0)
 spec.param('w',DeltaParamType.GENERAL,ideal=0.0)
-spec.objective = calib_obj.substitute({
-  'gainX':genoplib.Const(1.0),
-  'gainY':genoplib.Const(1.0),
-  'gainOut':genoplib.Const(1.0),
-})
 
-mult.outputs['z'].deltas.bind(['m','m','m'],spec)
-
-spec = spec.copy()
-spec.objective = calib_obj.substitute({
-  'gainX':genoplib.Const(1.0),
-  'gainY':genoplib.Const(0.1),
-  'gainOut':genoplib.Const(0.1),
-})
-mult.outputs['z'].deltas.bind(['h','m','h'],spec)
-
-
-spec = spec.copy()
-spec.objective = calib_obj.substitute({
-  'gainX':genoplib.Const(0.1),
-  'gainY':genoplib.Const(1.0),
-  'gainOut':genoplib.Const(0.1),
-})
-mult.outputs['z'].deltas.bind(['m','h','h'],spec)
+new_spec = mul_assign_calib_obj(spec,1.0,1.0,1.0)
+mult.outputs['z'].deltas.bind(['m','m','m'],new_spec)
+new_spec = mul_assign_calib_obj(spec,1.0,10.0,10.0)
+mult.outputs['z'].deltas.bind(['h','m','h'],new_spec)
+new_spec = mul_assign_calib_obj(spec,10.0,1.0,10.0)
+mult.outputs['z'].deltas.bind(['m','h','h'],new_spec)
 
 spec = DeltaSpec(parser.parse_expr('5*a*(x+u)*(y+v) + w'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('u',DeltaParamType.GENERAL,ideal=0.0)
 spec.param('v',DeltaParamType.GENERAL,ideal=0.0)
 spec.param('w',DeltaParamType.GENERAL,ideal=0.0)
-spec.objective = calib_obj.substitute({
-  'gainX':genoplib.Const(1.0),
-  'gainY':genoplib.Const(1.0),
-  'gainOut':genoplib.Const(0.1),
-})
-mult.outputs['z'].deltas.bind(['m','m','h'],spec)
+
+new_spec = mul_assign_calib_obj(spec,1.0,1.0,10.0)
+mult.outputs['z'].deltas.bind(['m','m','h'],new_spec)
 
 
 spec = DeltaSpec(parser.parse_expr('0.05*a*(x+u)*(y+v) + w'))
@@ -306,17 +300,7 @@ spec.param('u',DeltaParamType.GENERAL,ideal=0.0)
 spec.param('v',DeltaParamType.GENERAL,ideal=0.0)
 spec.param('w',DeltaParamType.GENERAL,ideal=0.0)
 
-spec.objective = calib_obj.substitute({
-  'gainX':genoplib.Const(1.0),
-  'gainY':genoplib.Const(0.1),
-  'gainOut':genoplib.Const(1.0),
-})
-mult.outputs['z'].deltas.bind(['h','m','m'],spec)
-
-spec = spec.copy()
-spec.objective = calib_obj.substitute({
-  'gainX':genoplib.Const(0.1),
-  'gainY':genoplib.Const(1.0),
-  'gainOut':genoplib.Const(1.0),
-})
-mult.outputs['z'].deltas.bind(['m','h','m'],spec)
+new_spec = mul_assign_calib_obj(spec,1.0,10.0,1.0)
+mult.outputs['z'].deltas.bind(['h','m','m'],new_spec)
+new_spec = mul_assign_calib_obj(spec,10.0,1.0,1.0)
+mult.outputs['z'].deltas.bind(['m','h','m'],new_spec)

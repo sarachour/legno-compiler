@@ -79,9 +79,9 @@ from the root directory of the \tx{legno-compiler} project to execute all the re
 
 \section{Setting up the HCDCv2 Device}
 These steps are only necessary if you wish to execute the generated programs on
-the HCDCv2 device. To write the device firmware to the SA100ASY development
-board, you must install the Arduino IDE. To install the Arduino IDE, download
-the executable from the following link and drag it do your \tx{Applications} directory:
+the HCDCv2 device. To write the device firmware to the Arduino Due microcontroller attached
+to the SA100ASY development board, you must install the Arduino IDE. To install
+the Arduino IDE, download the executable from the following link and drag it do your \tx{Applications} directory:
 
 \begin{snippet}
 https://www.arduino.cc/en/Main/Software
@@ -98,7 +98,7 @@ searching for the \tx{DueTimer} package. We installed version \tx{1.4.7} of \tx{
 
 \subsubsection{Linux Command}
 
-Download \tx{android.tar.xz} from the above arduino website and run the following to install and open the Arduino IDE:
+Download \tx{arduino.tar.xz} from the above arduino website and run the following to install and open the Arduino IDE:
 
 \begin{snippet}
 tar -xvf arduino-1.8.12-linux64.tar.xz 
@@ -143,7 +143,7 @@ After following these steps, it should be possible to flash the HCDCv2
 firmware to the analog device. Navigate to the following directory:
 
 \begin{snippet}
-  legno-compiler/lab_bench/arduino/grendel_interp_V1
+  legno-compiler/lab_bench/arduino/grendel_interp
 \end{snippet}
 
 To build the firmware, type the following command:
@@ -160,16 +160,20 @@ Some linux package managers reference an outdated version of \tx{arduino-mk}
 that does not include the \tx{Sam.mk} makefile. In these cases \tx{arduino-mk}
 must be installed from source. To do so, first clone the following repository:
 
+% git checkout e870443f4824cbb
 \begin{snippet}
 git clone git@github.com:sudar/Arduino-Makefile.git
-git checkout e870443f4824cbb
 sudo mkdir -p /usr/local/opt/arduino-mk/
-sudo mv * /usr/local/opt/arduino-mk/
+sudo mv Arduino-Makefile/* /usr/local/opt/arduino-mk/
 \end{snippet}
+
+We tested the firmware with version \tx{1.6.0} of \tx{arduino-mk}. This version
+of \tx{arduino-mk} includes version \tx{1.6.12} of the SAM libraries.
 
 \subsubsection{[Linux] \tx{ARDUINO_DIR} not defined}
 
-Sometimes, the arduino environment variables don't get set up properly. Add the following to your \tx{.profile} or \tx{.bashrc} file.Execute \tx{whereis arduino} to figure out the directory to assign \tx{ARDUINO_DIR} to (it is \tx{/usr/local/bin} for me).
+Sometimes, the arduino environment variables don't get set up properly. Add the
+following to your \tx{.profile} or \tx{.bashrc} file. Execute \tx{whereis arduino} to figure out the directory to assign \tx{ARDUINO_DIR} to (it is \tx{/usr/local/bin} for me).
 
 \begin{snippet}
 export ARDUINO_DIR=/usr/local/bin/
@@ -189,11 +193,13 @@ place than the device firmware. Execute the following command to move the
       ~/.arduino15/packages/arduino/hardware/sam/1.6.12/libraries/
 \end{snippet}
 
-\subsection{Writing Firmware to the HCDCv2 Device}
+\subsection{Writing Firmware to the Arduino Due}
+
 Next we will upload the firmware to the
 device. Please ensure the device is programmed via USB,
 and that the USB cable is plugged into the programming port of the device.
-This is the port closest to the DC power port. After connecting the device to the computer, type the following command to flash the firmware to the device:
+This is the port closest to the DC power port. After connecting the device to
+the computer, type the following command to flash the firmware to the device:
 
 \begin{snippet}
   make upload
@@ -245,6 +251,7 @@ between the oscilloscope and the board:
     [0,3,2]).
   \item Connect the EXT lead to pin 25/SDA1 of the Arduino. The Arduino triggers the
     oscilloscope to record data.
+  \item Connect the probe ground to the board ground.
 \end{enumerate}
 
 Next, we have to connect the oscilloscope to the network. First, connect the

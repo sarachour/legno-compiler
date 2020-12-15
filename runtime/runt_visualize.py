@@ -62,15 +62,9 @@ def visualize(args):
 
         if delta_model.complete and \
            delta_model.calib_obj != llenums.CalibrateObjective.NONE:
-            png_file = ph.get_delta_vis(delta_model.block.name, \
-                                        str(delta_model.loc), \
-                                        str(delta_model.output.name), \
-                                        str(delta_model.static_cfg), \
-                                        str(delta_model.hidden_cfg), \
-                                        delta_model.calib_obj)
+            
             print(delta_model.config)
             print(delta_model)
-            print(png_file)
             if delta_model.is_integration_op:
                 dataset = dataset_lib.load(board, delta_model.block, \
                                            delta_model.loc, \
@@ -89,6 +83,13 @@ def visualize(args):
                 continue
 
             assert(isinstance(dataset, dataset_lib.ExpProfileDataset))
+            png_file = ph.get_delta_vis(delta_model.block.name, \
+                                        delta_model.loc.file_string(),\
+                                        str(delta_model.output.name), \
+                                        str(delta_model.static_cfg), \
+                                        str(delta_model.hidden_cfg), \
+                                        delta_model.calib_obj)
+            print(png_file)
             vizlib.deviation(delta_model, \
                              dataset, \
                              png_file, \
@@ -96,3 +97,31 @@ def visualize(args):
                              num_bins=10, \
                              amplitude=args.max_error, \
                              relative=True)
+
+            png_file = ph.get_correctable_delta_vis(delta_model.block.name, \
+                                                    delta_model.loc.file_string(), \
+                                                    str(delta_model.output.name), \
+                                                    str(delta_model.static_cfg), \
+                                                    str(delta_model.hidden_cfg), \
+                                                    delta_model.calib_obj)
+            print(png_file)
+            vizlib.deviation(delta_model, \
+                             dataset, \
+                             png_file, \
+                             baseline=vizlib.ReferenceType.CORRECTABLE_MODEL_PREDICTION, \
+                             num_bins=10, \
+                             amplitude=args.max_error, \
+                             relative=True)
+
+            model_file = ph.get_model_file(delta_model.block.name, \
+                                           delta_model.loc.file_string(), \
+                                           str(delta_model.output.name), \
+                                           str(delta_model.static_cfg), \
+                                           str(delta_model.hidden_cfg), \
+                                           delta_model.calib_obj)
+
+            with open(model_file,'w') as fh:
+                fh.write(str(delta_model.config))
+                fh.write(str(delta_model))
+                fh.write("\n\n")
+                fh.write(str(delta_model.spec))
