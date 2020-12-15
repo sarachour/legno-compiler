@@ -17,6 +17,9 @@ class Location:
   def to_json(self):
     return self.address
 
+  def file_string(self):
+    return ":".join(map(lambda a: str(a), self.address))
+
   @staticmethod
   def from_json(addr):
     return Location(addr)

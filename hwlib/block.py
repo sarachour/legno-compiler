@@ -759,6 +759,12 @@ class DeltaSpec:
         def model(self):
             return self._model
 
+        def copy(self):
+            return DeltaSpec.Parameter(self.name, \
+                                       self.typ, \
+                                       self.val, \
+                                       self.model)
+
         def __repr__(self):
             return "%s : %s = %s / model=%s" % (self.name, \
                                            self.typ.value, \
@@ -784,6 +790,21 @@ class DeltaSpec:
     def model_error(self,v):
         self._model_error = v
 
+    def copy(self):
+        obj = self.objective.copy() \
+            if not self.objective is None else None
+
+        spec = DeltaSpec(self.relation.copy(), \
+                         obj)
+        for p,v in self._params.items():
+            spec._params[p] = v.copy()
+
+        if not self._model_error is None:
+            spec._model_error = self._model_error.copy()
+
+        return spec
+
+
     def get_model(self,params):
         repls = dict(map(lambda tup: (tup[0],oplib.Const(tup[1])), \
                          params.items()))
@@ -792,7 +813,7 @@ class DeltaSpec:
     def get_correctable_model(self,params):
         pdict = dict(params)
         for par in params.keys():
-            if not self._params[par].typ.is_correctable():
+            if not self._params[par].typ.is_correctable(True):
                 pdict[par] = self._params[par].val
 
         return lambdoplib.simplify(self.get_model(pdict))
