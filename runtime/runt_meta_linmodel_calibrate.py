@@ -21,30 +21,28 @@ def generate_candidate_codes(blk,calib_expr,phys_model,num_samples=3, \
                        phys_model.variables().keys()))
     all_cand_codes = []
     all_cand_keys = []
-    for var,uncert in uncerts.items():
-        region = regionlib.Region()
-        n_codes = 0
-        for idx in range(num_offsets):
-            offset = random.uniform(-uncert,uncert)
-            # compute minima
-            variables = dict(map(lambda tup: (tup[0],tup[1].copy()), \
+    for idx in range(num_offsets):
+        offsets = dict(map(lambda tup: (tup[0],random.uniform(-tup[1],tup[1])), \
+                           uncerts.items()))
+        variables = dict(map(lambda tup: (tup[0],tup[1].copy()), \
                                 phys_model.variables().items()))
-            variables[var].update_expr(lambda e: genoplib.Add(e, \
-                                                              genoplib.Const(offset)))
-            nodes = dectree_eval.eval_expr(calib_expr, variables)
-            objfun_dectree = dectreelib.RegressionNodeCollection(nodes)
-            minval,codes = objfun_dectree.find_minimum()
-            for code_name,value in codes.items():
-                int_value = blk.state[code_name].nearest_value(value)
-                codes[code_name] = int_value
+        for v in variables.keys():
+            variables[v].update_expr(lambda e: genoplib.Add(e, \
+                                                            genoplib.Const(offsets[v])))
 
-            key = runtime_util.dict_to_identifier(codes)
-            if not key in all_cand_keys:
-                all_cand_keys.append(key)
-                all_cand_codes.append(codes)
-                n_codes += 1
-                if n_codes >= num_samples:
-                    break
+        nodes = dectree_eval.eval_expr(calib_expr, variables)
+        objfun_dectree = dectreelib.RegressionNodeCollection(nodes)
+        minval,codes = objfun_dectree.find_minimum()
+        for code_name,value in codes.items():
+            int_value = blk.state[code_name].nearest_value(value)
+            codes[code_name] = int_value
+
+        key = runtime_util.dict_to_identifier(codes)
+        if not key in all_cand_keys:
+            all_cand_keys.append(key)
+            all_cand_codes.append(codes)
+            if len(all_cand_codes) >= num_samples*3:
+                break
 
     random.shuffle(all_cand_codes)
     for idx in range(min(len(all_cand_codes),num_samples)):
