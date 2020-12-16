@@ -78,17 +78,19 @@ def get_candidate_codes(char_board,blk,loc,cfg,num_samples):
             yield codes_to_delta_model(blk,loc,out,cfg,codes)
 
 
-def update_model(char_board,blk,loc,cfg):
+def update_model(char_board,blk,loc,cfg,num_model_points=3):
     CMDS = [ \
              "python3 grendel.py mkdeltas --model-number {model}",
-             "python3 grendel.py mkphys --model-number {model} --max-depth 0 --num-leaves 1 --shrink"]
+             "python3 grendel.py mkphys --model-number {model} --max-depth 0 --num-leaves 1 --shrink" + \
+             " --local-model --num-points {num_model_points}"]
 
 
     adp_file = runtime_meta_util.generate_adp(char_board,blk,loc,cfg)
 
     for CMD in CMDS:
         cmd = CMD.format(adp=adp_file, \
-                         model=char_board.model_number)
+                         model=char_board.model_number, \
+                         num_model_points=num_model_points)
         print(">> %s" % cmd)
         runtime_meta_util.run_command(cmd)
 
@@ -158,7 +160,8 @@ def calibrate_block(board,block,loc,config, \
             return
 
         print("---- iteration %d ----" % iter_no)
-        update_model(char_board,block,loc,config)
+        update_model(char_board,block,loc,config, \
+                     num_model_points=random_samples*2)
         #input("press any key to continue...")
         for exp_model in get_candidate_codes(char_board, \
                                              block,loc,config, \
@@ -169,6 +172,9 @@ def calibrate_block(board,block,loc,config, \
         profile_block(char_board,block,loc,config, \
                       grid_size=grid_size)
 
+
+    update_model(char_board,block,loc,config, \
+                 num_model_points=random_samples*2)
 
 def calibrate(args):
     board = runtime_util.get_device(args.model_number)

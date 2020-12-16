@@ -60,6 +60,8 @@ dectree_subp.add_argument('--max-depth',type=int,default=2,\
 dectree_subp.add_argument('--num-leaves',type=int,default=3,\
                           help='number of leaves (default=3)')
 dectree_subp.add_argument('--shrink',action='store_true', help='shrink model')
+dectree_subp.add_argument('--local-model',action='store_true', help='only model points around local minima')
+dectree_subp.add_argument('--num-points',type=int, help='number points to use for local model')
 
 
 
