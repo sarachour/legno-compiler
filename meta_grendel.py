@@ -14,6 +14,7 @@ import runtime.runt_meta_characterize_bad_blocks as runt_characterize_bad_blocks
 import runtime.runt_meta_bruteforce_calibrate as runt_bruteforce_cal
 import runtime.runt_meta_best_calibrate as runt_best_cal
 import runtime.runt_meta_dectree_calibrate as runt_dectree_cal
+import runtime.runt_meta_linmodel_calibrate as runt_linmodel_cal
 
 parser = argparse.ArgumentParser(description='Meta-grendel routines.')
 
@@ -30,6 +31,10 @@ exec_subp.add_argument('--dry',action='store_true',help='dry run')
 exec_subp.add_argument('--cutoff',default=5.0, type=float, help='percent error cutoff for bad blocks')
 
 exec_subp = subparsers.add_parser('best_cal', help='bruteforce calibration for all individually characterized blocks')
+exec_subp.add_argument('model_number', type=str,help='model of board to study')
+
+
+exec_subp = subparsers.add_parser('linmodel_cal', help='linear model calibration for all individually characterized blocks')
 exec_subp.add_argument('model_number', type=str,help='model of board to study')
 
 
@@ -50,6 +55,8 @@ elif args.subparser_name == "best_cal":
     runt_best_cal.calibrate(args)
 elif args.subparser_name == "dectree_cal":
     runt_dectree_cal.calibrate(args)
+elif args.subparser_name == "linmodel_cal":
+    runt_linmodel_cal.calibrate(args)
 else:
     raise Exception("unhandled: %s" % args.subparser_name)
 

@@ -179,6 +179,13 @@ class DecisionNode(Node):
   def concretize(self):
     return DecisionNode(self.name,self.value,self.left.concretize(),self.right.concretize())
 
+
+
+
+
+
+
+
 class RegressionLeafNode(Node):
 
   def __init__(self,expr,npts=0,R2=-1.0,params={}):
@@ -194,6 +201,10 @@ class RegressionLeafNode(Node):
     return "%sexpr %s, npts=%d, R2=%f, pars=%s\n" \
       % (ind,self.expr,self.npts,self.R2,self.params)
 
+
+  @property
+  def free_vars(self):
+    return filter(lambda v: not v in self.params, self.expr.vars())
 
   def is_concrete(self):
     return any(map(lambda v: v is None, self.params.values()))
