@@ -10,7 +10,7 @@ import hwlib.hcdc.llcmd as llcmd
 
 def calibrate_adp(args):
     board = runtime_util.get_device(args.model_number)
-    adp = runtime_util.get_adp(board,args.adp)
+    adp = runtime_util.get_adp(board,args.adp,widen=args.widen)
 
     debug = False
     runtime = GrendelRunner()

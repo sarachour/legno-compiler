@@ -138,7 +138,8 @@ def profile_block(board,blk,loc,cfg,grid_size=9):
 def calibrate_block(board,block,loc,config, \
                     grid_size=9, \
                     bootstrap_samples=5, \
-                    random_samples=3):
+                    random_samples=3, \
+                    num_iters=3):
     char_model = runtime_meta_util.get_model(board,block,loc,config)
     char_board = runtime_util.get_device(char_model,layout=False)
 
@@ -148,7 +149,8 @@ def calibrate_block(board,block,loc,config, \
                     grid_size=grid_size)
     input("bootstrap completed. press any key to continue...")
     terminate = False
-    while not terminate:
+    for iter_no in range(num_iters):
+        print("---- iteration %d ----" % iter_no)
         update_model(char_board,block,loc,config)
         input("press any key to continue...")
         for exp_model in get_candidate_codes(char_board, \
@@ -174,4 +176,5 @@ def calibrate(args):
         calibrate_block(board,blk,cfg.inst.loc,cfg, \
                         bootstrap_samples=5, \
                         random_samples=3, \
-                        grid_size=7)
+                        grid_size=7, \
+                        num_iters=5)

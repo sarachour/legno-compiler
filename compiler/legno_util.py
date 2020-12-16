@@ -142,8 +142,8 @@ def exec_lcal(args):
         llenums.CalibrateObjective.MAXIMIZE_FIT,
         llenums.CalibrateObjective.MINIMIZE_ERROR
     ]
-    CAL_CMD = "python3 grendel.py cal {adp_path} --model-number {model_number} {calib_obj}"
-    PROF_CMD = "python3 grendel.py prof {adp_path} --model-number {model_number} {calib_obj}"
+    CAL_CMD = "python3 grendel.py cal {adp_path} --model-number {model_number} {calib_obj} --widen"
+    PROF_CMD = "python3 grendel.py prof {adp_path} --model-number {model_number} {calib_obj} --widen"
     MKDELTAS_CMD = "python3 grendel.py mkdeltas --model-number {model_number} --force"
     if args.model_number is None:
        raise Exception("model number must be provided!!")
