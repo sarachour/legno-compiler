@@ -17,25 +17,6 @@ import math
 import os
 
 
-def test_source(board,adp,block,cfg):
-  if block.name == "dac" and 'dyn' in str(cfg.mode):
-    lut_blk = board.get_block('lut')
-    dac_loc = cfg.inst.loc
-    lut0_loc,lut1_loc = cfg.inst.loc.copy(), cfg.inst.loc.copy()
-    lut1_loc[2] = 0 if dac_loc[2] == 2 else 2
-
-    lut_out = list(lut_blk.outputs)[0]
-    dac_in = list(block.inputs)[0]
-
-    adp_lut0 = adp.copy(board)
-    adp_lut0.add_instance(lut_blk,lut0_loc)
-    adp_lut0.add_conn(lut_blk, lut0_loc, lut_out, \
-                      block, dac_loc, dac_in)
-    yield adp_lut0
-
-  else:
-    yield adp
-
 def test_block(board,block,loc,modes):
   calib_objs = [
     llenums.CalibrateObjective.MAXIMIZE_FIT,
@@ -53,7 +34,7 @@ def test_block(board,block,loc,modes):
     blkcfg = new_adp.configs.get(block.name,loc)
     blkcfg.modes = [mode]
 
-    for upd_adp in test_source(board,new_adp,block,blkcfg):
+    for upd_adp in runtime_util.make_block_test_adp(board,new_adp,block,blkcfg):
       with open(TMP_ADP,'w') as fh:
         fh.write(json.dumps(upd_adp.to_json()))
 
