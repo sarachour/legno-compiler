@@ -146,17 +146,17 @@ def calibrate_block(board,block,loc,config, \
     char_model = runtime_meta_util.get_model(board,block,loc,config)
     char_board = runtime_util.get_device(char_model,layout=False)
 
-    if is_block_calibrated(char_board,block,loc,config, \
-                           random_samples=random_samples, \
-                           num_iters=num_iters):
-        return
-
     print(char_model)
     bootstrap_block(char_board,block,loc,config, \
                     num_samples=bootstrap_samples, \
                     grid_size=grid_size)
     #input("bootstrap completed. press any key to continue...")
     for iter_no in range(num_iters):
+        if is_block_calibrated(char_board,block,loc,config, \
+                               random_samples=random_samples, \
+                               num_iters=num_iters):
+            return
+
         print("---- iteration %d ----" % iter_no)
         update_model(char_board,block,loc,config)
         #input("press any key to continue...")
