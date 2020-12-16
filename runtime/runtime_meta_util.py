@@ -5,6 +5,7 @@ import hwlib.block as blocklib
 import os
 import json
 import random
+import os
 
 def random_hidden_codes(block):
     hidden_codes = {}
@@ -29,6 +30,10 @@ def run_command(cmd):
     code = os.system(cmd)
     if code != 0:
         raise Exception("command failed. <code=%s>" % code)
+
+def remove_file(name):
+    if os.path.exists(name):
+        os.remove(name)
 
 def generate_adp(board,blk,loc,cfg):
     adp_file = get_adp(board,blk,loc,cfg)

@@ -99,7 +99,7 @@ def update_model(char_board,blk,loc,cfg,num_model_points=3):
 # bootstrap block to get data
 def bootstrap_block(board,blk,loc,cfg,grid_size=9,num_samples=5):
     CMDS = [ \
-             "python3 grendel.py characterize {adp} --model-number {model} --grid-size {grid_size} --num-hidden-codes 8 --adp-locs" \
+             "python3 grendel.py characterize {adp} --model-number {model} --grid-size {grid_size} --num-hidden-codes {num_samples} --adp-locs" \
             ]
 
 
@@ -108,7 +108,8 @@ def bootstrap_block(board,blk,loc,cfg,grid_size=9,num_samples=5):
     for CMD in CMDS:
         cmd = CMD.format(adp=adp_file, \
                          model=board.model_number, \
-                         grid_size=grid_size)
+                         grid_size=grid_size, \
+                         num_samples=num_samples)
         print(">> %s" % cmd)
         runtime_meta_util.run_command(cmd)
 
