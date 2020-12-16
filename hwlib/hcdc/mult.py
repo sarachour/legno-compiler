@@ -226,17 +226,18 @@ mult.state['bias_out'].impl.set_default(32)
 
 
 def vga_assign_calib_obj(spec,in0,out):
-  base_expr =  "((abs(a))^(-1))*({out}*abs(modelError) + {out}*abs(v))"
+  base_expr =  "abs((a-1.0)) + {out}*abs(modelError) + {out}*abs(v)"
   expr = base_expr.format(out=1.0/out, \
                           in0=1.0/in0)
   new_spec = spec.copy()
   new_spec.objective = parser.parse_expr(expr)
   return new_spec
 
-spec = DeltaSpec(parser.parse_expr('(a*c+b)*x+v'))
+spec = DeltaSpec(parser.parse_expr('(a*c+b)*(x+u)+v'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('b',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
 spec.param('v',DeltaParamType.GENERAL,ideal=0.0)
+spec.param('u',DeltaParamType.GENERAL,ideal=0.0)
 
 new_spec = vga_assign_calib_obj(spec,1.0,1.0)
 mult.outputs['z'].deltas.bind(['x','m','m'],new_spec)
@@ -245,24 +246,26 @@ mult.outputs['z'].deltas.bind(['x','h','h'],new_spec)
 
 #calib_obj = parser.parse_expr('((a)^(-1))*(modelError+d)')
 
-spec = DeltaSpec(parser.parse_expr('0.1*(a*c+b)*(x) + v'))
+spec = DeltaSpec(parser.parse_expr('0.1*(a*c+b)*(x+u) + v'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('b',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
 spec.param('v',DeltaParamType.GENERAL,ideal=0.0)
+spec.param('u',DeltaParamType.GENERAL,ideal=0.0)
 new_spec = vga_assign_calib_obj(spec,10.0,1.0)
 mult.outputs['z'].deltas.bind(['x','h','m'],new_spec)
 
 
-spec = DeltaSpec(parser.parse_expr('10.0*(a*c+b)*(x) + v'))
+spec = DeltaSpec(parser.parse_expr('10.0*(a*c+b)*(x+u) + v'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('b',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
 spec.param('v',DeltaParamType.GENERAL,ideal=0.0)
+spec.param('u',DeltaParamType.GENERAL,ideal=0.0)
 new_spec = vga_assign_calib_obj(spec,1.0,10.0)
 mult.outputs['z'].deltas.bind(['x','m','h'],new_spec)
 
 
 def mul_assign_calib_obj(spec,in0,in1,out):
-  base_expr =  "((abs(a))^(-1))*({out}*abs(modelError)+{in0}*abs(u)+{in1}*abs(v)+{out}*abs(w))"
+  base_expr =  "{out}*abs(modelError)+{in0}*abs(u)+{in1}*abs(v)+{out}*abs(w)"
   expr = base_expr.format(out=1.0/out, \
                           in0=1.0/in0, \
                           in1=1.0/in1)

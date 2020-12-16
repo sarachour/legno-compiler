@@ -58,7 +58,7 @@ def codes_to_delta_model(blk,loc,out,cfg,codes):
 
 
     exp_model = exp_delta_model_lib.ExpDeltaModel(blk,loc,out,new_cfg, \
-                                                  calib_obj=llenums.CalibrateObjective.NONE)
+                                                  calib_obj=llenums.CalibrateObjective.LINMODEL)
     return exp_model
 
 
@@ -92,6 +92,7 @@ def update_model(char_board,blk,loc,cfg):
         print(">> %s" % cmd)
         runtime_meta_util.run_command(cmd)
 
+    runtime_meta_util.remove_file(adp_file)
 
 # bootstrap block to get data
 def bootstrap_block(board,blk,loc,cfg,grid_size=9,num_samples=5):
@@ -109,12 +110,12 @@ def bootstrap_block(board,blk,loc,cfg,grid_size=9,num_samples=5):
         print(">> %s" % cmd)
         runtime_meta_util.run_command(cmd)
 
+    runtime_meta_util.remove_file(adp_file)
 
 def profile_block(board,blk,loc,cfg,grid_size=9):
     CMDS = [ \
-             "python3 grendel.py prof {adp} --model-number {model} --grid-size {grid_size} none > prof.log" \
+             "python3 grendel.py prof {adp} --model-number {model} --grid-size {grid_size} linmodel > prof.log" \
             ]
-
 
     adp_file = runtime_meta_util.generate_adp(board,blk,loc,cfg)
 
@@ -125,7 +126,17 @@ def profile_block(board,blk,loc,cfg,grid_size=9):
         print(">> %s" % cmd)
         runtime_meta_util.run_command(cmd)
 
+    runtime_meta_util.remove_file(adp_file)
 
+def is_block_calibrated(board,block,loc,config, \
+                        random_samples, \
+                        num_iters):
+    models = exp_delta_model_lib.get_models_by_calibration_objective(board, \
+                                                                     llenums.CalibrateObjective.LINMODEL)
+    n_models = len(models)
+    if n_models >= random_samples*num_iters:
+        return True
+    return False
 
 def calibrate_block(board,block,loc,config, \
                     grid_size=9, \
@@ -135,12 +146,16 @@ def calibrate_block(board,block,loc,config, \
     char_model = runtime_meta_util.get_model(board,block,loc,config)
     char_board = runtime_util.get_device(char_model,layout=False)
 
+    if is_block_calibrated(char_board,block,loc,config, \
+                           random_samples=random_samples, \
+                           num_iters=num_iters):
+        return
+
     print(char_model)
     bootstrap_block(char_board,block,loc,config, \
                     num_samples=bootstrap_samples, \
                     grid_size=grid_size)
     #input("bootstrap completed. press any key to continue...")
-    terminate = False
     for iter_no in range(num_iters):
         print("---- iteration %d ----" % iter_no)
         update_model(char_board,block,loc,config)
@@ -153,7 +168,6 @@ def calibrate_block(board,block,loc,config, \
 
         profile_block(char_board,block,loc,config, \
                       grid_size=grid_size)
-        terminate = True
 
 
 def calibrate(args):

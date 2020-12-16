@@ -22,6 +22,7 @@ class CalibrateObjective(Enum):
     MINIMIZE_ERROR = "minimize_error"
     MAXIMIZE_FIT = "maximize_fit"
     DECTREE = "dectree"
+    LINMODEL = "linmodel"
     BRUTEFORCE = "brute"
     BEST = "best"
     NONE = "none"

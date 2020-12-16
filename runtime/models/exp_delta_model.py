@@ -403,6 +403,14 @@ def remove_by_calibration_objective(dev,calib_obj):
   dev.physdb.delete(dblib.PhysicalDatabase.DB.DELTA_MODELS, \
                     where_clause)
 
+def get_models_by_calibration_objective(dev,calib_obj):
+  where_clause = {
+    'calib_obj': calib_obj.value
+  }
+  matches = list(dev.physdb.select(dblib.PhysicalDatabase.DB.DELTA_MODELS, where_clause))
+  return list(__to_delta_models(dev,matches))
+
+
 def get_all(dev):
   matches = list(dev.physdb.select(dblib.PhysicalDatabase.DB.DELTA_MODELS, {}))
   return list(__to_delta_models(dev,matches))
