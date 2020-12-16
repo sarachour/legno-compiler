@@ -69,7 +69,7 @@ def profile_adp(args):
                            grid_size=args.grid_size)
 
     else:
-        adp = runtime_util.get_adp(board,args.adp)
+        adp = runtime_util.get_adp(board,args.adp,widen=args.widen)
         for cfg in adp.configs:
             blk = board.get_block(cfg.inst.block)
             cfg_modes = cfg.modes

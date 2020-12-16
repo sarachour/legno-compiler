@@ -78,13 +78,14 @@ calib_subp = subparsers.add_parser('cal', help='calibrate blocks in configuratio
 calib_subp.add_argument('adp', type=str,help='adp to characterize')
 calib_subp.add_argument('method', type=str,help='calibration objective function (minimize_error/maximize_fit)')
 calib_subp.add_argument('--model-number',type=str,help='model number')
+calib_subp.add_argument('--widen',action="store_true",help='widen modes')
 
 
 prof_subp = subparsers.add_parser('prof', help='profile calibrated blocks')
 prof_subp.add_argument('adp', type=str,help='adp to profile')
 prof_subp.add_argument('method', type=str, \
                        default='none', \
-                       help='delta label to profile (legacy_min_error/legacy_max_fit/min_error/max_fit)')
+                       help='delta label to profile (/minimize_error/maximize_fit/best/dectree)')
 prof_subp.add_argument('--model-number',type=str,help='model number')
 prof_subp.add_argument('--grid-size',type=int,default=15, \
                        help="number of inputs to sample along each axis")
@@ -93,6 +94,7 @@ prof_subp.add_argument('--min-points',type=int,default=0, \
 prof_subp.add_argument('--missing',action='store_true', \
                        help="calibrate missing")
 prof_subp.add_argument('--force',action="store_true",help='force')
+prof_subp.add_argument('--widen',action="store_true",help='widen modes')
 
 
 
