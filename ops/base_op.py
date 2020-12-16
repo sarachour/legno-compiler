@@ -109,6 +109,8 @@ class Op:
         op = OpType(obj['op'])
         if op == OpType.VAR:
             return generic.Var.from_json(obj)
+        elif op == OpType.INTEG:
+            return generic.Integ.from_json(obj)
         elif op == OpType.CONST:
             return generic.Const.from_json(obj)
         elif op == OpType.FUNC:
