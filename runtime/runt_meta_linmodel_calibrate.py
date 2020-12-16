@@ -21,6 +21,7 @@ def generate_candidate_codes(blk,calib_expr,phys_model,num_samples=3, \
     uncerts = dict(map(lambda var: (var,phys_model.uncertainty(var)), \
                        phys_model.variables().keys()))
     all_cand_codes = []
+    all_cand_keys = []
     for var,uncert in uncerts.items():
         region = regionlib.Region()
         for idx in range(num_offsets):
@@ -40,14 +41,15 @@ def generate_candidate_codes(blk,calib_expr,phys_model,num_samples=3, \
         print("--- var %s ---" % var)
         print(region)
         print("\n")
-        cand_codes = []
+        n_codes = 0
         for _ in range(num_tries):
             code = region.random_code()
             key = runtime_util.dict_to_identifier(code)
-            if not key in cand_codes:
-                cand_codes.append(key)
+            if not key in all_cand_keys:
+                all_cand_keys.append(key)
                 all_cand_codes.append(code)
-                if len(cand_codes) >= num_samples:
+                n_codes += 1
+                if n_codes >= num_samples:
                     break
 
     random.shuffle(all_cand_codes)
@@ -118,7 +120,7 @@ def bootstrap_block(board,blk,loc,cfg,grid_size=9,num_samples=5):
 
 def profile_block(board,blk,loc,cfg,grid_size=9):
     CMDS = [ \
-             "python3 grendel.py prof {adp} --model-number {model} --grid-size {grid_size} none" \
+             "python3 grendel.py prof {adp} --model-number {model} --grid-size {grid_size} none > prof.log" \
             ]
 
 
@@ -156,7 +158,7 @@ def calibrate_block(board,block,loc,config, \
             continue
 
         profile_block(char_board,block,loc,config, \
-                          grid_size=grid_size)
+                      grid_size=grid_size)
         terminate = True
 
 
