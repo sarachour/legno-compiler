@@ -110,7 +110,7 @@ def build_dectree(key,metadata, \
                                                     max_depth=max_depth, \
                                                     min_size=min_size)
     err = dectree_fit_lib.model_error(predictions,values)
-    pct_err = err/max(np.abs(model_errors_))*100.0
+    pct_err = err/max(np.abs(values))*100.0
     print("<<dectree>>: [[Model-Err]] err=%f pct-err=%f param-range=[%f,%f]" \
             % (err, pct_err, \
                 min(model_errors_), \
@@ -134,7 +134,7 @@ def build_dectree(key,metadata, \
         model.set_param(param, dectree, uncertainty=err)
 
         err = dectree_fit_lib.model_error(predictions,values)
-        pct_err = err/max(np.abs(param_values))*100.0
+        pct_err = err/max(np.abs(values))*100.0
         print("<<dectree>>: [[Param:%s]] err=%f pct-err=%f param-range=[%f,%f]" \
                 % (param, err, pct_err, \
                     min(param_values), \
