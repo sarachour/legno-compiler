@@ -21,6 +21,11 @@ import runtime.dectree.dectree_generalize as dectree_generalize_lib
 import numpy as np
 import json
 
+def add(dict_,key,value):
+    if not key in dict_:
+        dict_[key] = []
+    dict_[key].append(value)
+
 def update_dectree_data(blk,loc,exp_mdl, \
                         metadata, \
                         params, \
@@ -39,10 +44,8 @@ def update_dectree_data(blk,loc,exp_mdl, \
         hidden_code_bounds[key] = {}
 
     for par,value in exp_mdl.params.items():
-        if not par in params[key]:
-            params[key][par] = []
-
-        params[key][par].append(value)
+        add(params[key],par,value)
+ 
 
     for hidden_code,_ in exp_mdl.hidden_codes():
         if not hidden_code in hidden_code_fields[key]:
@@ -59,12 +62,29 @@ def update_dectree_data(blk,loc,exp_mdl, \
     model_errors[key].append(exp_mdl.model_error)
 
 
+
+def build_local_dataset(codes,values,num_points):
+    if len(values) <= num_points:
+        return codes,values
+
+    median_val = np.median(values)
+    scores = list(map(lambda v: abs(v-median_val), values))
+    indices = np.argsort(scores)
+
+    new_values = list(map(lambda i: values[i], \
+                          indices[:num_points]))
+    new_codes = list(map(lambda i: codes[i], \
+                         indices[:num_points]))
+    return new_codes,new_values
+
 def build_dectree(key,metadata, \
                   hidden_code_fields, \
                   hidden_code_bounds, \
                   hidden_codes,\
                   params, model_errors, \
-                  num_leaves,max_depth):
+                  num_leaves,max_depth, \
+                  local_model=False, \
+                  num_points=10):
     blk,loc,cfg = metadata[key]
     n_samples = len(model_errors[key])
     min_size = round(n_samples/num_leaves)
@@ -78,13 +98,18 @@ def build_dectree(key,metadata, \
     model.num_samples = n_samples
 
     print(cfg)
+    if local_model:
+        codes,values = build_local_dataset(hidden_codes_, model_errors_,num_points)
+    else:
+        codes,values = hidden_codes_, model_errors_
+
     dectree,predictions = dectree_fit_lib.fit_decision_tree(hidden_code_fields_, \
-                                                    hidden_codes_, \
-                                                    model_errors_, \
+                                                    codes, \
+                                                    values, \
                                                     bounds=hidden_code_bounds_, \
                                                     max_depth=max_depth, \
                                                     min_size=min_size)
-    err = dectree_fit_lib.model_error(predictions,model_errors_)
+    err = dectree_fit_lib.model_error(predictions,values)
     pct_err = err/max(np.abs(model_errors_))*100.0
     print("<<dectree>>: [[Model-Err]] err=%f pct-err=%f param-range=[%f,%f]" \
             % (err, pct_err, \
@@ -95,15 +120,20 @@ def build_dectree(key,metadata, \
 
     for param,param_values in params[key].items():
         assert(len(param_values) == n_samples)
+        if local_model:
+            codes,values = build_local_dataset(hidden_codes_, param_values,num_points)
+        else:
+            codes,values = hidden_codes_, param_values
+
         dectree,predictions = dectree_fit_lib.fit_decision_tree(hidden_code_fields_, \
-                                                        hidden_codes_, \
-                                                        param_values, \
-                                                        bounds=hidden_code_bounds_, \
-                                                        max_depth=max_depth, \
-                                                        min_size=min_size)
+                                                                codes, \
+                                                                values, \
+                                                                bounds=hidden_code_bounds_, \
+                                                                max_depth=max_depth, \
+                                                                min_size=min_size)
         model.set_param(param, dectree, uncertainty=err)
 
-        err = dectree_fit_lib.model_error(predictions,param_values)
+        err = dectree_fit_lib.model_error(predictions,values)
         pct_err = err/max(np.abs(param_values))*100.0
         print("<<dectree>>: [[Param:%s]] err=%f pct-err=%f param-range=[%f,%f]" \
                 % (param, err, pct_err, \
@@ -154,6 +184,7 @@ def mktree(args):
                             hidden_code_bounds, \
                             hidden_codes)
 
+
     models = {}
     tmpfile = "models.tmp"
     for key in model_errors.keys():
@@ -168,7 +199,9 @@ def mktree(args):
                                   hidden_codes, \
                                   params, model_errors, \
                                   num_leaves=num_leaves,\
-                                  max_depth=args.max_depth)
+                                  max_depth=args.max_depth, \
+                                  local_model=args.local_model, \
+                                  num_points=args.num_points)
         if new_model is None:
             continue
 
