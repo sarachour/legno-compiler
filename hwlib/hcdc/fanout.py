@@ -47,7 +47,7 @@ for port in [p_in,p_out0,p_out1,p_out2]:
 
 for idx,port in enumerate([p_out0,p_out1,p_out2]):
 
-  calib_obj = parser.parse_expr('abs(modelError) + abs(b)')
+  calib_obj = parser.parse_expr('abs(a-1.0) + abs(modelError) + abs(b)')
 
   pat = ['_','_','_','_']
   pat[idx] = '+'
