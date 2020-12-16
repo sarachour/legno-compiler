@@ -17,13 +17,9 @@ import random
 def generate_candidate_codes(blk,calib_expr,phys_model,num_samples=3, \
                              num_offsets=1000):
 
-    uncerts = dict(map(lambda var: (var,phys_model.uncertainty(var)), \
-                       phys_model.variables().keys()))
     all_cand_codes = []
     all_cand_keys = []
-    for idx in range(num_offsets):
-        offsets = dict(map(lambda tup: (tup[0],random.uniform(-tup[1],tup[1])), \
-                           uncerts.items()))
+    for offsets in phys_model.uncertainty.samples(num_offsets):
         variables = dict(map(lambda tup: (tup[0],tup[1].copy()), \
                                 phys_model.variables().items()))
         for v in variables.keys():

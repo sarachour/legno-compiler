@@ -2,6 +2,71 @@ import hwlib.adp as adplib
 import runtime.dectree.dectree as dectreelib
 import runtime.runtime_util as runtime_util
 import runtime.models.database as dblib
+import numpy as np
+
+# models joint distrubtion of uncertainties
+class UncertaintyModel:
+
+    def __init__(self):
+        self.errors = {}
+        self.variables = []
+
+    @property
+    def mean(self):
+      mean = np.array(list(map(lambda v: np.mean(self.errors[v]), \
+                               self.variables)))
+      return mean
+
+
+    @property
+    def covariance(self):
+      data = np.array(list(map(lambda v: self.errors[v], self.variables)))
+      covariance = np.cov(data,bias=True)
+      return covariance
+
+    def set_error(self,v,pred,obs):
+      assert(not v in self.variables)
+      n = min(len(pred),len(obs))
+      self.errors[v] = list(map(lambda i: (pred[i]-obs[i]), \
+                                range(n)))
+      self.variables.append(v)
+
+    def samples(self,count):
+      n_vars = len(self.variables)
+      cov = self.covariance
+      mean = self.mean
+      for v in self.variables:
+        print(self.errors[v])
+      print(cov)
+      samps = np.random.multivariate_normal(mean=mean.reshape(n_vars,), \
+                                            cov=cov, \
+                                            size=count)
+      for samp in samps:
+        yield dict(zip(self.variables, \
+                       map(lambda v: float(v), samp)))
+
+    def verify_covariance(self):
+        n_vars = len(self.variables)
+        dataset = list(map(lambda v: [], range(n_vars)))
+        for samp in self.samples(100):
+          for idx,val in enumerate(samp):
+                dataset[idx].append(val)
+
+        cov = np.cov(dataset,bias=True)
+        return cov
+
+    @staticmethod
+    def from_json(obj):
+      mdl = UncertaintyModel()
+      mdl.errors = obj['errors']
+      mdl.variables = obj['variables']
+      return mdl
+
+    def to_json(self):
+      return {
+        'errors':self.errors,
+        'variables':self.variables
+      }
 
 class ExpPhysModel:
   MODEL_ERROR = "modelError"
@@ -11,7 +76,11 @@ class ExpPhysModel:
     self.config = cfg
     self._params = {}
     self._model_error = dectreelib.make_constant(0.0)
-    self._uncertainties = {}
+    self._uncertainty = UncertaintyModel()
+
+  @property
+  def uncertainty(self):
+    return self._uncertainty
 
   @property
   def params(self):
@@ -26,34 +95,20 @@ class ExpPhysModel:
   def model_error(self):
       return self._model_error
 
-  def uncertainty(self,var):
-    if not var in self._uncertainties:
-      return 0.0
-
-    return self._uncertainties[var]
-
-  def set_variable(self,name,tree,uncertainty=None):
+  def set_variable(self,name,tree):
     if name == ExpPhysModel.MODEL_ERROR:
-      self.set_model_error(tree,uncertainty)
+      self.set_model_error(tree)
 
     else:
       self.set_param(name,tree)
 
-  def set_uncertainty(self,varname,unc):
-    if unc is None:
-      return
-    assert(isinstance(unc,float))
-    self._uncertainties[varname] = unc
-
-  def set_model_error(self,tree,uncertainty=None):
+  def set_model_error(self,tree):
       assert(isinstance(tree,dectreelib.Node))
       self._model_error = tree
-      self.set_uncertainty(ExpPhysModel.MODEL_ERROR, uncertainty)
 
-  def set_param(self,par,tree,uncertainty=None):
+  def set_param(self,par,tree):
       assert(isinstance(tree,dectreelib.Node))
       self._params[par] = tree
-      self.set_uncertainty(par, uncertainty)
 
   def random_sample(self):
     samples = []
@@ -86,7 +141,7 @@ class ExpPhysModel:
       'config': self.config.to_json(),
       'params': param_dict,
       'model_error':self._model_error.to_json(),
-      'uncertainties':self._uncertainties
+      'uncertainties':self._uncertainty.to_json(),
     }
   #'phys_model': self.phys_models.to_json(),
 
@@ -122,7 +177,7 @@ class ExpPhysModel:
       mdl._params[par] = dectreelib.Node.from_json(subobj)
 
     mdl._model_error = dectreelib.Node.from_json(obj['model_error'])
-    mdl._uncertainties = dict(obj['uncertainties'])
+    mdl._uncertainty = UncertaintyModel.from_json(obj['uncertainties'])
     return mdl
 
 

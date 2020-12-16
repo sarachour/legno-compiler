@@ -12,6 +12,7 @@ import hwlib.hcdc.llcmd as llcmd
 import hwlib.block as blocklib
 import ops.generic_op as genoplib
 import ops.interval as ivallib
+from scipy.stats import pearsonr
 
 
 import runtime.fit.model_fit as expr_fit_lib
@@ -20,6 +21,7 @@ import runtime.dectree.dectree_shrink as dectree_shrink_lib
 import runtime.dectree.dectree_generalize as dectree_generalize_lib
 import numpy as np
 import json
+import scipy
 
 def add(dict_,key,value):
     if not key in dict_:
@@ -67,12 +69,14 @@ def build_local_dataset(model,var_name,codes,values,num_points):
     if len(values) <= num_points:
         return codes,values
 
+    # get the ideal value for the parameter
     delta_spec = list(model.block.outputs)[0].deltas[model.config.mode]
     if var_name == "modelError":
         target_val = 0
     else:
         target_val = delta_spec[var_name].val
 
+    # choose the data points closest to that parameter.
     scores = list(map(lambda v: abs(v-target_val), values))
     indices = np.argsort(scores)
 
@@ -82,6 +86,48 @@ def build_local_dataset(model,var_name,codes,values,num_points):
                          indices[:num_points]))
     return new_codes,new_values
 
+class ErrorCovarianceEstimator:
+
+    def __init__(self):
+        self.errors = {}
+        self.joint = []
+
+    def set_error(self,v,pred,obs):
+        n = min(len(pred),len(obs))
+        self.errors[v] = list(map(lambda i: (pred[i]-obs[i]), \
+                                  range(n)))
+
+
+    def verify_covariance(self):
+        n_samps = 100
+        n_vars = len(self.variables)
+        dataset = list(map(lambda v: [], range(n_vars)))
+
+        samps = np.random.multivariate_normal(mean=self.mean.reshape(n_vars,), \
+                                      cov=self.covariance, \
+                                      size=n_samps)
+        for samp in samps:
+            for idx,val in enumerate(samp):
+                dataset[idx].append(val)
+            print(dict(zip(self.variables,samp)))
+        print("\n\n")
+        cov = np.cov(dataset,bias=True)
+        print("\n\n")
+        print(self.mean)
+        print("\n\n")
+        print(cov)
+
+    def estimate_covariance(self):
+        self.variables = list(self.errors.keys())
+        data = list(map(lambda v: self.errors[v], self.variables))
+        self.covariance = np.cov(data,bias=True)
+        self.mean = np.array(list(map(lambda v: np.mean(self.errors[v]), \
+                                      self.variables)))
+        print("\n\n")
+        print(self.mean)
+        print("\n\n")
+        print(self.covariance)
+
 def build_dectree(key,metadata, \
                   hidden_code_fields, \
                   hidden_code_bounds, \
@@ -90,6 +136,7 @@ def build_dectree(key,metadata, \
                   num_leaves,max_depth, \
                   local_model=False, \
                   num_points=10):
+
     blk,loc,cfg = metadata[key]
     n_samples = len(model_errors[key])
     min_size = round(n_samples/num_leaves)
@@ -104,7 +151,8 @@ def build_dectree(key,metadata, \
 
     print(cfg)
     if local_model:
-        codes,values = build_local_dataset(model, 'modelError', \
+        codes,values = build_local_dataset(model, \
+                                           exp_phys_model_lib.ExpPhysModel.MODEL_ERROR, \
                                            hidden_codes_, model_errors_,num_points)
     else:
         codes,values = hidden_codes_, model_errors_
@@ -115,6 +163,10 @@ def build_dectree(key,metadata, \
                                                     bounds=hidden_code_bounds_, \
                                                     max_depth=max_depth, \
                                                     min_size=min_size)
+
+    model.uncertainty.set_error(exp_phys_model_lib.ExpPhysModel.MODEL_ERROR,\
+                                predictions,values)
+
     err = dectree_fit_lib.model_error(predictions,values)
     pct_err = err/max(np.abs(values))*100.0
     print("<<dectree>>: [[Model-Err]] err=%f pct-err=%f param-range=[%f,%f]" \
@@ -122,7 +174,6 @@ def build_dectree(key,metadata, \
                 min(model_errors_), \
                 max(model_errors_)))
 
-    model.set_model_error(dectree,uncertainty=err)
 
     for param,param_values in params[key].items():
         assert(len(param_values) == n_samples)
@@ -138,14 +189,18 @@ def build_dectree(key,metadata, \
                                                                 bounds=hidden_code_bounds_, \
                                                                 max_depth=max_depth, \
                                                                 min_size=min_size)
-        model.set_param(param, dectree, uncertainty=err)
 
         err = dectree_fit_lib.model_error(predictions,values)
+        model.uncertainty.set_error(param,\
+                                    predictions,values)
+
         pct_err = err/max(np.abs(values))*100.0
         print("<<dectree>>: [[Param:%s]] err=%f pct-err=%f param-range=[%f,%f]" \
                 % (param, err, pct_err, \
                     min(param_values), \
                     max(param_values)))
+        model.set_param(param, dectree)
+
 
     return model
 
