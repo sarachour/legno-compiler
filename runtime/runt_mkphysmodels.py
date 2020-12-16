@@ -63,12 +63,17 @@ def update_dectree_data(blk,loc,exp_mdl, \
 
 
 
-def build_local_dataset(codes,values,num_points):
+def build_local_dataset(model,var_name,codes,values,num_points):
     if len(values) <= num_points:
         return codes,values
 
-    median_val = np.median(values)
-    scores = list(map(lambda v: abs(v-median_val), values))
+    delta_spec = list(model.block.outputs)[0].deltas[model.config.mode]
+    if var_name == "modelError":
+        target_val = 0
+    else:
+        target_val = delta_spec[var_name].val
+
+    scores = list(map(lambda v: abs(v-target_val), values))
     indices = np.argsort(scores)
 
     new_values = list(map(lambda i: values[i], \
@@ -99,7 +104,8 @@ def build_dectree(key,metadata, \
 
     print(cfg)
     if local_model:
-        codes,values = build_local_dataset(hidden_codes_, model_errors_,num_points)
+        codes,values = build_local_dataset(model, 'modelError', \
+                                           hidden_codes_, model_errors_,num_points)
     else:
         codes,values = hidden_codes_, model_errors_
 
@@ -121,7 +127,8 @@ def build_dectree(key,metadata, \
     for param,param_values in params[key].items():
         assert(len(param_values) == n_samples)
         if local_model:
-            codes,values = build_local_dataset(hidden_codes_, param_values,num_points)
+            codes,values = build_local_dataset(model,param, \
+                                               hidden_codes_, param_values,num_points)
         else:
             codes,values = hidden_codes_, param_values
 
