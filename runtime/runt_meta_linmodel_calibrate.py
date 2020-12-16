@@ -50,10 +50,10 @@ def generate_candidate_codes(blk,calib_expr,phys_model,num_samples=3, \
                 if len(cand_codes) >= num_samples:
                     break
 
-        random.shuffle(all_cand_codes)
-        for idx in range(min(len(all_cand_codes),num_samples)):
-            print("%d] %s" % (idx,code),flush=True)
-            yield all_cand_codes[idx]
+    random.shuffle(all_cand_codes)
+    for idx in range(min(len(all_cand_codes),num_samples)):
+        print("%d] %s" % (idx,code),flush=True)
+        yield all_cand_codes[idx]
 
 
 def codes_to_delta_model(blk,loc,out,cfg,codes):
@@ -141,9 +141,10 @@ def calibrate_block(board,block,loc,config, \
     char_board = runtime_util.get_device(char_model,layout=False)
 
     print(char_model)
-    #bootstrap_block(char_board,block,loc,config, \
-    #                num_samples=bootstrap_samples, \
-    #                grid_size=grid_size)
+    bootstrap_block(char_board,block,loc,config, \
+                    num_samples=bootstrap_samples, \
+                    grid_size=grid_size)
+    input("bootstrap completed. press any key to continue...")
     terminate = False
     while not terminate:
         update_model(char_board,block,loc,config)
