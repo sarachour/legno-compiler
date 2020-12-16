@@ -747,35 +747,32 @@ class DeltaSpec:
 
     class Parameter:
 
-        def __init__(self,name,typ,ideal_value,model=None):
+        def __init__(self,name,typ,ideal_value,label=None):
             self.typ = typ
+            self.label = label
             self.name = name
             self.val = ideal_value
-            assert(model is None \
-                   or isinstance(model,PhysicalModelSpec))
-            self._model = model
+            assert(label is None \
+                   or isinstance(label,str))
+
 
         def copy(self):
-            par = DeltaSpec.Parameter(self.name,self.typ,self.val)
-            if not self.model is None:
-                par._model = self.model.copy()
+            par = DeltaSpec.Parameter(self.name,self.typ,self.val, \
+                                      label=self.label)
             return par
 
-        @property
-        def model(self):
-            return self._model
-
+        
         def copy(self):
             return DeltaSpec.Parameter(self.name, \
                                        self.typ, \
                                        self.val, \
-                                       self.model)
+                                       self.label)
 
         def __repr__(self):
-            return "%s : %s = %s / model=%s" % (self.name, \
-                                           self.typ.value, \
-                                           self.val, \
-                                           self._model)
+            return "%s : %s = %s / label=%s" % (self.name, \
+                                                self.typ.value, \
+                                                self.val, \
+                                                self.label)
 
     def __init__(self,rel,objective=None):
         assert(isinstance(rel,oplib.Op))
@@ -798,7 +795,13 @@ class DeltaSpec:
     def get_params_of_type(self,typ):
         return list(filter(lambda p: p.typ == typ, \
                            self._params.values()))
- 
+
+    def get_param_by_label(self,lbl):
+        for par in self._params.values():
+            if par.label == lbl:
+                return par
+        return None
+
     @property
     def model_error(self):
         return self._model_error
@@ -839,12 +842,12 @@ class DeltaSpec:
     def params(self):
         return list(self._params.keys())
 
-    def param(self,param_name,param_type,ideal,model=None):
+    def param(self,param_name,param_type,ideal,label=None):
         assert(not param_name in self._params)
         self._params[param_name] = DeltaSpec.Parameter(param_name,\
                                                        param_type,\
                                                        ideal,\
-                                                       model)
+                                                       label=label)
 
 
     def __getitem__(self,par):

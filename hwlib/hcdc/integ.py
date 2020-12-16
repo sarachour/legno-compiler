@@ -106,6 +106,10 @@ spec = DeltaSpec(parser.parse_expr('integ((a*x),(2.0*(b*z0+c)))'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('b',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('c',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
+spec.param('u',DeltaParamType.GENERAL,ideal=0.0, \
+           label=enums.ProfileOpType.INTEG_DERIVATIVE_BIAS.value)
+spec.param('v',DeltaParamType.GENERAL,ideal=0.0, \
+           label=enums.ProfileOpType.INTEG_DERIVATIVE_STABLE.value)
 new_spec = integ_calib_obj(spec,1.0)
 integ.outputs['z'].deltas.bind(['m','m','+'],new_spec)
 
@@ -113,6 +117,11 @@ spec = DeltaSpec(parser.parse_expr('integ((-1*a*x),(-2.0*(b*z0+c)))'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('b',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('c',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
+spec.param('u',DeltaParamType.GENERAL,ideal=0.0, \
+           label=enums.ProfileOpType.INTEG_DERIVATIVE_BIAS.value)
+spec.param('v',DeltaParamType.GENERAL,ideal=0.0, \
+           label=enums.ProfileOpType.INTEG_DERIVATIVE_STABLE.value)
+
 new_spec = integ_calib_obj(spec,2.0)
 integ.outputs['z'].deltas.bind(['m','m','-'],new_spec)
 
@@ -121,6 +130,11 @@ spec = DeltaSpec(parser.parse_expr('integ((a*x),(20.0*(b*z0+c)))'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('b',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('c',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
+spec.param('u',DeltaParamType.GENERAL,ideal=0.0, \
+           label=enums.ProfileOpType.INTEG_DERIVATIVE_BIAS.value)
+spec.param('v',DeltaParamType.GENERAL,ideal=0.0, \
+           label=enums.ProfileOpType.INTEG_DERIVATIVE_STABLE.value)
+
 new_spec = integ_calib_obj(spec,20.0)
 integ.outputs['z'].deltas.bind(['h','h','+'],new_spec)
 
@@ -129,6 +143,11 @@ spec = DeltaSpec(parser.parse_expr('integ((-1*a*x),(-20.0*(b*z0+c)))'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('b',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('c',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
+spec.param('u',DeltaParamType.GENERAL,ideal=0.0, \
+           label=enums.ProfileOpType.INTEG_DERIVATIVE_BIAS.value)
+spec.param('v',DeltaParamType.GENERAL,ideal=0.0, \
+           label=enums.ProfileOpType.INTEG_DERIVATIVE_STABLE.value)
+
 new_spec = integ_calib_obj(spec,20.0)
 integ.outputs['z'].deltas.bind(['h','h','-'],new_spec)
 
@@ -138,6 +157,11 @@ spec = DeltaSpec(parser.parse_expr('integ((10.0*a*x),(20.0*(b*z0+c)))'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('b',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('c',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
+spec.param('u',DeltaParamType.GENERAL,ideal=0.0, \
+           label=enums.ProfileOpType.INTEG_DERIVATIVE_BIAS.value)
+spec.param('v',DeltaParamType.GENERAL,ideal=0.0, \
+           label=enums.ProfileOpType.INTEG_DERIVATIVE_STABLE.value)
+
 new_spec = integ_calib_obj(spec,20.0)
 integ.outputs['z'].deltas.bind(['m','h','+'],new_spec)
 
@@ -145,6 +169,11 @@ spec = DeltaSpec(parser.parse_expr('integ((-10.0*a*x),(-20.0*(b*z0+c)))'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('b',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('c',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
+spec.param('u',DeltaParamType.GENERAL,ideal=0.0, \
+           label=enums.ProfileOpType.INTEG_DERIVATIVE_BIAS.value)
+spec.param('v',DeltaParamType.GENERAL,ideal=0.0, \
+           label=enums.ProfileOpType.INTEG_DERIVATIVE_STABLE.value)
+
 new_spec = integ_calib_obj(spec,20.0)
 integ.outputs['z'].deltas.bind(['m','h','-'],new_spec)
 
@@ -154,6 +183,11 @@ spec = DeltaSpec(parser.parse_expr('integ((0.1*a*x),(2.0*(b*z0+c)))'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('b',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('c',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
+spec.param('u',DeltaParamType.GENERAL,ideal=0.0, \
+           label=enums.ProfileOpType.INTEG_DERIVATIVE_BIAS.value)
+spec.param('v',DeltaParamType.GENERAL,ideal=0.0, \
+           label=enums.ProfileOpType.INTEG_DERIVATIVE_STABLE.value)
+
 new_spec = integ_calib_obj(spec,2.0)
 integ.outputs['z'].deltas.bind(['h','m','+'],new_spec)
 
@@ -162,6 +196,11 @@ spec = DeltaSpec(parser.parse_expr('integ((-0.1*a*x),(-2.0*(b*z0+c)))'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('b',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('c',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
+spec.param('u',DeltaParamType.GENERAL,ideal=0.0, \
+           label=enums.ProfileOpType.INTEG_DERIVATIVE_BIAS.value)
+spec.param('v',DeltaParamType.GENERAL,ideal=0.0, \
+           label=enums.ProfileOpType.INTEG_DERIVATIVE_STABLE.value)
+
 new_spec = integ_calib_obj(spec,2.0)
 integ.outputs['z'].deltas.bind(['h','m','-'],new_spec)
 

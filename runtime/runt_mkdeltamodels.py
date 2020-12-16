@@ -24,6 +24,16 @@ def update_delta_model(dev,delta_model,dataset):
         rel = delta_model.get_subexpr(init_cond=False, \
                                       correctable_only=False, \
                                       concrete=False)
+    elif dataset.method == llenums.ProfileOpType.INTEG_DERIVATIVE_BIAS:
+        var_name = delta_model.spec.get_param_by_label(dataset.method.value)
+        assert(not var_name is None)
+        rel = genoplib.Var(var_name.name)
+
+    elif dataset.method == llenums.ProfileOpType.INTEG_DERIVATIVE_STABLE:
+        var_name = delta_model.spec.get_param_by_label(dataset.method.value)
+        assert(not var_name is None)
+        rel = genoplib.Var(var_name.name)
+
     else:
         return False,-1
 
@@ -37,6 +47,10 @@ def update_delta_model(dev,delta_model,dataset):
 
     if dataset.method == llenums.ProfileOpType.INTEG_INITIAL_COND:
         return True, delta_model.error(dataset, init_cond=True)
+    if dataset.method == llenums.ProfileOpType.INTEG_DERIVATIVE_BIAS:
+        return True,[0.0]
+    if dataset.method == llenums.ProfileOpType.INTEG_DERIVATIVE_STABLE:
+        return True,[0.0]
     else:
         return True, delta_model.error(dataset)
 
