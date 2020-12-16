@@ -24,6 +24,11 @@ class Integ(GenericOp2):
     def init_cond(self):
         return self.arg2
 
+    @staticmethod
+    def from_json(obj):
+        return Integ(Op.from_json(obj['args'][0]), \
+                     Op.from_json(obj['args'][1]))
+
 class ExtVar(GenericOp):
 
     def __init__(self,name,loc=None):
