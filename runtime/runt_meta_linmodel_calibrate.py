@@ -161,14 +161,28 @@ def calibrate_block(board,block,loc,config, \
 def calibrate(args):
     board = runtime_util.get_device(args.model_number)
 
-    for dbname in runtime_meta_util.get_block_databases(args.model_number):
-        char_board = runtime_util.get_device(dbname,layout=False)
-        if runtime_meta_util.database_is_empty(char_board):
-           continue
+    if not args.adp is None:
+        adp = runtime_util.get_adp(board,args.adp,widen=args.widen)
+        for cfg in adp.configs:
+            blk = board.get_block(cfg.inst.block)
+            cfg_modes = cfg.modes
+            for mode in cfg_modes:
+                cfg.modes = [mode]
+                calibrate_block(board,blk,cfg.inst.loc,cfg, \
+                                bootstrap_samples=args.bootstrap_samples, \
+                                random_samples=args.candidate_samples, \
+                                grid_size=args.grid_size, \
+                                num_iters=args.num_iters)
 
-        blk,loc,out,cfg = runtime_meta_util.homogenous_database_get_block_info(char_board)
-        calibrate_block(board,blk,cfg.inst.loc,cfg, \
-                        bootstrap_samples=5, \
-                        random_samples=3, \
-                        grid_size=7, \
-                        num_iters=5)
+    else:
+        for dbname in runtime_meta_util.get_block_databases(args.model_number):
+            char_board = runtime_util.get_device(dbname,layout=False)
+            if runtime_meta_util.database_is_empty(char_board):
+                continue
+
+            blk,loc,out,cfg = runtime_meta_util.homogenous_database_get_block_info(char_board)
+            calibrate_block(board,blk,cfg.inst.loc,cfg, \
+                            bootstrap_samples=args.bootstrap_samples, \
+                            random_samples=args.candidate_samples, \
+                            grid_size=args.grid_size, \
+                            num_iters=args.num_iters)
