@@ -15,8 +15,7 @@ import math
 import random
 
 def generate_candidate_codes(blk,calib_expr,phys_model,num_samples=3, \
-                             num_offsets=20, \
-                             num_tries=1000):
+                             num_offsets=1000):
 
     uncerts = dict(map(lambda var: (var,phys_model.uncertainty(var)), \
                        phys_model.variables().keys()))
@@ -24,6 +23,7 @@ def generate_candidate_codes(blk,calib_expr,phys_model,num_samples=3, \
     all_cand_keys = []
     for var,uncert in uncerts.items():
         region = regionlib.Region()
+        n_codes = 0
         for idx in range(num_offsets):
             offset = random.uniform(-uncert,uncert)
             # compute minima
@@ -34,27 +34,21 @@ def generate_candidate_codes(blk,calib_expr,phys_model,num_samples=3, \
             nodes = dectree_eval.eval_expr(calib_expr, variables)
             objfun_dectree = dectreelib.RegressionNodeCollection(nodes)
             minval,codes = objfun_dectree.find_minimum()
-            for v,value in codes.items():
-                int_value = blk.state[v].nearest_value(value)
-                region.extend_range(v, int_value,int_value)
+            for code_name,value in codes.items():
+                int_value = blk.state[code_name].nearest_value(value)
+                codes[code_name] = int_value
 
-        print("--- var %s ---" % var)
-        print(region)
-        print("\n")
-        n_codes = 0
-        for _ in range(num_tries):
-            code = region.random_code()
-            key = runtime_util.dict_to_identifier(code)
+            key = runtime_util.dict_to_identifier(codes)
             if not key in all_cand_keys:
                 all_cand_keys.append(key)
-                all_cand_codes.append(code)
+                all_cand_codes.append(codes)
                 n_codes += 1
                 if n_codes >= num_samples:
                     break
 
     random.shuffle(all_cand_codes)
     for idx in range(min(len(all_cand_codes),num_samples)):
-        print("%d] %s" % (idx,code),flush=True)
+        print("%d] %s" % (idx,all_cand_codes[idx]),flush=True)
         yield all_cand_codes[idx]
 
 
@@ -82,7 +76,7 @@ def get_candidate_codes(char_board,blk,loc,cfg,num_samples):
 
         for codes in  generate_candidate_codes(blk,calib_obj,phys_model,  \
                                                num_samples, \
-                                               num_offsets=20):
+                                               num_offsets=1000):
             yield codes_to_delta_model(blk,loc,out,cfg,codes)
 
 
