@@ -99,7 +99,7 @@ def update_model(char_board,blk,loc,cfg,num_model_points=3):
 # bootstrap block to get data
 def bootstrap_block(board,blk,loc,cfg,grid_size=9,num_samples=5):
     CMDS = [ \
-             "python3 grendel.py characterize {adp} --model-number {model} --grid-size {grid_size} --num-hidden-codes {num_samples} --adp-locs" \
+             "python3 grendel.py characterize {adp} --model-number {model} --grid-size {grid_size} --num-hidden-codes {num_samples} --adp-locs > characterize.log" \
             ]
 
 
@@ -117,7 +117,7 @@ def bootstrap_block(board,blk,loc,cfg,grid_size=9,num_samples=5):
 
 def profile_block(board,blk,loc,cfg,grid_size=9):
     CMDS = [ \
-             "python3 grendel.py prof {adp} --model-number {model} --grid-size {grid_size} linmodel > prof.log" \
+             "python3 grendel.py prof {adp} --model-number {model} --grid-size {grid_size} linmodel > profile.log" \
             ]
 
     adp_file = runtime_meta_util.generate_adp(board,blk,loc,cfg)
