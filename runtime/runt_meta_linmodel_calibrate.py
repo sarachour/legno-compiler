@@ -54,7 +54,7 @@ def generate_candidate_codes(blk,calib_expr,phys_model,num_samples=3, \
 
     random.shuffle(all_cand_codes)
     for idx in range(min(len(all_cand_codes),num_samples)):
-        print("%d] %s" % (idx,code),flush=True)
+        print("%d] %s" % (idx,all_cand_codes[idx]),flush=True)
         yield all_cand_codes[idx]
 
 
