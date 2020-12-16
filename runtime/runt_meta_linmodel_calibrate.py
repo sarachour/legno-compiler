@@ -139,12 +139,12 @@ def calibrate_block(board,block,loc,config, \
     bootstrap_block(char_board,block,loc,config, \
                     num_samples=bootstrap_samples, \
                     grid_size=grid_size)
-    input("bootstrap completed. press any key to continue...")
+    #input("bootstrap completed. press any key to continue...")
     terminate = False
     for iter_no in range(num_iters):
         print("---- iteration %d ----" % iter_no)
         update_model(char_board,block,loc,config)
-        input("press any key to continue...")
+        #input("press any key to continue...")
         for exp_model in get_candidate_codes(char_board, \
                                              block,loc,config, \
                                              num_samples=random_samples):
