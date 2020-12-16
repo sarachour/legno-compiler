@@ -95,7 +95,7 @@ integ.outputs['z'].relation \
 
 #calib_obj = parser.parse_expr('abs((a)^(-1)*(modelError + d))')
 def integ_calib_obj(spec,out_scale):
-  base_expr = 'abs((a-1.0)) + abs((b-1.0)) + modelError*{gainOut}'
+  base_expr = 'abs((a-1.0)) + abs((b-1.0)) + modelError*{gainOut} + abs(u) + abs(v)'
   expr = base_expr.format(gainOut=1.0/out_scale)
   new_spec = spec.copy()
   new_spec.objective = parser.parse_expr(expr)
