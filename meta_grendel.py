@@ -36,6 +36,13 @@ exec_subp.add_argument('model_number', type=str,help='model of board to study')
 
 exec_subp = subparsers.add_parser('linmodel_cal', help='linear model calibration for all individually characterized blocks')
 exec_subp.add_argument('model_number', type=str,help='model of board to study')
+exec_subp.add_argument('--grid-size',default=7,type=int,help='size of grid to profile.')
+exec_subp.add_argument('--candidate-samples',default=3,type=int,help='number of candidate hidden codes per iteration.')
+exec_subp.add_argument('--bootstrap-samples',default=5,type=int,help='number of bootstrapping samples.')
+exec_subp.add_argument('--num-iters',default=3,type=int,help='number of iterations.')
+exec_subp.add_argument('--adp',type=str,help='adp to calibrate.')
+exec_subp.add_argument('--widen',action='store_true',help='widen the set of modes.')
+
 
 
 exec_subp = subparsers.add_parser('bruteforce_cal', help='bruteforce calibration for all individually characterized blocks')
