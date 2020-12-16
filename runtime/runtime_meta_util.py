@@ -44,6 +44,11 @@ def generate_adp(board,blk,loc,cfg):
 
     return adp_file
 
+def database_is_empty(board):
+    for model in exp_delta_model_lib.get_all(board):
+        return False
+    return True
+
 def database_is_homogenous(board):
     modes = []
     locs = []

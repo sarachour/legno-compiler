@@ -151,7 +151,7 @@ def calibrate_block(board,block,loc,config, \
         for exp_model in get_candidate_codes(char_board, \
                                              block,loc,config, \
                                              num_samples=random_samples):
-            #exp_model_lib.update(char_board,exp_model)
+            exp_delta_model_lib.update(char_board,exp_model)
             continue
 
         profile_block(char_board,block,loc,config, \
@@ -164,6 +164,9 @@ def calibrate(args):
 
     for dbname in runtime_meta_util.get_block_databases(args.model_number):
         char_board = runtime_util.get_device(dbname,layout=False)
+        if runtime_meta_util.database_is_empty(char_board):
+           continue
+
         blk,loc,out,cfg = runtime_meta_util.homogenous_database_get_block_info(char_board)
         calibrate_block(board,blk,cfg.inst.loc,cfg, \
                         bootstrap_samples=5, \
