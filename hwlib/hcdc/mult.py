@@ -226,7 +226,8 @@ mult.state['bias_out'].impl.set_default(32)
 
 
 def vga_assign_calib_obj(spec,in0,out):
-  base_expr =  "((min(a,1.0))^(-1))*({out}*abs(modelError) + {out}*abs(v) + {out}*abs(u))"
+  #base_expr =  "((min(a,1.0))^(-1))*({out}*abs(modelError) + {out}*abs(v) + {out}*abs(u))"
+  base_expr =  "{out}*abs(modelError) + {out}*abs(v) + {out}*abs(u) + 0.02*abs((a-1.0))"
   expr = base_expr.format(out=1.0/out, \
                           in0=1.0/in0)
   new_spec = spec.copy()

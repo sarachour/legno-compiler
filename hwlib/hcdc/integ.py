@@ -97,7 +97,8 @@ integ.outputs['z'].relation \
 def integ_calib_obj(spec,out_scale):
   # u : this has high error... don't fit this
   #base_expr = '((min((abs(b)),1.0))^(-1))*modelError*{gainOut} + ((min((abs(a)),1.0))^(-1))*(abs(v)+abs(u))'
-  base_expr = 'abs((b-1.0)) + abs((a-1.0)) + modelError*{gainOut} + abs(v)+abs(u)'
+  #base_expr = 'abs((b-1.0)) + abs((a-1.0)) + modelError*{gainOut} + abs(v)+abs(u)'
+  base_expr = '0.02*abs((b-1.0)) + 0.02*abs((a-1.0)) + modelError*{gainOut}+abs(v)'
   expr = base_expr.format(gainOut=1.0/out_scale)
   new_spec = spec.copy()
   new_spec.objective = parser.parse_expr(expr)
