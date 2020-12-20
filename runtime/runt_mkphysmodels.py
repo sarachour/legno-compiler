@@ -17,6 +17,7 @@ from scipy.stats import pearsonr
 
 import runtime.fit.model_fit as expr_fit_lib
 import runtime.dectree.dectree_fit as dectree_fit_lib
+import runtime.dectree.dectree_nnfit as dectree_nn_fit_lib
 import runtime.dectree.dectree_shrink as dectree_shrink_lib
 import runtime.dectree.dectree_generalize as dectree_generalize_lib
 import numpy as np
@@ -135,8 +136,9 @@ def build_dectree(key,metadata, \
                   params, model_errors, \
                   num_leaves,max_depth, \
                   local_model=False, \
-                  num_points=10):
+                  num_points=20):
 
+    npars = 20
     blk,loc,cfg = metadata[key]
     n_samples = len(model_errors[key])
     min_size = round(n_samples/num_leaves)
@@ -157,12 +159,12 @@ def build_dectree(key,metadata, \
     else:
         codes,values = hidden_codes_, model_errors_
 
-    dectree,predictions = dectree_fit_lib.fit_decision_tree(hidden_code_fields_, \
-                                                    codes, \
-                                                    values, \
-                                                    bounds=hidden_code_bounds_, \
-                                                    max_depth=max_depth, \
-                                                    min_size=min_size)
+    print("==== MODEL ERROR ====")
+    dectree,predictions = dectree_nn_fit_lib.fit_decision_tree(hidden_code_fields_, \
+                                                               codes, \
+                                                               values, \
+                                                               npars)
+
 
     model.uncertainty.set_error(exp_phys_model_lib.ExpPhysModel.MODEL_ERROR,\
                                 predictions,values)
@@ -183,12 +185,11 @@ def build_dectree(key,metadata, \
         else:
             codes,values = hidden_codes_, param_values
 
-        dectree,predictions = dectree_fit_lib.fit_decision_tree(hidden_code_fields_, \
-                                                                codes, \
-                                                                values, \
-                                                                bounds=hidden_code_bounds_, \
-                                                                max_depth=max_depth, \
-                                                                min_size=min_size)
+        print("==== PARAM %s ====" % param)
+        dectree,predictions = dectree_nn_fit_lib.fit_decision_tree(hidden_code_fields_, \
+                                                                   codes, \
+                                                                   values, \
+                                                                   npars)
 
         err = dectree_fit_lib.model_error(predictions,values)
         model.uncertainty.set_error(param,\

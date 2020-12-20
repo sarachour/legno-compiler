@@ -14,6 +14,33 @@ import numpy as np
 import math
 import random
 
+def summarize_model(char_board,blk,cfg):
+
+    print(cfg)
+
+    for out in blk.outputs:
+        print("########")
+        print("OUTPUT %s" % out.name)
+        print("########")
+        calib_obj = out.deltas[cfg.mode].objective
+        # get physical model
+        phys_model = exp_phys_model_lib.load(char_board, \
+                                             blk, \
+                                             cfg=cfg)
+
+        variables = dict(map(lambda tup: (tup[0],tup[1].copy()), \
+                                    phys_model.variables().items()))
+
+        for var,expr in variables.items():
+            print("===== %s =====" % var)
+            print(expr.concretize().expr)
+
+
+
+        print("==== Calibrate Expression ====")
+        print(calib_obj)
+        input()
+
 def generate_candidate_codes(blk,calib_expr,phys_model,num_samples=3, \
                              num_offsets=1000):
 
@@ -144,6 +171,8 @@ def calibrate_block(board,block,loc,config, \
                     num_iters=3):
     char_model = runtime_meta_util.get_model(board,block,loc,config)
     char_board = runtime_util.get_device(char_model,layout=False)
+
+    summarize_model(char_board,block,config)
 
     print(char_model)
     bootstrap_block(char_board,block,loc,config, \
