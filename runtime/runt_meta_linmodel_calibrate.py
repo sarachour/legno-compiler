@@ -130,6 +130,7 @@ def evaluate_delta_model(mdl,num_samples=None):
     return calib_expr,calib_score
 
 
+
 def codes_to_delta_model(blk,loc,out,cfg,codes):
     new_cfg = cfg.copy()
     for var,value in codes.items():
@@ -275,6 +276,7 @@ def calibrate_block(board,block,loc,config, \
             return
 
         print("---- iteration %d ----" % iter_no)
+
         #input("press any key to continue...")
         for exp_model in get_candidate_codes(char_board, \
                                              code_history, \
@@ -286,6 +288,9 @@ def calibrate_block(board,block,loc,config, \
         profile_block(char_board,block,loc,config, \
                       grid_size=grid_size)
         update()
+
+        update_model(char_board,block,loc,config, \
+                     num_model_points=num_points)
 
         evaluate_candidate_codes(char_board, \
                                  block, \

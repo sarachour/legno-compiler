@@ -171,7 +171,8 @@ class SymbolicFunction:
 
 def fit_poly_decision_tree(hidden_code_fields, bounds, codes, values, npars, target_value=None):
     model = SymbolicFunction(hidden_code_fields,target_value=target_value)
-    model.initialize(codes,values,npars)
+    nsamps = len(values)
+    model.initialize(codes,values,min(npars,nsamps-1))
     model.fit(codes,values)
 
     predict = model.predict(codes)
@@ -186,7 +187,7 @@ def fit_poly_decision_tree(hidden_code_fields, bounds, codes, values, npars, tar
 
     expr,assigns = model._symbolic_model(hidden_code_fields)
     node = dectreelib.RegressionLeafNode(expr, \
-                                         npts=len(values), \
+                                         npts=nsamps, \
                                          params=assigns)
     node.update(regionlib.Region(bounds))
     return node,predict
