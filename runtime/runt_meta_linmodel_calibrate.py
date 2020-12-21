@@ -84,16 +84,17 @@ def generate_candidate_codes(blk,calib_expr,phys_model, \
 
 def evaluate_candidate_predictions(char_board,blk,calib_expr,phys_model,num_samples=3):
 
-    models = list(char_board.get_all())
-    if not n_samples is None:
+    models = list(exp_delta_model_lib.get_all(char_board))
+    if not num_samples is None:
         models = models[-num_samples:]
 
     print("--- Calibration Objective ---")
     print(calib_expr)
     print("-----------------------------")
     for mdl in models:
-        calib_score = calib_expr.compute(mdl.parameters())
         print(mdl)
+        print(mdl.variables())
+        calib_score = calib_expr.compute(mdl.variables())
         print("calib-objective: %s" % calib_score)
         print("")
 
@@ -218,8 +219,10 @@ def calibrate_block(board,block,loc,config, \
     num_points = 0
     bootstrap_block(char_board,block,loc,config, \
                     num_samples=bootstrap_samples, \
-                    grid_size=grid_size)
+                    grid_size=grid_size) 
     num_points += bootstrap_samples
+    update_model(char_board,block,loc,config, \
+                     num_model_points=num_points)
     #input("bootstrap completed. press any key to continue...")
     for iter_no in range(num_iters):
         if is_block_calibrated(char_board,block,loc,config, \
@@ -228,8 +231,7 @@ def calibrate_block(board,block,loc,config, \
             return
 
         print("---- iteration %d ----" % iter_no)
-        update_model(char_board,block,loc,config, \
-                     num_model_points=num_points)
+        
         #input("press any key to continue...")
         for exp_model in get_candidate_codes(char_board, \
                                              block,loc,config, \
@@ -240,10 +242,13 @@ def calibrate_block(board,block,loc,config, \
         profile_block(char_board,block,loc,config, \
                       grid_size=grid_size)
 
+        update_model(char_board,block,loc,config, \
+                     num_model_points=num_points)
+
         evaluate_candidate_codes(char_board, \
                                  block, \
                                  loc, config, \
-                                 num_samples=random_samples)
+                                 num_samples=None)
 
         num_points += random_samples
 
