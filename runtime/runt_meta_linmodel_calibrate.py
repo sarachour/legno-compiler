@@ -93,6 +93,12 @@ def evaluate_candidate_predictions(char_board,blk,calib_expr,phys_model,num_samp
     print(calib_expr)
     print("-----------------------------")
     for mdl in models:
+        pars = mdl.parameters()
+        if not all(lambda v: v in pars, map(calib_expr.vars())):
+            print("[[warn]] not all variables are part of prediction")
+            print("model-vars: %s" % str(pars.keys()))
+            continue
+
         calib_score = calib_expr.compute(mdl.parameters())
         print(mdl)
         print("calib-objective: %s" % calib_score)
