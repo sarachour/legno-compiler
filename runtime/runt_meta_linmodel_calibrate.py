@@ -28,18 +28,22 @@ def summarize_model(char_board,blk,cfg):
                                              blk, \
                                              cfg=cfg)
 
+        if phys_model is None:
+            print("[[warn]] this output has no physical model")
+            continue
+
         variables = dict(map(lambda tup: (tup[0],tup[1].copy()), \
                                     phys_model.variables().items()))
 
-        for var,expr in variables.items():
+        for var,dectree in variables.items():
             print("===== %s =====" % var)
-            print(expr.concretize().expr)
+            print(dectree.pretty_print())
 
 
 
         print("==== Calibrate Expression ====")
         print(calib_obj)
-        input()
+        #input()
 
 def generate_candidate_codes(blk,calib_expr,phys_model,num_samples=3, \
                              num_offsets=1000):
@@ -47,8 +51,10 @@ def generate_candidate_codes(blk,calib_expr,phys_model,num_samples=3, \
     all_cand_codes = []
     all_cand_scores = []
     all_cand_keys = []
-    for offsets in phys_model.uncertainty.samples(num_offsets,2.0):
-        variables = dict(map(lambda tup: (tup[0],tup[1].copy()), \
+    for offsets in phys_model.uncertainty.samples(num_offsets,include_zero=True):
+        print("--> sampled point")
+        print(offsets)
+        variables = dict(map(lambda tup: (tup[0],tup[1].copy().concretize()), \
                                 phys_model.variables().items()))
         for v in variables.keys():
             variables[v].update_expr(lambda e: genoplib.Add(e, \
@@ -60,7 +66,8 @@ def generate_candidate_codes(blk,calib_expr,phys_model,num_samples=3, \
         for code_name,value in codes.items():
             int_value = blk.state[code_name].nearest_value(value)
             codes[code_name] = int_value
-        
+
+        print(codes)
         minval = objfun_dectree.evaluate(codes)
         key = runtime_util.dict_to_identifier(codes)
         if not key in all_cand_keys:
@@ -110,7 +117,7 @@ def update_model(char_board,blk,loc,cfg,num_model_points=3):
     #"python3 grendel.py mkphys --model-number {model} --max-depth 0 --num-leaves 1 --shrink" 
     CMDS = [ \
              "python3 grendel.py mkdeltas --model-number {model}",
-             "python3 grendel.py mkphys --model-number {model} --max-depth 0 --num-leaves 1 --shrink "+ \
+             "python3 grendel.py mkphys --model-number {model} "+ \
              "--local-model --num-points {num_model_points}"]
 
 
@@ -181,9 +188,11 @@ def calibrate_block(board,block,loc,config, \
     summarize_model(char_board,block,config)
 
     print(char_model)
+    num_points = 0
     bootstrap_block(char_board,block,loc,config, \
                     num_samples=bootstrap_samples, \
                     grid_size=grid_size)
+    num_points += bootstrap_samples
     #input("bootstrap completed. press any key to continue...")
     for iter_no in range(num_iters):
         if is_block_calibrated(char_board,block,loc,config, \
@@ -193,7 +202,7 @@ def calibrate_block(board,block,loc,config, \
 
         print("---- iteration %d ----" % iter_no)
         update_model(char_board,block,loc,config, \
-                     num_model_points=bootstrap_samples)
+                     num_model_points=num_points)
         #input("press any key to continue...")
         for exp_model in get_candidate_codes(char_board, \
                                              block,loc,config, \
@@ -203,10 +212,10 @@ def calibrate_block(board,block,loc,config, \
 
         profile_block(char_board,block,loc,config, \
                       grid_size=grid_size)
-
+        num_points += random_samples
 
     update_model(char_board,block,loc,config, \
-                 num_model_points=random_samples*2)
+                 num_model_points=num_points)
 
 def calibrate(args):
     board = runtime_util.get_device(args.model_number)

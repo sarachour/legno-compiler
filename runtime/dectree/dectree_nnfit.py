@@ -5,6 +5,7 @@ import numpy as np
 from scipy import optimize
 import ops.generic_op as genoplib
 import runtime.dectree.dectree as dectreelib
+import runtime.dectree.region as regionlib
 
 class NeuralNetwork:
 
@@ -55,8 +56,9 @@ class SymbolicFunction:
         def __call__(self):
             return self.value
 
-    def __init__(self,n_inputs):
+    def __init__(self,n_inputs,target_value):
         self.dim = n_inputs
+        self.target = target_value
 
     def initialize(self,x,y,npts=14):
         dataset = []
@@ -106,8 +108,10 @@ class SymbolicFunction:
         assert(len(names) == self.dim)
         terms = []
         assigns = {}
-        terms.append(genoplib.Var(param(0)))
-        offset = 1
+        offset = 0
+        terms.append(genoplib.Var(param(offset)))
+        assigns[param(offset)] = self.parameters[offset]()
+        offset += 1
 
         for i,j in self.coords:
             v1 = names[i]
@@ -129,8 +133,11 @@ class SymbolicFunction:
         return expr,assigns
 
     def _weight(self,yi,ys):
+        if self.target is None:
+            return 1.0
+
         absval = max(np.abs(ys))
-        err = 1.0 - abs(yi/absval)
+        err = 1.0 - abs((yi-self.target)/absval)
         return err
 
     def fit(self,x,y):
@@ -156,16 +163,12 @@ class SymbolicFunction:
                         range(npts)))
 
 
-    def extract_decision_tree(self):
-        model = self._symbolic_model()
 
 
-
-
-def fit_poly_decision_tree(hidden_code_fields, codes, values, npars):
+def fit_poly_decision_tree(hidden_code_fields, bounds, codes, values, npars, target_value=None):
     n_codes = len(hidden_code_fields)
     n_samps = len(codes)
-    model = SymbolicFunction(n_codes)
+    model = SymbolicFunction(n_codes,target_value=target_value)
     model.initialize(codes,values,npars)
     model.fit(codes,values)
 
@@ -181,6 +184,7 @@ def fit_poly_decision_tree(hidden_code_fields, codes, values, npars):
 
     expr,assigns = model._symbolic_model(hidden_code_fields)
     node = dectreelib.RegressionLeafNode(expr,npts=n_samps,params=assigns)
+    node.update(regionlib.Region(bounds))
     return node,predict
 
 def fit_nn_decision_tree(hidden_code_fields, codes, values, bounds, max_depth, min_size):
@@ -208,5 +212,7 @@ def fit_nn_decision_tree(hidden_code_fields, codes, values, bounds, max_depth, m
     print("Pct Err: %.2f" % (100*fracerr))
     input()
 
-def fit_decision_tree(hidden_code_fields, codes, values, npars):
-    return fit_poly_decision_tree(hidden_code_fields, codes, values, npars)
+def fit_decision_tree(hidden_code_fields, bounds,codes, values, npars, target_value=None):
+    return fit_poly_decision_tree(hidden_code_fields, bounds, codes, values,  \
+                                  npars, \
+                                  target_value=target_value)

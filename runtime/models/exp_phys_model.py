@@ -31,13 +31,16 @@ class UncertaintyModel:
                                 range(n)))
       self.variables.append(v)
 
-    def samples(self,count,ampl=1.0):
+    def samples(self,count,ampl=1.0,include_zero=False):
       n_vars = len(self.variables)
       cov = self.covariance
       mean = self.mean
       samps = np.random.multivariate_normal(mean=mean.reshape(n_vars,), \
                                             cov=cov, \
                                             size=count)
+      if include_zero:
+        yield dict(zip(self.variables, \
+                       [0.0]*n_vars))
       for samp in samps:
         yield dict(zip(self.variables, \
                        map(lambda v: ampl*float(v), samp)))
