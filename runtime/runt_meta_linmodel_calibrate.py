@@ -45,14 +45,45 @@ def summarize_model(char_board,blk,cfg):
         print(calib_obj)
         #input()
 
-def generate_candidate_codes(blk,calib_expr,phys_model, \
+class CandidateCodeHistory:
+
+    def __init__(self):
+        self.codes = []
+        self.scores = []
+        self.keys = []
+
+    def copy(self):
+        chist = CandidateCodeHistory()
+        for idx in range(self.num_codes()):
+            chist.add_code(self.codes[idx],self.scores[idx])
+        return chist
+
+    def has_code(self,codes):
+        key = runtime_util.dict_to_identifier(codes)
+        return key in self.keys
+
+    def add_code(self,codes,score):
+        key = runtime_util.dict_to_identifier(codes)
+        if key in self.keys:
+            raise Exception("code already tested: %s score=%f" % (codes,score))
+
+        self.keys.append(key)
+        self.codes.append(codes)
+        self.scores.append(score)
+
+
+    def num_codes(self):
+        return len(self.keys)
+
+def generate_candidate_codes(code_hist, \
+                             blk,calib_expr,phys_model, \
                              num_samples=3, \
                              num_offsets=1000):
 
-    all_cand_codes = []
-    all_cand_scores = []
-    all_cand_keys = []
     phys_model.uncertainty.summarize()
+    temp_code_hist = code_hist.copy()
+    new_code_hist = CandidateCodeHistory()
+
     print("----- Generating Samples -----")
     for offsets in phys_model.uncertainty.samples(num_offsets,include_zero=True):
         variables = dict(map(lambda tup: (tup[0],tup[1].copy().concretize()), \
@@ -68,41 +99,36 @@ def generate_candidate_codes(blk,calib_expr,phys_model, \
             int_value = blk.state[code_name].nearest_value(value)
             codes[code_name] = int_value
 
-        minval = objfun_dectree.evaluate(codes)
-        key = runtime_util.dict_to_identifier(codes)
-        if not key in all_cand_keys:
-            all_cand_keys.append(key)
-            all_cand_scores.append(minval)
-            all_cand_codes.append(codes)
-
-    best_to_worst = np.argsort(all_cand_scores)
-    for ident,idx in enumerate(best_to_worst[:num_samples]):
-        print("%d] %s (score=%f)" % (ident, \
-                                     all_cand_codes[idx],\
-                                     all_cand_scores[idx]),flush=True)
-        yield all_cand_codes[idx]
-
-
-def evaluate_candidate_predictions(char_board,blk,calib_expr,phys_model,num_samples=3):
-
-    models = list(char_board.get_all())
-    if not n_samples is None:
-        models = models[-num_samples:]
-
-    print("--- Calibration Objective ---")
-    print(calib_expr)
-    print("-----------------------------")
-    for mdl in models:
-        pars = mdl.parameters()
-        if not all(lambda v: v in pars, map(calib_expr.vars())):
-            print("[[warn]] not all variables are part of prediction")
-            print("model-vars: %s" % str(pars.keys()))
+        if temp_code_hist.has_code(codes):
             continue
 
-        calib_score = calib_expr.compute(mdl.parameters())
-        print(mdl)
-        print("calib-objective: %s" % calib_score)
-        print("")
+        minval = objfun_dectree.evaluate(codes)
+        temp_code_hist.add_code(codes,minval)
+        new_code_hist.add_code(codes,minval)
+
+    best_to_worst = np.argsort(new_code_hist.scores)
+    for ident,idx in enumerate(best_to_worst[:num_samples]):
+        print("%d] %s (score=%f)" % (ident, \
+                                     new_code_hist.codes[idx],\
+                                     new_code_hist.scores[idx]),flush=True)
+        code_hist.add_code(new_code_hist.codes[idx],new_code_hist.scores[idx])
+        yield new_code_hist.codes[idx]
+
+
+def evaluate_delta_model(mdl,num_samples=None):
+    if not num_samples is None:
+        models = models[-num_samples:]
+
+    calib_expr = mdl.output.deltas[mdl.config.mode].objective
+    pars = mdl.variables()
+    if not all(map(lambda v: v in pars, calib_expr.vars())):
+        print("[[warn]] not all variables are part of prediction")
+        print("model-vars: %s" % str(pars.keys()))
+        return calib_expr,None
+
+    calib_score = calib_expr.compute(pars)
+    return calib_expr,calib_score
+
 
 def codes_to_delta_model(blk,loc,out,cfg,codes):
     new_cfg = cfg.copy()
@@ -117,6 +143,18 @@ def codes_to_delta_model(blk,loc,out,cfg,codes):
 
 
 def evaluate_candidate_codes(char_board,blk,loc,cfg,num_samples):
+    models = list(exp_delta_model_lib.get_all(char_board))
+    for mdl in models:
+        calib_obj,score = evaluate_delta_model(mdl)
+        print(mdl)
+        if score is None:
+            print("expr=%s  score=<none>" % (calib_obj,score))
+        else:
+            print("expr=%s  score=%f" % (calib_obj,score))
+        print("")
+
+
+def get_candidate_codes(char_board,code_history,blk,loc,cfg,num_samples):
 
     for out in blk.outputs:
         calib_obj = out.deltas[cfg.mode].objective
@@ -126,26 +164,21 @@ def evaluate_candidate_codes(char_board,blk,loc,cfg,num_samples):
                                              cfg=cfg)
         assert(not phys_model is None)
 
-        evaluate_candidate_predictions(char_board,blk,calib_obj,phys_model,  \
-                                                     num_samples)
-
-
-
-def get_candidate_codes(char_board,blk,loc,cfg,num_samples):
-
-    for out in blk.outputs:
-        calib_obj = out.deltas[cfg.mode].objective
-        # get physical model
-        phys_model = exp_phys_model_lib.load(char_board, \
-                                             blk, \
-                                             cfg=cfg)
-        assert(not phys_model is None)
-
-        for codes in  generate_candidate_codes(blk,calib_obj,phys_model,  \
+        for codes in  generate_candidate_codes(code_history, \
+                                               blk,calib_obj,phys_model,  \
                                                num_samples, \
                                                num_offsets=num_samples*10):
             yield codes_to_delta_model(blk,loc,out,cfg,codes)
 
+def load_code_history_from_database(char_board):
+    code_hist = CandidateCodeHistory()
+    models = list(exp_delta_model_lib.get_all(char_board))
+    for mdl in models:
+        codes = dict(mdl.hidden_codes())
+        calib_obj,score = evaluate_delta_model(mdl)
+        code_hist.add_code(codes,score)
+
+    return code_hist
 
 def update_model(char_board,blk,loc,cfg,num_model_points=3):
     #"python3 grendel.py mkphys --model-number {model} --max-depth 0 --num-leaves 1 --shrink" 
@@ -217,6 +250,10 @@ def calibrate_block(board,block,loc,config, \
                     bootstrap_samples=5, \
                     random_samples=3, \
                     num_iters=3):
+    def update():
+        update_model(char_board,block,loc,config, \
+                     num_model_points=num_points)
+
     char_model = runtime_meta_util.get_model(board,block,loc,config)
     char_board = runtime_util.get_device(char_model,layout=False)
 
@@ -226,7 +263,10 @@ def calibrate_block(board,block,loc,config, \
     bootstrap_block(char_board,block,loc,config, \
                     num_samples=bootstrap_samples, \
                     grid_size=grid_size)
+    update()
     num_points += bootstrap_samples
+    code_history = load_code_history_from_database(char_board)
+
     #input("bootstrap completed. press any key to continue...")
     for iter_no in range(num_iters):
         if is_block_calibrated(char_board,block,loc,config, \
@@ -235,10 +275,9 @@ def calibrate_block(board,block,loc,config, \
             return
 
         print("---- iteration %d ----" % iter_no)
-        update_model(char_board,block,loc,config, \
-                     num_model_points=num_points)
         #input("press any key to continue...")
         for exp_model in get_candidate_codes(char_board, \
+                                             code_history, \
                                              block,loc,config, \
                                              num_samples=random_samples):
             exp_delta_model_lib.update(char_board,exp_model)
@@ -246,16 +285,15 @@ def calibrate_block(board,block,loc,config, \
 
         profile_block(char_board,block,loc,config, \
                       grid_size=grid_size)
+        update()
 
         evaluate_candidate_codes(char_board, \
                                  block, \
                                  loc, config, \
-                                 num_samples=random_samples)
+                                 num_samples=random_samples*2)
 
         num_points += random_samples
 
-    update_model(char_board,block,loc,config, \
-                 num_model_points=num_points)
 
 def calibrate(args):
     board = runtime_util.get_device(args.model_number)
