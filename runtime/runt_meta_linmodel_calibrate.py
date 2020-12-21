@@ -52,7 +52,8 @@ def generate_candidate_codes(blk,calib_expr,phys_model, \
     all_cand_codes = []
     all_cand_scores = []
     all_cand_keys = []
-    print(phys_model.uncertainty.summarize())
+    phys_model.uncertainty.summarize()
+    print("----- Generating Samples -----")
     for offsets in phys_model.uncertainty.samples(num_offsets,include_zero=True):
         variables = dict(map(lambda tup: (tup[0],tup[1].copy().concretize()), \
                                 phys_model.variables().items()))

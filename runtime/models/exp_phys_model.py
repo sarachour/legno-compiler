@@ -37,7 +37,8 @@ class UncertaintyModel:
         mean = self.mean
         print("==== Uncertainty Summary ====")
         for v,errs in self.errors.items():
-            print("var v=%s errors=%s" % (v,errs))
+            print("---- VAR %s ----" % (v))
+            print(errs)
 
         print("")
         print('------------')
@@ -54,6 +55,7 @@ class UncertaintyModel:
                 print("vars (%s,%s) cov=%e" \
                       % (v1,v2, cov[i1][i2]))
 
+        print("===========================")
 
     def samples(self,count,ampl=1.0,include_zero=False):
       n_vars = len(self.variables)
