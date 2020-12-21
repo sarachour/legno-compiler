@@ -177,6 +177,10 @@ def load_code_history_from_database(char_board):
     for mdl in models:
         codes = dict(mdl.hidden_codes())
         calib_obj,score = evaluate_delta_model(mdl)
+        if score is None:
+            continue
+
+        print("hist %s score=%f" % (codes,score))
         code_hist.add_code(codes,score)
 
     return code_hist
@@ -251,7 +255,7 @@ def calibrate_block(board,block,loc,config, \
                     bootstrap_samples=5, \
                     random_samples=3, \
                     num_iters=3):
-    def update():
+    def update(num_points):
         update_model(char_board,block,loc,config, \
                      num_model_points=num_points)
 
@@ -264,8 +268,8 @@ def calibrate_block(board,block,loc,config, \
     bootstrap_block(char_board,block,loc,config, \
                     num_samples=bootstrap_samples, \
                     grid_size=grid_size)
-    update()
     num_points += bootstrap_samples
+    update(num_points)
     code_history = load_code_history_from_database(char_board)
 
     #input("bootstrap completed. press any key to continue...")
@@ -287,17 +291,14 @@ def calibrate_block(board,block,loc,config, \
 
         profile_block(char_board,block,loc,config, \
                       grid_size=grid_size)
-        update()
-
-        update_model(char_board,block,loc,config, \
-                     num_model_points=num_points)
+        num_points += random_samples
+        update(num_points)
 
         evaluate_candidate_codes(char_board, \
                                  block, \
                                  loc, config, \
                                  num_samples=random_samples*2)
 
-        num_points += random_samples
 
 
 def calibrate(args):
