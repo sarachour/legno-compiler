@@ -318,15 +318,12 @@ class RegressionLeafNode(Node):
       if value is None:
         raise Exception("undefined variable <%s> (%s)"  \
                         % (key,self.params))
-
       sub_dict[key] = genoplib.Const(value)
-    concrete_expr = self.expr.substitute(sub_dict)
 
-
-    hidden_vars = concrete_expr.vars()
-    optimal_codes = expr_fit_lib.minimize_model(hidden_vars,  \
-                                          concrete_expr, {}, \
-                                          self.region.bounds)
+    optimal_codes = expr_fit_lib.global_minimize_model(list(self.free_vars),  \
+                                                       self.expr,  \
+                                                       sub_dict, \
+                                                       self.region.bounds)
     return optimal_codes['objective_val'], optimal_codes['values']
 
   def update(self, reg):

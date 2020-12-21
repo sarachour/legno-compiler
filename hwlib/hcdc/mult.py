@@ -234,7 +234,7 @@ def vga_assign_calib_obj(spec,in0,out):
   new_spec.objective = parser.parse_expr(expr)
   return new_spec
 
-spec = DeltaSpec(parser.parse_expr('(a*c+b)*(x+u)+v'))
+spec = DeltaSpec(parser.parse_expr('(a*c+b)*x+c*u+v'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('b',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
 spec.param('v',DeltaParamType.GENERAL,ideal=0.0)
@@ -247,7 +247,7 @@ mult.outputs['z'].deltas.bind(['x','h','h'],new_spec)
 
 #calib_obj = parser.parse_expr('((a)^(-1))*(modelError+d)')
 
-spec = DeltaSpec(parser.parse_expr('0.1*(a*c+b)*(x+u) + v'))
+spec = DeltaSpec(parser.parse_expr('0.1*(a*c+b)*x + 0.1*c*u + v'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('b',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
 spec.param('v',DeltaParamType.GENERAL,ideal=0.0)
@@ -256,7 +256,7 @@ new_spec = vga_assign_calib_obj(spec,10.0,1.0)
 mult.outputs['z'].deltas.bind(['x','h','m'],new_spec)
 
 
-spec = DeltaSpec(parser.parse_expr('10.0*(a*c+b)*(x+u) + v'))
+spec = DeltaSpec(parser.parse_expr('10.0*(a*c+b)*x + 10.0*u + v'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('b',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
 spec.param('v',DeltaParamType.GENERAL,ideal=0.0)

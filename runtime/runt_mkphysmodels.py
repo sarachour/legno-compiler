@@ -11,6 +11,7 @@ import hwlib.hcdc.llenums as llenums
 import hwlib.hcdc.llcmd as llcmd
 import hwlib.block as blocklib
 import ops.generic_op as genoplib
+import ops.lambda_op as lambdoplib
 import ops.interval as ivallib
 from scipy.stats import pearsonr
 
@@ -21,6 +22,10 @@ import runtime.dectree.dectree as dectreelib
 import runtime.dectree.dectree_nnfit as dectree_nn_fit_lib
 import runtime.dectree.dectree_shrink as dectree_shrink_lib
 import runtime.dectree.dectree_generalize as dectree_generalize_lib
+import runtime.dectree.dectree_eval as dectree_eval
+import runtime.dectree.dectree as dectreelib
+import runtime.dectree.region as regionlib
+
 import numpy as np
 import json
 import scipy
@@ -158,6 +163,31 @@ def get_hidden_code_intervals(phys_model):
     return intervals
 
 
+def study_objective_fun(phys_model):
+    blk = phys_model.block
+    cfg = phys_model.config
+
+    for var,mdl in phys_model.variables().items():
+        expr = lambdoplib.Abs(genoplib.Var(var))
+        nodes = dectree_eval.eval_expr(expr, {var:mdl})
+        expr_tree = dectreelib.RegressionNodeCollection(nodes)
+        minval,assigns = expr_tree.find_minimum()
+
+        print("var %s: minimum=%f" % (var,minval))
+        print("    %s" % assigns)
+
+    for out in blk.outputs:
+        calib_obj = out.deltas[cfg.mode].objective
+        nodes = dectree_eval.eval_expr(calib_obj, phys_model.variables())
+        objfun_dectree = dectreelib.RegressionNodeCollection(nodes)
+        minval,assigns = objfun_dectree.find_minimum()
+
+        print(calib_obj)
+        print("minimum=%f" % (minval))
+        print("    %s" % assigns)
+
+
+
 def mktree(args):
     dev = runtime_util.get_device(args.model_number,layout=True)
     params = {}
@@ -240,5 +270,6 @@ def mktree(args):
         else:
             general_phys_model = mdls[0]
 
+        #study_objective_fun(general_phys_model)
         exp_phys_model_lib.update(dev,general_phys_model)
 

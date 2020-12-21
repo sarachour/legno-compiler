@@ -56,8 +56,9 @@ class SymbolicFunction:
         def __call__(self):
             return self.value
 
-    def __init__(self,n_inputs,target_value):
-        self.dim = n_inputs
+    def __init__(self,inputs,target_value):
+        self.dim = len(inputs)
+        self.inputs = inputs
         self.target = target_value
 
     def initialize(self,x,y,npts=14):
@@ -79,7 +80,8 @@ class SymbolicFunction:
         for i in range(npts):
             idx = indices[i]
             i,j = coords[idx]
-            print("i=%d j=%d score=%f" % (i,j,scores[idx]))
+            print("i=%s j=%s score=%f" \
+                  % (self.inputs[i],self.inputs[j],scores[idx]))
 
         self.num_params = npts + 1
         self.parameters = list(map(lambda _: SymbolicFunction.Parameter(1.0), \
@@ -166,9 +168,7 @@ class SymbolicFunction:
 
 
 def fit_poly_decision_tree(hidden_code_fields, bounds, codes, values, npars, target_value=None):
-    n_codes = len(hidden_code_fields)
-    n_samps = len(codes)
-    model = SymbolicFunction(n_codes,target_value=target_value)
+    model = SymbolicFunction(hidden_code_fields,target_value=target_value)
     model.initialize(codes,values,npars)
     model.fit(codes,values)
 
@@ -183,7 +183,9 @@ def fit_poly_decision_tree(hidden_code_fields, bounds, codes, values, npars, tar
 
 
     expr,assigns = model._symbolic_model(hidden_code_fields)
-    node = dectreelib.RegressionLeafNode(expr,npts=n_samps,params=assigns)
+    node = dectreelib.RegressionLeafNode(expr, \
+                                         npts=len(values), \
+                                         params=assigns)
     node.update(regionlib.Region(bounds))
     return node,predict
 
