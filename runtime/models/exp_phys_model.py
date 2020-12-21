@@ -3,6 +3,7 @@ import runtime.dectree.dectree as dectreelib
 import runtime.runtime_util as runtime_util
 import runtime.models.database as dblib
 import numpy as np
+import math
 
 # models joint distrubtion of uncertainties
 class UncertaintyModel:
@@ -35,9 +36,14 @@ class UncertaintyModel:
         cov = self.covariance
         mean = self.mean
         print("==== Uncertainty Summary ====")
+        for v,errs in self.errors.items():
+            print("var v=%s errors=%s" % (v,errs))
+
+        print("")
+        print('------------')
         for idx,var in enumerate(self.variables):
             print("var %s mu=%f std=%f" \
-                  % (var, mean[idx], cov[idx][idx]))
+                  % (var, mean[idx], math.sqrt(cov[idx][idx])))
 
         print("")
         for i1,v1 in enumerate(self.variables):
@@ -45,7 +51,7 @@ class UncertaintyModel:
                 if i1 >= i2:
                     continue
 
-                print("vars (%s,%s) cov=%f" \
+                print("vars (%s,%s) cov=%e" \
                       % (v1,v2, cov[i1][i2]))
 
 

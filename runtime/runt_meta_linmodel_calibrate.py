@@ -45,12 +45,14 @@ def summarize_model(char_board,blk,cfg):
         print(calib_obj)
         #input()
 
-def generate_candidate_codes(blk,calib_expr,phys_model,num_samples=3, \
+def generate_candidate_codes(blk,calib_expr,phys_model, \
+                             num_samples=3, \
                              num_offsets=1000):
 
     all_cand_codes = []
     all_cand_scores = []
     all_cand_keys = []
+    print(phys_model.uncertainty.summarize())
     for offsets in phys_model.uncertainty.samples(num_offsets,include_zero=True):
         variables = dict(map(lambda tup: (tup[0],tup[1].copy().concretize()), \
                                 phys_model.variables().items()))
@@ -71,9 +73,7 @@ def generate_candidate_codes(blk,calib_expr,phys_model,num_samples=3, \
             all_cand_keys.append(key)
             all_cand_scores.append(minval)
             all_cand_codes.append(codes)
-            if len(all_cand_codes) >= num_samples*20:
-                break
-    
+
     best_to_worst = np.argsort(all_cand_scores)
     for ident,idx in enumerate(best_to_worst[:num_samples]):
         print("%d] %s (score=%f)" % (ident, \
@@ -81,6 +81,21 @@ def generate_candidate_codes(blk,calib_expr,phys_model,num_samples=3, \
                                      all_cand_scores[idx]),flush=True)
         yield all_cand_codes[idx]
 
+
+def evaluate_candidate_predictions(char_board,blk,calib_expr,phys_model,num_samples=3):
+
+    models = list(char_board.get_all())
+    if not n_samples is None:
+        models = models[-num_samples:]
+
+    print("--- Calibration Objective ---")
+    print(calib_expr)
+    print("-----------------------------")
+    for mdl in models:
+        calib_score = calib_expr.compute(mdl.parameters())
+        print(mdl)
+        print("calib-objective: %s" % calib_score)
+        print("")
 
 def codes_to_delta_model(blk,loc,out,cfg,codes):
     new_cfg = cfg.copy()
@@ -92,6 +107,21 @@ def codes_to_delta_model(blk,loc,out,cfg,codes):
     exp_model = exp_delta_model_lib.ExpDeltaModel(blk,loc,out,new_cfg, \
                                                   calib_obj=llenums.CalibrateObjective.LINMODEL)
     return exp_model
+
+
+def evaluate_candidate_codes(char_board,blk,loc,cfg,num_samples):
+
+    for out in blk.outputs:
+        calib_obj = out.deltas[cfg.mode].objective
+        # get physical model
+        phys_model = exp_phys_model_lib.load(char_board, \
+                                             blk, \
+                                             cfg=cfg)
+        assert(not phys_model is None)
+
+        evaluate_candidate_predictions(char_board,blk,calib_obj,phys_model,  \
+                                                     num_samples)
+
 
 
 def get_candidate_codes(char_board,blk,loc,cfg,num_samples):
@@ -106,16 +136,16 @@ def get_candidate_codes(char_board,blk,loc,cfg,num_samples):
 
         for codes in  generate_candidate_codes(blk,calib_obj,phys_model,  \
                                                num_samples, \
-                                               num_offsets=1000):
+                                               num_offsets=num_samples*10):
             yield codes_to_delta_model(blk,loc,out,cfg,codes)
 
 
 def update_model(char_board,blk,loc,cfg,num_model_points=3):
     #"python3 grendel.py mkphys --model-number {model} --max-depth 0 --num-leaves 1 --shrink" 
     CMDS = [ \
-             "python3 grendel.py mkdeltas --model-number {model}",
+             "python3 grendel.py mkdeltas --model-number {model} > deltas.log",
              "python3 grendel.py mkphys --model-number {model} "+ \
-             "--local-model --num-points {num_model_points}"]
+             "--local-model --num-points {num_model_points} > phys.log"]
 
 
     adp_file = runtime_meta_util.generate_adp(char_board,blk,loc,cfg)
@@ -164,6 +194,7 @@ def profile_block(board,blk,loc,cfg,grid_size=9):
 
     runtime_meta_util.remove_file(adp_file)
 
+
 def is_block_calibrated(board,block,loc,config, \
                         random_samples, \
                         num_iters):
@@ -184,7 +215,6 @@ def calibrate_block(board,block,loc,config, \
 
     summarize_model(char_board,block,config)
 
-    print(char_model)
     num_points = 0
     bootstrap_block(char_board,block,loc,config, \
                     num_samples=bootstrap_samples, \
@@ -209,6 +239,12 @@ def calibrate_block(board,block,loc,config, \
 
         profile_block(char_board,block,loc,config, \
                       grid_size=grid_size)
+
+        evaluate_candidate_codes(char_board, \
+                                 block, \
+                                 loc, config, \
+                                 num_samples=random_samples)
+
         num_points += random_samples
 
     update_model(char_board,block,loc,config, \
@@ -221,6 +257,9 @@ def calibrate(args):
         adp = runtime_util.get_adp(board,args.adp,widen=args.widen)
         for cfg in adp.configs:
             blk = board.get_block(cfg.inst.block)
+            if not blk.requires_calibration():
+                continue
+
             cfg_modes = cfg.modes
             for mode in cfg_modes:
                 cfg.modes = [mode]
