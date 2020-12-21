@@ -31,6 +31,24 @@ class UncertaintyModel:
                                 range(n)))
       self.variables.append(v)
 
+    def summarize(self):
+        cov = self.covariance
+        mean = self.mean
+        print("==== Uncertainty Summary ====")
+        for idx,var in enumerate(self.variables):
+            print("var %s mu=%f std=%f" \
+                  % (var, mean[idx], cov[idx][idx]))
+
+        print("")
+        for i1,v1 in enumerate(self.variables):
+            for i2,v2 in enumerate(self.variables):
+                if i1 >= i2:
+                    continue
+
+                print("vars (%s,%s) cov=%f" \
+                      % (v1,v2, cov[i1][i2]))
+
+
     def samples(self,count,ampl=1.0,include_zero=False):
       n_vars = len(self.variables)
       cov = self.covariance

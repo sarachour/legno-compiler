@@ -62,7 +62,7 @@ def global_minimize_model(variables,expr,params,bounds={}):
 
   fields = _prepare_minimize_model(variables,expr,params,bounds)
   fields["x0"] = list(map(lambda v: 1, variables))
-  print(scipy.__version__)
+  #print(scipy.__version__)
   snippet = GLOBAL_MIN_PROG.format(**fields) \
                     .replace('math.','np.')
   loc = {}
