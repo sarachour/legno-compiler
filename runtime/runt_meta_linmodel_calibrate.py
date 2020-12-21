@@ -52,8 +52,6 @@ def generate_candidate_codes(blk,calib_expr,phys_model,num_samples=3, \
     all_cand_scores = []
     all_cand_keys = []
     for offsets in phys_model.uncertainty.samples(num_offsets,include_zero=True):
-        print("--> sampled point")
-        print(offsets)
         variables = dict(map(lambda tup: (tup[0],tup[1].copy().concretize()), \
                                 phys_model.variables().items()))
         for v in variables.keys():
@@ -67,7 +65,6 @@ def generate_candidate_codes(blk,calib_expr,phys_model,num_samples=3, \
             int_value = blk.state[code_name].nearest_value(value)
             codes[code_name] = int_value
 
-        print(codes)
         minval = objfun_dectree.evaluate(codes)
         key = runtime_util.dict_to_identifier(codes)
         if not key in all_cand_keys:

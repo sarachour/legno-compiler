@@ -1,5 +1,5 @@
-from keras.models import Sequential
-from keras.layers import Dense, Dropout,Input
+#from keras.models import Sequential
+#from keras.layers import Dense, Dropout,Input
 import math
 import numpy as np
 from scipy import optimize
@@ -72,11 +72,13 @@ class SymbolicFunction:
         scores = []
         for i in range(self.dim):
             for j in range(self.dim):
+                if i > j:
+                   continue
                 scores.append(-abs(corrs[i][j]))
                 coords.append((i,j))
 
         indices = np.argsort(scores)
-        for i in range(npts):
+        for i in range(min(npts,len(indices))):
             idx = indices[i]
             i,j = coords[idx]
             print("i=%d j=%d score=%f" % (i,j,scores[idx]))
