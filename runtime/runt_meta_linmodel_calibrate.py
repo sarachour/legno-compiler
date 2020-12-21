@@ -85,7 +85,7 @@ def generate_candidate_codes(code_hist, \
     new_code_hist = CandidateCodeHistory()
 
     print("----- Generating Samples -----")
-    for offsets in phys_model.uncertainty.samples(num_offsets,include_zero=True):
+    for offsets in phys_model.uncertainty.samples(num_offsets,ampl=2.0,include_zero=True):
         variables = dict(map(lambda tup: (tup[0],tup[1].copy().concretize()), \
                                 phys_model.variables().items()))
         for v in variables.keys():
@@ -186,7 +186,7 @@ def update_model(char_board,blk,loc,cfg,num_model_points=3):
     CMDS = [ \
              "python3 grendel.py mkdeltas --model-number {model} > deltas.log",
              "python3 grendel.py mkphys --model-number {model} "+ \
-             "--local-model --num-points {num_model_points} > phys.log"]
+             " --num-points {num_model_points} > phys.log"]
 
 
     adp_file = runtime_meta_util.generate_adp(char_board,blk,loc,cfg)
