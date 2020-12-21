@@ -148,6 +148,10 @@ class DecisionNode(Node):
     dictionary['right'] = self.right.to_json()
     return dictionary
 
+  def update_expr(self,lambd):
+    self.left.update_expr(lambd)
+    self.right.update_expr(lambd)
+
   def fit(self,dataset):
     succ = self.left.fit(dataset)
     succ &= self.right.fit(dataset)

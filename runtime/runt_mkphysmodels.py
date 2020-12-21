@@ -173,8 +173,8 @@ def build_dectree(key,metadata, \
     pct_err = err/max(np.abs(values))*100.0
     print("<<dectree>>: [[Model-Err]] err=%f pct-err=%f param-range=[%f,%f]" \
             % (err, pct_err, \
-                min(model_errors_), \
-                max(model_errors_)))
+                min(values), \
+                max(values)))
 
 
     for param,param_values in params[key].items():
@@ -198,8 +198,8 @@ def build_dectree(key,metadata, \
         pct_err = err/max(np.abs(values))*100.0
         print("<<dectree>>: [[Param:%s]] err=%f pct-err=%f param-range=[%f,%f]" \
                 % (param, err, pct_err, \
-                    min(param_values), \
-                    max(param_values)))
+                    min(values), \
+                    max(values)))
         model.set_param(param, dectree)
 
 

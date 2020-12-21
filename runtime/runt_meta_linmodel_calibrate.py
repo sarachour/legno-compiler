@@ -45,8 +45,9 @@ def generate_candidate_codes(blk,calib_expr,phys_model,num_samples=3, \
                              num_offsets=1000):
 
     all_cand_codes = []
+    all_cand_scores = []
     all_cand_keys = []
-    for offsets in phys_model.uncertainty.samples(num_offsets):
+    for offsets in phys_model.uncertainty.samples(num_offsets,2.0):
         variables = dict(map(lambda tup: (tup[0],tup[1].copy()), \
                                 phys_model.variables().items()))
         for v in variables.keys():
@@ -55,21 +56,25 @@ def generate_candidate_codes(blk,calib_expr,phys_model,num_samples=3, \
 
         nodes = dectree_eval.eval_expr(calib_expr, variables)
         objfun_dectree = dectreelib.RegressionNodeCollection(nodes)
-        minval,codes = objfun_dectree.find_minimum()
+        _,codes = objfun_dectree.find_minimum()
         for code_name,value in codes.items():
             int_value = blk.state[code_name].nearest_value(value)
             codes[code_name] = int_value
-
+        
+        minval = objfun_dectree.evaluate(codes)
         key = runtime_util.dict_to_identifier(codes)
         if not key in all_cand_keys:
             all_cand_keys.append(key)
+            all_cand_scores.append(minval)
             all_cand_codes.append(codes)
-            if len(all_cand_codes) >= num_samples*3:
+            if len(all_cand_codes) >= num_samples*20:
                 break
-
-    random.shuffle(all_cand_codes)
-    for idx in range(min(len(all_cand_codes),num_samples)):
-        print("%d] %s" % (idx,all_cand_codes[idx]),flush=True)
+    
+    best_to_worst = np.argsort(all_cand_scores)
+    for ident,idx in enumerate(best_to_worst[:num_samples]):
+        print("%d] %s (score=%f)" % (ident, \
+                                     all_cand_codes[idx],\
+                                     all_cand_scores[idx]),flush=True)
         yield all_cand_codes[idx]
 
 
@@ -102,10 +107,11 @@ def get_candidate_codes(char_board,blk,loc,cfg,num_samples):
 
 
 def update_model(char_board,blk,loc,cfg,num_model_points=3):
+    #"python3 grendel.py mkphys --model-number {model} --max-depth 0 --num-leaves 1 --shrink" 
     CMDS = [ \
              "python3 grendel.py mkdeltas --model-number {model}",
-             "python3 grendel.py mkphys --model-number {model} --max-depth 0 --num-leaves 1 --shrink" + \
-             " --local-model --num-points {num_model_points}"]
+             "python3 grendel.py mkphys --model-number {model} --max-depth 0 --num-leaves 1 --shrink "+ \
+             "--local-model --num-points {num_model_points}"]
 
 
     adp_file = runtime_meta_util.generate_adp(char_board,blk,loc,cfg)
@@ -187,7 +193,7 @@ def calibrate_block(board,block,loc,config, \
 
         print("---- iteration %d ----" % iter_no)
         update_model(char_board,block,loc,config, \
-                     num_model_points=random_samples*2)
+                     num_model_points=bootstrap_samples)
         #input("press any key to continue...")
         for exp_model in get_candidate_codes(char_board, \
                                              block,loc,config, \
