@@ -16,6 +16,9 @@ def is_valid_region(region):
 def eval_expr(e,subs,concretize=True):
   if e.op == genoplib.OpType.VAR:
     if concretize:
+      if not e.name in subs:
+        print(subs.keys())
+        raise Exception("could not find <%s> in variable dict" % e.name)
       return list(map(lambda leaf: leaf.concretize(), \
                       subs[e.name].leaves()))
     else:

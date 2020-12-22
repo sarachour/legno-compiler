@@ -2,6 +2,8 @@ import hwlib.adp as adplib
 import runtime.dectree.dectree as dectreelib
 import runtime.runtime_util as runtime_util
 import runtime.models.database as dblib
+import ops.generic_op as genoplib
+
 import numpy as np
 import math
 
@@ -10,6 +12,7 @@ class UncertaintyModel:
 
     def __init__(self):
         self.errors = {}
+        self.metadata = {}
         self.variables = []
 
     @property
@@ -21,16 +24,22 @@ class UncertaintyModel:
 
     @property
     def covariance(self):
-      data = np.array(list(map(lambda v: self.errors[v], self.variables)))
-      covariance = np.cov(data,bias=True)
+      n_samps = min(map(lambda err: len(err), self.errors.values()))
+      data = list(map(lambda v: self.errors[v][:n_samps], self.variables))
+      covariance = np.cov(np.array(data),bias=True)
       return covariance
 
-    def set_error(self,v,pred,obs):
-      assert(not v in self.variables)
+    def _key(self,out,v):
+      return "%s.%s" % (out.name,v)
+
+    def set_error(self,out,v,pred,obs):
+      key = self._key(out,v)
+      assert(not key in self.variables)
       n = min(len(pred),len(obs))
-      self.errors[v] = list(map(lambda i: (pred[i]-obs[i]), \
+      self.errors[key] = list(map(lambda i: (pred[i]-obs[i]), \
                                 range(n)))
-      self.variables.append(v)
+      self.variables.append(key)
+      self.metadata[key] = (out.name,v)
 
     def summarize(self):
         cov = self.covariance
@@ -86,13 +95,19 @@ class UncertaintyModel:
       mdl = UncertaintyModel()
       mdl.errors = obj['errors']
       mdl.variables = obj['variables']
+      mdl.metadata = obj['metadata']
       return mdl
 
     def to_json(self):
       return {
         'errors':self.errors,
-        'variables':self.variables
+        'variables':self.variables,
+        'metadata':self.metadata
       }
+
+
+
+
 
 class ExpPhysModel:
   MODEL_ERROR = "modelError"
@@ -101,40 +116,63 @@ class ExpPhysModel:
     self.block = blk
     self.config = cfg
     self._params = {}
-    self._model_error = dectreelib.make_constant(0.0)
+    self._model_errors = {}
     self._uncertainty = UncertaintyModel()
+
+  def _key(self,out,var):
+    return "%s.%s" % (out.name,var)
+
+  def calib_obj(self):
+    glb_objs = []
+    for out in self.block.outputs:
+        obj = out.deltas[self.config.mode].objective
+        variables = dict(map(lambda v: (v,genoplib.Var(self._key(out,v))),  \
+                             set(obj.vars())))
+        glb_obj = obj.copy().substitute(variables)
+        glb_objs.append(glb_obj)
+
+    calib_obj = genoplib.sum(glb_objs)
+    return calib_obj
+
 
   @property
   def uncertainty(self):
     return self._uncertainty
 
   @property
+  def model_errors(self):
+    return dict(self._model_errors.items())
+
+
+  @property
   def params(self):
     return dict(self._params.items())
 
   def variables(self):
-    variables = self.params
-    variables[ExpPhysModel.MODEL_ERROR] = self._model_error
+    variables = dict(list(self.params.items()) + \
+                     list(self.model_errors.items()))
     return variables
 
-  @property
-  def model_error(self):
-      return self._model_error
+  def model_error(self,out):
+      key = self._key(out,ExpPhysModel.MODEL_ERROR)
+      return self._model_errors[key]
 
-  def set_variable(self,name,tree):
+  def set_variable(self,out,name,tree):
     if name == ExpPhysModel.MODEL_ERROR:
-      self.set_model_error(tree)
+      self.set_model_error(out,tree)
 
     else:
-      self.set_param(name,tree)
+      self.set_param(out,name,tree)
 
-  def set_model_error(self,tree):
+  def set_model_error(self,out,tree):
+      key = self._key(out,ExpPhysModel.MODEL_ERROR)
       assert(isinstance(tree,dectreelib.Node))
-      self._model_error = tree
+      self._model_errors[key] = tree
 
-  def set_param(self,par,tree):
+  def set_param(self,out,par,tree):
+      key = self._key(out,par)
       assert(isinstance(tree,dectreelib.Node))
-      self._params[par] = tree
+      self._params[key] = tree
 
   def random_sample(self):
     samples = []
@@ -162,11 +200,15 @@ class ExpPhysModel:
     for par,model in self._params.items():
       param_dict[par] = model.to_json()
 
+    modelerr_dict = {}
+    for err,model in self._model_errors.items():
+      modelerr_dict[err] = model.to_json()
+
     return {
       'block': self.block.name,
       'config': self.config.to_json(),
       'params': param_dict,
-      'model_error':self._model_error.to_json(),
+      'model_errors':modelerr_dict,
       'uncertainties':self._uncertainty.to_json(),
     }
   #'phys_model': self.phys_models.to_json(),
@@ -202,7 +244,9 @@ class ExpPhysModel:
     for par,subobj in obj['params'].items():
       mdl._params[par] = dectreelib.Node.from_json(subobj)
 
-    mdl._model_error = dectreelib.Node.from_json(obj['model_error'])
+    for merr,subobj in obj['model_errors'].items():
+      mdl._model_errors[merr] = dectreelib.Node.from_json(subobj)
+
     mdl._uncertainty = UncertaintyModel.from_json(obj['uncertainties'])
     return mdl
 

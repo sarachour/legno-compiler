@@ -83,7 +83,8 @@ def generate_candidate_codes(code_hist, \
     phys_model.uncertainty.summarize()
     temp_code_hist = code_hist.copy()
     new_code_hist = CandidateCodeHistory()
-
+    print("----- Calibration Objective -----")
+    print(calib_expr)
     print("----- Generating Samples -----")
     for offsets in phys_model.uncertainty.samples(num_offsets,ampl=1.0,include_zero=True):
         variables = dict(map(lambda tup: (tup[0],tup[1].copy().concretize()), \
@@ -146,10 +147,13 @@ def evaluate_candidate_codes(char_board,blk,loc,cfg,num_samples):
     models = list(exp_delta_model_lib.get_all(char_board))
     if num_samples is None:
         num_samples = len(models)
+    else:
+        num_samples = len(blk.outputs)*num_samples
 
     for mdl in models[-num_samples:]:
         calib_obj,score = evaluate_delta_model(mdl)
         print(mdl)
+        print(mdl.hidden_codes())
         if score is None:
             print("score=<none>")
         else:
@@ -159,18 +163,17 @@ def evaluate_candidate_codes(char_board,blk,loc,cfg,num_samples):
 
 def get_candidate_codes(char_board,code_history,blk,loc,cfg,num_samples):
 
-    for out in blk.outputs:
-        calib_obj = out.deltas[cfg.mode].objective
-        # get physical model
-        phys_model = exp_phys_model_lib.load(char_board, \
-                                             blk, \
-                                             cfg=cfg)
-        assert(not phys_model is None)
-
-        for codes in  generate_candidate_codes(code_history, \
-                                               blk,calib_obj,phys_model,  \
-                                               num_samples, \
-                                               num_offsets=num_samples*10):
+    phys_model = exp_phys_model_lib.load(char_board, \
+                                         blk, \
+                                         cfg=cfg)
+    calib_obj = phys_model.calib_obj()
+    for codes in generate_candidate_codes(code_history, \
+                                          blk, \
+                                          calib_obj, \
+                                          phys_model,  \
+                                          num_samples, \
+                                          num_offsets=num_samples*10):
+        for out in blk.outputs:
             yield codes_to_delta_model(blk,loc,out,cfg,codes)
 
 def load_code_history_from_database(char_board):
@@ -316,6 +319,9 @@ def calibrate(args):
         adp = runtime_util.get_adp(board,args.adp,widen=args.widen)
         for cfg in adp.configs:
             blk = board.get_block(cfg.inst.block)
+            #if not blk.name is 'fanout':
+            #    continue
+
             if not blk.requires_calibration():
                 continue
 

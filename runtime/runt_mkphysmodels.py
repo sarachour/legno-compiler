@@ -35,7 +35,8 @@ def add(dict_,key,value):
         dict_[key] = []
     dict_[key].append(value)
 
-def update_dectree_data(blk,loc,exp_mdl, \
+def update_dectree_data(blk,loc,output, \
+                        exp_mdl, \
                         metadata, \
                         params, \
                         model_errors, \
@@ -43,10 +44,10 @@ def update_dectree_data(blk,loc,exp_mdl, \
                         hidden_code_bounds, \
                         hidden_codes):
 
-    key = (blk.name,loc,exp_mdl.static_cfg)
+    key = (blk.name,loc,output.name,exp_mdl.static_cfg)
     if not key in params:
         params[key] = {}
-        metadata[key] = (blk,loc,exp_mdl.config)
+        metadata[key] = (blk,loc,output,exp_mdl.config)
         model_errors[key] = []
         hidden_codes[key] = []
         hidden_code_fields[key] = []
@@ -72,16 +73,17 @@ def update_dectree_data(blk,loc,exp_mdl, \
 
 
 
-def get_ideal_value(model,var_name):
+def get_ideal_value(model,output,var_name):
     # get the ideal value for the parameter
-    delta_spec = list(model.block.outputs)[0].deltas[model.config.mode]
+    delta_spec = output.deltas[model.config.mode]
     if var_name == exp_delta_model_lib.ExpDeltaModel.MODEL_ERROR:
         return 0.0
     else:
         return delta_spec[var_name].val
 
 
-def build_dectree(key,metadata, \
+def build_dectree(model, \
+                  key,metadata, \
                   hidden_code_fields, \
                   hidden_code_bounds, \
                   hidden_codes,\
@@ -89,7 +91,7 @@ def build_dectree(key,metadata, \
                   local_model=False, \
                   num_points=20):
 
-    blk,loc,cfg = metadata[key]
+    blk,loc,out,cfg = metadata[key]
     n_samples = len(model_errors[key])
     #min_size = round(n_samples/num_leaves)
     print("--- fitting decision tree (%d samples) ---" % n_samples)
@@ -98,13 +100,12 @@ def build_dectree(key,metadata, \
     hidden_codes_ = hidden_codes[key]
     model_errors_ = model_errors[key]
 
-    model = exp_phys_model_lib.ExpPhysModel(blk,cfg)
-    model.num_samples = n_samples
+    #model.num_samples += n_samples
 
     print(cfg)
 
     print("==== MODEL ERROR ====")
-    target_value = get_ideal_value(model,exp_phys_model_lib.ExpPhysModel.MODEL_ERROR) \
+    target_value = get_ideal_value(model,out,exp_phys_model_lib.ExpPhysModel.MODEL_ERROR) \
         if local_model else None
     dectree,predictions = dectree_nn_fit_lib.fit_decision_tree(hidden_code_fields_, \
                                                                hidden_code_bounds_,\
@@ -114,8 +115,10 @@ def build_dectree(key,metadata, \
                                                                target_value=target_value)
 
 
-    model.uncertainty.set_error(exp_phys_model_lib.ExpPhysModel.MODEL_ERROR,\
+    model.uncertainty.set_error(out, \
+                                exp_phys_model_lib.ExpPhysModel.MODEL_ERROR,\
                                 predictions,model_errors_)
+    model.set_model_error(out, dectree)
 
     err = dectree_fit_lib.model_error(predictions,model_errors_)
     pct_err = err/max(np.abs(model_errors_))*100.0
@@ -127,7 +130,7 @@ def build_dectree(key,metadata, \
 
     for param,param_values in params[key].items():
         assert(len(param_values) == n_samples)
-        target_value = get_ideal_value(model,param) if local_model else None
+        target_value = get_ideal_value(model,out,param) if local_model else None
 
         print("==== PARAM %s ====" % param)
         dectree,predictions = dectree_nn_fit_lib.fit_decision_tree(hidden_code_fields_, \
@@ -138,7 +141,7 @@ def build_dectree(key,metadata, \
                                                                    target_value=target_value)
 
         err = dectree_fit_lib.model_error(predictions,param_values)
-        model.uncertainty.set_error(param,\
+        model.uncertainty.set_error(out,param,\
                                     predictions,param_values)
 
         pct_err = err/max(np.abs(param_values))*100.0
@@ -147,7 +150,7 @@ def build_dectree(key,metadata, \
                     min(param_values), \
                     max(param_values)))
         assert(isinstance(dectree, dectreelib.RegressionLeafNode))
-        model.set_param(param, dectree)
+        model.set_param(out, param, dectree)
 
 
     return model
@@ -213,6 +216,7 @@ def mktree(args):
             continue
 
         update_dectree_data(blk,exp_mdl.loc, \
+                            exp_mdl.output, \
                             exp_mdl, \
                             metadata,params,model_errors, \
                             hidden_code_fields, \
@@ -223,10 +227,16 @@ def mktree(args):
     models = {}
     tmpfile = "models.tmp"
     for key in model_errors.keys():
-        (blk,loc,cfg) = key
+        (blk,loc,out,cfg) = key
         #num_leaves = min(pow(2,args.max_depth), \
         #                 args.num_leaves)
-        new_model = build_dectree(key, \
+
+        if not (blk,loc,cfg) in models:
+            _blk,_loc,_out,_cfg = metadata[key]
+            models[(blk,loc,cfg)] = exp_phys_model_lib.ExpPhysModel(_blk,_cfg)
+
+        new_model = build_dectree(models[(blk,loc,cfg)], \
+                                  key, \
                                   metadata, \
                                   hidden_code_fields, \
                                   hidden_code_bounds, \
@@ -235,17 +245,19 @@ def mktree(args):
                                   local_model=args.local_model, \
                                   num_points=args.num_points)
         if new_model is None:
+            print("[warn] nixed model.. could not build decision tree which fits data.")
+            models[(blk,loc,cfg)] = None
             continue
-
-        if not (blk,cfg) in models:
-            models[(blk,cfg)] = []
-        models[(blk,cfg)].append(new_model)
 
         with open(tmpfile,'a') as fh:
             fh.write("%s\n" % json.dumps(new_model.to_json()))
 
+    models_by_cfg = {}
+    for (blk,loc,cfg), mdl in models.items():
+        add(models_by_cfg,(blk,cfg),mdl)
+
     print("==== Generalizing + Minimizing Models ===")
-    for key,mdls in models.items():
+    for key,mdls in models_by_cfg.items():
         if len(mdls) == 0:
             continue
 

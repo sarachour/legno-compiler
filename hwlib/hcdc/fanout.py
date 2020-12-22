@@ -45,26 +45,32 @@ for port in [p_in,p_out0,p_out1,p_out2]:
   port.noise.bind(['_','_','_','h'],  \
                      HIGH_NOISE)
 
-for idx,port in enumerate([p_out0,p_out1,p_out2]):
+def fan_calib_obj(spec,idx,out):
+  base_expr =  "{out}*abs(modelError)+{out}*abs(b{idx})+{deviate}*(abs((1.0-a{idx})))"
+  expr = base_expr.format(out=1.0/out, \
+                          deviate=0.005, \
+                          idx=idx)
+  spec.objective = parser.parse_expr(expr)
+  return spec
 
-  calib_obj = parser.parse_expr('abs((a-1.0)) + abs(modelError) + abs(b)')
+for scale in ['m','h']:
+  for idx,port in enumerate([p_out0,p_out1,p_out2]):
+    pat = ['_','_','_',scale]
+    pat[idx] = '+'
+    fan.outputs[port.name].relation.bind(pat, parser.parse_expr('x'))
+    spec = DeltaSpec(parser.parse_expr('a{idx}*x+b{idx}'.format(idx=idx)))
+    spec.param('a{idx}'.format(idx=idx),DeltaParamType.CORRECTABLE,ideal=1.0)
+    spec.param('b{idx}'.format(idx=idx),DeltaParamType.GENERAL,ideal=0.0)
+    fan_calib_obj(spec,idx,1.0 if scale == 'm' else 10.0)
+    fan.outputs[port.name].deltas.bind(pat,spec)
 
-  pat = ['_','_','_','_']
-  pat[idx] = '+'
-  fan.outputs[port.name].relation.bind(pat, parser.parse_expr('x'))
-  spec = DeltaSpec(parser.parse_expr('a*x+b'))
-  spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
-  spec.param('b',DeltaParamType.GENERAL,ideal=0.0)
-  spec.objective = calib_obj
-  fan.outputs[port.name].deltas.bind(pat,spec)
-
-  pat[idx] = '-'
-  fan.outputs[port.name].relation.bind(pat, parser.parse_expr('-x'))
-  spec = DeltaSpec(parser.parse_expr('-a*x+b'))
-  spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
-  spec.param('b',DeltaParamType.GENERAL,ideal=0.0)
-  spec.objective = calib_obj
-  fan.outputs[port.name].deltas.bind(pat,spec)
+    pat[idx] = '-'
+    fan.outputs[port.name].relation.bind(pat, parser.parse_expr('-x'))
+    spec = DeltaSpec(parser.parse_expr('-a{idx}*x+b{idx}'.format(idx=idx)))
+    spec.param('a{idx}'.format(idx=idx),DeltaParamType.CORRECTABLE,ideal=1.0)
+    spec.param('b{idx}'.format(idx=idx),DeltaParamType.GENERAL,ideal=0.0)
+    fan_calib_obj(spec,idx,1.0 if scale == 'm' else 10.0)
+    fan.outputs[port.name].deltas.bind(pat,spec)
 
 
 # Low level behavior
