@@ -85,7 +85,7 @@ def generate_candidate_codes(code_hist, \
     new_code_hist = CandidateCodeHistory()
 
     print("----- Generating Samples -----")
-    for offsets in phys_model.uncertainty.samples(num_offsets,ampl=2.0,include_zero=True):
+    for offsets in phys_model.uncertainty.samples(num_offsets,ampl=1.0,include_zero=True):
         variables = dict(map(lambda tup: (tup[0],tup[1].copy().concretize()), \
                                 phys_model.variables().items()))
         for v in variables.keys():
@@ -113,7 +113,6 @@ def generate_candidate_codes(code_hist, \
                                      new_code_hist.scores[idx]),flush=True)
         code_hist.add_code(new_code_hist.codes[idx],new_code_hist.scores[idx])
         yield new_code_hist.codes[idx]
-
 
 def evaluate_delta_model(mdl,num_samples=None):
     if not num_samples is None:
@@ -184,7 +183,8 @@ def load_code_history_from_database(char_board):
             score = 9999.0
 
         print("hist %s score=%f" % (codes,score))
-        code_hist.add_code(codes,score)
+        if not code_hist.has_code(codes):
+           code_hist.add_code(codes,score)
 
     return code_hist
 
