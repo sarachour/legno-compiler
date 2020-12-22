@@ -79,13 +79,13 @@ def generate_candidate_codes(code_hist, \
                              blk,calib_expr,phys_model, \
                              num_samples=3, \
                              num_offsets=1000):
-
+    sample_ampl = 0.0
     phys_model.uncertainty.summarize()
     temp_code_hist = code_hist.copy()
     new_code_hist = CandidateCodeHistory()
 
     print("----- Generating Samples -----")
-    for offsets in phys_model.uncertainty.samples(num_offsets,ampl=1.0,include_zero=True):
+    for offsets in phys_model.uncertainty.samples(num_offsets,ampl=sample_ampl,include_zero=True):
         variables = dict(map(lambda tup: (tup[0],tup[1].copy().concretize()), \
                                 phys_model.variables().items()))
         for v in variables.keys():
