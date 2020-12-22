@@ -153,7 +153,7 @@ def evaluate_candidate_codes(char_board,blk,loc,cfg,num_samples):
     for mdl in models[-num_samples:]:
         calib_obj,score = evaluate_delta_model(mdl)
         print(mdl)
-        print(mdl.hidden_codes())
+        print(mdl.hidden_cfg)
         if score is None:
             print("score=<none>")
         else:
