@@ -46,7 +46,10 @@ for port in [p_in,p_out0,p_out1,p_out2]:
                      HIGH_NOISE)
 
 def fan_calib_obj(spec,idx,out):
-  base_expr =  "{out}*abs(modelError)+{out}*abs(b{idx})+{deviate}*(abs((1.0-a{idx})))"
+  base_expr =  "{out}*abs(modelError)+{out}*abs(b{idx})"
+  if idx == 0:
+    base_expr += "+{deviate}*(abs((1.0-a{idx})))"
+
   expr = base_expr.format(out=1.0/out, \
                           deviate=0.005, \
                           idx=idx)
