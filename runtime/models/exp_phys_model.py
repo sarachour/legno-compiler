@@ -36,12 +36,12 @@ class UncertaintyModel:
         cov = self.covariance
         mean = self.mean
         print("==== Uncertainty Summary ====")
-        for v,errs in self.errors.items():
-            print("---- VAR %s ----" % (v))
-            print(errs)
+        #for v,errs in self.errors.items():
+        #    print("---- VAR %s ----" % (v))
+        #    print(errs)
 
-        print("")
-        print('------------')
+        #print("")
+        #print('------------')
         for idx,var in enumerate(self.variables):
             print("var %s mu=%f std=%f" \
                   % (var, mean[idx], math.sqrt(cov[idx][idx])))

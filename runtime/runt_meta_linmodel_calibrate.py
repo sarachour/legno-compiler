@@ -145,13 +145,16 @@ def codes_to_delta_model(blk,loc,out,cfg,codes):
 
 def evaluate_candidate_codes(char_board,blk,loc,cfg,num_samples):
     models = list(exp_delta_model_lib.get_all(char_board))
-    for mdl in models:
+    if num_samples is None:
+        num_samples = len(models)
+
+    for mdl in models[-num_samples:]:
         calib_obj,score = evaluate_delta_model(mdl)
         print(mdl)
         if score is None:
-            print("expr=%s  score=<none>" % (calib_obj,score))
+            print("score=<none>")
         else:
-            print("expr=%s  score=%f" % (calib_obj,score))
+            print("score=%f" % (score))
         print("")
 
 
@@ -178,7 +181,7 @@ def load_code_history_from_database(char_board):
         codes = dict(mdl.hidden_codes())
         calib_obj,score = evaluate_delta_model(mdl)
         if score is None:
-            continue
+            score = 9999.0
 
         print("hist %s score=%f" % (codes,score))
         code_hist.add_code(codes,score)
@@ -188,7 +191,7 @@ def load_code_history_from_database(char_board):
 def update_model(char_board,blk,loc,cfg,num_model_points=3):
     #"python3 grendel.py mkphys --model-number {model} --max-depth 0 --num-leaves 1 --shrink" 
     CMDS = [ \
-             "python3 grendel.py mkdeltas --model-number {model} > deltas.log",
+             "python3 grendel.py mkdeltas --model-number {model} --force > deltas.log",
              "python3 grendel.py mkphys --model-number {model} "+ \
              " --num-points {num_model_points} > phys.log"]
 
@@ -262,7 +265,7 @@ def calibrate_block(board,block,loc,config, \
     char_model = runtime_meta_util.get_model(board,block,loc,config)
     char_board = runtime_util.get_device(char_model,layout=False)
 
-    summarize_model(char_board,block,config)
+    #summarize_model(char_board,block,config)
 
     num_points = 0
     bootstrap_block(char_board,block,loc,config, \
@@ -282,12 +285,17 @@ def calibrate_block(board,block,loc,config, \
         print("---- iteration %d ----" % iter_no)
 
         #input("press any key to continue...")
+        n_new_codes = 0
         for exp_model in get_candidate_codes(char_board, \
                                              code_history, \
                                              block,loc,config, \
                                              num_samples=random_samples):
             exp_delta_model_lib.update(char_board,exp_model)
-            continue
+            n_new_codes += 1
+
+        if n_new_codes == 0:
+           print("[info] no new candidate codes were found. Returning....")
+           return
 
         profile_block(char_board,block,loc,config, \
                       grid_size=grid_size)
