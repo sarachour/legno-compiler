@@ -6,24 +6,34 @@ import hwlib.hcdc.llenums as llenums
 
 
 def bruteforce_calibrate(char_board):
-    scores = []
-    models = []
+    scores = {}
+    models = {}
     for model in exp_delta_model_lib.get_all(char_board):
         calib_obj = model.output.deltas[model.config.mode].objective
-        score = calib_obj.compute(model.variables())
-        models.append(model)
-        scores.append(score)
+        variables = model.variables()
+        if not all(map(lambda v : v in variables, calib_obj.vars())):
+           continue
+        
+        if not model.hidden_cfg in models:
+           models[model.hidden_cfg] = []
+           scores[model.hidden_cfg] = 0.0
+        
+        score = calib_obj.compute(variables)
+        models[model.hidden_cfg].append(model)
+        scores[model.hidden_cfg] += score
 
         print("=== model score=%f ===" % score)
         print(model)
 
     # find best bruteforce
-    idxs = np.argsort(scores)
+    hidden_codes = list(models.keys())
+    idxs = np.argsort(list(map(lambda hc: scores[hc], hidden_codes)))
     best_idx = idxs[0]
-    print("==== best model (score=%f) ====" % scores[best_idx])
-    models[best_idx].calib_obj = llenums.CalibrateObjective.BRUTEFORCE
-    print(models[best_idx])
-    return models[best_idx]
+    print("==== best models (score=%f) ====" % scores[hidden_codes[best_idx]])
+    for model in models[hidden_codes[best_idx]]:
+       model.calib_obj = llenums.CalibrateObjective.BRUTEFORCE
+       print(model)
+       yield model
 
 def calibrate(args):
     board = runtime_util.get_device(args.model_number)
@@ -40,20 +50,19 @@ def calibrate(args):
         runtime_meta_util.fit_delta_models(char_board)
         # make sure the database only concerns one configured block
 
-        assert(runtime_meta_util.database_is_homogenous(char_board))
+        if not (runtime_meta_util.database_is_homogenous(char_board,enable_outputs=True)):
+            continue
+
         # fitting any outstanding delta models
         # get the best model from bruteforcing operation
-        best_model = bruteforce_calibrate(char_board)
-        print("======#### BEST MODEL ####=======")
-        print(best_model)
+        for model in bruteforce_calibrate(char_board):
+           print("======#### BEST MODEL ####=======")
+           print(model)
         
-        if best_model is None:
-           continue
-
-        # update the original database to include the best brute force model
-        exp_delta_model_lib.update(board,best_model)
-        # profile bruteforce model if you haven't already
-        runtime_meta_util \
-            .profile(board,char_board,llenums.CalibrateObjective.BRUTEFORCE)
-        runtime_meta_util.fit_delta_models(board)
+           # update the original database to include the best brute force model
+           exp_delta_model_lib.update(board,model)
+           # profile bruteforce model if you haven't already
+           runtime_meta_util \
+               .profile_block(board,model.block, model.loc, model.config, llenums.CalibrateObjective.BRUTEFORCE)
+           runtime_meta_util.fit_delta_models(board)
 

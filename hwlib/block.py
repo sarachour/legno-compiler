@@ -830,10 +830,10 @@ class DeltaSpec:
                          params.items()))
         return self.relation.substitute(repls)
 
-    def get_correctable_model(self,params):
+    def get_correctable_model(self,params,low_level=True):
         pdict = dict(params)
         for par in params.keys():
-            if not self._params[par].typ.is_correctable(True):
+            if not self._params[par].typ.is_correctable(low_level):
                 pdict[par] = self._params[par].val
 
         return lambdoplib.simplify(self.get_model(pdict))

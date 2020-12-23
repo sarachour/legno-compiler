@@ -13,6 +13,7 @@ import ops.opparse as parser
 import numpy as np
 import math
 import random
+import itertools
 
 def summarize_model(char_board,blk,cfg):
 
@@ -51,6 +52,7 @@ class CandidateCodeHistory:
         self.codes = []
         self.scores = []
         self.keys = []
+        self._freqs = {}
 
     def copy(self):
         chist = CandidateCodeHistory()
@@ -70,18 +72,58 @@ class CandidateCodeHistory:
         self.keys.append(key)
         self.codes.append(codes)
         self.scores.append(score)
+        self._freqs[key] = 1
 
+    def mark_use(self,codes):
+        key = runtime_util.dict_to_identifier(codes)
+        assert(key in self._freqs)
+        self._freqs[key] += 1
 
+    @property
+    def freqs(self):
+        for key in self.keys:
+           yield self._freqs[key]
+    
+    @property
+    def ranking(self):
+        for idx,key in enumerate(self.keys):
+           #yield -self._freqs[key]/self.scores[idx]
+           yield self.scores[idx]
+ 
     def num_codes(self):
         return len(self.keys)
+
+def cast_codes_to_integer(blk,objfun,codes):
+    code_names = list(codes.keys())
+    possible_values = []
+    best_codes = None
+    best_score = None
+    for code in code_names:
+      lower_value = blk.state[code] \
+            .nearest_value(math.floor(codes[code]))
+      upper_value = blk.state[code] \
+            .nearest_value(math.ceil(codes[code]))
+      options = list(set([lower_value,upper_value]))
+      possible_values.append(options)
+
+    for combo in itertools.product(*possible_values):
+      curr_codes = dict(zip(code_names,combo))
+      minval = objfun.evaluate(curr_codes)
+      if best_score is None or minval < best_score:
+         best_codes = curr_codes
+         best_score = minval
+    
+    return best_score,best_codes
+
 
 def generate_candidate_codes(code_hist, \
                              blk,calib_expr,phys_model, \
                              num_samples=3, \
                              num_offsets=1000):
-    sample_ampl = 0.0
+    sample_ampl = 0.20
     phys_model.uncertainty.summarize()
     temp_code_hist = code_hist.copy()
+
     new_code_hist = CandidateCodeHistory()
     print("----- Calibration Objective -----")
     print(calib_expr)
@@ -95,19 +137,19 @@ def generate_candidate_codes(code_hist, \
 
         nodes = dectree_eval.eval_expr(calib_expr, variables)
         objfun_dectree = dectreelib.RegressionNodeCollection(nodes)
-        _,codes = objfun_dectree.find_minimum()
-        for code_name,value in codes.items():
-            int_value = blk.state[code_name].nearest_value(value)
-            codes[code_name] = int_value
-
-        if temp_code_hist.has_code(codes):
+        minval,codes = objfun_dectree.find_minimum()
+        int_minval, int_codes = cast_codes_to_integer(blk,objfun_dectree,codes)
+        if temp_code_hist.has_code(int_codes):
+            #print("already exists: %s score=%f, skipping.." % (int_codes, int_minval))
+            if new_code_hist.has_code(int_codes):
+               new_code_hist.mark_use(int_codes) 
             continue
 
-        minval = objfun_dectree.evaluate(codes)
-        temp_code_hist.add_code(codes,minval)
-        new_code_hist.add_code(codes,minval)
+        #print("%s (score=%f) -> %s (score=%f)" % (codes,minval,int_codes,int_minval))
+        temp_code_hist.add_code(int_codes,int_minval)
+        new_code_hist.add_code(int_codes,int_minval)
 
-    best_to_worst = np.argsort(new_code_hist.scores)
+    best_to_worst = np.argsort(list(new_code_hist.ranking))
     for ident,idx in enumerate(best_to_worst[:num_samples]):
         print("%d] %s (score=%f)" % (ident, \
                                      new_code_hist.codes[idx],\
@@ -319,9 +361,6 @@ def calibrate(args):
         adp = runtime_util.get_adp(board,args.adp,widen=args.widen)
         for cfg in adp.configs:
             blk = board.get_block(cfg.inst.block)
-            #if not blk.name is 'fanout':
-            #    continue
-
             if not blk.requires_calibration():
                 continue
 

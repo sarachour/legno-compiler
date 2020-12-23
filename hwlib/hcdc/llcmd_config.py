@@ -91,7 +91,12 @@ def _compensate_for_offsets(blk,cfg,calib_cfg):
         corr_par = ll_corr_pars[0]
         old_val = cfg[data_field].value
         cfg[data_field].value -= calib_cfg.get_value(corr_par.name)/cfg[data_field].scf
-        print("=> updated data field %s : %f -> %f" % (data_field, old_val, \
+        print("=== field %s ===" % data_field)
+        print("scf=%f" % cfg[data_field].scf)
+        print("offset=%f" % calib_cfg.get_value(corr_par.name))
+        print("value=%f" % old_val); 
+        print("=> updated data field %s: %f -> %f" % (data_field, \
+                                                       old_val, \
                                                        cfg[data_field].value))
 
 def set_state(runtime,board,blk,loc,adp, \

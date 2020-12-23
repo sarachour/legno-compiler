@@ -61,7 +61,7 @@ class SymbolicFunction:
         self.inputs = inputs
         self.target = target_value
 
-    def initialize(self,x,y,npts=14):
+    def initialize(self,x,y,npts):
         dataset = []
         for idx in range(self.dim):
             datum = list(map(lambda xs: xs[idx], x))
@@ -79,17 +79,17 @@ class SymbolicFunction:
                 coords.append((i,j))
 
         indices = np.argsort(scores)
-        for i in range(min(npts,len(indices))):
+        for i in range(min(npts-1,len(indices))):
             idx = indices[i]
             i,j = coords[idx]
             print("i=%s j=%s score=%f" \
                   % (self.inputs[i],self.inputs[j],scores[idx]))
 
-        self.num_params = npts + 1
+        self.num_params = npts
         self.parameters = list(map(lambda _: SymbolicFunction.Parameter(1.0), \
                                    range(self.num_params)))
 
-        self.coords = coords[:npts]
+        self.coords = coords[:npts-1]
 
 
 

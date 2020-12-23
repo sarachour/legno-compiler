@@ -140,7 +140,7 @@ class HardwareInfo:
         print(exp_model)
         raise Exception("experimental model must be complete")
 
-      expr = delta.get_correctable_model(exp_model.params)
+      expr = delta.get_correctable_model(exp_model.params,low_level=False)
       return expr
 
   def get_ideal_relation(self,instance,mode,port):

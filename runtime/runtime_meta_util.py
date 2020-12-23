@@ -54,7 +54,7 @@ def database_is_empty(board):
         return False
     return True
 
-def database_is_homogenous(board):
+def database_is_homogenous(board,enable_outputs=False):
     modes = []
     locs = []
     outputs = []
@@ -75,7 +75,7 @@ def database_is_homogenous(board):
         print("[not homogenous] # modes=%d" % (len(set(modes))))
         return False
 
-    if len(set(outputs)) != 1:
+    if len(set(outputs)) != 1 and not enable_outputs:
         print("[not homogenous] # outputs=%d" % (len(set(outputs))))
         return False
 
@@ -87,8 +87,8 @@ def database_is_homogenous(board):
 
 
 
-def homogenous_database_get_block_info(board):
-    assert(database_is_homogenous(board))
+def homogenous_database_get_block_info(board,use_output=True):
+    assert(database_is_homogenous(board,enable_outputs=not use_output))
     for model in exp_delta_model_lib.get_all(board):
         return model.block,model.loc,model.output,model.config
 
@@ -111,7 +111,7 @@ def profile(board,char_board,calib_obj,log_file=None):
     if not log_file is None:
         CMD += " > %s" % log_file
 
-    block,loc,_,config = homogenous_database_get_block_info(char_board)
+    block,loc,config = homogenous_database_get_block_info(char_board,use_output=False)
 
     filename = generate_adp(char_board,block,loc,config)
 
