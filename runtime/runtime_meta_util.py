@@ -1,4 +1,8 @@
 import runtime.models.exp_delta_model as exp_delta_model_lib
+import runtime.models.exp_phys_model as exp_phys_model_lib
+import runtime.dectree.dectree as dectreelib
+
+import ops.generic_op as genoplib
 import util.paths as pathlib
 import hwlib.adp as adplib
 import hwlib.block as blocklib
@@ -6,6 +10,27 @@ import os
 import json
 import random
 import os
+import time
+
+class Logger:
+
+    def __init__(self,logfile,fields):
+        self.log_file = logfile
+        self.fields = fields
+        self._write(self.fields,append=False)
+
+    def _write(self,values,append=True):
+        with open(self.log_file,'w' if not append else 'a') as fh:
+            line = "\t".join(map(lambda v: str(v), values))
+            fh.write("%s\n" % line)
+            fh.flush()
+
+    def log(self,**kwargs):
+        assert(all(map(lambda f: f in kwargs, self.fields)))
+
+        values = map(lambda f: kwargs[f], self.fields)
+        self._write(values)
+
 
 def random_hidden_codes(block):
     hidden_codes = {}
@@ -27,9 +52,13 @@ def get_adp(board,blk,loc,cfg):
     return '%s.adp' % (get_base_name(board,blk,loc,cfg))
 
 def run_command(cmd):
+    start = time.time()
     code = os.system(cmd)
     if code != 0:
         raise Exception("command failed. <code=%s>" % code)
+    end = time.time()
+    runtime_sec = start-end
+    return runtime_sec
 
 def remove_file(name):
     if os.path.exists(name):
@@ -54,12 +83,12 @@ def database_is_empty(board):
         return False
     return True
 
-def database_is_homogenous(board,enable_outputs=False):
+def models_are_homogenous(models,enable_outputs=False):
     modes = []
     locs = []
     outputs = []
     blocks = []
-    for model in exp_delta_model_lib.get_all(board):
+    for model in models:
         modes.append(model.config.mode)
         locs.append(model.loc)
         outputs.append(model.output.name)
@@ -86,11 +115,53 @@ def database_is_homogenous(board,enable_outputs=False):
     return True
 
 
+def database_is_homogenous(board,enable_outputs=False):
+    models = list(exp_delta_model_lib.get_all(board))
+    return models_are_homogenous(models, \
+                                 enable_outputs=enable_outputs)
+
+
+def get_calibration_objective_scores(all_models):
+    #assert(models_are_homogenous(all_models,enable_outputs=False))
+    block,loc,_,config = models_get_block_info(all_models,use_output=False)
+    phys_models = {}
+    models = {}
+
+    for model in all_models:
+        calib_obj = model.output.deltas[model.config.mode].objective
+        if not model.hidden_cfg in phys_models:
+            phys_models[model.hidden_cfg] = exp_phys_model_lib.ExpPhysModel(block, \
+                                                                          config)
+            models[model.hidden_cfg] = []
+
+        phys_model = phys_models[model.hidden_cfg]
+        models[model.hidden_cfg].append(model)
+
+        for varname,val in model.variables().items():
+            node = dectreelib.RegressionLeafNode(genoplib.Const(val))
+            phys_model.set_variable(model.output, varname, node)
+
+
+    for hidden_cfg,model in phys_models.items():
+        variables = dict(map(lambda tup: (tup[0],tup[1].expr.compute()), \
+                             model.variables().items()))
+        yield models[hidden_cfg],model.calib_obj().compute(variables)
+
+
+def homogenous_database_get_calibration_objective_scores(board):
+    all_models = list(exp_delta_model_lib.get_all(board))
+    for models,score in get_calibration_objective_scores(all_models):
+        yield models,score
+
+def models_get_block_info(models,use_output=True):
+    assert(models_are_homogenous(models,enable_outputs=not use_output))
+    for model in models:
+        return model.block,model.loc,model.output,model.config
+
 
 def homogenous_database_get_block_info(board,use_output=True):
-    assert(database_is_homogenous(board,enable_outputs=not use_output))
-    for model in exp_delta_model_lib.get_all(board):
-        return model.block,model.loc,model.output,model.config
+    models = list(exp_delta_model_lib.get_all(board))
+    return models_get_block_info(models,use_output)
 
 
 def profile_block(board,block,loc,config,calib_obj,log_file=None):

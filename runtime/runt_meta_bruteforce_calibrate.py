@@ -6,31 +6,18 @@ import hwlib.hcdc.llenums as llenums
 
 
 def bruteforce_calibrate(char_board):
-    scores = {}
-    models = {}
-    for model in exp_delta_model_lib.get_all(char_board):
-        calib_obj = model.output.deltas[model.config.mode].objective
-        variables = model.variables()
-        if not all(map(lambda v : v in variables, calib_obj.vars())):
-           continue
-
-        if not model.hidden_cfg in models:
-           models[model.hidden_cfg] = []
-           scores[model.hidden_cfg] = 0.0
-
-        score = calib_obj.compute(variables)
-        models[model.hidden_cfg].append(model)
-        scores[model.hidden_cfg] += score
-
-        print("=== model score=%f ===" % score)
-        print(model)
+    models = []
+    scores = []
+    for phys_model, score in runtime_meta_util \
+        .homogenous_database_get_calibration_objective_scores(char_board):
+        models.append(phys_model)
+        scores.append(score)
 
     # find best bruteforce
-    hidden_codes = list(models.keys())
-    idxs = np.argsort(list(map(lambda hc: scores[hc], hidden_codes)))
+    idxs = np.argsort(scores)
     best_idx = idxs[0]
-    print("==== best models (score=%f) ====" % scores[hidden_codes[best_idx]])
-    for model in models[hidden_codes[best_idx]]:
+    print("==== best models (score=%f) ====" % scores[best_idx])
+    for model in models[best_idx]:
        model.calib_obj = llenums.CalibrateObjective.BRUTEFORCE
        print(model)
        yield model

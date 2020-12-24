@@ -22,9 +22,19 @@ subparsers = parser.add_subparsers(dest='subparser_name',
                                    help='compilers/compilation passes.')
 
 
-exec_subp = subparsers.add_parser('test_board', help='test the board at hand')
-exec_subp.add_argument('model_number', type=str,help='model of board to test')
+testboard_subp = subparsers.add_parser('test_board', help='test the board at hand')
+testboard_subp.add_argument('model_number', type=str,help='model of board to test')
+testboard_subp.add_argument('--maximize-fit',action='store_true', \
+                            help='run legacy maximize fit calibration routine.')
+testboard_subp.add_argument('--minimize-error',action='store_true', \
+                            help='run legacy minimize error calibration routine.')
 
+testboard_subp.add_argument('--model-based',action='store_true', \
+                            help='run model-based calibration routine.')
+
+
+
+'''
 exec_subp = subparsers.add_parser('char_bad_blocks', help='characterize badly calibrated blocks in database')
 exec_subp.add_argument('model_number', type=str,help='model of board to test')
 exec_subp.add_argument('--dry',action='store_true',help='dry run')
@@ -32,24 +42,31 @@ exec_subp.add_argument('--cutoff',default=5.0, type=float, help='percent error c
 
 exec_subp = subparsers.add_parser('best_cal', help='bruteforce calibration for all individually characterized blocks')
 exec_subp.add_argument('model_number', type=str,help='model of board to study')
+'''
 
 
-exec_subp = subparsers.add_parser('linmodel_cal', help='linear model calibration for all individually characterized blocks')
-exec_subp.add_argument('model_number', type=str,help='model of board to study')
-exec_subp.add_argument('--grid-size',default=7,type=int,help='size of grid to profile.')
-exec_subp.add_argument('--candidate-samples',default=3,type=int,help='number of candidate hidden codes per iteration.')
-exec_subp.add_argument('--bootstrap-samples',default=5,type=int,help='number of bootstrapping samples.')
-exec_subp.add_argument('--num-iters',default=3,type=int,help='number of iterations.')
-exec_subp.add_argument('--adp',type=str,help='adp to calibrate.')
-exec_subp.add_argument('--widen',action='store_true',help='widen the set of modes.')
+mdl_subp = subparsers.add_parser('model_cal', help='linear model calibration for all individually characterized blocks')
+mdl_subp.add_argument('model_number', type=str,help='model of board to study')
+mdl_subp.add_argument('--grid-size',default=7,type=int,help='size of grid to profile.')
+mdl_subp.add_argument('--candidate-samples',default=3,type=int, \
+                      help='number of candidate hidden codes per iteration.')
+mdl_subp.add_argument('--bootstrap-samples',default=5,type=int,help='number of bootstrapping samples.')
+mdl_subp.add_argument('--num-iters',default=3,type=int,help='number of iterations.')
+mdl_subp.add_argument('--adp',type=str,help='adp to calibrate.')
+mdl_subp.add_argument('--widen',action='store_true',help='widen the set of modes.')
+mdl_subp.add_argument('--cutoff',default=0.008, type=float, \
+                      help='score cutoff to terminate')
 
 
 
-exec_subp = subparsers.add_parser('bruteforce_cal', help='bruteforce calibration for all individually characterized blocks')
-exec_subp.add_argument('model_number', type=str,help='model of board to study')
+brute_subp = subparsers.add_parser('bruteforce_cal', \
+                                   help='bruteforce calibration for all individually characterized blocks')
+brute_subp.add_argument('model_number', type=str,help='model of board to study')
 
-exec_subp = subparsers.add_parser('dectree_cal', help='dectree calibration for all individually characterized blocks')
-exec_subp.add_argument('model_number', type=str,help='model of board study')
+'''
+dectree_subp = subparsers.add_parser('dectree_cal', help='dectree calibration for all individually characterized blocks')
+dectree_subp.add_argument('model_number', type=str,help='model of board study')
+'''
 args = parser.parse_args()
 
 if args.subparser_name == "test_board":
@@ -62,7 +79,7 @@ elif args.subparser_name == "best_cal":
     runt_best_cal.calibrate(args)
 elif args.subparser_name == "dectree_cal":
     runt_dectree_cal.calibrate(args)
-elif args.subparser_name == "linmodel_cal":
+elif args.subparser_name == "model_cal":
     runt_linmodel_cal.calibrate(args)
 else:
     raise Exception("unhandled: %s" % args.subparser_name)

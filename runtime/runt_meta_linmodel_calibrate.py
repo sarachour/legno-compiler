@@ -194,13 +194,8 @@ def evaluate_candidate_codes(char_board,blk,loc,cfg,num_samples):
 
     for mdl in models[-num_samples:]:
         calib_obj,score = evaluate_delta_model(mdl)
-        print(mdl)
-        print(mdl.hidden_cfg)
-        if score is None:
-            print("score=<none>")
-        else:
-            print("score=%f" % (score))
-        print("")
+        yield mdl,score
+
 
 
 def get_candidate_codes(char_board,code_history,blk,loc,cfg,num_samples):
@@ -302,7 +297,8 @@ def calibrate_block(board,block,loc,config, \
                     grid_size=9, \
                     bootstrap_samples=5, \
                     random_samples=3, \
-                    num_iters=3):
+                    num_iters=3, \
+                    cutoff=None):
     def update(num_points):
         update_model(char_board,block,loc,config, \
                      num_model_points=num_points)
@@ -347,10 +343,26 @@ def calibrate_block(board,block,loc,config, \
         num_points += random_samples
         update(num_points)
 
-        evaluate_candidate_codes(char_board, \
-                                 block, \
-                                 loc, config, \
-                                 num_samples=random_samples*2)
+        # summarize how the recently tried codes behaved
+        scores = []
+        for model,score in evaluate_candidate_codes(char_board, \
+                                                    block, \
+                                                    loc, config, \
+                                                    num_samples=random_samples*2):
+
+            print(model)
+            print(model.hidden_cfg)
+            if score is None:
+                print("score=<none>")
+            else:
+                print("score=%f" % (score))
+
+            print("")
+            scores.append(score)
+
+        if not cutoff is None and min(scores) < cutoff:
+            print("[info] returning early! Found code that meets cutoff=%f." % cutoff)
+            return
 
 
 
@@ -371,7 +383,8 @@ def calibrate(args):
                                 bootstrap_samples=args.bootstrap_samples, \
                                 random_samples=args.candidate_samples, \
                                 grid_size=args.grid_size, \
-                                num_iters=args.num_iters)
+                                num_iters=args.num_iters, \
+                                cutoff=args.cutoff)
 
     else:
         for dbname in runtime_meta_util.get_block_databases(args.model_number):
@@ -384,4 +397,5 @@ def calibrate(args):
                             bootstrap_samples=args.bootstrap_samples, \
                             random_samples=args.candidate_samples, \
                             grid_size=args.grid_size, \
-                            num_iters=args.num_iters)
+                            num_iters=args.num_iters, \
+                            cutoff=args.cutoff)

@@ -208,7 +208,9 @@ def exec_lexec(args):
                     if not _lexec_already_ran(path_handler,board,adp,trial=0) or \
                        args.force:
                         cmd = EXEC_CMD.format(**kwargs)
-                        os.system(cmd)
+                        code = os.system(cmd)
+                        if code == signal.SIGINT or code != 0:
+                            raise Exception("User terminated process")
 
 def exec_lsim(args):
     from compiler import lsim

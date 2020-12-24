@@ -16,43 +16,27 @@ def group_by_configured_block(board):
 
     return instances.values()
 
-def get_best_calibration(models):
-    scores_by_calib = {}
-    models_by_calib = {}
-    for mdl in models:
-        if mdl.calib_obj == llenums.CalibrateObjective.NONE:
-            print("%s\ncalibration objective <%s> is none" \
-                            % (mdl.config,mdl))
-            continue
+def get_best_calibration(all_models):
 
-        obj = mdl.output.deltas[mdl.config.mode].objective
-        score = obj.compute(mdl.variables())
+    scores = []
+    models = []
+    for mdls,score in runtime_meta_util \
+        .get_calibration_objective_scores(all_models):
+        scores.append(score)
+        models.append(mdls)
+        print("%s" % mdls[0])
+        print("  score=%f" % score)
+        print("")
 
-        if mdl.calib_obj not in scores_by_calib:
-            scores_by_calib[mdl.calib_obj] = []
-            models_by_calib[mdl.calib_obj] = []
+    inds = np.argsort(scores)
+    best_idx = inds[0]
 
-        scores_by_calib[mdl.calib_obj].append(score)
-        models_by_calib[mdl.calib_obj].append(mdl)
-
-    best_calib_obj = None
-    for calib_obj,scores in scores_by_calib.items():
-        score = sum(scores)
-        if best_calib_obj is None or \
-           sum(scores_by_calib[best_calib_obj]) > score:
-            best_calib_obj = calib_obj
-
-    print("=== best calib objective [%s] ===" % best_calib_obj)
-    mdl = models_by_calib[best_calib_obj][0]
-    print("  block=%s loc=%s mode=%s" % (mdl.block.name,mdl.loc,mdl.config.mode))
-    print("  score=%s" % sum(scores_by_calib[best_calib_obj]))
-    for mdl in models_by_calib[best_calib_obj]:
-        print("  %s" % mdl)
-
-    for model in models_by_calib[best_calib_obj]:
-        new_model = model
-        new_model.calib_obj = llenums.CalibrateObjective.BEST
-        yield new_model
+    best_models = models[best_idx]
+    print("===== best model (score=%f) ===" % scores[best_idx])
+    for mdl in models[best_idx]:
+        mdl.calib_obj = llenums.CalibrateObjective.BEST
+        print(mdl)
+        yield mdl
 
 def calibrate(args):
     board = runtime_util.get_device(args.model_number)
@@ -61,5 +45,8 @@ def calibrate(args):
         .remove_by_calibration_objective(board,llenums.CalibrateObjective.BEST)
 
     for models in group_by_configured_block(board):
+        print("===== block =====")
+        print(models[0].config)
+        print("")
         for best_mdl in get_best_calibration(models):
             exp_delta_model_lib.update(board,best_mdl)
