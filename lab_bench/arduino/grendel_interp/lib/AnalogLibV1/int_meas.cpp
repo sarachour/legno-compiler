@@ -121,7 +121,7 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measureClosedLoopCircuit(profil
   util::meas_steady_chip_out(this,mean,variance);
 
   profile_t result = prof::make_profile(spec,
-                                        mean, 
+                                        mean-target, 
                                         variance);
 
   conn_out_to_fan.brkConn();
