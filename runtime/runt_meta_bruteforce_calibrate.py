@@ -13,11 +13,11 @@ def bruteforce_calibrate(char_board):
         variables = model.variables()
         if not all(map(lambda v : v in variables, calib_obj.vars())):
            continue
-        
+
         if not model.hidden_cfg in models:
            models[model.hidden_cfg] = []
            scores[model.hidden_cfg] = 0.0
-        
+
         score = calib_obj.compute(variables)
         models[model.hidden_cfg].append(model)
         scores[model.hidden_cfg] += score
@@ -55,14 +55,18 @@ def calibrate(args):
 
         # fitting any outstanding delta models
         # get the best model from bruteforcing operation
-        for model in bruteforce_calibrate(char_board):
+        for idx,model in enumerate(bruteforce_calibrate(char_board)):
            print("======#### BEST MODEL ####=======")
            print(model)
-        
            # update the original database to include the best brute force model
            exp_delta_model_lib.update(board,model)
-           # profile bruteforce model if you haven't already
-           runtime_meta_util \
-               .profile_block(board,model.block, model.loc, model.config, llenums.CalibrateObjective.BRUTEFORCE)
-           runtime_meta_util.fit_delta_models(board)
+
+           if idx == 0:
+            # profile bruteforce model if you haven't already
+            runtime_meta_util \
+                .profile_block(board,model.block, \
+                               model.loc, \
+                               model.config, \
+                               llenums.CalibrateObjective.BRUTEFORCE)
+            runtime_meta_util.fit_delta_models(board)
 
