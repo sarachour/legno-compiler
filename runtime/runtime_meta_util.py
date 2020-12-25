@@ -57,7 +57,7 @@ def run_command(cmd):
     if code != 0:
         raise Exception("command failed. <code=%s>" % code)
     end = time.time()
-    runtime_sec = start-end
+    runtime_sec = end-start
     return runtime_sec
 
 def remove_file(name):

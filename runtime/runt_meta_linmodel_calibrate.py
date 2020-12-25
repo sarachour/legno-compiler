@@ -15,36 +15,33 @@ import math
 import random
 import itertools
 
-def summarize_model(char_board,blk,cfg):
+class ModelCalibrateLogger(runtime_meta_util.Logger):
 
-    print(cfg)
+    def __init__(self,filename):
+        self.fields = ['block','loc','mode','operation','iteration','runtime']
+        runtime_meta_util.Logger.__init__(self,filename,self.fields)
 
-    for out in blk.outputs:
-        print("########")
-        print("OUTPUT %s" % out.name)
-        print("########")
-        calib_obj = out.deltas[cfg.mode].objective
-        # get physical model
-        phys_model = exp_phys_model_lib.load(char_board, \
-                                             blk, \
-                                             cfg=cfg)
+    def log(self,operation,runtime):
+        values = {'block':self.block.name, \
+                  'loc':str(self.loc),\
+                  'mode':str(self.mode), \
+                  'iteration': self.iteration}
 
-        if phys_model is None:
-            print("[[warn]] this output has no physical model")
-            continue
-
-        variables = dict(map(lambda tup: (tup[0],tup[1].copy()), \
-                                    phys_model.variables().items()))
-
-        for var,dectree in variables.items():
-            print("===== %s =====" % var)
-            print(dectree.pretty_print())
+        values['operation'] = operation
+        values['runtime'] = runtime
+        runtime_meta_util.Logger.log(self,**values)
 
 
+    def set_configured_block(self,block,loc,mode):
+        self.block = block
+        self.loc = loc
+        self.mode = mode
+        self.iteration = 0
 
-        print("==== Calibrate Expression ====")
-        print(calib_obj)
-        #input()
+
+    def set_iteration(self,idx):
+        self.iteration = idx
+
 
 class CandidateCodeHistory:
 
@@ -112,11 +109,12 @@ def cast_codes_to_integer(blk,objfun,codes):
       if best_score is None or minval < best_score:
          best_codes = curr_codes
          best_score = minval
-    
+
     return best_score,best_codes
 
 
-def generate_candidate_codes(code_hist, \
+def generate_candidate_codes(logger, \
+                             code_hist, \
                              blk,calib_expr,phys_model, \
                              num_samples=3, \
                              num_offsets=1000):
@@ -128,6 +126,7 @@ def generate_candidate_codes(code_hist, \
     print("----- Calibration Objective -----")
     print(calib_expr)
     print("----- Generating Samples -----")
+    start_time = time.time()
     for offsets in phys_model.uncertainty.samples(num_offsets,ampl=sample_ampl,include_zero=True):
         variables = dict(map(lambda tup: (tup[0],tup[1].copy().concretize()), \
                                 phys_model.variables().items()))
@@ -148,6 +147,9 @@ def generate_candidate_codes(code_hist, \
         #print("%s (score=%f) -> %s (score=%f)" % (codes,minval,int_codes,int_minval))
         temp_code_hist.add_code(int_codes,int_minval)
         new_code_hist.add_code(int_codes,int_minval)
+
+    end_time = time.time()
+    logger.log('gen_cand',end_time-start_time)
 
     best_to_worst = np.argsort(list(new_code_hist.ranking))
     for ident,idx in enumerate(best_to_worst[:num_samples]):
@@ -228,7 +230,7 @@ def load_code_history_from_database(char_board):
 
     return code_hist
 
-def update_model(char_board,blk,loc,cfg,num_model_points=3):
+def update_model(logger,char_board,blk,loc,cfg,num_model_points=3):
     #"python3 grendel.py mkphys --model-number {model} --max-depth 0 --num-leaves 1 --shrink" 
     CMDS = [ \
              "python3 grendel.py mkdeltas --model-number {model} --force > deltas.log",
@@ -238,17 +240,20 @@ def update_model(char_board,blk,loc,cfg,num_model_points=3):
 
     adp_file = runtime_meta_util.generate_adp(char_board,blk,loc,cfg)
 
+    runtime_sec = 0
     for CMD in CMDS:
         cmd = CMD.format(adp=adp_file, \
                          model=char_board.model_number, \
                          num_model_points=num_model_points)
         print(">> %s" % cmd)
-        runtime_meta_util.run_command(cmd)
+        runtime_sec += runtime_meta_util.run_command(cmd)
+
+    logger.log('upd_mdl',runtime_sec)
 
     runtime_meta_util.remove_file(adp_file)
 
 # bootstrap block to get data
-def bootstrap_block(board,blk,loc,cfg,grid_size=9,num_samples=5):
+def bootstrap_block(logger,board,blk,loc,cfg,grid_size=9,num_samples=5):
     CMDS = [ \
              "python3 grendel.py characterize {adp} --model-number {model} --grid-size {grid_size} --num-hidden-codes {num_samples} --adp-locs > characterize.log" \
             ]
@@ -256,29 +261,35 @@ def bootstrap_block(board,blk,loc,cfg,grid_size=9,num_samples=5):
 
     adp_file = runtime_meta_util.generate_adp(board,blk,loc,cfg)
 
+    runtime_sec = 0
     for CMD in CMDS:
         cmd = CMD.format(adp=adp_file, \
                          model=board.model_number, \
                          grid_size=grid_size, \
                          num_samples=num_samples)
         print(">> %s" % cmd)
-        runtime_meta_util.run_command(cmd)
+        runtime_sec += runtime_meta_util.run_command(cmd)
+
+    logger.log('bootstrap',runtime_sec)
 
     runtime_meta_util.remove_file(adp_file)
 
-def profile_block(board,blk,loc,cfg,grid_size=9):
+def profile_block(logger,board,blk,loc,cfg,grid_size=9):
     CMDS = [ \
              "python3 grendel.py prof {adp} --model-number {model} --grid-size {grid_size} linmodel > profile.log" \
             ]
 
     adp_file = runtime_meta_util.generate_adp(board,blk,loc,cfg)
 
+    runtime_sec = 0
     for CMD in CMDS:
         cmd = CMD.format(adp=adp_file, \
                          model=board.model_number, \
                          grid_size=grid_size)
         print(">> %s" % cmd)
-        runtime_meta_util.run_command(cmd)
+        runtime_sec += runtime_meta_util.run_command(cmd)
+
+    logger.log('profile',runtime_sec)
 
     runtime_meta_util.remove_file(adp_file)
 
@@ -293,15 +304,18 @@ def is_block_calibrated(board,block,loc,config, \
         return True
     return False
 
-def calibrate_block(board,block,loc,config, \
+def calibrate_block(logger, \
+                    board,block,loc,config, \
                     grid_size=9, \
                     bootstrap_samples=5, \
                     random_samples=3, \
                     num_iters=3, \
                     cutoff=None):
     def update(num_points):
-        update_model(char_board,block,loc,config, \
+        update_model(logger,char_board,block,loc,config, \
                      num_model_points=num_points)
+
+    logger.set_configured_block(block,loc,config.mode)
 
     char_model = runtime_meta_util.get_model(board,block,loc,config)
     char_board = runtime_util.get_device(char_model,layout=False)
@@ -309,13 +323,14 @@ def calibrate_block(board,block,loc,config, \
     #summarize_model(char_board,block,config)
 
     num_points = 0
-    bootstrap_block(char_board,block,loc,config, \
+    bootstrap_block(logger, \
+                    char_board,block,loc,config, \
                     num_samples=bootstrap_samples, \
                     grid_size=grid_size)
     num_points += bootstrap_samples
     update(num_points)
     code_history = load_code_history_from_database(char_board)
-    
+
     if cutoff is None:
         cutoff = 0.0
 
@@ -327,10 +342,11 @@ def calibrate_block(board,block,loc,config, \
             return
 
         print("---- iteration %d ----" % iter_no)
-
+        logger.set_iteration(iter_no)
         #input("press any key to continue...")
         n_new_codes = 0
-        for exp_model in get_candidate_codes(char_board, \
+        for exp_model in get_candidate_codes(logger, \
+                                             char_board, \
                                              code_history, \
                                              block,loc,config, \
                                              num_samples=random_samples):
@@ -341,7 +357,8 @@ def calibrate_block(board,block,loc,config, \
            print("[info] no new candidate codes were found. Returning....")
            return
 
-        profile_block(char_board,block,loc,config, \
+        profile_block(logger, \
+                      char_board,block,loc,config, \
                       grid_size=grid_size)
         num_points += random_samples
         update(num_points)
@@ -372,6 +389,7 @@ def calibrate_block(board,block,loc,config, \
 def calibrate(args):
     board = runtime_util.get_device(args.model_number)
 
+    logger = ModelCalibrateLogger('mdlcal_%s.log' % args.model_number)
     if not args.adp is None:
         adp = runtime_util.get_adp(board,args.adp,widen=args.widen)
         for cfg in adp.configs:
@@ -382,7 +400,8 @@ def calibrate(args):
             cfg_modes = cfg.modes
             for mode in cfg_modes:
                 cfg.modes = [mode]
-                calibrate_block(board,blk,cfg.inst.loc,cfg, \
+                calibrate_block(logger, \
+                                board,blk,cfg.inst.loc,cfg, \
                                 bootstrap_samples=args.bootstrap_samples, \
                                 random_samples=args.candidate_samples, \
                                 grid_size=args.grid_size, \
@@ -396,7 +415,8 @@ def calibrate(args):
                 continue
 
             blk,loc,out,cfg = runtime_meta_util.homogenous_database_get_block_info(char_board)
-            calibrate_block(board,blk,cfg.inst.loc,cfg, \
+            calibrate_block(logger, \
+                            board,blk,cfg.inst.loc,cfg, \
                             bootstrap_samples=args.bootstrap_samples, \
                             random_samples=args.candidate_samples, \
                             grid_size=args.grid_size, \
