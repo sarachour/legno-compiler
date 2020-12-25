@@ -13,8 +13,7 @@ import runtime.runt_meta_test_board as runt_test_board
 import runtime.runt_meta_characterize_bad_blocks as runt_characterize_bad_blocks
 import runtime.runt_meta_bruteforce_calibrate as runt_bruteforce_cal
 import runtime.runt_meta_best_calibrate as runt_best_cal
-import runtime.runt_meta_dectree_calibrate as runt_dectree_cal
-import runtime.runt_meta_linmodel_calibrate as runt_linmodel_cal
+import runtime.runt_meta_model_calibrate as runt_model_cal
 
 parser = argparse.ArgumentParser(description='Meta-grendel routines.')
 
@@ -54,7 +53,7 @@ mdl_subp.add_argument('--bootstrap-samples',default=5,type=int,help='number of b
 mdl_subp.add_argument('--num-iters',default=3,type=int,help='number of iterations.')
 mdl_subp.add_argument('--adp',type=str,help='adp to calibrate.')
 mdl_subp.add_argument('--widen',action='store_true',help='widen the set of modes.')
-mdl_subp.add_argument('--cutoff',default=0.008, type=float, \
+mdl_subp.add_argument('--cutoff', type=float, \
                       help='score cutoff to terminate')
 
 
@@ -63,10 +62,6 @@ brute_subp = subparsers.add_parser('bruteforce_cal', \
                                    help='bruteforce calibration for all individually characterized blocks')
 brute_subp.add_argument('model_number', type=str,help='model of board to study')
 
-'''
-dectree_subp = subparsers.add_parser('dectree_cal', help='dectree calibration for all individually characterized blocks')
-dectree_subp.add_argument('model_number', type=str,help='model of board study')
-'''
 args = parser.parse_args()
 
 if args.subparser_name == "test_board":
@@ -77,10 +72,8 @@ elif args.subparser_name == "bruteforce_cal":
     runt_bruteforce_cal.calibrate(args)
 elif args.subparser_name == "best_cal":
     runt_best_cal.calibrate(args)
-elif args.subparser_name == "dectree_cal":
-    runt_dectree_cal.calibrate(args)
 elif args.subparser_name == "model_cal":
-    runt_linmodel_cal.calibrate(args)
+    runt_model_cal.calibrate(args)
 else:
     raise Exception("unhandled: %s" % args.subparser_name)
 

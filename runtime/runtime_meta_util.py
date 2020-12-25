@@ -32,6 +32,46 @@ class Logger:
         self._write(values)
 
 
+def get_tolerance(block,mode):
+  if block.name == 'fanout':
+    if 'h' in str(mode):
+      return 0.004
+    elif 'm' in str(mode):
+      return 0.0004
+    else:
+      raise NotImplementedError
+
+  elif block.name == 'integ':
+    if 'h,h' in str(mode):
+      return 0.01
+
+    elif 'h,m' in str(mode):
+      return 0.01
+
+    elif 'm,m' in str(mode):
+      return 0.01
+
+    else:
+      raise NotImplementedError
+
+  elif block.name == 'mult':
+    if 'x,h,h' in str(mode):
+      # majority of error is from non-unity gain
+      return 0.12
+    elif 'x,h,m' in str(mode):
+      return 0.003
+    elif 'x,m,h' in str(mode):
+      # majority of error is from non-unity gain
+      return 0.12
+    elif 'x,m,m' in str(mode):
+      return 0.008
+    else:
+      raise NotImplementedError
+
+  else:
+    raise NotImplementedError
+
+
 def random_hidden_codes(block):
     hidden_codes = {}
     for state in filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), \

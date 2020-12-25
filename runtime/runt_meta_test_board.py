@@ -17,52 +17,13 @@ import json
 import math
 import os
 
-def get_tolerance(block,mode):
-  if block.name == 'fanout':
-    if 'h' in str(mode):
-      return 0.004
-    elif 'm' in str(mode):
-      return 0.0004
-    else:
-      raise NotImplementedError
-
-  elif block.name == 'integ':
-    if 'h,h' in str(mode):
-      return 0.02
-
-    elif 'h,m' in str(mode):
-      return 0.002
-
-    elif 'm,m' in str(mode):
-      return 0.002
-
-    else:
-      raise NotImplementedError
-
-  elif block.name == 'mult':
-    if 'x,h,h' in str(mode):
-      # majority of error is from non-unity gain
-      return 0.12
-    elif 'x,h,m' in str(mode):
-      return 0.003
-    elif 'x,m,h' in str(mode):
-      # majority of error is from non-unity gain
-      return 0.12
-    elif 'x,m,m' in str(mode):
-      return 0.008
-    else:
-      raise NotImplementedError
-
-  else:
-    raise NotImplementedError
-
 def get_config(block,mode):
   return {
     'bootstrap_samples': 5,
     'candidate_samples':3,
     'num_iters': 16,
     'grid_size': 7,
-    'cutoff':get_tolerance(block,mode)
+    'cutoff':runtime_meta_util.get_tolerance(block,mode)
   }
 
 def legacy_calibration(board,adp_path,block,mode,calib_obj):
