@@ -200,13 +200,13 @@ def evaluate_candidate_codes(char_board,blk,loc,cfg,num_samples):
 
 
 
-def get_candidate_codes(char_board,code_history,blk,loc,cfg,num_samples):
+def get_candidate_codes(logger,char_board,code_history,blk,loc,cfg,num_samples):
 
     phys_model = exp_phys_model_lib.load(char_board, \
                                          blk, \
                                          cfg=cfg)
     calib_obj = phys_model.calib_obj()
-    for codes in generate_candidate_codes(code_history, \
+    for codes in generate_candidate_codes(logger,code_history, \
                                           blk, \
                                           calib_obj, \
                                           phys_model,  \
