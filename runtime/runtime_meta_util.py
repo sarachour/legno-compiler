@@ -145,7 +145,12 @@ def get_calibration_objective_scores(all_models):
     for hidden_cfg,model in phys_models.items():
         variables = dict(map(lambda tup: (tup[0],tup[1].expr.compute()), \
                              model.variables().items()))
-        yield models[hidden_cfg],model.calib_obj().compute(variables)
+        print(variables)
+        calib_expr = model.calib_obj()
+        if not all(map(lambda v: v in variables, calib_expr.vars())):
+            continue
+
+        yield models[hidden_cfg],calib_expr.compute(variables)
 
 
 def homogenous_database_get_calibration_objective_scores(board):

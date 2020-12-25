@@ -39,10 +39,10 @@ exec_subp = subparsers.add_parser('char_bad_blocks', help='characterize badly ca
 exec_subp.add_argument('model_number', type=str,help='model of board to test')
 exec_subp.add_argument('--dry',action='store_true',help='dry run')
 exec_subp.add_argument('--cutoff',default=5.0, type=float, help='percent error cutoff for bad blocks')
-
-exec_subp = subparsers.add_parser('best_cal', help='bruteforce calibration for all individually characterized blocks')
-exec_subp.add_argument('model_number', type=str,help='model of board to study')
 '''
+
+best_subp = subparsers.add_parser('best_cal', help='bruteforce calibration for all individually characterized blocks')
+best_subp.add_argument('model_number', type=str,help='model of board to study')
 
 
 mdl_subp = subparsers.add_parser('model_cal', help='linear model calibration for all individually characterized blocks')

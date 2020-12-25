@@ -2,6 +2,7 @@ import runtime.runtime_meta_util as runtime_meta_util
 import runtime.models.exp_delta_model as exp_delta_model_lib
 import runtime.runtime_util as runtime_util
 import hwlib.hcdc.llenums as llenums
+import numpy as np
 
 def group_by_configured_block(board):
     instances = {}
@@ -24,6 +25,7 @@ def get_best_calibration(all_models):
         .get_calibration_objective_scores(all_models):
         scores.append(score)
         models.append(mdls)
+        
         print("%s" % mdls[0])
         print("  score=%f" % score)
         print("")

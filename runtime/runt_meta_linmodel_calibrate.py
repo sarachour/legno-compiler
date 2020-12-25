@@ -315,6 +315,9 @@ def calibrate_block(board,block,loc,config, \
     num_points += bootstrap_samples
     update(num_points)
     code_history = load_code_history_from_database(char_board)
+    
+    if cutoff is None:
+        cutoff = 0.0
 
     #input("bootstrap completed. press any key to continue...")
     for iter_no in range(num_iters):
@@ -360,7 +363,7 @@ def calibrate_block(board,block,loc,config, \
             print("")
             scores.append(score)
 
-        if not cutoff is None and min(scores) < cutoff:
+        if min(scores) < cutoff:
             print("[info] returning early! Found code that meets cutoff=%f." % cutoff)
             return
 

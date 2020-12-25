@@ -203,7 +203,7 @@ class PathHandler:
                                model,opt,\
                                calib_obj, phys_db, \
                                variable,trial):
-        path = "{path}/{prog}_g{lgraph}_s{lscale}_{model}_{calib_obj}_{opt}"
+        path = "{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}_{calib_obj}_{physdb}"
         path += "_{var}_{trial}.json"
 
         return path.format(path=self.MEAS_WAVEFORM_FILE_DIR,
@@ -227,7 +227,7 @@ class PathHandler:
                                plot_type='wave')
         util.mkdir_if_dne(cdir)
 
-        path = "{path}/{prog}_g{lgraph}_s{lscale}_{model}_{calib_obj}_{opt}"
+        path = "{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}_{calib_obj}_{physdb}"
         path += "_{var}_{trial}_{plot}.pdf"
 
         return path.format(path=cdir,
