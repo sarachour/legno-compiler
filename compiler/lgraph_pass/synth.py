@@ -173,6 +173,9 @@ def derive_tableau_from_phys_rel(tableau,goal,rel,unif):
     new_tableau.add_stmt(stmt)
 
   for law_var in law.virt.inputs:
+    if not new_unif.has(law_var):
+      continue
+
     _,e = new_unif.get_by_name(law_var)
     new_tableau.add_goal(Goal(LawVar(rel.target.law, \
                                      rel.target.ident, \

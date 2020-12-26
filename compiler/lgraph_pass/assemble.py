@@ -202,7 +202,7 @@ def build_asm_frag(corpus,input_var,sinks):
 
       yield new_frags
 
-
+# assemble all the assembly fragments together
 def assemble_circuit(stmts):
   def add(dict_,key,val):
     if not key in dict_:
@@ -249,7 +249,11 @@ def assemble_circuit(stmts):
     compute_sources[dsexpr] = []
 
   for dsexpr,sink_ports in compute_sinks.items():
-    source_ports = compute_sources[dsexpr]
+    if dsexpr in compute_sources:
+      source_ports = compute_sources[dsexpr]
+    else:
+      source_ports = []
+
     if dsexpr in asm_sources:
       source_ports += asm_sources[dsexpr]
 

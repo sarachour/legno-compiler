@@ -20,6 +20,10 @@ class Unification:
   def assignments(self):
     return self._assignments.values()
 
+  def has(self,v):
+      assert(isinstance(v,str))
+      return v in self._assignments
+
   def set_by_name(self,v,e):
     assert(isinstance(v,str))
     self._assignments[v] = (v,e)
@@ -28,6 +32,7 @@ class Unification:
   def add(self,v,e):
     assert(not v.name in self._assignments)
     assert(v.op == oplib.OpType.VAR)
+    assert(isinstance(v.name,str))
     self._assignments[v.name] = (v,e)
 
   def get_by_name(self,name):
@@ -54,9 +59,9 @@ class Unification:
     return u
 
   def __repr__(self):
-    st = ""
-    for v,e in self._assignments.values():
-        st += "%s=%s\n" % (v,e)
+    st = "--unif---\n"
+    for n,(v,e) in self._assignments.items():
+        st += "%s: %s=%s\n" % (n,v,e)
     return st
 
 class UnifyConstraint(Enum):
