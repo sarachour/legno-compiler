@@ -24,6 +24,7 @@ class KirchhoffRule(rulelib.Rule):
 
 
   def valid(self,unif):
+    # all assignments are zero
     for var,val in unif.assignments:
       if val.op == oplib.OpType.CONST and \
          val.value == 0.0:

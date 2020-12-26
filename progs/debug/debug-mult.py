@@ -1,5 +1,5 @@
 from dslang.dsprog import DSProg
-from dslang.dssim import DSSim
+from dslang.dssim import DSSim,DSInfo
 
 def dsname():
   return "dbgmult"
@@ -16,12 +16,13 @@ def dsprog(prob):
   params = {
     'P0': 1.0,
     'V0' :0.0,
+    'fact': 1.2/2.0,
     'one':0.9999
   }
   prob.decl_stvar("V","(-P)","{V0}",params)
   prob.decl_stvar("P","V","{P0}",params)
   prob.decl_var("Q","{one}",params);
-  prob.emit("Q*P","Position",params)
+  prob.emit("{fact}*Q*P","Position",params,params)
   prob.interval("P",-1.0,1.0)
   prob.interval("V",-1.0,1.0)
   prob.check()

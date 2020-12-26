@@ -23,55 +23,60 @@ import compiler.lgraph_pass.rule as rulelib
 import compiler.lgraph_pass.vadp as vadplib
 from compiler.lgraph_pass.rules.kirch import KirchhoffRule
 from compiler.lgraph_pass.rules.lutfuse import FuseLUTRule
+from compiler.lgraph_pass.rules.flip import FlipSignRule
+import numpy as np
 
 
 def get_laws(dev):
-    return [KirchhoffRule(), FuseLUTRule(dev)]
-    return [
-        {
-            'name':'kirchoff',
-            'expr': {"*": parser.parse_expr('a+b')},
-            'type': blocklib.BlockSignalType.ANALOG,
-            'vars': {
-                'a':blocklib.BlockSignalType.ANALOG, \
-                'b':blocklib.BlockSignalType.ANALOG
-            },
-            'cstrs': rulelib.cstrs_kirchoff,
-            'apply': rulelib.apply_kirchoff,
-            'simplify': rulelib.simplify_kirchoff
-        },
-        {
-            'name':'lut-fuse',
-            'expr': { \
-                      ('m','m'): parser.parse_expr('2.0*f((0.5*a))', 
-                                                   {'f':(['y'],parser.parse_expr('e'))}), \
-                      ('h','m'): parser.parse_expr('2.0*f((0.05*a))', 
-                                                   {'f':(['y'],parser.parse_expr('e'))}), \
-                      ('h','h'): parser.parse_expr('20.0*f((0.05*a))',
-                                                   {'f':(['y'],parser.parse_expr('e'))}), \
-                      ('m','h'): parser.parse_expr('20.0*f((0.5*a))',
-                                                   {'f':(['y'],parser.parse_expr('e'))}), \
-            },
-            'type': blocklib.BlockSignalType.ANALOG,
-            'vars': {
-                'a':blocklib.BlockSignalType.ANALOG
-            },
-            'cstrs': rulelib.cstrs_fuse_lut,
-            'apply': rulelib.apply_fuse_lut,
-            'simplify': rulelib.simplify_fuse_lut
-        },
-        {
-            'name':'flip_sign',
-            'expr':{"*":parser.parse_expr('-a')},
-            'type': blocklib.BlockSignalType.ANALOG,
-            'vars': {
-                'a':blocklib.BlockSignalType.ANALOG
-            },
-            'cstrs': rulelib.cstrs_flip,
-            'apply': rulelib.apply_flip,
-            'simplify': rulelib.simplify_flip
-        }
-    ]
+    return [KirchhoffRule(), FuseLUTRule(dev), FlipSignRule()]
+
+# TODO, always choose minimal fragment combination
+
+def score_fragment(frag):
+    score = 0
+    for stmt in frag:
+        if isinstance(stmt,vadplib.VADPConfig):
+            score += 1
+    return score
+
+# combines the fragments, returns circuits from best to worst
+def combine_fragments(frags):
+    def mkfrag(fs,indices):
+        # make a set of fragment selections from the selected indices
+        print(indices)
+        return dict(map(lambda tup: (tup[0], tup[1][indices[tup[0]]]), \
+                 fs.items()))
+
+    variables = list(frags.keys())
+    sorted_frags = {}
+    curr_frags = {}
+    for v,frags in frags.items():
+        indices = np.argsort(list(map(lambda f: score_fragment(f), frags)))
+        sorted_frags[v] = list(map(lambda idx: frags[idx], indices)) 
+        curr_frags[v] = 0
+
+    has_frag = True
+    while has_frag:
+        yield mkfrag(sorted_frags,curr_frags)
+        best_score_diff = None
+        best_frag = None
+        for v,idx in curr_frags.items():
+            frags = sorted_frags[v]
+            # if we can select the next fragment
+            if idx+1 < len(frags):
+                # if the score increase is better than what we have now
+                score_diff = score_fragment(frags[idx+1]) - score_fragment(frags[idx])
+                if best_score_diff is None or \
+                   best_score_diff > score_diff:
+                    best_score_diff = score_diff
+                    best_frag = v
+
+        if best_score_diff is None:
+            has_frag = False
+        else:
+            curr_frags[best_frag] += 1
+
+
 
 
 def compile(board,prob,
@@ -115,9 +120,10 @@ def compile(board,prob,
     circuit = {}
     block_counts = {}
     vadp_circuits = []
-    while len(vadp_circuits) < vadps:
-        for variable in prob.variables():
-            circuit[variable] = random.choice(fragments[variable])
+
+    for circuit in combine_fragments(fragments):
+        if len(vadp_circuits) >= vadps:
+            break
 
         for circ in asmlib.assemble(assemble_blocks,circuit, \
                                     n_asm_frags=asm_frags):
