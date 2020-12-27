@@ -56,22 +56,22 @@ dac.inputs['x'] \
 
 
 def dac_calib_obj(spec,out_scale):
-  base_expr = 'abs((a-1.0))+{gainOut}*abs(modelError)+{gainOut}*abs(b)'
-  expr = base_expr.format(gainOut=1.0/out_scale)
+  base_expr = '{deviate}*abs((a-1.0))+{gainOut}*abs(modelError)+abs(b)'
+  expr = base_expr.format(gainOut=1.0/out_scale, \
+                          deviate=0.05)
   new_spec = spec.copy()
   new_spec.objective = parser.parse_expr(expr)
   return new_spec
 
 
 
-calib_obj = parser.parse_expr('(abs(a))^(-1)*(modelError+abs(b))')
-spec = DeltaSpec(parser.parse_expr('a*2.0*c+b'))
+spec = DeltaSpec(parser.parse_expr('2.0*(a*c+b)'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('b',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
 new_spec = dac_calib_obj(spec, 2.0)
 dac.outputs['z'].deltas.bind(['const','m'],new_spec)
 
-spec = DeltaSpec(parser.parse_expr('a*20.0*c+b'))
+spec = DeltaSpec(parser.parse_expr('20.0*(a*c+b)'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('b',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
 new_spec = dac_calib_obj(spec, 20.0)
