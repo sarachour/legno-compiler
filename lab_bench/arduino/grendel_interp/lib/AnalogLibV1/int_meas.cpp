@@ -184,6 +184,7 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measureOpenLoopCircuit(profile_
 
     input = val_dac->fastMakeValue(dac_value);
     sprintf(FMTBUF,"open-loop input=%f expected=%f",input,expected);
+    print_info(FMTBUF);
 
 
     conn_out_to_tile.setConn();
