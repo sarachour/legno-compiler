@@ -82,42 +82,43 @@ def test_block(board,block,loc,modes, \
     print("%s.%s mode=%s" \
           % (block.name,loc,mode))
     print("############################")
-    for upd_adp in runtime_util.make_block_test_adp(board,new_adp,block,blkcfg):
-      adp_file = runtime_meta_util.get_adp(board,block,loc,blkcfg)
-      with open(adp_file,'w') as fh:
-        fh.write(json.dumps(upd_adp.to_json()))
+    upd_adp = runtime_util.make_block_test_adp(board,new_adp,block,blkcfg)
+    adp_filename = runtime_meta_util.get_adp(board,block,loc,blkcfg)
 
-      if minimize_error:
-        objfun = llenums.CalibrateObjective.MINIMIZE_ERROR
-        cmds = legacy_calibration(board,adp_file,block,mode,objfun)
-        for name,cmd in cmds:
-          print(cmd)
-          runtime = runtime_meta_util.run_command(cmd)
-          logger.log(block=block.name, loc=str(loc), mode=str(mode), \
-                     calib_obj=objfun.value, operation=name, runtime=runtime)
+    with open(adp_filename,'w') as fh:
+      fh.write(json.dumps(upd_adp.to_json()))
 
-
-
-      if maximize_fit:
-        objfun = llenums.CalibrateObjective.MAXIMIZE_FIT
-        cmds = legacy_calibration(board,adp_file,block,mode, objfun)
-        for name,cmd in cmds:
-          print(cmd)
-          runtime = runtime_meta_util.run_command(cmd)
-          logger.log(block=block.name, loc=str(loc), mode=str(mode), \
-                     calib_obj=objfun.value, operation=name, runtime=runtime)
+    if minimize_error:
+      objfun = llenums.CalibrateObjective.MINIMIZE_ERROR
+      cmds = legacy_calibration(board,adp_file,block,mode,objfun)
+      for name,cmd in cmds:
+        print(cmd)
+        runtime = runtime_meta_util.run_command(cmd)
+        logger.log(block=block.name, loc=str(loc), mode=str(mode), \
+                    calib_obj=objfun.value, operation=name, runtime=runtime)
 
 
-      if model_based:
-        cmds = model_based_calibration(board,adp_file,block,mode)
-        for name,cmd in cmds:
-          print(cmd)
-          runtime = runtime_meta_util.run_command(cmd)
-          logger.log(block=block.name, loc=str(loc), mode=str(mode), \
-                     calib_obj='model',operation=name, runtime=runtime)
+
+    if maximize_fit:
+      objfun = llenums.CalibrateObjective.MAXIMIZE_FIT
+      cmds = legacy_calibration(board,adp_file,block,mode, objfun)
+      for name,cmd in cmds:
+        print(cmd)
+        runtime = runtime_meta_util.run_command(cmd)
+        logger.log(block=block.name, loc=str(loc), mode=str(mode), \
+                    calib_obj=objfun.value, operation=name, runtime=runtime)
 
 
-      runtime_meta_util.remove_file(adp_file)
+    if model_based:
+      cmds = model_based_calibration(board,adp_file,block,mode)
+      for name,cmd in cmds:
+        print(cmd)
+        runtime = runtime_meta_util.run_command(cmd)
+        logger.log(block=block.name, loc=str(loc), mode=str(mode), \
+                    calib_obj='model',operation=name, runtime=runtime)
+
+
+    runtime_meta_util.remove_file(adp_file)
 
 
 def test_board(args):

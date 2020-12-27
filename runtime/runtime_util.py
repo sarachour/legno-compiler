@@ -28,10 +28,10 @@ def make_block_test_adp(board,adp,block,cfg):
     adp_lut0.add_instance(lut_blk,lut0_loc)
     adp_lut0.add_conn(lut_blk, lut0_loc, lut_out, \
                       block, dac_loc, dac_in)
-    yield adp_lut0
+    return adp_lut0
 
   else:
-    yield adp
+    return adp
 
 
 def get_profiling_steps(output_port,cfg,grid_size):

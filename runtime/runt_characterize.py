@@ -74,8 +74,8 @@ def characterize_adp(args):
         for mode in cfg_modes:
             cfg.modes = [mode]
 
-            if blk.name == "dac" and "dyn" in str(cfg.mode):
-                raise Exception("TODO: cannot characterize dac in dynamic mode.. need to create a staw lut-dac circuit. See profiling op.")
+            #if blk.name == "dac" and "dyn" in str(cfg.mode):
+            #    raise Exception("TODO: cannot characterize dac in dynamic mode.. need to create a staw lut-dac circuit. See profiling op.")
 
             datasets = list(exp_profile_dataset_lib.get_datasets_by_configured_block(board, \
                                                                                          blk, \
