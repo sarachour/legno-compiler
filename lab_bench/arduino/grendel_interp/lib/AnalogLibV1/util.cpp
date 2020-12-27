@@ -216,6 +216,8 @@ namespace util {
     print_info(FMTBUF);
     return loss;
   }
+
+
   void meas_dist_adc(Fabric::Chip::Tile::Slice::ChipAdc* fu,
                       float& mean, float& variance){
     Fabric* fab = fu->getFabric();
@@ -285,10 +287,12 @@ namespace util {
     fab->cfgCommit();
     int n = fu->getChip()->tiles[3].slices[2].chipOutput
       ->analogSeq(times,values,samples);
+#ifdef DEBUG_UTIL
     for(int i=0; i < n; i += 1){
       sprintf(FMTBUF," t=%f v=%f", times[i], values[i]);
       print_info(FMTBUF);
     }
+#endif
     return n;
   }
   void meas_steady_chip_out(Fabric::Chip::Tile::Slice::FunctionUnit* fu,

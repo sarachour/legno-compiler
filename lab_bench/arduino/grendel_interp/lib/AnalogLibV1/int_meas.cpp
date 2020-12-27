@@ -121,7 +121,7 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measureClosedLoopCircuit(profil
   util::meas_steady_chip_out(this,mean,variance);
 
   profile_t result = prof::make_profile(spec,
-                                        mean-target, 
+                                        mean-target,
                                         variance);
 
   conn_out_to_fan.brkConn();
@@ -151,11 +151,11 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measureOpenLoopCircuit(profile_
                               ->parentChip->tiles[3].slices[2].chipOutput);
   cutil::break_conns(calib);
   float target_tc = Fabric::Chip::Tile::Slice
-    ::Integrator::computeTimeConstant(this->m_state);
+    ::Integrator::computeTimeConstant(this->m_state) / NOMINAL_TIME_CONSTANT;
   // configure value DAC
 
   float input = 0.0;
-  if(target_tc > 1.5*NOMINAL_TIME_CONSTANT){
+  if(target_tc > 1.5){
     this->setInitial(0.0);
     input = val_dac->fastMakeValue(0.02);
   }
@@ -177,54 +177,63 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measureOpenLoopCircuit(profile_
   conn_out_to_tile.setConn();
   tileout_to_chipout.setConn();
 
-  const int n_samples = 25;
-  float nom_times[25],k_times[25];
-  float nom_values[25],k_values[25];
-  conn_dac_to_in.setConn();
-  print_info("=== with input ===");
-  int n = util::meas_transient_chip_out(this,
-                                    k_times, k_values,
-                                    n_samples);
-  // with ground.
-  conn_dac_to_in.brkConn();
-  print_info("=== without input ===");
-  int m = util::meas_transient_chip_out(this,
-                                        nom_times, nom_values,
-                                        n_samples);
+  const int npts = 10;
+  float values[10];
 
-  time_constant_stats tc_stats = estimate_time_constant(input,
-                                                        min(n,m),
-                                                        nom_times,nom_values,
-                                                        k_times,k_values);
+  for(int i=0; i < 10; i + 1){
+    const int n_samples = 25;
+    float nom_times[25],k_times[25];
+    float nom_values[25],k_values[25];
 
+    conn_dac_to_in.setConn();
+    int n = util::meas_transient_chip_out(this,
+                                      k_times, k_values,
+                                      n_samples);
+    // with ground.
+    conn_dac_to_in.brkConn();
+    int m = util::meas_transient_chip_out(this,
+                                          nom_times, nom_values,
+                                          n_samples);
+
+    time_constant_stats tc_stats = estimate_time_constant(input,
+                                                          min(n,m),
+                                                          nom_times,nom_values,
+                                                          k_times,k_values);
+    switch(spec.type){
+    case INTEG_DERIVATIVE_GAIN:
+      values[i] = (float) tc_stats.tc/NOMINAL_TIME_CONSTANT;
+      break;
+    case INTEG_DERIVATIVE_BIAS:
+      values[i] = (float) tc_stats.eps;
+      break;
+    default:
+      error("unexpected profile-spec type");
+      break;
+    }
+  }
+  float mean,variance;
   profile_t result;
+
+  util::distribution(values,npts,mean,variance);
+  result = prof::make_profile(spec, mean, sqrt(variance));
+
+#ifdef DEBUG_INTEG_PROF
   switch(spec.type){
   case INTEG_DERIVATIVE_GAIN:
-#ifdef DEBUG_INTEG_PROF
-    sprintf(FMTBUF,"prof-integ-gain targ=%f meas=%f\n",
-            target_tc/NOMINAL_TIME_CONSTANT, 
-            tc_stats.tc/NOMINAL_TIME_CONSTANT);
+    sprintf(FMTBUF,"prof-integ-gain targ=%f meas=%f std=%f\n",
+            target_tc, mean, sqrt(variance));
     print_info(FMTBUF);
-#endif
-    result = prof::make_profile(spec,
-                                tc_stats.tc/NOMINAL_TIME_CONSTANT,
-                                sqrt(tc_stats.R2_k));
     break;
   case INTEG_DERIVATIVE_BIAS:
-#ifdef DEBUG_INTEG_PROF
-    sprintf(FMTBUF,"prof-integ-offset targ=%f meas=%f\n",
-            0.0, tc_stats.eps);
+    sprintf(FMTBUF,"prof-integ-offset targ=%f meas=%f std=%f\n",
+            0.0, mean, sqrt(variance));
     print_info(FMTBUF);
-#endif
-    result = prof::make_profile(spec,
-                                tc_stats.eps,
-                                sqrt(tc_stats.R2_eps));
     break;
   default:
     error("unexpected profile-spec type");
     break;
   }
-
+#endif
 
   conn_out_to_tile.brkConn();
   tileout_to_chipout.brkConn();
