@@ -155,14 +155,9 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measureOpenLoopCircuit(profile_
   // configure value DAC
 
   float input = 0.0;
-  if(target_tc > 1.5){
-    this->setInitial(0.0);
-    input = val_dac->fastMakeValue(0.02);
-  }
-  else {
-    this->setInitial(0.0);
-    input = val_dac->fastMakeValue(0.20);
-  }
+  float dac_value = target_tc > 1.5 ? 0.02 : 0.2;
+  this->setInitial(0.0);
+  input = val_dac->fastMakeValue(dac_value);
   float expected = val_dac->computeOutput(val_dac->m_state);
   sprintf(FMTBUF,"open-loop input=%f expected=%f",input,expected);
   print_info(FMTBUF);
@@ -174,8 +169,7 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measureOpenLoopCircuit(profile_
   Connection tileout_to_chipout = Connection (parentSlice->tileOuts[3].out0,
                                               parentSlice->parentTile->parentChip
                                               ->tiles[3].slices[2].chipOutput->in0);
-  conn_out_to_tile.setConn();
-  tileout_to_chipout.setConn();
+  
 
   const int npts = 10;
   float values[10];
@@ -187,6 +181,14 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measureOpenLoopCircuit(profile_
 
     sprintf(FMTBUF, "--> iteration %d\n", i);
     print_info(FMTBUF);
+
+    input = val_dac->fastMakeValue(dac_value);
+    sprintf(FMTBUF,"open-loop input=%f expected=%f",input,expected);
+
+
+    conn_out_to_tile.setConn();
+    tileout_to_chipout.setConn();
+
     conn_dac_to_in.setConn();
     int n = util::meas_transient_chip_out(this,
                                       k_times, k_values,
