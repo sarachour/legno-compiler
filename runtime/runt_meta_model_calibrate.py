@@ -391,6 +391,7 @@ def calibrate(args):
     board = runtime_util.get_device(args.model_number)
 
     logger = ModelCalibrateLogger('mdlcal_%s.log' % args.model_number)
+
     if not args.adp is None:
         adp = runtime_util.get_adp(board,args.adp,widen=args.widen)
         for cfg in adp.configs:
@@ -401,6 +402,11 @@ def calibrate(args):
             cfg_modes = cfg.modes
             for mode in cfg_modes:
                 cfg.modes = [mode]
+
+                cutoff = args.cutoff
+                if args.default_cutoff:
+                    cutoff = runtime_meta_util.get_tolerance(blk,cfg)
+
                 calibrate_block(logger, \
                                 board,blk,cfg.inst.loc,cfg, \
                                 bootstrap_samples=args.bootstrap_samples, \
@@ -416,10 +422,16 @@ def calibrate(args):
                 continue
 
             blk,loc,out,cfg = runtime_meta_util.homogenous_database_get_block_info(char_board)
+
+            cutoff = args.cutoff
+            if args.default_cutoff:
+                cutoff = runtime_meta_util.get_tolerance(blk,cfg)
+
+
             calibrate_block(logger, \
                             board,blk,cfg.inst.loc,cfg, \
                             bootstrap_samples=args.bootstrap_samples, \
                             random_samples=args.candidate_samples, \
                             grid_size=args.grid_size, \
                             num_iters=args.num_iters, \
-                            cutoff=args.cutoff)
+                            cutoff=cutoff)

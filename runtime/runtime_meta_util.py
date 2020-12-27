@@ -39,7 +39,7 @@ def get_tolerance(block,mode):
     elif 'm' in str(mode):
       return 0.0004
     else:
-      raise NotImplementedError
+      raise Exception("unknown cutoff %s <%s>" % (block.name,mode))
 
   elif block.name == 'integ':
     if 'h,h' in str(mode):
@@ -52,24 +52,28 @@ def get_tolerance(block,mode):
       return 0.01
 
     else:
-      raise NotImplementedError
+      raise Exception("unknown cutoff %s <%s>" % (block.name,mode))
 
   elif block.name == 'mult':
     if 'x,h,h' in str(mode):
       # majority of error is from non-unity gain
-      return 0.12
+      return 0.03
+
     elif 'x,h,m' in str(mode):
-      return 0.003
+      return 0.005
+
     elif 'x,m,h' in str(mode):
       # majority of error is from non-unity gain
-      return 0.12
+      return 0.03
+
     elif 'x,m,m' in str(mode):
       return 0.008
+
     else:
-      raise NotImplementedError
+      raise Exception("unknown cutoff %s <%s>" % (block.name,mode))
 
   else:
-    raise NotImplementedError
+    raise Exception("unknown block cutoff: %s" % (block.name))
 
 
 def random_hidden_codes(block):

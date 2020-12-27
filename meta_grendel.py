@@ -55,6 +55,9 @@ mdl_subp.add_argument('--adp',type=str,help='adp to calibrate.')
 mdl_subp.add_argument('--widen',action='store_true',help='widen the set of modes.')
 mdl_subp.add_argument('--cutoff', type=float, \
                       help='score cutoff to terminate')
+mdl_subp.add_argument('--default-cutoff', action='store_true', \
+                      help='use stored block cutoffs. Overrides cutoff.')
+
 
 
 
