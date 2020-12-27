@@ -180,11 +180,13 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measureOpenLoopCircuit(profile_
   const int npts = 10;
   float values[10];
 
-  for(int i=0; i < 10; i + 1){
+  for(int i=0; i < 10; i += 1){
     const int n_samples = 25;
     float nom_times[25],k_times[25];
     float nom_values[25],k_values[25];
 
+    sprintf(FMTBUF, "--> iteration %d\n", i);
+    print_info(FMTBUF);
     conn_dac_to_in.setConn();
     int n = util::meas_transient_chip_out(this,
                                       k_times, k_values,
