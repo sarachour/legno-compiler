@@ -130,6 +130,8 @@ class Op:
             return lambd.Sin.from_json(obj)
         elif op == OpType.COS:
             return lambd.Cos.from_json(obj)
+        elif op == OpType.ROUND:
+            return lambd.Round.from_json(obj)
         elif op == OpType.MAX:
             return lambd.Max.from_json(obj)
         elif op == OpType.MIN:

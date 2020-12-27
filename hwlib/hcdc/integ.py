@@ -98,7 +98,9 @@ def integ_calib_obj(spec,out_scale):
   # u : this has high error... don't fit this
   #base_expr = '0.02*abs((b-1.0)) + 0.02*abs((a-1.0)) + modelError*{gainOut}+abs(v)'
   base_expr = '0.02*abs((b-1.0)) + 0.2*abs((a-1.0)) + abs(modelError)*{gainOut} + abs(v)'
-  expr = base_expr.format(gainOut=1.0/out_scale)
+  base_expr += " + abs((c - round(c,{quantize})))"
+  expr = base_expr.format(gainOut=1.0/out_scale, \
+                          quantize=1.0/128.0)
   new_spec = spec.copy()
   new_spec.objective = parser.parse_expr(expr)
   return new_spec

@@ -54,6 +54,13 @@ def eval_expr(e,subs,concretize=True):
     return list(op_apply2(lambda e1,e2: lambdalib.Max(e1,e2),  \
                           leaves1, leaves2))
 
+  elif e.op == genoplib.OpType.ROUND:
+    leaves1 = eval_expr(e.args[0],subs,concretize)
+    leaves2 = eval_expr(e.args[1],subs,concretize)
+    return list(op_apply2(lambda e1,e2: lambdalib.Round(e1,e2),  \
+                          leaves1, leaves2))
+
+
   elif e.op == genoplib.OpType.MIN:
     leaves1 = eval_expr(e.args[0],subs,concretize)
     leaves2 = eval_expr(e.args[1],subs,concretize)
