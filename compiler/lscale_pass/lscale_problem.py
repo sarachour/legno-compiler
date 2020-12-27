@@ -159,7 +159,7 @@ def generate_factor_constraints(inst,rel):
     return [],scalelib.SCMonomial.make_var(variable)
 
   elif rel.op == baseoplib.OpType.CONST:
-    return [],scalelib.SCMonomial.make_const(rel.value)
+    return [],scalelib.SCMonomial.make_const(abs(rel.value))
 
 
   elif rel.op == baseoplib.OpType.MULT:
@@ -330,7 +330,8 @@ def generate_port_quantize_constraints(hwinfo, dsinfo,inst,  \
 def generate_port_noise_constraints(hwinfo, dsinfo,inst,  \
                                     baseline_mode, modes, \
                                     port,lower=False, \
-                                    is_dsvar=False):
+                                    is_dsvar=False, \
+                                    is_obs=False):
   v_scalevar = scalelib.PortScaleVar(inst,port)
   v_noise = scalelib.PropertyVar(scalelib.PropertyVar.Type.NOISE, \
                                  inst,port)
@@ -349,15 +350,23 @@ def generate_port_noise_constraints(hwinfo, dsinfo,inst,  \
   snr_term.add_term(v_scalevar)
   snr_term.add_term(v_noise,-1)
 
-  if is_dsvar:
-    qual = scalelib.QualityVar(scalelib.QualityMeasure.AQMST)
-  else:
-    qual = scalelib.QualityVar(scalelib.QualityMeasure.AQM)
-
+  
+  qual = scalelib.QualityVar(scalelib.QualityMeasure.AQM)
   cstr = scalelib.SCLTE(qual, \
                         snr_term)
   yield cstr
 
+  if is_dsvar:
+    qual = scalelib.QualityVar(scalelib.QualityMeasure.AQMST)
+    cstr = scalelib.SCLTE(qual, \
+                        snr_term)
+    yield cstr
+
+  if is_obs:
+    qual = scalelib.QualityVar(scalelib.QualityMeasure.AQMOBS)
+    cstr = scalelib.SCLTE(qual, \
+                        snr_term)
+    yield cstr
 
 
 def generate_const_data_field_constraints(hwinfo,dsinfo,inst, \
@@ -429,7 +438,8 @@ def generate_digital_port_constraints(hwinfo,dsinfo,inst, \
 
 def generate_analog_port_constraints(hwinfo,dsinfo,inst, \
                                      baseline_mode,modes,port, \
-                                     is_dsvar=False):
+                                     is_dsvar=False, \
+                                     is_obs=False):
 
   for cstr in generate_port_properties(hwinfo, \
                                        dsinfo, \
@@ -463,7 +473,8 @@ def generate_analog_port_constraints(hwinfo,dsinfo,inst, \
                                                 baseline_mode, \
                                                 modes, port, \
                                                 lower=do_lower, \
-                                                is_dsvar=is_dsvar):
+                                                is_dsvar=is_dsvar, \
+                                                is_obs=is_obs):
       yield cstr
 
 
@@ -541,14 +552,18 @@ def generate_constraint_problem(dev,program,adp, \
                                                     modes_subset)
 
     for port in list(block.outputs) + list(block.inputs):
-      if not adp.port_in_use(config.inst,port.name):
+      if not adp.port_in_use(config.inst,port.name) and not port.extern:
         continue
 
       is_dsvar = False
+      is_obs = False
       # if this is a labelled port, preserve it!!
       if config.has(port.name) and \
          not config[port.name].source is None:
         is_dsvar = True
+      
+      if port.extern:
+        is_obs = True
 
       if port.type == blocklib.BlockSignalType.ANALOG:
         for cstr in generate_analog_port_constraints(hwinfo, \
@@ -557,7 +572,8 @@ def generate_constraint_problem(dev,program,adp, \
                                                      config.modes[0], \
                                                      block.modes,
                                                      port.name, \
-                                                     is_dsvar=is_dsvar):
+                                                     is_dsvar=is_dsvar, \
+                                                     is_obs=is_obs):
           yield cstr
 
       if port.type == blocklib.BlockSignalType.DIGITAL:

@@ -666,9 +666,10 @@ class BlockState(BlockField):
 
 class BlockInput(BlockField):
 
-  def __init__(self,name,sig_type,ll_identifier):
+  def __init__(self,name,sig_type,ll_identifier,extern=False):
       BlockField.__init__(self,name)
       assert(isinstance(sig_type, BlockSignalType))
+      self.extern = extern
       self.type = sig_type
       self.ll_identifier = ll_identifier
 
@@ -866,10 +867,11 @@ class DeltaSpec:
 
 class BlockOutput(BlockField):
 
-  def __init__(self,name,sig_type,ll_identifier):
+  def __init__(self,name,sig_type,ll_identifier,extern=False):
     BlockField.__init__(self,name)
     assert(isinstance(sig_type, BlockSignalType))
     self.type = sig_type
+    self.extern = extern
     self.ll_identifier = ll_identifier
 
   def initialize(self,block):

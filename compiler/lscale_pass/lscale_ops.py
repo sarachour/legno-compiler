@@ -13,6 +13,7 @@ class QualityMeasure(Enum):
   DQM = "DQM"
   DQME = "DQME"
   AQMST = "AQMST"
+  AQMOBS  = "AQMOBS"
 
 
 class ScaleMethod(Enum):

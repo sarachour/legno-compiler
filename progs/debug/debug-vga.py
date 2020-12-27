@@ -16,7 +16,7 @@ def dsprog(prob):
   params = {
     'P0': 1.0,
     'V0' :0.0,
-    'freq':0.9999
+    'one':0.9999
   }
   prob.decl_stvar("V","(-P)","{V0}",params)
   prob.decl_stvar("P","V","{P0}",params)

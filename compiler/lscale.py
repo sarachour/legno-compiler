@@ -8,6 +8,7 @@ def get_objective(objective,cstr_prob):
   dqm= scalelib.QualityVar(scalelib.QualityMeasure.DQM)
   dqme= scalelib.QualityVar(scalelib.QualityMeasure.DQME)
   aqmst= scalelib.QualityVar(scalelib.QualityMeasure.AQMST)
+  aqmobs = scalelib.QualityVar(scalelib.QualityMeasure.AQMOBS)
   timescale = scalelib.TimeScaleVar()
 
   all_vars = []
@@ -15,7 +16,7 @@ def get_objective(objective,cstr_prob):
     all_vars += list(map(lambda v: str(v), cstr.vars()))
 
   quality_vars = list(filter(lambda v: str(v) in all_vars, \
-                             [aqm,dqm,dqme,aqmst]))
+                             [aqm,dqm,dqme,aqmst,aqmobs]))
 
   if scalelib.ObjectiveFun.QUALITY == objective:
     monom = scalelib.SCMonomial()
@@ -44,6 +45,7 @@ def adp_summary(adp):
            "Objective: {objective}", \
            "AQM:   {aqm}", \
            "AQMST: {aqmst}", \
+           "AQMOBS: {aqmobs}", \
            "DQM:   {dqm}", \
            "DQME:  {dqme}", \
            "TAU:   {tau}"]
@@ -51,6 +53,8 @@ def adp_summary(adp):
   args = {
     'tau':adp.tau,
     'aqm':adp.metadata.get(adplib.ADPMetadata.Keys.LSCALE_AQM),
+    'aqmobs':adp.metadata.get(adplib.ADPMetadata.Keys.LSCALE_AQMOBS) \
+    if adp.metadata.has(adplib.ADPMetadata.Keys.LSCALE_AQMOBS) else "<don't care>",
     'aqmst':adp.metadata.get(adplib.ADPMetadata.Keys.LSCALE_AQMST) \
     if adp.metadata.has(adplib.ADPMetadata.Keys.LSCALE_AQMST) else "<don't care>",
     'dqm':adp.metadata.get(adplib.ADPMetadata.Keys.LSCALE_DQM),

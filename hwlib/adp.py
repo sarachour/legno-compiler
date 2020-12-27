@@ -528,6 +528,7 @@ class ADPMetadata:
     RUNTIME_PHYS_DB = "runt_phys_db"
     LSCALE_AQM = "aqm"
     LSCALE_AQMST = "aqmst"
+    LSCALE_AQMOBS  = "aqmobs"
     LSCALE_DQM = "dqm"
     LSCALE_DQME = "dqme"
     DSNAME = "dsname"

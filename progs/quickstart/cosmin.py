@@ -30,6 +30,6 @@ def dsprog(prob):
   return prob
 
 def dssim():
-  exp = DSSim('t50')
-  exp.set_sim_time(50)
+  exp = DSSim('t20')
+  exp.set_sim_time(20)
   return exp
