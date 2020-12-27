@@ -57,8 +57,10 @@ dac.inputs['x'] \
 
 def dac_calib_obj(spec,out_scale):
   base_expr = '{deviate}*abs((a-1.0))+{gainOut}*abs(modelError)+abs(b)'
+  base_expr += " + abs((b - round(b,{quantize})))"
   expr = base_expr.format(gainOut=1.0/out_scale, \
-                          deviate=0.05)
+                          deviate=0.05, \
+                          quantize=1.0/128)
   new_spec = spec.copy()
   new_spec.objective = parser.parse_expr(expr)
   return new_spec

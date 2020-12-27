@@ -65,6 +65,9 @@ def function_to_ast(name,arguments,lambda_impl,handle_enumerator,ignore_missing_
   elif name == "integ":
     report(n == 2, "expected 2 arguments to integ function")
     return op.Integ(arguments[0],arguments[1])
+  elif name == "round":
+    report(n == 2, "expected 2 arguments to round function")
+    return op.Round(arguments[0],arguments[1])
   elif name == "max":
     report(n == 2, "expected 2 arguments to max function")
     return op.Max(arguments[0],arguments[1])

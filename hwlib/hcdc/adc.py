@@ -52,9 +52,10 @@ adc.state['range'] \
 
 
 
-def adc_calib_obj(spec,out_scale):
-  base_expr = 'abs((a-1.0))+{gainOut}*abs(modelError)+{gainOut}*abs(b)'
-  expr = base_expr.format(gainOut=1.0/out_scale)
+def adc_calib_obj(spec):
+  base_expr = 'abs((a-1.0))+abs(modelError)'
+  base_expr += " + abs((b - round(b,{quantize})))"
+  expr = base_expr.format(quantize=1.0/128)
   new_spec = spec.copy()
   new_spec.objective = parser.parse_expr(expr)
   return new_spec
@@ -64,13 +65,13 @@ def adc_calib_obj(spec,out_scale):
 spec = DeltaSpec(parser.parse_expr('a*0.5*x+b'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('b',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
-new_spec = adc_calib_obj(spec, 1.0)
+new_spec = adc_calib_obj(spec)
 adc.outputs['z'].deltas.bind(['m'],new_spec)
 
 spec = DeltaSpec(parser.parse_expr('a*0.05*x+b'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('b',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
-new_spec = adc_calib_obj(spec, 1.0)
+new_spec = adc_calib_obj(spec)
 adc.outputs['z'].deltas.bind(['h'],new_spec)
 
 

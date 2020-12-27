@@ -55,6 +55,12 @@ def to_python(e):
         v,a = to_python(e.arg(0))
         return v,"(%s)" % a
 
+    elif e.op == OpType.ROUND:
+        v1,a1 = to_python(e.arg(0))
+        v2,a2 = to_python(e.arg(0))
+        cmd = 'round({qty}/{step})*{step}'
+        return v1+v2,cmd.format(qty=a1,step=a2)
+
     elif e.op == OpType.SGN:
         v,a = to_python(e.arg(0))
         return v,"math.copysign(1,%s)" % a
@@ -141,6 +147,33 @@ class Func(Op):
     def __repr__(self):
         pars = " ".join(map(lambda p: str(p), self._vars))
         return "lambd(%s).(%s)" % (pars,self._expr)
+
+
+class Round(Op):
+
+    def __init__(self,arg0,arg1):
+        Op.__init__(self,OpType.ROUND,[arg0,arg1])
+
+    def substitute(self,args):
+        return Round(self.arg(0).substitute(args),
+                   self.arg(1).substitute(args))
+
+    def compute(self,bindings):
+        a0 = self.arg(0).compute(bindings)
+        a1 = self.arg(1).compute(bindings)
+        return max(a0,a1)
+
+    @staticmethod
+    def from_json(obj):
+        return Round( \
+                    Op.from_json(obj['args'][0]),
+                    Op.from_json(obj['args'][1]))
+
+
+    def __repr__(self):
+        return "round(%s,%s)" % (self.arg(0), \
+                               self.arg(1))
+
 
 class Max(Op):
 

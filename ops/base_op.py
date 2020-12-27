@@ -26,6 +26,7 @@ class OpType(Enum):
   CLAMP="clamp"
   MIN ="min"
   MAX ="max"
+  ROUND ="round"
 
 class Op:
 
