@@ -40,16 +40,33 @@ def get_tolerance(block,mode):
       return 0.0004
     else:
       raise Exception("unknown cutoff %s <%s>" % (block.name,mode))
+  
+  elif block.name == 'dac':
+    if 'h' in str(mode):
+      return 0.01
+    elif 'm' in str(mode):
+      return 0.01
+    else:
+      raise Exception("unknown cutoff %s <%s>" % (block.name,mode))
+
+  elif block.name == 'adc':
+    if 'h' in str(mode):
+      return 0.0
+    elif 'm' in str(mode):
+      return 0.0
+    else:
+      raise Exception("unknown cutoff %s <%s>" % (block.name,mode))
+
 
   elif block.name == 'integ':
     if 'h,h' in str(mode):
-      return 0.01
+      return 0.009
 
     elif 'h,m' in str(mode):
-      return 0.01
+      return 0.008
 
     elif 'm,m' in str(mode):
-      return 0.01
+      return 0.008
 
     else:
       raise Exception("unknown cutoff %s <%s>" % (block.name,mode))
@@ -57,20 +74,23 @@ def get_tolerance(block,mode):
   elif block.name == 'mult':
     if 'x,h,h' in str(mode):
       # majority of error is from non-unity gain
-      return 0.03
+      return 0.008
 
     elif 'x,h,m' in str(mode):
       return 0.005
 
     elif 'x,m,h' in str(mode):
       # majority of error is from non-unity gain
-      return 0.03
+      return 0.008
 
     elif 'x,m,m' in str(mode):
       return 0.008
 
+    elif 'h,m,m' in str(mode):
+      return 0.004
+
     else:
-      raise Exception("unknown cutoff %s <%s>" % (block.name,mode))
+      return 0.0
 
   else:
     raise Exception("unknown block cutoff: %s" % (block.name))

@@ -382,6 +382,15 @@ def factor_coefficient(expr):
     elif expr.op == OpType.CALL:
         return 1.0,expr
 
+    elif expr.op == OpType.ADD:
+        c1,e1 = factor_coefficient(expr.arg(0))
+        c2,e2 = factor_coefficient(expr.arg(1))
+        if c1 == c2:
+            return c1,Add(e1,e2)
+        else:
+            return 1.0,expr
+
+
     else:
         raise Exception("unimpl: %s" % expr)
 

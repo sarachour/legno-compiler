@@ -93,13 +93,13 @@ integ.outputs['z'].relation \
 integ.outputs['z'].relation \
                  .bind(['h','m','-'],parser.parse_expr('-integ((0.1*x),(2.0*z0))'))
 
-#calib_obj = parser.parse_expr('abs((a)^(-1)*(modelError + d))')
 def integ_calib_obj(spec,out_scale):
   # u : this has high error... don't fit this
-  #base_expr = '0.02*abs((b-1.0)) + 0.02*abs((a-1.0)) + modelError*{gainOut}+abs(v)'
-  base_expr = '0.02*abs((b-1.0)) + 0.2*abs((a-1.0)) + abs(modelError)*{gainOut} + abs(v)'
-  base_expr += " + abs((c - round(c,{quantize})))"
+  base_expr = '{deviation2}*abs((b-1.0)) + {deviation}*abs((a-1.0)) + abs(modelError)*{gainOut} + {gainOut}*abs(v)'
+  base_expr += " + abs(c)"
   expr = base_expr.format(gainOut=1.0/out_scale, \
+                          deviation=0.2, \
+                          deviation2=0.001, \
                           quantize=1.0/128.0)
   new_spec = spec.copy()
   new_spec.objective = parser.parse_expr(expr)
@@ -114,7 +114,8 @@ spec.param('u',DeltaParamType.GENERAL,ideal=0.0, \
            label=enums.ProfileOpType.INTEG_DERIVATIVE_BIAS.value)
 spec.param('v',DeltaParamType.GENERAL,ideal=0.0, \
            label=enums.ProfileOpType.INTEG_DERIVATIVE_STABLE.value)
-new_spec = integ_calib_obj(spec,1.0)
+
+new_spec = integ_calib_obj(spec,2.0)
 integ.outputs['z'].deltas.bind(['m','m','+'],new_spec)
 
 spec = DeltaSpec(parser.parse_expr('integ((-1*a*x),(-2.0*(b*z0+c)))'))

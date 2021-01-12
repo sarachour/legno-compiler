@@ -110,6 +110,7 @@ class Waveform:
                             % (self.ampl_units,other.ampl_units))
 
         time_slack = 0.02
+        #time_slack = 0.06
         time_jitter = other.max_time*0.03
         xform_spec = [
             (1.0-time_slack,1.0+time_slack),

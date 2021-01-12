@@ -320,9 +320,15 @@ def calibrate_block(logger, \
 
     char_model = runtime_meta_util.get_model(board,block,loc,config)
     char_board = runtime_util.get_device(char_model,layout=False)
-
-    #summarize_model(char_board,block,config)
-
+    code_history = load_code_history_from_database(char_board)
+ 
+    if cutoff is None:
+        cutoff = 0.0
+    
+    if len(code_history.scores) > 0 and min(code_history.scores) <= cutoff:
+        print("found code which meets cutoff=%f" % cutoff)
+        return
+    
     num_points = 0
     bootstrap_block(logger, \
                     char_board,block,loc,config, \
@@ -330,19 +336,14 @@ def calibrate_block(logger, \
                     grid_size=grid_size)
     num_points += bootstrap_samples
     update(num_points)
-    code_history = load_code_history_from_database(char_board)
 
-    if cutoff is None:
-        cutoff = 0.0
-
-    #input("bootstrap completed. press any key to continue...")
     for iter_no in range(num_iters):
         if is_block_calibrated(char_board,block,loc,config, \
                                random_samples=random_samples, \
                                num_iters=num_iters):
             return
 
-        print("---- iteration %d ----" % iter_no)
+        print("---- iteration %d (cutoff=%f) ----" % (iter_no,cutoff))
         logger.set_iteration(iter_no)
         #input("press any key to continue...")
         n_new_codes = 0
@@ -377,9 +378,9 @@ def calibrate_block(logger, \
                 print("score=<none>")
             else:
                 print("score=%f" % (score))
+                scores.append(score)
 
             print("")
-            scores.append(score)
 
         if min(scores) < cutoff:
             print("[info] returning early! Found code that meets cutoff=%f." % cutoff)
@@ -413,7 +414,7 @@ def calibrate(args):
                                 random_samples=args.candidate_samples, \
                                 grid_size=args.grid_size, \
                                 num_iters=args.num_iters, \
-                                cutoff=args.cutoff)
+                                cutoff=cutoff)
 
     else:
         for dbname in runtime_meta_util.get_block_databases(args.model_number):
