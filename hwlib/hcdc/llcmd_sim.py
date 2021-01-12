@@ -130,7 +130,8 @@ def save_data_from_oscilloscope(osc,board,dsprog,adp,sim_time,trial=0):
                                              phys_db=adp.metadata[adplib.ADPMetadata.Keys.RUNTIME_PHYS_DB], \
                                              calib_obj=adp.metadata[adplib.ADPMetadata.Keys.RUNTIME_CALIB_OBJ], \
                                              variable=var, \
-                                             trial=trial)
+                                             trial=trial, \
+                                             oscilloscope=True)
 
         with open(filename.format(variable=var),'w') as fh:
             print("-> compressing data")

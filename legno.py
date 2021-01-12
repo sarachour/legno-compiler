@@ -69,7 +69,8 @@ lexec_subp = subparsers.add_parser('lexec', help='execute circuit using grendel.
 lexec_subp.add_argument('program', help='program to execute.')
 lexec_subp.add_argument('--force', action='store_true', \
                        help='force reexecution.')
-
+lexec_subp.add_argument('--scope', action='store_true', \
+                       help='also measure waveform with sigilent oscilloscope.')
 
 sim_subp = subparsers.add_parser('lsim', help='simulate circuit.')
 sim_subp.add_argument('program', help='program to simulate.')

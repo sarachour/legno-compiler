@@ -170,7 +170,7 @@ def exec_lcal(args):
                         if code == signal.SIGINT or code != 0:
                             raise Exception("User terminated process")
 
-def _lexec_already_ran(ph,board,adp,trial=0):
+def _lexec_already_ran(ph,board,adp,trial=0,scope=False):
     for var,scf,chans in adp.observable_ports(board):
         filename = ph.measured_waveform_file(graph_index=adp.metadata[ADPMetadata.Keys.LGRAPH_ID], \
                                              scale_index=adp.metadata[ADPMetadata.Keys.LSCALE_ID], \
@@ -179,7 +179,8 @@ def _lexec_already_ran(ph,board,adp,trial=0):
                                              phys_db=adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB], \
                                              calib_obj=adp.metadata[ADPMetadata.Keys.RUNTIME_CALIB_OBJ], \
                                              variable=var, \
-                                             trial=trial)
+                                             trial=trial, \
+                                             oscilloscope=scope)
 
         if not os.path.exists(filename):
             return False
@@ -187,6 +188,9 @@ def _lexec_already_ran(ph,board,adp,trial=0):
 
 def exec_lexec(args):
     EXEC_CMD = "python3 grendel.py exec {adp_path} --model-number {model_number}"
+    if args.scope:
+        EXEC_CMD = " --osc"
+
     board = get_device(None)
     path_handler = paths.PathHandler(args.subset,args.program)
     program = DSProgDB.get_prog(args.program)
@@ -205,7 +209,8 @@ def exec_lexec(args):
                         'adp_path': adp_path,
                         'model_number': adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB]
                     }
-                    if not _lexec_already_ran(path_handler,board,adp,trial=0) or \
+                    if not _lexec_already_ran(path_handler,board,adp,trial=0, \
+                                              scope=args.scope) or \
                        args.force:
                         cmd = EXEC_CMD.format(**kwargs)
                         code = os.system(cmd)
@@ -294,29 +299,32 @@ def exec_wav(args,trials=1):
                     adp = ADP.from_json(board, obj)
                     for trial in range(trials):
                         for var,_,_ in adp.observable_ports(board):
-                            waveform_file = path_handler.measured_waveform_file( \
-                                                                                 graph_index=adp.metadata[ADPMetadata.Keys.LGRAPH_ID],
-                                                                                 scale_index=adp.metadata[ADPMetadata.Keys.LSCALE_ID],
-                                                                                 model=adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD],
-                                                                                 calib_obj=adp.metadata[ADPMetadata.Keys.RUNTIME_CALIB_OBJ], \
-                                                                                 opt=adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE], \
-                                                                                 phys_db=adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB], \
-                                                                                 variable=var, \
-                                                                                 trial=trial)
-                            if os.path.exists(waveform_file):
-                                with open(waveform_file,'r') as fh:
-                                    obj = util.decompress_json(fh.read())
-                                    wave = wavelib.Waveform.from_json(obj)
-                                    for vis in analyzelib.analyze(adp,wave):
-                                        plot_file = path_handler.waveform_plot_file( \
-                                                                                             graph_index=adp.metadata[ADPMetadata.Keys.LGRAPH_ID],
-                                                                                             scale_index=adp.metadata[ADPMetadata.Keys.LSCALE_ID],
-                                                                                             model=adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD],
-                                                                                             calib_obj=adp.metadata[ADPMetadata.Keys.RUNTIME_CALIB_OBJ], \
-                                                                                             opt=adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE], \
-                                                                                             phys_db=adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB], \
-                                                                                             variable=var, \
-                                                                                             trial=trial, \
-                                                                                     plot=vis.name)
+                            for has_scope in [True,False]:
+                                waveform_file = path_handler.measured_waveform_file( \
+                                                                                     graph_index=adp.metadata[ADPMetadata.Keys.LGRAPH_ID],
+                                                                                     scale_index=adp.metadata[ADPMetadata.Keys.LSCALE_ID],
+                                                                                     model=adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD],
+                                                                                     calib_obj=adp.metadata[ADPMetadata.Keys.RUNTIME_CALIB_OBJ], \
+                                                                                     opt=adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE], \
+                                                                                     phys_db=adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB], \
+                                                                                     variable=var, \
+                                                                                     trial=trial, \
+                                                                                     oscilloscope=has_scope)
+                                if os.path.exists(waveform_file):
+                                    with open(waveform_file,'r') as fh:
+                                        obj = util.decompress_json(fh.read())
+                                        wave = wavelib.Waveform.from_json(obj)
+                                        for vis in analyzelib.analyze(adp,wave):
+                                            plot_file = path_handler.waveform_plot_file( \
+                                                                                         graph_index=adp.metadata[ADPMetadata.Keys.LGRAPH_ID],
+                                                                                         scale_index=adp.metadata[ADPMetadata.Keys.LSCALE_ID],
+                                                                                         model=adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD],
+                                                                                         calib_obj=adp.metadata[ADPMetadata.Keys.RUNTIME_CALIB_OBJ], \
+                                                                                         opt=adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE], \
+                                                                                         phys_db=adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB], \
+                                                                                         variable=var, \
+                                                                                         trial=trial, \
+                                                                                         plot=vis.name, \
+                                                                                         oscilloscope=has_scope)
 
-                                        vis.plot(plot_file)
+                                            vis.plot(plot_file)

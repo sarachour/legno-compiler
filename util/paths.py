@@ -202,9 +202,13 @@ class PathHandler:
     def measured_waveform_file(self,graph_index,scale_index, \
                                model,opt,\
                                calib_obj, phys_db, \
-                               variable,trial):
+                               variable,trial, \
+                               oscilloscope=False):
         path = "{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}_{calib_obj}_{physdb}"
-        path += "_{var}_{trial}.json"
+        path += "_{var}_{trial}"
+        if oscilloscope:
+            path += "_scope"
+        path += ".json"
 
         return path.format(path=self.MEAS_WAVEFORM_FILE_DIR,
                            prog=self._prog,
@@ -221,14 +225,18 @@ class PathHandler:
                            model,opt,\
                            calib_obj, phys_db, \
                            variable,trial, \
-                           plot):
+                           plot, \
+                           oscilloscope=False):
         filepath = "{path}/{plot_type}"
         cdir = filepath.format(path=self.PLOT_DIR, \
                                plot_type='wave')
         util.mkdir_if_dne(cdir)
 
         path = "{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}_{calib_obj}_{physdb}"
-        path += "_{var}_{trial}_{plot}.pdf"
+        path += "_{var}_{trial}_{plot}"
+        if oscilloscope:
+            path += "_scope"
+        path += ".pdf"
 
         return path.format(path=cdir,
                            prog=self._prog,
