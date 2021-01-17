@@ -112,7 +112,7 @@ def save_data_from_oscilloscope(osc,board,dsprog,adp,sim_time,trial=0):
                                                 chan_pos, \
                                                 chan_neg, \
                                                 differential=True)
-        tc = board.time_constant*adp.tau
+        tc = board.time_constant/adp.tau
         json_data = {'times':times,  \
                      'values':voltages,  \
                      'time_units': 'wall_clock_sec', \

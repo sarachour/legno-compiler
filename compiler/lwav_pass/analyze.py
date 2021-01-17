@@ -28,7 +28,11 @@ def analyze(adp,waveform):
 
     reference = ref_waveforms[waveform.variable]
     # start from zero
-    rec_experimental = waveform.recover()
+    rec_experimental = waveform.start_from_zero().recover()
+    print("unrec-time: [%f,%f]" % (min(waveform.times), \
+          max(waveform.times)))
+    print("rec-time: [%f,%f]" % (min(rec_experimental.times), \
+          max(rec_experimental.times)))
 
     ylabel = "%s (%s)" % (dsinfo.observation,dsinfo.units)
     vis = wavelib.WaveformVis("meas",ylabel,program.name)

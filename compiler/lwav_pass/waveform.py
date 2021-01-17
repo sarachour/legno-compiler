@@ -3,6 +3,8 @@ from enum import Enum
 import compiler.lwav_pass.waveform_align as alignutil
 import matplotlib.pyplot as plt
 import seaborn as sns
+from scipy.interpolate import interp1d
+import numpy as np
 
 class Waveform:
     class TimeUnits(Enum):
@@ -48,6 +50,24 @@ class Waveform:
     def min_time(self):
         return min(self.times)
 
+
+    def start_from_zero(self):
+        offset = min(self.times)
+        Tnew = list(map(lambda t: t-offset, self.times))
+        return Waveform(self.variable,Tnew,self.values, \
+                        self.time_units,self.ampl_units, \
+                        self.time_scale,self.mag_scale)
+
+
+    def resample(self,npts):
+        F = interp1d(self.times,self.values, \
+                     fill_value='extrapolate')
+        Tnew = np.linspace(min(self.times), max(self.times), \
+                           num=npts)
+        Xnew = F(Tnew)
+        return Waveform(self.variable,Tnew,Xnew, \
+                        self.time_units,self.ampl_units, \
+                        self.time_scale,self.mag_scale)
 
     def trim(self,min_time,max_time):
         start = 0
@@ -112,15 +132,34 @@ class Waveform:
         time_slack = 0.02
         #time_slack = 0.06
         time_jitter = other.max_time*0.03
+        npts = min(len(other), len(self))*2
+
+
         xform_spec = [
             (1.0-time_slack,1.0+time_slack),
             (-time_jitter,time_jitter)
         ]
-        return alignutil.align(self,other,xform_spec)
+        print("scaf times: [%s,%s]" \
+              % (min(self.times),max(self.times)))
+
+        print("sign times: [%s,%s]" \
+              % (min(other.times),max(other.times)))
+        xform,_ = alignutil.align(self.resample(npts), \
+                                  other.resample(npts),xform_spec)
+        print(xform)
+        xformed_times=list(map(lambda t: xform['scale']*t + xform['offset'], other.times))
+
+        return Waveform(other.variable, \
+                        times=xformed_times, \
+                        values=other.values, \
+                        ampl_units=other.ampl_units, \
+                        time_units=other.time_units, \
+                        mag_scale=other.mag_scale)
 
 
 
-
+    def __len__(self):
+        return len(self.times)
 
 
 class WaveformVis:
