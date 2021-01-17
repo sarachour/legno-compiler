@@ -32,18 +32,24 @@ namespace experiment {
   }
 
 
-  void run_experiment_and_collect_data(experiment_t * expr, Fabric * fab, uint32_t& samples, uint32_t& freq){
+  void run_experiment_and_collect_data(experiment_t * expr, Fabric * fab, uint32_t& samples, unsigned long& runt_micros){
     if(expr->use_analog_chip){
       // this actually calls start and stop.
       fab->cfgCommit();
     }
 
+    uint32_t freq;
     dma::dma_info_t info;
     float warm_up = 0.00005;
-    dma::setup(info,expr->sim_time_sec*1.3+warm_up,(uint16_t*) DATABUF[0], DATABUF_SIZ,samples,freq);
+    set_SDA(LOW);
+    delayMicroseconds(2);
+    dma::setup(info,expr->sim_time_sec*1.3+warm_up,(uint16_t*) DATABUF[0],
+               DATABUF_SIZ,
+               samples,
+               freq);
     print_info("running experiment!\n");
     set_SDA(HIGH);
-    dma::run(fab);
+    dma::run(fab,runt_micros);
     dma::teardown(info);
     set_SDA(LOW);
   }
@@ -93,7 +99,7 @@ namespace experiment {
     set_SDA(LOW);
   }
 
-  void write_dataset(uint32_t samples, uint32_t freq){
+  void write_dataset(uint32_t samples, unsigned long micros){
     print_info("sending dataset!\n");
 
     uint32_t dataset_size = samples*N_CHANS+N_CHANS+2;
@@ -104,7 +110,7 @@ namespace experiment {
     Serial.print(" ");
     Serial.print((dataset_size),DEC);
     Serial.print(" ");
-    Serial.print(freq,DEC);
+    Serial.print(micros,DEC);
     Serial.print(" ");
     Serial.print(samples,DEC);
     for(unsigned int ch = 0; ch < N_CHANS; ch +=1){
@@ -126,10 +132,11 @@ namespace experiment {
       break;
     case cmd_type_t::RUN:
       //run_experiment(expr,fab);
-      uint32_t freq,samples;
-      run_experiment_and_collect_data(expr,fab,samples,freq);
+      uint32_t samples;
+      unsigned long runtime_micros;
+      run_experiment_and_collect_data(expr,fab,samples,runtime_micros);
       comm::response("ran experiment",1);
-      write_dataset(samples,freq);
+      write_dataset(samples,runtime_micros);
       break;
     case cmd_type_t::USE_ANALOG_CHIP:
       expr->use_analog_chip = true;

@@ -108,7 +108,7 @@ namespace dma {
     print_info("...done\n");
   }
 
-  void run(Fabric* fab){
+  void run(Fabric* fab, unsigned long& runtime){
     unsigned long start = micros();
     adc_start(ADC);
     ADC->ADC_PTCR = ADC_PTCR_RXTEN;
@@ -120,6 +120,7 @@ namespace dma {
     unsigned long end = micros();
     sprintf(FMTBUF, "time-elapsed: %d us, %f sec\n", (end-start), (end-start)/1.0e6);
     print_info(FMTBUF);
+    runtime=end-start;
   }
   inline float dma_val_to_voltage(uint16_t val){
     return 2.0*(val-2048)/2048;
