@@ -32,9 +32,9 @@ def get_osc_chan_for_pin(pin):
 
 def get_wall_clock_time(board,dsprog,adp,sim_time):
     tc = board.time_constant/adp.tau
-    time_sec = sim_time/tc
+    time_sec = sim_time*tc
     print("wall tc=%e sim=%f wc=%f" % (tc,sim_time,time_sec))
-    return time_sec
+    return time_sec/(10e6)
 
 def unpack_arduino_waveform(dataset):
     freq = dataset[0]
@@ -65,6 +65,7 @@ def save_data_from_arduino(dataset,board,dsprog,adp,sim_time,trial=0):
     times,voltages_by_chan = unpack_arduino_waveform(dataset)
     # seconds per time unit
     tc = board.time_constant/adp.tau
+    wc_time = get_wall_clock_time(board,dsprog,adp,sim_time)
     print("num-samps: %d" % len(times))
     print("wall-clock-time: [%f,%f]" % (min(times),max(times)))
     for var,scf,chans in adp.observable_ports(board):
@@ -79,7 +80,7 @@ def save_data_from_arduino(dataset,board,dsprog,adp,sim_time,trial=0):
                      'values':voltages,  \
                      'time_units': 'wall_clock_sec', \
                      'ampl_units': 'voltage', \
-                     'runtime': sim_time/tc,\
+                     'runtime': wc_time,\
                      'variable':var, \
                      'time_scale':tc, \
                      'mag_scale':scf}
@@ -106,6 +107,7 @@ def save_data_from_oscilloscope(osc,board,dsprog,adp,sim_time,trial=0):
     ph = pathlib.PathHandler(adp.metadata[adplib.ADPMetadata.Keys.FEATURE_SUBSET], \
                              dsprog.name)
 
+    wc_time = get_wall_clock_time(board,dsprog,adp,sim_time)
     for var,scf,chans in adp.observable_ports(board):
         chan_pos = get_osc_chan_for_pin(chans[llenums.Channels.POS].pin)
         chan_neg = get_osc_chan_for_pin(chans[llenums.Channels.NEG].pin)
@@ -118,7 +120,7 @@ def save_data_from_oscilloscope(osc,board,dsprog,adp,sim_time,trial=0):
                      'values':voltages,  \
                      'time_units': 'wall_clock_sec', \
                      'ampl_units': 'voltage', \
-                     'runtime': sim_time/tc,\
+                     'runtime': wc_time,\
                      'variable':var, \
                      'time_scale':tc, \
                      'mag_scale':scf}
