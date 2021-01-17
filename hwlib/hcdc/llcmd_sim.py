@@ -31,8 +31,8 @@ def get_osc_chan_for_pin(pin):
 
 
 def get_wall_clock_time(board,dsprog,adp,sim_time):
-    hwtime = board.time_constant
-    time_us = sim_time*1.0/adp.tau*hwtime
+    tc = board.time_constant/adp.tau
+    time_us = sim_time/tc
     return time_us
 
 def unpack_arduino_waveform(dataset):
