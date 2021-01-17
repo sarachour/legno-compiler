@@ -32,8 +32,9 @@ def get_osc_chan_for_pin(pin):
 
 def get_wall_clock_time(board,dsprog,adp,sim_time):
     tc = board.time_constant/adp.tau
-    time_us = sim_time/tc
-    return time_us/(1.0e-6)
+    time_sec = sim_time/tc
+    print("wall tc=%e sim=%f wc=%f" % (tc,sim_time,time_sec))
+    return time_sec
 
 def unpack_arduino_waveform(dataset):
     freq = dataset[0]
@@ -152,7 +153,8 @@ def configure_oscilloscope(osc,board,dsprog,adp,time):
                 scaled_ival = unscaled_ival.scale(port_cfg.scf*osc_slack)
                 oscliblib.set_voltage_range(osc,chan,scaled_ival)
 
-    oscliblib.set_time(osc,get_wall_clock_time(board,dsprog,adp,time)*osc_slack)
+    oscliblib.set_time(osc, \
+                       get_wall_clock_time(board,dsprog,adp,time)*osc_slack)
     oscliblib.set_trigger(osc)
 
 
