@@ -37,14 +37,14 @@ def get_wall_clock_time(board,dsprog,adp,sim_time):
     return time_sec/(10e6)
 
 def unpack_arduino_waveform(dataset):
-    freq = dataset[0]
-    time_delta = 1.0/freq;
-    siz = dataset[1]
+    #exper_coeff = 1.066
+    runtime_secs = dataset[0]*1e-6
+    samps = dataset[1]
     warm_up_time = 0.00005;
-    times = list(map(lambda i: time_delta*i-warm_up_time, range(siz)))
+    time_delta = runtime_secs/samps;
+    times = list(map(lambda i: time_delta*i-warm_up_time, range(samps)))
     voltages = {}
     offset = 2
-    print("clock-freq: %d" % freq)
     while offset < siz:
         chan = dataset[offset]
         offset+=1

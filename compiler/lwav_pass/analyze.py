@@ -27,18 +27,19 @@ def analyze(adp,waveform):
     ref_waveforms = get_reference_waveforms(program,dssim)
 
     reference = ref_waveforms[waveform.variable]
+   
+    ylabel = "%s (%s)" % (dsinfo.observation,dsinfo.units)
+    vis = wavelib.WaveformVis("meas",ylabel,program.name)
+    vis.set_style('meas',"#5758BB",'--')
+    vis.add_waveform("meas",waveform)
+    yield vis
+
     # start from zero
     rec_experimental = waveform.start_from_zero().recover()
     print("unrec-time: [%f,%f]" % (min(waveform.times), \
           max(waveform.times)))
     print("rec-time: [%f,%f]" % (min(rec_experimental.times), \
           max(rec_experimental.times)))
-
-    ylabel = "%s (%s)" % (dsinfo.observation,dsinfo.units)
-    vis = wavelib.WaveformVis("meas",ylabel,program.name)
-    vis.set_style('meas',"#5758BB",'--')
-    vis.add_waveform("meas",waveform)
-    yield vis
 
     rec_exp_aligned = reference.align(rec_experimental)
     rec_exp_aligned.trim(reference.min_time, reference.max_time)

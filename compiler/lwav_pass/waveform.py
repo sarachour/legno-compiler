@@ -54,7 +54,7 @@ class Waveform:
     def start_from_zero(self):
         offset = min(self.times)
         Tnew = list(map(lambda t: t-offset, self.times))
-        return Waveform(self.variable,Tnew,self.values, \
+        return Waveform(self.variable,Tnew,list(self.values), \
                         self.time_units,self.ampl_units, \
                         self.time_scale,self.mag_scale)
 
@@ -131,7 +131,7 @@ class Waveform:
 
         time_slack = 0.02
         #time_slack = 0.06
-        time_jitter = other.max_time*0.03
+        time_jitter = other.max_time*0.1
         npts = min(len(other), len(self))*2
 
 
@@ -147,7 +147,7 @@ class Waveform:
         xform,_ = alignutil.align(self.resample(npts), \
                                   other.resample(npts),xform_spec)
         print(xform)
-        xformed_times=list(map(lambda t: xform['scale']*t + xform['offset'], other.times))
+        xformed_times=list(map(lambda t: xform['scale']*t - xform['offset'], other.times))
 
         return Waveform(other.variable, \
                         times=xformed_times, \
