@@ -33,13 +33,13 @@ def get_osc_chan_for_pin(pin):
 def get_wall_clock_time(board,dsprog,adp,sim_time):
     tc = board.time_constant/adp.tau
     time_us = sim_time/tc
-    return time_us
+    return time_us/(1.0e-6)
 
 def unpack_arduino_waveform(dataset):
     freq = dataset[0]
     time_delta = 1.0/freq;
     siz = dataset[1]
-    warm_up_time = 0.00005; 
+    warm_up_time = 0.00005;
     times = list(map(lambda i: time_delta*i-warm_up_time, range(siz)))
     voltages = {}
     offset = 2
