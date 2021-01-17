@@ -34,7 +34,7 @@ def get_wall_clock_time(board,dsprog,adp,sim_time):
     tc = board.time_constant/adp.tau
     time_sec = sim_time*tc
     print("wall tc=%e sim=%f wc=%f" % (tc,sim_time,time_sec))
-    return time_sec/(10e6)
+    return time_sec
 
 def unpack_arduino_waveform(dataset):
     freq = dataset[0]

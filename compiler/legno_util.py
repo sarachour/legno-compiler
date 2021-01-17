@@ -189,7 +189,7 @@ def _lexec_already_ran(ph,board,adp,trial=0,scope=False):
 def exec_lexec(args):
     EXEC_CMD = "python3 grendel.py exec {adp_path} --model-number {model_number}"
     if args.scope:
-        EXEC_CMD = " --osc"
+        EXEC_CMD += " --osc"
 
     board = get_device(None)
     path_handler = paths.PathHandler(args.subset,args.program)
