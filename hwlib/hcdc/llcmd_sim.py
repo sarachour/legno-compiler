@@ -71,8 +71,8 @@ def save_data_from_arduino(dataset,board,dsprog,adp,sim_time,trial=0):
     for var,scf,chans in adp.observable_ports(board):
         chan_id = get_ard_chan_for_pin(chans[llenums.Channels.POS].pin)
         voltages = voltages_by_chan[chan_id]
-        for i,(t,v) in enumerate(zip(times,voltages)):
-            print("%d: %e\t%f" % (i,t,v))
+        #for i,(t,v) in enumerate(zip(times,voltages)):
+        #    print("%d: %e\t%f" % (i,t,v))
         print("voltages[%s,%d]: [%f,%f]" % (var,chan_id, \
                                           min(voltages),max(voltages)))
 
