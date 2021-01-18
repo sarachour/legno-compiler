@@ -90,7 +90,7 @@ namespace dma {
     	print_info("post clock... buffer is populated?\n");
     }
     adc_enable_anch(ADC);
-    track_adc_6();    
+    track_adc_6();
 
     print_info("  -> instantiated buffers\n");
     // configure the buffer to fill
@@ -114,10 +114,10 @@ namespace dma {
     ADC->ADC_PTCR = ADC_PTCR_RXTEN;
     fab->execStart();
     while(!(ADC->ADC_ISR & ADC_ISR_ENDRX)){
-      delayMicroseconds(25);
+      delayMicroseconds(5);
     }
-    fab->execStop();
     unsigned long end = micros();
+    fab->execStop();
     sprintf(FMTBUF, "time-elapsed: %d us, %f sec\n", (end-start), (end-start)/1.0e6);
     print_info(FMTBUF);
     runtime=end-start;
