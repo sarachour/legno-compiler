@@ -45,14 +45,14 @@ def unpack_arduino_waveform(dataset):
     times = list(map(lambda i: time_delta*i-warm_up_time, range(samps)))
     voltages = {}
     offset = 2
-    while offset < siz:
+    while offset < samps:
         chan = dataset[offset]
         offset+=1
         assert(not chan in voltages)
-        values = dataset[offset:offset+siz]
+        values = dataset[offset:offset+samps]
         volts = list(map(lambda v: -3.3*(v-2048.0)/2048.0, values))
         voltages[chan] = volts
-        offset+=siz
+        offset+=samps
 
     return times,voltages
 
