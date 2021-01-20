@@ -90,11 +90,8 @@ class ArduinoDue:
 
   def write_bytes(self, byts):
     isinstance(byts, bytearray)
-    nbytes = 0
-    BATCH = 1
-    nbytes += self._comm.write(byts)
     self._comm.flush()
-    #time.sleep(0.01)
+    self._comm.write(byts)
 
   def write(self, msg):
     self.write_bytes(msg.encode())
