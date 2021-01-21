@@ -118,7 +118,7 @@ def test_block(board,block,loc,modes, \
                     calib_obj='model',operation=name, runtime=runtime)
 
 
-    runtime_meta_util.remove_file(adp_file)
+    runtime_meta_util.remove_file(adp_filename)
 
 
 def test_board(args):
