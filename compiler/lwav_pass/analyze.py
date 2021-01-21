@@ -31,7 +31,7 @@ def analyze(adp,waveform):
     ylabel = "%s (%s)" % (dsinfo.observation,dsinfo.units)
     vis = wavelib.WaveformVis("meas",ylabel,program.name)
     vis.set_style('meas',"#5758BB",'--')
-    vis.add_waveform("meas",waveform)
+    vis.add_waveform("meas",waveform.start_from_zero())
     yield vis
 
     # start from zero
