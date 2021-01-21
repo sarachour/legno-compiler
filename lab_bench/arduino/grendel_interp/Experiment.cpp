@@ -40,10 +40,10 @@ namespace experiment {
 
     uint32_t freq;
     dma::dma_info_t info;
-    float warm_up = 0.00005;
+    float runt_targ = expr->sim_time_sec;
     set_SDA(LOW);
     delayMicroseconds(2);
-    dma::setup(info,expr->sim_time_sec*1.3+warm_up,(uint16_t*) DATABUF[0],
+    dma::setup(info,runt_targ,(uint16_t*) DATABUF[0],
                DATABUF_SIZ,
                samples,
                freq);
