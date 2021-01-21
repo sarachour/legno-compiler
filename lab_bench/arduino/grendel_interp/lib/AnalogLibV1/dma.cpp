@@ -109,8 +109,8 @@ namespace dma {
   }
 
   void run(Fabric* fab, unsigned long& runtime){
-    adc_start(ADC);
     unsigned long start = micros();
+    adc_start(ADC);
     ADC->ADC_PTCR = ADC_PTCR_RXTEN;
     fab->execStart();
     while(!(ADC->ADC_ISR & ADC_ISR_ENDRX)){
