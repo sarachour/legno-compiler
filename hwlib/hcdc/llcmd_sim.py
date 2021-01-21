@@ -40,9 +40,8 @@ def unpack_arduino_waveform(dataset):
     #exper_coeff = 1.066
     runtime_secs = dataset[0]*1e-6
     samps = dataset[1]
-    warm_up_time = 0.00005;
     time_delta = runtime_secs/samps;
-    times = list(map(lambda i: time_delta*i-warm_up_time, range(samps)))
+    times = list(map(lambda i: time_delta*i, range(samps)))
     voltages = {}
     offset = 2
     while offset < samps:

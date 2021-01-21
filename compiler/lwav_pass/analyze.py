@@ -36,12 +36,19 @@ def analyze(adp,waveform):
 
     # start from zero
     rec_experimental = waveform.start_from_zero().recover()
+
     print("unrec-time: [%f,%f]" % (min(waveform.times), \
           max(waveform.times)))
     print("rec-time: [%f,%f]" % (min(rec_experimental.times), \
           max(rec_experimental.times)))
 
-    rec_exp_aligned = reference.align(rec_experimental)
+    timing_error = 2e-5
+    scale_error = max(timing_error/waveform.runtime,0.02)
+    offset_error = 0.0002*(rec_experimental.runtime/waveform.runtime)
+
+    rec_exp_aligned = reference.align(rec_experimental, \
+                                      scale_slack=scale_error, \
+                                      offset_slack=offset_error)
     rec_exp_aligned.trim(reference.min_time, reference.max_time)
     vis = wavelib.WaveformVis("align",ylabel,program.name)
     vis.add_waveform("ref",reference)

@@ -51,6 +51,10 @@ class Waveform:
         return min(self.times)
 
 
+    @property
+    def runtime(self):
+        return self.max_time - self.min_time
+
     def start_from_zero(self):
         offset = min(self.times)
         Tnew = list(map(lambda t: t-offset, self.times))
@@ -121,7 +125,7 @@ class Waveform:
                         mag_scale=1.0/self.mag_scale)
 
 
-    def align(self,other):
+    def align(self,other,scale_slack=0.02, offset_slack=0.0001):
         if not (self.time_units == other.time_units):
             raise Exception("time unit mismatch: %s != %s"  \
                             % (self.time_units,other.time_units))
@@ -129,15 +133,12 @@ class Waveform:
             raise Exception("ampl unit mismatch: %s != %s"  \
                             % (self.ampl_units,other.ampl_units))
 
-        time_slack = 0.02
-        #time_slack = 0.06
-        time_jitter = other.max_time*0.1
         npts = min(len(other), len(self))*2
 
 
         xform_spec = [
-            (1.0-time_slack,1.0+time_slack),
-            (-time_jitter,time_jitter)
+            (1.0-scale_slack,1.0+scale_slack),
+            (-offset_slack,offset_slack)
         ]
         print("scaf times: [%s,%s]" \
               % (min(self.times),max(self.times)))
@@ -147,6 +148,7 @@ class Waveform:
         xform,_ = alignutil.align(self.resample(npts), \
                                   other.resample(npts),xform_spec)
         print(xform)
+        print("limits: scale=%s offset=%s" % (xform_spec[0], xform_spec[1]))
         xformed_times=list(map(lambda t: xform['scale']*t - xform['offset'], other.times))
 
         return Waveform(other.variable, \
