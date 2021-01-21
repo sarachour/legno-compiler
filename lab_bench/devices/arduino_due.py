@@ -77,21 +77,31 @@ class ArduinoDue:
 
     return line
 
-  def writeline(self, string):
-    msg = "%s\r\n" % string
-    self.write(msg)
-
-  def write_newline(self):
-    self.write("\r\n")
 
   def flush(self):
     self._comm.flushInput()
     self._comm.flushOutput()
 
-  def write_bytes(self, byts):
+  def write_bytes(self, byts, suffix=None,prefix=None):
     isinstance(byts, bytearray)
-    self._comm.flush()
-    self._comm.write(byts)
+    print("-> write")
 
-  def write(self, msg):
-    self.write_bytes(msg.encode())
+    rawbuf = bytearray()
+    if not prefix is None:
+      rawbuf += prefix
+
+    rawbuf += byts
+
+    if not suffix is None:
+      rawbuf += suffix
+
+    print(byts)
+    print('----')
+    print(rawbuf)
+    self._comm.write(rawbuf)
+    self._comm.flush()
+
+  def write_command(self,byts):
+    self.write_bytes(byts, \
+                     suffix=bytearray([253,253,253]), \
+                     prefix=bytearray([254,254,254]))

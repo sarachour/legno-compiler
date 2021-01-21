@@ -20,6 +20,7 @@ int read_bytes(uint8_t * data, int n);
 int read_floats(float * data, int n);
 uint8_t read_byte();
 void discard_bytes(int n);
+void clear_input();
 void listen();
 bool read_mode();
 void reset();

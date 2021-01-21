@@ -9,11 +9,11 @@ int WPOS=0;
 int RPOS=0;
 int MSGNO = 0;
 int TRYNO = 0;
-bool DONE=false;
+bool MSG_AVAILABLE =false;
 
 
 bool read_mode(){
-  return DONE;
+  return MSG_AVAILABLE;
 }
 void header(){
   Serial.print("\nAC:>");
@@ -71,15 +71,33 @@ void test(bool result, const char * msg){
   }
 }
 void reset(){
-  DONE = false;
+  MSG_AVAILABLE = false;
   WPOS = 0;
   RPOS = 0;
 }
 int write_pos(){
   return WPOS;
 }
+
+int _find_start(){
+  int n_delims = 0;
+
+  for(int i=0; i < WPOS; i+= 1){
+    if(n_delims == 3){
+      return i;
+    }
+    if(INBUF[i] == 254){
+      n_delims += 1;
+    }
+    else{
+      n_delims = 0;
+    }
+  }
+  error("no prefix found for message...");
+}
+
 void listen(){
-  if(DONE){
+  if(MSG_AVAILABLE){
     print_header();
     Serial.println("<found endline>");
     return;
@@ -88,14 +106,15 @@ void listen(){
   while(Serial.available() > 0){
     char recv = Serial.read();
     INBUF[WPOS] = recv;
-    WPOS += 1;
-    if(recv == '\n' and INBUF[WPOS-2] == '\r'){
-      DONE = true;
-      RPOS = 0;
+    // last three characters are 253
+    if(WPOS >= 2 && recv == 253 && INBUF[WPOS-1] == 253 && INBUF[WPOS-2] == 253){
+      MSG_AVAILABLE = true;
       WPOS -= 2;
+      RPOS = _find_start();
       MSGNO += 1;
       return;
     }
+    WPOS += 1;
   }
 }
 
@@ -111,7 +130,7 @@ void print_data(int offset){
    }
 }
 int get_input(uint8_t* buf, int n_bytes){
-  if(not DONE){
+  if(not MSG_AVAILABLE){
     return -1;
   }
   int siz = WPOS - RPOS < n_bytes ? WPOS - RPOS : n_bytes;
@@ -120,24 +139,25 @@ int get_input(uint8_t* buf, int n_bytes){
     RPOS += 1;
   }
   if(RPOS == WPOS){
-    DONE = false;
+    MSG_AVAILABLE = false;
     WPOS = 0;
+    RPOS = 0;
   }
   return siz;
 
 }
 void discard_input(int n_bytes){
-  if(not DONE){
+  if(not MSG_AVAILABLE){
     return;
   }
   int siz = WPOS - RPOS < n_bytes ? WPOS - RPOS : n_bytes;
   RPOS += siz;
   if(RPOS == WPOS){
-    DONE = false;
+    MSG_AVAILABLE = false;
     WPOS = 0;
+    RPOS = 0;
   }
 }
-
 
 
 int read_floats(float * data, int n){
@@ -151,6 +171,7 @@ int read_bytes(uint8_t * data, int n){
 void discard_bytes(int n){
   discard_input(n);
 }
+
 uint8_t read_byte(){
   uint8_t value;
   get_input(&value, 1);

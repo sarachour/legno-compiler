@@ -24,8 +24,7 @@ class GrendelRunner:
     return grendel_util.get_response(self.due,quiet=self.quiet)
 
   def execute(self,cmd):
-    self.due.write_bytes(cmd)
-    self.due.write_newline()
+    self.due.write_command(cmd)
 
   def execute_with_payload(self,header_data,payload_data):
     pad_size= 80 - 10*4
