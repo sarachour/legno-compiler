@@ -84,7 +84,6 @@ class ArduinoDue:
 
   def write_bytes(self, byts, suffix=None,prefix=None):
     isinstance(byts, bytearray)
-    print("-> write")
 
     rawbuf = bytearray()
     if not prefix is None:
@@ -95,9 +94,6 @@ class ArduinoDue:
     if not suffix is None:
       rawbuf += suffix
 
-    print(byts)
-    print('----')
-    print(rawbuf)
     self._comm.write(rawbuf)
     self._comm.flush()
 
