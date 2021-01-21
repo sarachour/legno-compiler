@@ -19,9 +19,9 @@ import os
 
 def get_config(block,mode):
   return {
-    'bootstrap_samples': 5,
+    'bootstrap_samples': 15,
     'candidate_samples':3,
-    'num_iters': 16,
+    'num_iters': 18,
     'grid_size': 7,
     'cutoff':runtime_meta_util.get_tolerance(block,mode)
   }
@@ -47,7 +47,7 @@ def model_based_calibration(board,adp_path,block,mode):
   CAL_CMD += " --candidate-samples {candidate_samples}"
   CAL_CMD += " --num-iters {num_iters}"
   CAL_CMD += " --grid-size {grid_size}"
-  CAL_CMD += " --cutoff {cutoff}"
+  CAL_CMD += " --default-cutoff"
 
   cmds = []
   cfg = get_config(block,mode)
@@ -110,7 +110,7 @@ def test_block(board,block,loc,modes, \
 
 
     if model_based:
-      cmds = model_based_calibration(board,adp_file,block,mode)
+      cmds = model_based_calibration(board,adp_filename,block,mode)
       for name,cmd in cmds:
         print(cmd)
         runtime = runtime_meta_util.run_command(cmd)
