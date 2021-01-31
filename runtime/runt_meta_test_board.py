@@ -55,8 +55,8 @@ def model_based_calibration(board,adp_path,block,mode):
   cfg['adp_path'] = adp_path
   cmds.append(('model_cal', CAL_CMD.format(**cfg)))
 
-  BRCAL_CMD = "python3 meta_grendel.py bruteforce_cal {model_number}"
-  cmds.append(('brute_cal',BRCAL_CMD.format(model_number=board.model_number)))
+  #BRCAL_CMD = "python3 meta_grendel.py bruteforce_cal {model_number}"
+  #cmds.append(('brute_cal',BRCAL_CMD.format(model_number=board.model_number)))
 
   return cmds
 
