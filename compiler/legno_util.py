@@ -284,12 +284,14 @@ def exec_wav(args,trials=1):
 
     # bin summary plots
     summary = {}
-    summary_key = lambda adp : (adp.metadata[ADPMetadata.Keys.RUNTIME_CALIB_OBJ], \
-                                adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD], \
-                                adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE], \
-                                adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB])
-    def update_summary(adp,var,wave):
-        key = (summary_key(adp),var)
+    summary_key = lambda adp : (
+        adp.metadata[ADPMetadata.Keys.RUNTIME_CALIB_OBJ], \
+        adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD], \
+        adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE], \
+        adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB])
+
+    def update_summary(adp,var,wave,has_scope=False):
+        key = (summary_key(adp),var,has_scope)
         if not key in summary:
             summary[key] = []
 
@@ -326,7 +328,7 @@ def exec_wav(args,trials=1):
                                     with open(waveform_file,'r') as fh:
                                         obj = util.decompress_json(fh.read())
                                         wave = wavelib.Waveform.from_json(obj)
-                                        update_summary(adp,var,wave)
+                                        update_summary(adp,var,wave,has_scope=has_scope)
 
                                         for vis in analyzelib.plot_waveform(adp,wave):
                                             plot_file = path_handler.waveform_plot_file( \
@@ -344,7 +346,7 @@ def exec_wav(args,trials=1):
                                             vis.plot(plot_file)
 
         if args.summary_plots:
-            for (fields,var),data in summary.items():
+            for (fields,var,has_scope),data in summary.items():
                 adps = list(map(lambda d: d[0], data))
                 waveforms = list(map(lambda d: d[1], data))
                 for vis in analyzelib.plot_waveform_summaries(adps,waveforms):

@@ -3,6 +3,7 @@ from dslang.dsprog import DSProgDB
 
 import compiler.lwav_pass.waveform as wavelib
 import numpy as np
+import math
 
 def get_reference_waveforms(program,dssim):
     times,value_dict = program.execute(dssim)
@@ -94,10 +95,11 @@ def plot_waveform_summaries(adps,waveforms):
     vis.add_waveform("ref",reference)
     vis.set_style('ref',ref_color,'-')
 
+    opacity = math.sqrt(1.0/len(align_wfs))
     for idx,awf in enumerate(align_wfs):
         series = 'meas%d' % idx
         vis.set_style(series,meas_color,'-', \
-                    opacity=1.0/len(align_wfs))
+                      opacity=opacity)
 
         vis.add_waveform(series,awf)
     yield vis
