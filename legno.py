@@ -89,8 +89,11 @@ sim_subp.add_argument('--reference', action='store_true', \
 
 
 
-sim_subp = subparsers.add_parser('lwav', help='analyze waveforms.')
-sim_subp.add_argument('program', help='program to analyze.')
+plot_subp = subparsers.add_parser('lwav', help='analyze waveforms.')
+plot_subp.add_argument('program', help='program to analyze.')
+plot_subp.add_argument('--summary-plots', action='store_true', \
+                       help='generate summary plots.')
+
 
 
 args = parser.parse_args()

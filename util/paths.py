@@ -221,6 +221,32 @@ class PathHandler:
                            var=variable,
                            trial=trial)
 
+    def summary_plot_file(self,model,opt,\
+                           calib_obj, phys_db, \
+                           variable, \
+                           plot, \
+                           oscilloscope=False):
+        filepath = "{path}/{plot_type}"
+        cdir = filepath.format(path=self.PLOT_DIR, \
+                               plot_type='wave')
+        util.mkdir_if_dne(cdir)
+
+        path = "{path}/{prog}_{model}_{opt}_{calib_obj}_{physdb}"
+        path += "_{var}_{plot}"
+        if oscilloscope:
+            path += "_scope"
+        path += ".pdf"
+
+        return path.format(path=cdir,
+                           prog=self._prog,
+                           model=model,
+                           calib_obj=calib_obj, \
+                           physdb=phys_db, \
+                           opt=opt,
+                           var=variable,
+                           plot=plot)
+
+
     def waveform_plot_file(self,graph_index,scale_index, \
                            model,opt,\
                            calib_obj, phys_db, \

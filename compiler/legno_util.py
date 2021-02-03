@@ -281,6 +281,20 @@ def exec_wav(args,trials=1):
     path_handler = paths.PathHandler(args.subset, \
                                      args.program)
     program = DSProgDB.get_prog(args.program)
+
+    # bin summary plots
+    summary = {}
+    summary_key = lambda adp : (adp.metadata[ADPMetadata.Keys.RUNTIME_CALIB_OBJ], \
+                                adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD], \
+                                adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE], \
+                                adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB])
+    def update_summary(adp,var,wave):
+        key = (summary_key(adp),var)
+        if not key in summary:
+            summary[key] = []
+
+        summary[key].append((adp,wave))
+
     for dirname, subdirlist, filelist in \
         os.walk(path_handler.lscale_adp_dir()):
         for adp_file in filelist:
@@ -312,7 +326,9 @@ def exec_wav(args,trials=1):
                                     with open(waveform_file,'r') as fh:
                                         obj = util.decompress_json(fh.read())
                                         wave = wavelib.Waveform.from_json(obj)
-                                        for vis in analyzelib.analyze(adp,wave):
+                                        update_summary(adp,var,wave)
+
+                                        for vis in analyzelib.plot_waveform(adp,wave):
                                             plot_file = path_handler.waveform_plot_file( \
                                                                                          graph_index=adp.metadata[ADPMetadata.Keys.LGRAPH_ID],
                                                                                          scale_index=adp.metadata[ADPMetadata.Keys.LSCALE_ID],
@@ -326,3 +342,20 @@ def exec_wav(args,trials=1):
                                                                                          oscilloscope=has_scope)
 
                                             vis.plot(plot_file)
+
+        if args.summary_plots:
+            for (fields,var),data in summary.items():
+                adps = list(map(lambda d: d[0], data))
+                waveforms = list(map(lambda d: d[1], data))
+                for vis in analyzelib.plot_waveform_summaries(adps,waveforms):
+                    adp = data[0][0]
+                    plot_file = path_handler.summary_plot_file( \
+                                                                model=adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD],
+                                                                calib_obj=adp.metadata[ADPMetadata.Keys.RUNTIME_CALIB_OBJ], \
+                                                                opt=adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE], \
+                                                                phys_db=adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB], \
+                                                                variable=var, \
+                                                                plot=vis.name, \
+                                                                oscilloscope=has_scope)
+                    vis.plot(plot_file)
+

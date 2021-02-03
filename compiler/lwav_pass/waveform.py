@@ -51,6 +51,13 @@ class Waveform:
         return min(self.times)
 
 
+    def value(self,t):
+        if t < self.min_time or t > self.max_time:
+            raise Exception("time <%f> must be between %f and %f" \
+                            % (t,self.min_time,self.max_time))
+
+        return np.interp(t, self.times, self.values)
+
     @property
     def runtime(self):
         return self.max_time - self.min_time
@@ -125,6 +132,20 @@ class Waveform:
                         mag_scale=1.0/self.mag_scale)
 
 
+    def error(self,other):
+        start_time = max(min(self.times),min(other.times))
+        end_time = min(max(self.times),max(other.times))
+        npts = 200
+
+        times = np.linspace(start_time,end_time,npts)
+        sumsq = 0.0
+        for t in times:
+            v1 = self.value(t)
+            v2 = other.value(t)
+            sumsq += abs(v1-v2)**2
+
+        return sumsq
+
     def align(self,other,scale_slack=0.02, offset_slack=0.0001):
         if not (self.time_units == other.time_units):
             raise Exception("time unit mismatch: %s != %s"  \
@@ -196,8 +217,8 @@ class WaveformVis:
         self.waveforms[name] = wf
 
 
-    def set_style(self,name,color,linestyle):
-        self.styles[name] = (color,linestyle)
+    def set_style(self,name,color,linestyle,opacity=1.0):
+        self.styles[name] = (color,linestyle,opacity)
 
 
     def plot(self,filepath):
@@ -211,11 +232,12 @@ class WaveformVis:
         ax.grid(False)
 
         for name,wf in self.waveforms.items():
-            color,linestyle = self.styles[name]
+            color,linestyle,opacity = self.styles[name]
             ax.plot(wf.times,wf.values,label=name,
                     linestyle=linestyle, \
                     linewidth=3, \
-                    color=color)
+                    color=color, \
+                    alpha=opacity)
 
         #plt.tight_layout()
         plt.savefig(filepath)
