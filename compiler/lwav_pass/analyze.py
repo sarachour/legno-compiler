@@ -95,10 +95,11 @@ def plot_waveform_summaries(adps,waveforms):
     vis.set_style('ref',ref_color,'-')
 
     for idx,awf in enumerate(align_wfs):
-        vis.set_style('meas',meas_color,'-', \
+        series = 'meas%d' % idx
+        vis.set_style(series,meas_color,'-', \
                     opacity=1.0/len(align_wfs))
 
-        vis.add_waveform("meas%d" % idx,awf)
+        vis.add_waveform(series,awf)
     yield vis
 
     best_idx = np.argmin(errors)
