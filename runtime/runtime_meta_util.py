@@ -17,7 +17,31 @@ class Logger:
     def __init__(self,logfile,fields):
         self.log_file = logfile
         self.fields = fields
-        self._write(self.fields,append=False)
+        # write the file header if one doesn't exist...
+        self._write_header(self.fields)
+
+    def _write_header(self,header):
+        def report_error(file_header,msg):
+            print("file header: %s" % str(file_header))
+            print("log header: %s" % str(header))
+            raise Exception(msg)
+
+        if os.path.exists(self.log_file):
+            with open(self.log_file,'r') as fh:
+                file_fields = fh.readline().strip().split('\t')
+                if len(file_fields) != len(header):
+                    report_error(file_fields, \
+                                 "header has different number of fields: %d != %d" \
+                                 % (len(file_fields), len(header)))
+
+                for f1, f2 in zip(header,file_fields):
+                    if f1 != f2:
+                        report_error(file_fields, \
+                                 "header has field mismatch: %s != %s" \
+                                 % (f1,f2))
+
+        else:
+            self._write(header,append=False)
 
     def _write(self,values,append=True):
         with open(self.log_file,'w' if not append else 'a') as fh:
@@ -279,3 +303,111 @@ def get_block_databases(model_number):
             if filename.startswith('hcdcv2-%s-' % model_number):
                 dbname = filename.split('hcdcv2-')[1].split('.db')[0]
                 yield dbname
+
+def get_calibration_time_logger(board,logname):
+  fields = ['block','loc','mode','calib_obj','operation','runtime']
+  logger = Logger('%s_%s.log' % (logname,board.model_number), fields)
+  return logger
+
+def legacy_calibration(board,adp_path,calib_obj,logfile=None,**kwargs):
+  CAL_CMD = 'cal',"python3 grendel.py cal {adp_path} --model-number {model_number} {calib_obj}"
+  PROF_CMD = 'prof',"python3 grendel.py prof {adp_path} --model-number {model_number} {calib_obj}"
+  MKDELTAS_CMD = 'deltas',"python3 grendel.py mkdeltas --model-number {model_number}"
+
+
+  cmds = []
+  for label,CMD in [CAL_CMD, PROF_CMD, MKDELTAS_CMD]:
+    cmd = CMD.format(adp_path=adp_path, \
+                     model_number=board.model_number, \
+                     calib_obj=calib_obj.value)
+    cmds.append((label,cmd))
+
+  logger = None if logfile is None else \
+      get_calibration_time_logger(board,logfile)
+  for name,cmd in cmds:
+        print(cmd)
+        runtime = run_command(cmd)
+        if not logger is None:
+            block_name = kwargs['block'].name
+            loc = str(kwargs['loc'])
+            mode = str(kwargs['mode'])
+            logger.log(block=block_name, loc=loc, mode=mode, \
+                       calib_obj=calib_obj.value,  \
+                       operation=name, \
+                       runtime=runtime)
+
+
+
+
+def get_model_calibration_config(**kwargs):
+    if 'block' in kwargs and 'mode' in kwargs:
+        block = kwargs['block']
+        mode = kwargs['mode']
+        cutoff = get_tolerance(block,mode)
+    else:
+        cutoff = 0.0
+
+    return {
+        'bootstrap_samples': 15,
+        'candidate_samples':3,
+        'num_iters': 18,
+        'grid_size': 7,
+        'cutoff':cutoff
+    }
+
+
+def model_based_calibration(board,adp_path,logfile=None,**kwargs):
+  CAL_CMD = "python3 meta_grendel.py model_cal {model_number} --adp {adp_path}"
+  CAL_CMD += " --bootstrap-samples {bootstrap_samples}"
+  CAL_CMD += " --candidate-samples {candidate_samples}"
+  CAL_CMD += " --num-iters {num_iters}"
+  CAL_CMD += " --grid-size {grid_size}"
+  CAL_CMD += " --default-cutoff"
+
+  cmds = []
+  cfg = get_model_calibration_config(**kwargs)
+  cfg['model_number'] = board.model_number
+  cfg['adp_path'] = adp_path
+  cmds.append(('model_cal', CAL_CMD.format(**cfg)))
+
+  if not logfile is None:
+      logger = None if logfile is None else \
+          get_calibration_time_logger(board,logfile)
+
+
+  for name,cmd in cmds:
+        print(cmd)
+        runtime = run_command(cmd)
+        if not logger is None:
+            block_name = kwargs['block'].name
+            loc = str(kwargs['loc'])
+            mode = str(kwargs['mode'])
+            logger.log(block=block_name, loc=loc, mode=mode, \
+                       calib_obj='model',  \
+                       operation=name, \
+                       runtime=runtime)
+
+
+
+  return cmds
+
+def model_based_calibration_finalize(board,logfile=None):
+    BRCAL_CMD = "python3 meta_grendel.py bruteforce_cal {model_number}"
+    cmds = []
+    cmds.append(('brute_cal',BRCAL_CMD.format(model_number=board.model_number)))
+
+
+    if not logfile is None:
+      logger = None if logfile is None else \
+          get_calibration_time_logger(board,logfile)
+
+
+    for name,cmd in cmds:
+        runtime = runtime_meta_util.run_command(cmd)
+        logger.log(block='', loc='', mode='', \
+                   calib_obj='model',operation=name, \
+                   runtime=runtime)
+
+
+
+

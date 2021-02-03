@@ -17,48 +17,16 @@ import json
 import math
 import os
 
-def get_config(block,mode):
-  return {
-    'bootstrap_samples': 15,
-    'candidate_samples':3,
-    'num_iters': 18,
-    'grid_size': 7,
-    'cutoff':runtime_meta_util.get_tolerance(block,mode)
-  }
+TESTBOARD_LOG = "testboard"
 
-def legacy_calibration(board,adp_path,block,mode,calib_obj):
-  CAL_CMD = 'cal',"python3 grendel.py cal {adp_path} --model-number {model_number} {calib_obj}"
-  PROF_CMD = 'prof',"python3 grendel.py prof {adp_path} --model-number {model_number} {calib_obj}"
-  MKDELTAS_CMD = 'deltas',"python3 grendel.py mkdeltas --model-number {model_number}"
+def finalize_test(board, \
+                  minimize_error=False, \
+                  maximize_fit=False, \
+                  model_based=False):
 
+  if model_based:
+    runt_meta_util.model_based_calibration_finalize(board,TESTBOARD_LOG)
 
-  cmds = []
-  for label,CMD in [CAL_CMD, PROF_CMD, MKDELTAS_CMD]:
-    cmd = CMD.format(adp_path=adp_path, \
-                     model_number=board.model_number, \
-                     calib_obj=calib_obj.value)
-    cmds.append((label,cmd))
-
-  return cmds
-
-def model_based_calibration(board,adp_path,block,mode):
-  CAL_CMD = "python3 meta_grendel.py model_cal {model_number} --adp {adp_path}"
-  CAL_CMD += " --bootstrap-samples {bootstrap_samples}"
-  CAL_CMD += " --candidate-samples {candidate_samples}"
-  CAL_CMD += " --num-iters {num_iters}"
-  CAL_CMD += " --grid-size {grid_size}"
-  CAL_CMD += " --default-cutoff"
-
-  cmds = []
-  cfg = get_config(block,mode)
-  cfg['model_number'] = board.model_number
-  cfg['adp_path'] = adp_path
-  cmds.append(('model_cal', CAL_CMD.format(**cfg)))
-
-  #BRCAL_CMD = "python3 meta_grendel.py bruteforce_cal {model_number}"
-  #cmds.append(('brute_cal',BRCAL_CMD.format(model_number=board.model_number)))
-
-  return cmds
 
 def test_block(board,block,loc,modes, \
                minimize_error=False, \
@@ -68,9 +36,6 @@ def test_block(board,block,loc,modes, \
   if(board.model_number is None):
     raise Exception("please specify model number!!")
 
-  fields = ['block','loc','mode','calib_obj','operation','runtime']
-  logger = runtime_meta_util.Logger('testboard_%s.log' % board.model_number, \
-                                    fields)
 
   for mode in modes:
     new_adp = ADP()
@@ -90,33 +55,24 @@ def test_block(board,block,loc,modes, \
 
     if minimize_error:
       objfun = llenums.CalibrateObjective.MINIMIZE_ERROR
-      cmds = legacy_calibration(board,adp_file,block,mode,objfun)
-      for name,cmd in cmds:
-        print(cmd)
-        runtime = runtime_meta_util.run_command(cmd)
-        logger.log(block=block.name, loc=str(loc), mode=str(mode), \
-                    calib_obj=objfun.value, operation=name, runtime=runtime)
-
+      runtime_meta_util.legacy_calibration(board, \
+                                           adp_filename, \
+                                           objfun,logfile=TESTBOARD_LOG, \
+                                           block=block,mode=mode,loc=loc)
 
 
     if maximize_fit:
       objfun = llenums.CalibrateObjective.MAXIMIZE_FIT
-      cmds = legacy_calibration(board,adp_file,block,mode, objfun)
-      for name,cmd in cmds:
-        print(cmd)
-        runtime = runtime_meta_util.run_command(cmd)
-        logger.log(block=block.name, loc=str(loc), mode=str(mode), \
-                    calib_obj=objfun.value, operation=name, runtime=runtime)
-
+      runtime_meta_util.legacy_calibration(board, \
+                                           adp_filename, \
+                                           objfun,logfile=TESTBOARD_LOG, \
+                                           block=block, mode=mode, loc=loc)
 
     if model_based:
-      cmds = model_based_calibration(board,adp_filename,block,mode)
-      for name,cmd in cmds:
-        print(cmd)
-        runtime = runtime_meta_util.run_command(cmd)
-        logger.log(block=block.name, loc=str(loc), mode=str(mode), \
-                    calib_obj='model',operation=name, runtime=runtime)
-
+      runtime_meta_util.model_based_calibration(board, \
+                                                adp_filename, \
+                                                logfile=TESTBOARD_LOG, \
+                                                block=block, mode=mode, loc=loc)
 
     runtime_meta_util.remove_file(adp_filename)
 
@@ -131,6 +87,7 @@ def test_board(args):
             continue
 
           modes = list(block.modes)
+          # limit the fanout modes to just positive copies
           if block.name == "fanout":
             modes = list(filter(lambda m: not "-" in str(m), block.modes))
 
@@ -139,3 +96,10 @@ def test_board(args):
                      maximize_fit=args.maximize_fit, \
                      minimize_error=args.minimize_error, \
                      model_based=args.model_based)
+
+
+  finalize_test(board, \
+                maximize_fit=args.maximize_fit, \
+                minimize_error=args.minimize_error, \
+                model_based=args.model_based)
+

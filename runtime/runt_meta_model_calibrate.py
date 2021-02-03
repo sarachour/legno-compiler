@@ -184,7 +184,7 @@ def codes_to_delta_model(blk,loc,out,cfg,codes):
 
 
     exp_model = exp_delta_model_lib.ExpDeltaModel(blk,loc,out,new_cfg, \
-                                                  calib_obj=llenums.CalibrateObjective.LINMODEL)
+                                                  calib_obj=llenums.CalibrateObjective.MODELBASED)
     return exp_model
 
 
@@ -277,7 +277,7 @@ def bootstrap_block(logger,board,blk,loc,cfg,grid_size=9,num_samples=5):
 
 def profile_block(logger,board,blk,loc,cfg,grid_size=9):
     CMDS = [ \
-             "python3 grendel.py prof {adp} --model-number {model} --grid-size {grid_size} linmodel > profile.log" \
+             "python3 grendel.py prof {adp} --model-number {model} --grid-size {grid_size} model > profile.log" \
             ]
 
     adp_file = runtime_meta_util.generate_adp(board,blk,loc,cfg)
@@ -299,12 +299,19 @@ def is_block_calibrated(board,block,loc,config, \
                         random_samples, \
                         num_iters):
     models = exp_delta_model_lib.get_models_by_calibration_objective(board, \
-                                                                     llenums.CalibrateObjective.LINMODEL)
+                                                                     llenums.CalibrateObjective.MODELBASED)
     n_models = len(models)
     if n_models >= random_samples*num_iters:
         return True
     return False
 
+
+
+
+####
+# Block calibration routine
+#
+###
 def calibrate_block(logger, \
                     board,block,loc,config, \
                     grid_size=9, \

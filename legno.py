@@ -63,6 +63,14 @@ lcal_subp = subparsers.add_parser('lcal', help='execute circuit using grendel.')
 lcal_subp.add_argument('program', help='program to execute.')
 lcal_subp.add_argument('--model-number', type=str, \
                        help='identifier for board.')
+lcal_subp.add_argument('--minimize-error', action='store_true', \
+                       help='calibrate with error minimization strategy.')
+lcal_subp.add_argument('--maximize-fit', action='store_true', \
+                       help='calibrate with maximize fit strategy.')
+lcal_subp.add_argument('--model-based', action='store_true', \
+                       help='calibrate with model-based strategy.')
+
+
 
 
 lexec_subp = subparsers.add_parser('lexec', help='execute circuit using grendel.')

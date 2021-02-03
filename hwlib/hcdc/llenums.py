@@ -21,15 +21,14 @@ class ExternalPins(Enum):
 class CalibrateObjective(Enum):
     MINIMIZE_ERROR = "minimize_error"
     MAXIMIZE_FIT = "maximize_fit"
-    DECTREE = "dectree"
-    LINMODEL = "linmodel"
     BRUTEFORCE = "brute"
+    MODELBASED = "model"
     BEST = "best"
     NONE = "none"
 
     def tag(self):
-        if self == CalibrateObjective.DECTREE:
-            return "dectree"
+        if self == CalibrateObjective.MODELBASED:
+            return "model"
         elif self == CalibrateObjective.MAXIMIZE_FIT:
             return "maxfit"
         elif self == CalibrateObjective.MINIMIZE_ERROR:

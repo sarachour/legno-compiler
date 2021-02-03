@@ -15,6 +15,8 @@ import json
 import hwlib.adp_renderer as adprender
 import hwlib.hcdc.llenums as llenums
 
+import runtime.runtime_meta_util as runt_meta_util
+
 
 def get_device(model_number):
     import hwlib.hcdc.hcdcv2 as hcdclib
@@ -138,37 +140,33 @@ def exec_lgraph(args):
     timer.save()
 
 def exec_lcal(args):
-    calib_objs = [
-        llenums.CalibrateObjective.MAXIMIZE_FIT,
-        llenums.CalibrateObjective.MINIMIZE_ERROR
-    ]
-    CAL_CMD = "python3 grendel.py cal {adp_path} --model-number {model_number} {calib_obj} --widen"
-    PROF_CMD = "python3 grendel.py prof {adp_path} --model-number {model_number} {calib_obj} --widen"
-    MKDELTAS_CMD = "python3 grendel.py mkdeltas --model-number {model_number} --force"
     if args.model_number is None:
-       raise Exception("model number must be provided!!")
+       raise Exception("model number must be provided to calibration procedure")
 
-    board = get_device(None)
+    board = get_device(args.model_number)
     path_handler = paths.PathHandler(args.subset,args.program)
     program = DSProgDB.get_prog(args.program)
-    for calib_obj in calib_objs:
-        for dirname, subdirlist, filelist in \
-            os.walk(path_handler.lgraph_adp_dir()):
-            for adp_file in filelist:
-                if adp_file.endswith('.adp'):
-                    adp_path = dirname+"/"+adp_file
-                    kwargs = {
-                        'adp_path':adp_path,
-                        'calib_obj':calib_obj.value,
-                        'model_number':args.model_number
-                    }
-                    for CURR_CMD in [CAL_CMD,PROF_CMD,MKDELTAS_CMD]:
-                        cmd = CURR_CMD.format(**kwargs)
-                        print(cmd)
-                        code = os.system(cmd)
-                        print("status code: %s (interrupt=%s)" % (code,signal.SIGINT))
-                        if code == signal.SIGINT or code != 0:
-                            raise Exception("User terminated process")
+    for dirname, subdirlist, filelist in \
+        os.walk(path_handler.lgraph_adp_dir()):
+        for adp_file in filelist:
+            if adp_file.endswith('.adp'):
+                adp_path = dirname+"/"+adp_file
+                if args.maximize_fit:
+                    runt_meta_util.legacy_calibration(board, adp_path, \
+                                                      llenums.CalibrateObjective.MAXIMIZE_FIT, \
+                                                      logfile=None)
+                if args.minimize_error:
+                    runt_meta_util.legacy_calibration(board, adp_path, \
+                                                      llenums.CalibrateObjective.MINIMIZE_ERROR, \
+                                                      logfile=None)
+                if args.model_based:
+                    runt_meta_util.model_based_calibration(board, adp_path, \
+                                                           logfile=None)
+
+    if args.model_based:
+        runt_meta_util.model_based_calibration_finalize(board,logfile=None)
+
+
 
 def _lexec_already_ran(ph,board,adp,trial=0,scope=False):
     for var,scf,chans in adp.observable_ports(board):
