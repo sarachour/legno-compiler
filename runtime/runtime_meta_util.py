@@ -370,9 +370,8 @@ def model_based_calibration(board,adp_path,logfile=None,**kwargs):
   cfg['adp_path'] = adp_path
   cmds.append(('model_cal', CAL_CMD.format(**cfg)))
 
-  if not logfile is None:
-      logger = None if logfile is None else \
-          get_calibration_time_logger(board,logfile)
+  logger = None if logfile is None else \
+      get_calibration_time_logger(board,logfile)
 
 
   for name,cmd in cmds:
