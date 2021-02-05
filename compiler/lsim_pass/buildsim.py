@@ -17,6 +17,11 @@ import tqdm
 import numpy as np
 import math
 
+SETTINGS = {
+  'physdb': False,
+  'interval': False,
+  'quantize': False
+}
 
 class ADPSim:
 
@@ -120,7 +125,7 @@ class ADPSimResult:
     if rectify:
       scale_factor = self.sim.variable(variable).scale_factor
       V = np.array(vals)/scale_factor
-      T = np.array(times)*self.sim.time_scale
+      T = np.array(times)/self.sim.time_scale
     else:
       V = vals
       T = times
@@ -174,12 +179,31 @@ class ADPEmulBlock:
     self.inputs = {}
     self.npts = 10
 
+    self.enable_phys = SETTINGS['physdb']
+    self.enable_intervals = SETTINGS['interval']
+    self.enable_quantize = SETTINGS['quantize']
+
     self._build_model()
 
 
   @property
   def scale_factor(self):
     return self.port.scf
+
+  def _get_digital_config(self):
+    values = {}
+    for stmt in self.cfg.stmts:
+      if stmt.type == adplib.ConfigStmtType.CONSTANT:
+        datum = self.block.data[stmt.name]
+        dig_val = stmt.value*stmt.scf
+        if self.enable_quantize:
+          dig_val = datum.round_value(self.cfg.mode, dig_val)
+        elif self.enable_intervals:
+          raise NotImplementedError
+
+        values[stmt.name] = dig_val
+
+    return values.items()
 
   def _get_error(self,vdict):
     if self.error_model is None:
@@ -190,32 +214,20 @@ class ADPEmulBlock:
       if var in self.error_model.variables:
         values[var] = val
 
-    for stmt in self.cfg.stmts:
-      if stmt.type == adplib.ConfigStmtType.CONSTANT:
-        datum = self.block.data[stmt.name]
-        value = stmt.value*stmt.scf
-        dig_val = datum.round_value(self.cfg.mode, value)
-        values[stmt.name] = dig_val
+    for var,val in self._get_digital_config():
+        values[var] = val
 
     return self.error_model.get(values)
 
 
   def _concretize(self,expr):
     sub_dict = {}
-    for stmt in self.cfg.stmts:
-      if stmt.type == adplib.ConfigStmtType.CONSTANT:
-        datum = self.block.data[stmt.name]
-        value = stmt.value*stmt.scf
-        dig_val = datum.round_value(self.cfg.mode, value)
-        sub_dict[stmt.name] = genoplib.Const(dig_val)
+    for var,val in self._get_digital_config():
+        sub_dict[var] = genoplib.Const(val)
 
-      if stmt.type == adplib.ConfigStmtType.EXPR:
-        raise NotImplementedError
-      else:
-        pass
 
-    return expr.substitute(sub_dict)
-
+    conc_expr = expr.substitute(sub_dict)
+    return conc_expr
 
   def _build_model(self):
     out = self.block.outputs[self.port.name]
@@ -228,7 +240,7 @@ class ADPEmulBlock:
 
     self.error_model = None
 
-    if not model is None:
+    if not model is None and self.enable_phys:
       dataset = proflib.load(self.board, \
                              self.block, \
                              self.loc, \
@@ -267,16 +279,20 @@ class ADPEmulBlock:
         val += blk.compute(values)
 
       port = self.block.inputs[inp]
-      val = port.interval[self.cfg.mode].clip(val)
+      if self.enable_intervals:
+        val = port.interval[self.cfg.mode].clip(val)
+
       vdict[inp] = val
 
 
-    port = self.block.outputs[self.port.name]
     vdict_sym = dict(map(lambda tup: (tup[0], \
                                       genoplib.Const(tup[1])),  \
                          vdict.items()))
     val = expr.substitute(vdict_sym).compute()
-    val += self._get_error(vdict)
+    if self.enable_phys:
+      val += self._get_error(vdict)
+
+    port = self.block.outputs[self.port.name]
     val = port.interval[self.cfg.mode].clip(val)
     return val
 
@@ -313,8 +329,6 @@ class ADPStatefulEmulBlock(ADPEmulBlock):
 
   def derivative(self,values):
     value = self._compute(self._deriv,values)
-    value += self._get_error(values)
-
     return value
 
 
@@ -329,7 +343,7 @@ class ADPStatefulEmulBlock(ADPEmulBlock):
                                            calib_obj=self.calib_obj)
 
     self.error_model = None
-    if not model is None:
+    if not model is None and self.enable_phys:
       dataset = proflib.load(self.board, \
                            self.block, \
                            self.loc, \
@@ -496,7 +510,8 @@ def get_dsexpr_trajectories(dev,adp,sim,res):
     dataset[stvar.name] = V
 
   for func in res.functions:
-    _,V = res.data(func)
-    dataset[func.name] = V
+    if isinstance(func,genoplib.Var):
+      _,V = res.data(func)
+      dataset[func.name] = V
 
   return times,dataset
