@@ -9,6 +9,7 @@ import runtime.models.database as dblib
 import ops.generic_op as genoplib
 import ops.op as oplib
 
+import util.util as util
 
 class ExpProfileDataset:
 
@@ -83,19 +84,19 @@ class ExpProfileDataset:
     valid_inputs = {}
     for inp in self.inputs:
       assert(not inp in valid_inputs)
-      valid_inputs[inp] = runtime_util.get_subarray(self.inputs[inp], \
+      valid_inputs[inp] = util.get_subarray(self.inputs[inp], \
                                                indices)
 
     for data_field in self.data:
       assert(not data_field in valid_inputs)
-      valid_inputs[data_field] = runtime_util.get_subarray(self.data[data_field], \
+      valid_inputs[data_field] = util.get_subarray(self.data[data_field], \
                                                       indices)
 
     return {
       "inputs":valid_inputs,
-      "ideal_mean":runtime_util.get_subarray(self.ideal_mean,indices),
-      "meas_mean":runtime_util.get_subarray(self.meas_mean,indices),
-      "meas_stdev":runtime_util.get_subarray(self.meas_stdev,indices)
+      "ideal_mean":util.get_subarray(self.ideal_mean,indices),
+      "meas_mean":util.get_subarray(self.meas_mean,indices),
+      "meas_stdev":util.get_subarray(self.meas_stdev,indices)
     }
 
   def add(self,config,inputs,mean,std):

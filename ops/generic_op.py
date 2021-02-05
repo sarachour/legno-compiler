@@ -325,8 +325,30 @@ def unpack_sum(expr):
         c1,vs1 = unpack_sum(expr.arg(0))
         c2,vs2 = unpack_sum(expr.arg(1))
         return c1+c2,vs1+vs2
+    elif expr.op == OpType.MULT:
+        coeff,vs = unpack_product(expr)
+        if len(vs) == 1:
+            c1,vs1 = unpack_sum(vs[0])
+            vs_upd = list(map(lambda v: Mult(Const(coeff), v), vs1))
+            return coeff*c1, vs_upd
+
+        else:
+            return 0.0,[expr]
+
     else:
         return 0.0,[expr]
+
+def unpack_linear_operator(expr):
+    offset,exprs = unpack_sum(expr)
+    if(len(exprs) == 1):
+        coeff,exprs = unpack_product(exprs[0])
+        return coeff,offset,exprs
+    elif offset == 0.0:
+        coeff,exprs = unpack_product(exprs[0])
+        return coeff,0.0,exprs
+    else:
+        return 1.0,offset,exprs
+
 
 def unpack_product(expr):
     if expr.op == OpType.CONST:

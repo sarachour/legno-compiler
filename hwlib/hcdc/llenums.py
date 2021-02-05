@@ -89,6 +89,7 @@ class ProfileOpType(Enum):
         return ProfileOpType.array()[idx]
 
 
+      
     def get_expr(self,block,rel):
         if self == ProfileOpType.INPUT_OUTPUT:
             return rel
@@ -99,7 +100,10 @@ class ProfileOpType(Enum):
 
         elif self == ProfileOpType.INTEG_DERIVATIVE_GAIN:
             integ_expr = genoplib.unpack_integ(rel)
-            coeff,exprs = genoplib.unpack_product(integ_expr.deriv)
+            coeff,offset,exprs = genoplib.unpack_linear_operator(integ_expr.deriv)
+            print(coeff)
+            print(offset)
+            print(exprs)
             assert(all(map(lambda expr: expr.op == oplib.OpType.VAR, exprs)))
             all_vars = list(map(lambda e: e.name, exprs))
 
@@ -112,10 +116,12 @@ class ProfileOpType(Enum):
                                    list(map(lambda v: genoplib.Var(v), \
                                             model_terms)))
             return rel
+        elif self == ProfileOpType.INTEG_DERIVATIVE_BIAS:
+            integ_expr = genoplib.unpack_integ(rel)
+            coeff,offset,exprs = genoplib.unpack_linear_operator(integ_expr.deriv)
+            return genoplib.Const(offset)
         else:
             return genoplib.Const(0.0)
-
-
 
 class CmdType(Enum):
     NULL_CMD = "no_cmd"

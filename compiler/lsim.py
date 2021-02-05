@@ -31,14 +31,21 @@ def plot_simulation(times,stvars,plot_file):
   plt.clf()
 
 
-def simulate_adp(dev,adp,plot_file):
+def simulate_adp(dev,adp,plot_file, \
+                 disable_quantize=False, \
+                 disable_operating_range=False, \
+                 disable_physical_db=False):
   print(adp.metadata)
   prog = adp.metadata[adplib.ADPMetadata.Keys.DSNAME]
   dssim = DSProgDB.get_sim(prog)
+  dev.model_number = adp.metadata[adplib.ADPMetadata.Keys.RUNTIME_PHYS_DB]
   times,values = run_adp_simulation(dev, \
                               adp,
                               dssim)
   plot_simulation(times,values,plot_file)
+
+
+
 
 def simulate_reference(dev,prog,plot_file):
   dssim = DSProgDB.get_sim(prog.name)
