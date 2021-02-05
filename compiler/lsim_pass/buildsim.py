@@ -59,6 +59,9 @@ class ADPSim:
     idx = self._state_vars.index(var)
     return self._emul[var]
 
+  def variable(self,v):
+    return self._emul[v]
+
   def set_function(self,name,emul):
     assert(not name in self._state_vars)
     assert(not name in self._funcs)
@@ -111,11 +114,11 @@ class ADPSimResult:
     return len(self.state_vars)
 
 
-  def data(self,state_var,rectify=True):
-    vals = self.values[state_var]
+  def data(self,variable,rectify=True):
+    vals = self.values[variable]
     times = self.time
     if rectify:
-      scale_factor = self.sim.state_var(state_var).scale_factor
+      scale_factor = self.sim.variable(variable).scale_factor
       V = np.array(vals)/scale_factor
       T = np.array(times)*self.sim.time_scale
     else:
@@ -126,6 +129,8 @@ class ADPSimResult:
 
   def add_point(self,t,xs,fs):
     assert(len(xs) == len(self.state_vars))
+    assert(len(fs) == len(self.functions))
+
     self.time.append(t)
     for var,val in zip(self.state_vars,xs):
       self.values[var].append(val)
@@ -484,8 +489,6 @@ def run_simulation(sim,sim_time):
   return res
 
 def get_dsexpr_trajectories(dev,adp,sim,res):
- 
-
   dataset = {}
   times = res.time
   for stvar in res.state_vars:
@@ -493,7 +496,7 @@ def get_dsexpr_trajectories(dev,adp,sim,res):
     dataset[stvar.name] = V
 
   for func in res.functions:
-    _,V = res.data(stvar)
-    dataset[stvar.name] = V
+    _,V = res.data(func)
+    dataset[func.name] = V
 
   return times,dataset

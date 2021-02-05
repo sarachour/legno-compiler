@@ -338,7 +338,7 @@ def exec_wav(args,trials=1):
                                         wave = wavelib.Waveform.from_json(obj)
                                         update_summary(adp,var,wave,has_scope=has_scope)
 
-                                        for vis in analyzelib.plot_waveform(adp,wave):
+                                        for vis in analyzelib.plot_waveform(board,adp,wave):
                                             plot_file = path_handler.waveform_plot_file( \
                                                                                          graph_index=adp.metadata[ADPMetadata.Keys.LGRAPH_ID],
                                                                                          scale_index=adp.metadata[ADPMetadata.Keys.LSCALE_ID],
@@ -357,7 +357,8 @@ def exec_wav(args,trials=1):
             for (fields,var,has_scope),data in summary.items():
                 adps = list(map(lambda d: d[0], data))
                 waveforms = list(map(lambda d: d[1], data))
-                for vis in analyzelib.plot_waveform_summaries(adps,waveforms):
+                board = get_device(adps[0].metadata.get(ADPMetadata.Keys.RUNTIME_PHYS_DB))
+                for vis in analyzelib.plot_waveform_summaries(board,adps,waveforms):
                     adp = data[0][0]
                     plot_file = path_handler.summary_plot_file( \
                                                                 model=adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD],
