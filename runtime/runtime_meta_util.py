@@ -396,14 +396,14 @@ def model_based_calibration_finalize(board,logfile=None):
     cmds.append(('brute_cal',BRCAL_CMD.format(model_number=board.model_number)))
 
 
-    if not logfile is None:
-      logger = None if logfile is None else \
-          get_calibration_time_logger(board,logfile)
+    logger = None if logfile is None else \
+        get_calibration_time_logger(board,logfile)
 
 
     for name,cmd in cmds:
-        runtime = runtime_meta_util.run_command(cmd)
-        logger.log(block='', loc='', mode='', \
+        runtime = run_command(cmd)
+        if not logger is None:
+           logger.log(block='', loc='', mode='', \
                    calib_obj='model',operation=name, \
                    runtime=runtime)
 
