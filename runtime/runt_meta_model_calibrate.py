@@ -389,7 +389,7 @@ def calibrate_block(logger, \
 
             print("")
 
-        if min(scores) < cutoff:
+        if len(scores) > 0 and min(scores) < cutoff:
             print("[info] returning early! Found code that meets cutoff=%f." % cutoff)
             return
 

@@ -362,7 +362,7 @@ def model_based_calibration(board,adp_path,logfile=None,**kwargs):
   CAL_CMD += " --candidate-samples {candidate_samples}"
   CAL_CMD += " --num-iters {num_iters}"
   CAL_CMD += " --grid-size {grid_size}"
-  CAL_CMD += " --default-cutoff"
+  CAL_CMD += " --default-cutoff > log.txt"
 
   cmds = []
   cfg = get_model_calibration_config(**kwargs)
@@ -396,16 +396,16 @@ def model_based_calibration_finalize(board,logfile=None):
     cmds.append(('brute_cal',BRCAL_CMD.format(model_number=board.model_number)))
 
 
-    if not logfile is None:
-      logger = None if logfile is None else \
-          get_calibration_time_logger(board,logfile)
+    logger = None if logfile is None else \
+        get_calibration_time_logger(board,logfile)
 
 
     for name,cmd in cmds:
         runtime = run_command(cmd)
-        logger.log(block='', loc='', mode='', \
-                   calib_obj='model',operation=name, \
-                   runtime=runtime)
+        if not logger is None:
+           logger.log(block='', loc='', mode='', \
+                      calib_obj='model',operation=name, \
+                      runtime=runtime)
 
 
 

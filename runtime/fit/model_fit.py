@@ -227,7 +227,6 @@ def fit_delta_model_to_data(delta_model,relation,data):
   for k,v in data.data.items():
     dataset['inputs'][k] = v
   dataset['meas_mean'] = data.meas_mean
-  
 
   try:
     result = fit_model(delta_model.spec.params, \
