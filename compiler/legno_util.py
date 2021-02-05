@@ -322,6 +322,8 @@ def exec_wav(args,trials=1):
                     for trial in range(trials):
                         for var,_,_ in adp.observable_ports(board):
                             for has_scope in [True,False]:
+                                print("------- %s [has_scope=%s] ----" % (adp_file,has_scope))
+
                                 waveform_file = path_handler.measured_waveform_file( \
                                                                                      graph_index=adp.metadata[ADPMetadata.Keys.LGRAPH_ID],
                                                                                      scale_index=adp.metadata[ADPMetadata.Keys.LSCALE_ID],

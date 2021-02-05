@@ -19,6 +19,7 @@ def bruteforce_calibrate(char_board):
     print("==== best models (score=%f) ====" % scores[best_idx])
     for model in models[best_idx]:
        model.calib_obj = llenums.CalibrateObjective.BRUTEFORCE
+       print(model.config)
        print(model)
        yield model
 
@@ -51,7 +52,8 @@ def calibrate(args):
            if idx == 0:
             # profile bruteforce model if you haven't already
             runtime_meta_util \
-                .profile_block(board,model.block, \
+                .profile_block(board, \
+                               model.block, \
                                model.loc, \
                                model.config, \
                                llenums.CalibrateObjective.BRUTEFORCE)

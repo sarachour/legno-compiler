@@ -62,9 +62,10 @@ def _get_delta_models(dev,blk,loc,output,config):
                                                                    config)
     if len(delta_models) == 0:
         delta_models = [exp_delta_model_lib.ExpDeltaModel(blk, \
-                                                        loc, \
-                                                        output, \
-                                                        config)]
+                                                          loc, \
+                                                          output, \
+                                                          config, \
+                                                          llenums.CalibrateObjective.NONE)]
 
     return delta_models
 

@@ -57,6 +57,7 @@ class PhysicalDatabase:
   def __init__(self,filename):
     self.filename = filename
 
+    print("file: %s" % self.filename)
     self.conn = sqlite3.connect(self.filename)
     self.curs = self.conn.cursor()
     self.curs.execute(CREATE_PHYS_TABLE)

@@ -74,6 +74,7 @@ def test_block(board,block,loc,modes, \
                                                 logfile=TESTBOARD_LOG, \
                                                 block=block, mode=mode, loc=loc)
 
+    print(">> removing file: %s" % adp_filename)
     runtime_meta_util.remove_file(adp_filename)
 
 

@@ -25,7 +25,7 @@ def profile_kernel(runtime,board,blk,cfg,calib_obj,min_points,grid_size,force=Fa
             dataset = prof_dataset_lib.load(board,blk,cfg.inst.loc, \
                                             exp_delta_model.output, \
                                             exp_delta_model.config, \
-                                            method) 
+                                            method)
             print("<===========")
             print(cfg)
             print("===========>")
@@ -40,7 +40,7 @@ def profile_kernel(runtime,board,blk,cfg,calib_obj,min_points,grid_size,force=Fa
             not force:
                 print("===> <%s> already profiled" % method)
                 continue
-         
+
             planner = planlib.SingleDefaultPointPlanner(blk, \
                                                         cfg.inst.loc, \
                                                         exp_delta_model.output, \

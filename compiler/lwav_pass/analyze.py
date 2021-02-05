@@ -79,40 +79,39 @@ def plot_waveform(dev,adp,waveform,emulate=True):
     if emulate:
         emulated = emulated_wfs[waveform.variable]
 
-
+    npts = reference.npts
     ref_color = "#E74C3C"
     emul_color = "#006266"
     meas_color = "#5758BB"
     ylabel = "%s (%s)" % (dsinfo.observation,dsinfo.units)
     vis = wavelib.WaveformVis("meas",ylabel,program.name)
     vis.set_style('meas',meas_color,'--')
-    vis.add_waveform("meas",waveform.start_from_zero())
+    vis.add_waveform("meas",waveform.start_from_zero().resample(npts))
     yield vis
 
+    print("==== Align with Reference ====")
     rec_exp_aligned = align_waveform(adp,reference,waveform)
     error = reference.error(rec_exp_aligned)
     print("error: %s" % error)
 
     vis = wavelib.WaveformVis("vsref",ylabel,program.name)
-    vis.add_waveform("ref",reference)
     vis.set_style('ref',ref_color,'-')
     vis.set_style('meas',meas_color,'--')
-    vis.add_waveform("meas",rec_exp_aligned)
+    vis.add_waveform("meas",rec_exp_aligned.resample(npts))
+    vis.add_waveform("ref",reference)
     yield vis
 
     if emulate:
-        emul_exp_aligned = align_waveform(adp,emulated,waveform, \
-                                        timing_error=0.0, \
-                                        min_scaling_error=0.0, \
-    )
+        print("==== Align with Emulated ====")
+        emul_exp_aligned = align_waveform(adp,emulated,waveform)
         error = emulated.error(emul_exp_aligned)
         print("error: %s" % error)
 
         vis = wavelib.WaveformVis("vsemul",ylabel,program.name)
-        vis.add_waveform("emul",emulated)
         vis.set_style('emul',emul_color,'-')
         vis.set_style('meas',meas_color,'--')
-        vis.add_waveform("meas",emul_exp_aligned)
+        vis.add_waveform("meas",emul_exp_aligned.resample(npts))
+        vis.add_waveform("emul",emulated)
         yield vis
 
 
@@ -129,6 +128,7 @@ def plot_waveform_summaries(dev,adps,waveforms):
     align_wfs = []
     errors = []
 
+    print("==== Collating Summaries ====")
     for adp,wf in zip(adps,waveforms):
         awf = align_waveform(adp,reference,wf)
         error = reference.error(awf)
@@ -142,6 +142,7 @@ def plot_waveform_summaries(dev,adps,waveforms):
     vis.add_waveform("ref",reference)
     vis.set_style('ref',ref_color,'-')
 
+    print("==== Summary Plot ====")
     opacity = math.sqrt(1.0/len(align_wfs))
     for idx,awf in enumerate(align_wfs):
         series = 'meas%d' % idx
@@ -151,6 +152,7 @@ def plot_waveform_summaries(dev,adps,waveforms):
         vis.add_waveform(series,awf)
     yield vis
 
+    print("==== Best Waveform ====")
     best_idx = np.argmin(errors)
     vis = wavelib.WaveformVis("bestwf",ylabel,program.name)
     vis.add_waveform("ref",reference)

@@ -50,6 +50,10 @@ class Waveform:
     def min_time(self):
         return min(self.times)
 
+    @property
+    def npts(self):
+        return len(self.times)
+
 
     def value(self,t):
         if t < self.min_time or t > self.max_time:

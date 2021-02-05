@@ -402,7 +402,7 @@ def model_based_calibration_finalize(board,logfile=None):
 
 
     for name,cmd in cmds:
-        runtime = runtime_meta_util.run_command(cmd)
+        runtime = run_command(cmd)
         logger.log(block='', loc='', mode='', \
                    calib_obj='model',operation=name, \
                    runtime=runtime)

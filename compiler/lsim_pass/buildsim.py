@@ -9,6 +9,7 @@ import ops.op as oplib
 import ops.parametric_surf as parsurflib
 
 import hwlib.adp as adplib
+import hwlib.block as blocklib
 from scipy.integrate import ode
 
 import hwlib.hcdc.llenums as llenums
@@ -17,37 +18,19 @@ import tqdm
 import numpy as np
 import math
 
+# physdb -- model physical model parameters
+# model error -- model point errors across input space.
+# interval -- model interval clipping
+# quantize -- model quantization of digital values
+
 SETTINGS = {
-  'physdb': False,
-  'interval': False,
-  'quantize': False
+  'physdb': True,
+  'model_error': True,
+  'interval': True,
+  'quantize': True
 }
 
 class ADPSim:
-
-  class Var:
-
-    def __init__(self,inst,port):
-      assert(isinstance(port,str))
-      assert(isinstance(inst,adplib.BlockInst))
-      self.inst = inst
-      self.port = port
-
-    def __eq__(self,other):
-      assert(isinstance(other,ADPSim.Var))
-      return self.port == other.port and \
-        self.inst == other.inst
-
-    def __repr__(self):
-      return "%s.%s" % (self.inst,self.port)
-
-    @property
-    def var_name(self):
-      return "%s_%s" % (self.inst,self.port)
-
-    @property
-    def key(self):
-      return str(self)
 
   def __init__(self):
     self._state_vars = []
@@ -112,31 +95,35 @@ class ADPSimResult:
     for var in self.functions:
       self.values[var] = []
 
-    self.time = []
+    self._time = []
 
   @property
   def num_vars(self):
     return len(self.state_vars)
 
 
+  def times(self,rectify=True):
+    times = self._time
+    T = np.array(times)/self.sim.time_scale
+    return T
+
   def data(self,variable,rectify=True):
     vals = self.values[variable]
-    times = self.time
+    times = self.times(rectify)
     if rectify:
       scale_factor = self.sim.variable(variable).scale_factor
-      V = np.array(vals)/scale_factor
-      T = np.array(times)/self.sim.time_scale
+      print("var %s scf=%f" % (variable,scale_factor))
+      V = np.array(list(vals))/scale_factor
     else:
       V = vals
-      T = times
 
-    return T,V
+    return times,V
 
   def add_point(self,t,xs,fs):
     assert(len(xs) == len(self.state_vars))
     assert(len(fs) == len(self.functions))
 
-    self.time.append(t)
+    self._time.append(t)
     for var,val in zip(self.state_vars,xs):
       self.values[var].append(val)
 
@@ -177,11 +164,13 @@ class ADPEmulBlock:
     self.port = port
     self.calib_obj = calib_obj
     self.inputs = {}
+    self.data_field_offset = 0.0
     self.npts = 10
 
     self.enable_phys = SETTINGS['physdb']
     self.enable_intervals = SETTINGS['interval']
     self.enable_quantize = SETTINGS['quantize']
+    self.enable_model_error = SETTINGS['model_error']
 
     self._build_model()
 
@@ -196,8 +185,16 @@ class ADPEmulBlock:
       if stmt.type == adplib.ConfigStmtType.CONSTANT:
         datum = self.block.data[stmt.name]
         dig_val = stmt.value*stmt.scf
+
+        # apply offset. Note that there may not be any data offsets
+        # if the relation under the selected mode uses no digital fields.
+        if self.enable_phys:
+          #print("TODO: this is obviously not right... what should of offset actually be?")
+          dig_val -= self.data_field_offset
+
         if self.enable_quantize:
           dig_val = datum.round_value(self.cfg.mode, dig_val)
+
         elif self.enable_intervals:
           raise NotImplementedError
 
@@ -207,6 +204,10 @@ class ADPEmulBlock:
 
   def _get_error(self,vdict):
     if self.error_model is None:
+      return 0.0
+
+    if not  self.enable_phys  \
+       or not self.enable_model_error:
       return 0.0
 
     values = {}
@@ -226,8 +227,27 @@ class ADPEmulBlock:
         sub_dict[var] = genoplib.Const(val)
 
 
+
     conc_expr = expr.substitute(sub_dict)
     return conc_expr
+
+  def _build_data_field_offset(self,spec,model,variables):
+    comp_pars = list(filter(lambda par: par.name in variables, \
+                             spec.get_params_of_type(blocklib.DeltaParamType.CORRECTABLE)))
+    asm_pars = list(filter(lambda par: par.name in variables, \
+                           spec.get_params_of_type(blocklib.DeltaParamType.LL_CORRECTABLE)))
+    if len(comp_pars) == 0 or len(asm_pars) == 0:
+      return
+
+    if len(comp_pars) > 1 or len(asm_pars) > 1:
+      print("compiler pars: %s" % comp_pars)
+      print("runtime pars: %s" % asm_pars)
+      raise Exception("expected exactly one of each type of parameter")
+
+    gain_par = model.params[comp_pars[0].name]
+    offset_par = model.params[asm_pars[0].name]
+    self.data_field_offset = offset_par/gain_par
+
 
   def _build_model(self):
     out = self.block.outputs[self.port.name]
@@ -249,6 +269,9 @@ class ADPEmulBlock:
                              method=llenums.ProfileOpType.INPUT_OUTPUT)
       spec = self.block.outputs[self.port.name].deltas[self.cfg.mode]
       expr = spec.get_model(model.params)
+      self._build_data_field_offset(spec,model, \
+                                    variables=spec.relation.vars())
+
       if not dataset is None:
         errors = model.errors(dataset,init_cond=False)
         surf = parsurflib.build_surface(block=self.block, \
@@ -261,9 +284,18 @@ class ADPEmulBlock:
 
 
       else:
+        print(model.config)
+        for row in proflib.get_datasets_by_configured_block_instance(self.board, \
+                                                                     self.block, \
+                                                                     self.loc, \
+                                                                     out, \
+                                                                     model.config, \
+                                                                     hidden=False):
+          print(row)
+
         print("[warn] no dataset for %s %s" \
               % (self.block.name,self.loc))
-
+        raise Exception("???")
 
     else:
       expr = self.block.outputs[self.port.name].relation[self.cfg.mode]
@@ -279,6 +311,7 @@ class ADPEmulBlock:
         val += blk.compute(values)
 
       port = self.block.inputs[inp]
+
       if self.enable_intervals:
         val = port.interval[self.cfg.mode].clip(val)
 
@@ -288,9 +321,9 @@ class ADPEmulBlock:
     vdict_sym = dict(map(lambda tup: (tup[0], \
                                       genoplib.Const(tup[1])),  \
                          vdict.items()))
+
     val = expr.substitute(vdict_sym).compute()
-    if self.enable_phys:
-      val += self._get_error(vdict)
+    val += self._get_error(vdict)
 
     port = self.block.outputs[self.port.name]
     val = port.interval[self.cfg.mode].clip(val)
@@ -353,6 +386,9 @@ class ADPStatefulEmulBlock(ADPEmulBlock):
 
       spec = self.block.outputs[self.port.name].deltas[self.cfg.mode]
       expr = spec.get_model(model.params)
+      self._build_data_field_offset(spec,model, \
+                                    variables=spec.relation.init_cond.vars())
+
       if(not dataset is None):
         errors = model.errors(dataset,init_cond=True)
         surf = parsurflib.build_surface(block=self.block, \
@@ -428,6 +464,7 @@ def build_diffeqs(dev,adp):
     for port in cfg.stmts_of_type(adplib.ConfigStmtType.PORT):
       source_var = cfg.get(port.name).source
       if not source_var is None and \
+         isinstance(source_var,genoplib.Var) and\
          not source_var in sim.state_vars:
         emul_block = build_expr(dev,sim,adp,blk,cfg,port)
         sim.set_function(source_var, emul_block)
@@ -437,7 +474,7 @@ def build_diffeqs(dev,adp):
 
 def build_simulation(dev,adp):
   sim = build_diffeqs(dev,adp)
-  sim.time_scale = adp.tau
+  sim.time_scale = 1.0/adp.tau
   return sim
 
 
@@ -461,19 +498,19 @@ def func_state(sim,values):
 
 
 def run_simulation(sim,sim_time):
-  state_vars = list(sim.state_vars)
 
   def dt_func(t,vs):
     return next_state(sim,vs)
 
 
-  time = sim_time/(sim.time_scale)
+  time = sim_time*sim.time_scale
   n = 300.0
   dt = time/n
 
   res = ADPSimResult(sim)
 
 
+  state_vars = list(sim.state_vars)
   if len(state_vars) == 0:
     for t in np.linspace(0,time,int(n)):
       res.add_point(t,[])
@@ -504,14 +541,13 @@ def run_simulation(sim,sim_time):
 
 def get_dsexpr_trajectories(dev,adp,sim,res):
   dataset = {}
-  times = res.time
+  times = res.times(rectify=True)
   for stvar in res.state_vars:
-    _,V = res.data(stvar)
+    _,V = res.data(stvar,rectify=True)
     dataset[stvar.name] = V
 
   for func in res.functions:
-    if isinstance(func,genoplib.Var):
-      _,V = res.data(func)
-      dataset[func.name] = V
+    _,V = res.data(func,rectify=True)
+    dataset[func.name] = V
 
   return times,dataset

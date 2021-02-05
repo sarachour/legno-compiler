@@ -14,7 +14,7 @@ class ExpDeltaModel:
   MODEL_ERROR = "modelError"
   MAX_MODEL_ERROR = 9999
 
-  def __init__(self,blk,loc,output,cfg,calib_obj=llenums.CalibrateObjective.NONE):
+  def __init__(self,blk,loc,output,cfg,calib_obj):
     assert(isinstance(blk,blocklib.Block))
     assert(isinstance(loc,devlib.Location))
     assert(isinstance(output,blocklib.BlockOutput))
@@ -246,11 +246,11 @@ class ExpDeltaModel:
     loc = devlib.Location.from_string(obj['loc'])
     output = blk.outputs[obj['output']]
     cfg = adplib.BlockConfig.from_json(dev,obj['config'])
-    phys = ExpDeltaModel(blk,loc,output,cfg)
+    calib_obj = llenums.CalibrateObjective(obj['calib_obj'])
+    phys = ExpDeltaModel(blk,loc,output,cfg,calib_obj)
 
     phys._params = obj['params']
     phys._model_error = obj['model_error']
-    phys.calib_obj = llenums.CalibrateObjective(obj['calib_obj'])
     return phys
 
 
@@ -267,6 +267,7 @@ def __to_delta_models(dev,matches):
       yield ExpDeltaModel.from_json(dev, \
                                     runtime_util.decode_dict(match['model']))
     except Exception as e:
+      print("[warn] threw error when unpacking delta model: %s" % e)
       continue
 
 def update(dev,model):
@@ -397,6 +398,8 @@ def get_calibrated(dev,block,loc,cfg,calib_obj):
   matches = list(dev.physdb.select(dblib.PhysicalDatabase.DB.DELTA_MODELS, \
                                    where_clause))
   models = list(__to_delta_models(dev,matches))
+  print(where_clause, len(models))
+  print(len(get_all(dev)))
   return models
 
 def remove_by_calibration_objective(dev,calib_obj):
