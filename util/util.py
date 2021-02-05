@@ -275,3 +275,11 @@ def normalize_mode(m):
         return m.value
     else:
         return str(m)
+
+def get_subarray(arr,inds):
+  return list(map(lambda i: arr[i], inds))
+
+
+def remove_nans(arr):
+  nparr = np.array(arr)
+  return nparr[:,~np.isnan(nparr).any(axis=0)]

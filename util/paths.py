@@ -136,7 +136,8 @@ class PathHandler:
                                    prog=prog, \
                                    lgraph=lgraph, \
                                    lscale=lscale, \
-                                   opt=opt, model=model)
+                                   opt=opt, \
+                                   model=model)
         return cfilename
 
     def time_file(self,name):

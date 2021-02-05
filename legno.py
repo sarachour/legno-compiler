@@ -82,10 +82,19 @@ lexec_subp.add_argument('--scope', action='store_true', \
 
 sim_subp = subparsers.add_parser('lsim', help='simulate circuit.')
 sim_subp.add_argument('program', help='program to simulate.')
+
+sim_subp = subparsers.add_parser('lemul', help='simulate circuit.')
+sim_subp.add_argument('program', help='program to simulate.')
 sim_subp.add_argument('--unscaled', action='store_true', \
                        help='simulate unscaled circuit.')
-sim_subp.add_argument('--reference', action='store_true', \
-                       help='generate reference sim.')
+sim_subp.add_argument('--no-quantize', action='store_true', \
+                       help='don\'t quantize values.')
+sim_subp.add_argument('--no-operating-range', action='store_true', \
+                       help='don\'t enforce operating range.')
+sim_subp.add_argument('--no-physdb', action='store_true', \
+                       help='disable physical database.')
+
+
 
 
 
@@ -118,6 +127,10 @@ elif args.subparser_name == "lcal":
 
 elif args.subparser_name == "lsim":
    legno_util.exec_lsim(args)
+
+elif args.subparser_name == "lemul":
+   legno_util.exec_lemul(args)
+
 
 elif args.subparser_name == "lwav":
    legno_util.exec_wav(args)

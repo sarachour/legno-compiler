@@ -2,8 +2,28 @@ from hwlib.adp import ADP,ADPMetadata
 from dslang.dsprog import DSProgDB
 
 import compiler.lwav_pass.waveform as wavelib
+import compiler.lsim as lsimlib
 import numpy as np
 import math
+
+def get_emulated_waveforms(board,program,adp,dssim):
+    times,value_dict = lsimlib.run_adp_simulation(board, \
+                                                  adp, \
+                                                  dssim)
+    waveforms = {}
+    for varname,values in value_dict.items():
+        wav = wavelib.Waveform(variable=varname, \
+                               times=times, \
+                               values=values, \
+                               time_units=wavelib.Waveform.TimeUnits.DS_TIME_UNITS, \
+                               ampl_units=wavelib.Waveform.AmplUnits.DS_QUANTITY, \
+                               time_scale=1.0, \
+                               mag_scale=1.0)
+        waveforms[varname] = wav
+        print("-> calculated emulated <%s>" % varname)
+
+    return waveforms
+
 
 def get_reference_waveforms(program,dssim):
     times,value_dict = program.execute(dssim)
@@ -21,6 +41,7 @@ def get_reference_waveforms(program,dssim):
 
     return waveforms
 
+
 def reference_waveform(adp,waveform):
     program = DSProgDB.get_prog(adp.metadata[ADPMetadata.Keys.DSNAME])
     dssim = DSProgDB.get_sim(program.name)
@@ -28,9 +49,12 @@ def reference_waveform(adp,waveform):
     ref_waveforms = get_reference_waveforms(program,dssim)
 
     reference = ref_waveforms[waveform.variable]
-    return program,dsinfo,reference
+    return program,dsinfo,dssim,reference
 
-def align_waveform(adp,reference,waveform):
+def align_waveform(adp,reference,waveform, \
+                   timing_error=2e-5, \
+                   min_scaling_error=0.02, \
+                   offset_error=0.0002):
 
     rec_experimental = waveform.start_from_zero().recover()
     print("unrec-time: [%f,%f]" % (min(waveform.times), \
@@ -38,21 +62,26 @@ def align_waveform(adp,reference,waveform):
     print("rec-time: [%f,%f]" % (min(rec_experimental.times), \
           max(rec_experimental.times)))
 
-    timing_error = 2e-5
-    scale_error = max(timing_error/waveform.runtime,0.02)
-    offset_error = 0.0002*(rec_experimental.runtime/waveform.runtime)
+    scale_error = max(timing_error/waveform.runtime, \
+                      min_scaling_error)
+    abs_offset_error = offset_error*(rec_experimental.runtime/waveform.runtime)
 
     rec_exp_aligned = reference.align(rec_experimental, \
                                       scale_slack=scale_error, \
-                                      offset_slack=offset_error)
+                                      offset_slack=abs_offset_error)
     rec_exp_aligned.trim(reference.min_time, reference.max_time)
 
     return rec_exp_aligned
 
-def plot_waveform(adp,waveform):
-    program,dsinfo,reference = reference_waveform(adp,waveform)
+def plot_waveform(dev,adp,waveform,emulate=True):
+    program,dsinfo,dssim,reference = reference_waveform(adp,waveform)
+    emulated_wfs = get_emulated_waveforms(dev,program,adp,dssim)
+    if emulate:
+        emulated = emulated_wfs[waveform.variable]
+
 
     ref_color = "#E74C3C"
+    emul_color = "#006266"
     meas_color = "#5758BB"
     ylabel = "%s (%s)" % (dsinfo.observation,dsinfo.units)
     vis = wavelib.WaveformVis("meas",ylabel,program.name)
@@ -64,20 +93,38 @@ def plot_waveform(adp,waveform):
     error = reference.error(rec_exp_aligned)
     print("error: %s" % error)
 
-    vis = wavelib.WaveformVis("align",ylabel,program.name)
+    vis = wavelib.WaveformVis("vsref",ylabel,program.name)
     vis.add_waveform("ref",reference)
     vis.set_style('ref',ref_color,'-')
     vis.set_style('meas',meas_color,'--')
     vis.add_waveform("meas",rec_exp_aligned)
     yield vis
 
+    if emulate:
+        emul_exp_aligned = align_waveform(adp,emulated,waveform, \
+                                        timing_error=0.0, \
+                                        min_scaling_error=0.0, \
+    )
+        error = emulated.error(emul_exp_aligned)
+        print("error: %s" % error)
+
+        vis = wavelib.WaveformVis("vsemul",ylabel,program.name)
+        vis.add_waveform("emul",emulated)
+        vis.set_style('emul',emul_color,'-')
+        vis.set_style('meas',meas_color,'--')
+        vis.add_waveform("meas",emul_exp_aligned)
+        yield vis
 
 
 
-def plot_waveform_summaries(adps,waveforms):
+
+
+
+def plot_waveform_summaries(dev,adps,waveforms):
     # get reference waveform
-    program,dsinfo,reference = reference_waveform(adps[0], \
+    program,dsinfo,dssim,reference = reference_waveform(adps[0], \
                                                   waveforms[0])
+
 
     align_wfs = []
     errors = []

@@ -143,12 +143,3 @@ def select_from_quantized_interval(ival,quant,n):
 
 def get_subarray(arr,inds):
   return list(map(lambda i: arr[i], inds))
-
-def split_interval(ival,segments):
-  assert(isinstance(ival,ivallib.Interval))
-  spread = ival.spread/(segments)
-  lb = ival.lower
-  for i in range(0,segments):
-    ub = lb + spread
-    yield ivallib.Interval(lb,ub)
-    lb = ub

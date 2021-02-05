@@ -221,25 +221,29 @@ def exec_lsim(args):
     board = get_device(None)
     path_handler = paths.PathHandler(args.subset,args.program)
     program = DSProgDB.get_prog(args.program)
-    if args.reference:
-        plot_file = path_handler.adp_sim_plot(
-            paths.PlotType.SIMULATION, \
-            program.name, \
-            'REF',
-            'na',
-            'na',
-            'na')
-        lsim.simulate_reference(board,program,plot_file)
-        return
+    plot_file = path_handler.adp_sim_plot(
+        paths.PlotType.SIMULATION, \
+        program.name, \
+        'REF',
+        'na',
+        'na',
+        'na')
+    lsim.simulate_reference(board,program,plot_file)
 
 
-    timer = util.Timer('lsim',path_handler)
+def exec_lemul(args):
+    from compiler import lsim
+
+    path_handler = paths.PathHandler(args.subset,args.program)
+    program = DSProgDB.get_prog(args.program)
+    timer = util.Timer('emul',path_handler)
 
     if args.unscaled:
         direc = path_handler.lgraph_adp_dir()
     else:
         direc = path_handler.lscale_adp_dir()
 
+    board = get_device(None)
     for dirname, subdirlist, filelist in \
         os.walk(direc):
         for adp_file in filelist:
@@ -272,7 +276,11 @@ def exec_lsim(args):
                     print(plot_file)
 
 
-                    lsim.simulate_adp(board,adp,plot_file)
+                    board = get_device(adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB])
+                    lsim.simulate_adp(board,adp,plot_file, \
+                                      disable_quantize=args.no_quantize, \
+                                      disable_operating_range=args.no_operating_range, \
+                                      disable_physical_db=args.no_physdb)
 
 def exec_wav(args,trials=1):
     import compiler.lwav_pass.waveform as wavelib
@@ -330,7 +338,7 @@ def exec_wav(args,trials=1):
                                         wave = wavelib.Waveform.from_json(obj)
                                         update_summary(adp,var,wave,has_scope=has_scope)
 
-                                        for vis in analyzelib.plot_waveform(adp,wave):
+                                        for vis in analyzelib.plot_waveform(board,adp,wave):
                                             plot_file = path_handler.waveform_plot_file( \
                                                                                          graph_index=adp.metadata[ADPMetadata.Keys.LGRAPH_ID],
                                                                                          scale_index=adp.metadata[ADPMetadata.Keys.LSCALE_ID],
@@ -349,7 +357,8 @@ def exec_wav(args,trials=1):
             for (fields,var,has_scope),data in summary.items():
                 adps = list(map(lambda d: d[0], data))
                 waveforms = list(map(lambda d: d[1], data))
-                for vis in analyzelib.plot_waveform_summaries(adps,waveforms):
+                board = get_device(adps[0].metadata.get(ADPMetadata.Keys.RUNTIME_PHYS_DB))
+                for vis in analyzelib.plot_waveform_summaries(board,adps,waveforms):
                     adp = data[0][0]
                     plot_file = path_handler.summary_plot_file( \
                                                                 model=adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD],

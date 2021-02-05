@@ -128,7 +128,6 @@ class ExpDeltaModel:
                   correctable_only=False, concrete=True):
     params = dict(self.params)
     if not concrete:
-       params = dict(map(lambda p: (p,None), self.params.keys()))
        params = {}
 
     if correctable_only:
@@ -141,7 +140,10 @@ class ExpDeltaModel:
                     .INTEG_INITIAL_COND.get_expr(self.block,rel)
     elif self.is_integration_op and not init_cond:
       return llenums.ProfileOpType \
-                    .INTEG_DERIVATIVE_GAIN.get_expr(self.block,rel)
+                    .INTEG_DERIVATIVE_GAIN.get_expr(self.block,rel), \
+             llenums.ProfileOpType \
+                    .INTEG_DERIVATIVE_BIAS.get_expr(self.block,rel)
+
     else:
       return llenums.ProfileOpType \
                     .INPUT_OUTPUT.get_expr(self.block,rel)
@@ -158,8 +160,13 @@ class ExpDeltaModel:
 
     params = dict(self.params)
 
-    rel = self.get_subexpr(init_cond=init_cond, \
-                           correctable_only=correctable_only)
+    if not init_cond and self.is_integration_op:
+      rel, _ = self.get_subexpr(init_cond=init_cond, \
+                            correctable_only=correctable_only)
+    else:
+      rel = self.get_subexpr(init_cond=init_cond, \
+                            correctable_only=correctable_only)
+
 
     n = len(dataset)
     predictions = []

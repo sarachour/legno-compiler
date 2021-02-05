@@ -15,6 +15,13 @@ class Interval:
         self._lower = lb
         self._upper = ub
 
+    def clip(self,v):
+        if v >= self._upper:
+            return self._upper
+        elif v <= self._lower:
+            return self._lower
+        else:
+            return v
 
     def union(self,i2):
       lb = min(self.lower,i2.lower)
@@ -474,3 +481,14 @@ def propagate_intervals(expr,ivals):
         raise UnknownIntervalError("cannot propagate through <%s>" % expr)
     else:
         raise Exception("prop expression: %s" % (expr))
+
+
+def split_interval(ival,segments):
+  assert(isinstance(ival,Interval))
+  spread = ival.spread/(segments)
+  lb = ival.lower
+  for i in range(0,segments):
+    ub = lb + spread
+    yield Interval(lb,ub)
+    lb = ub
+
