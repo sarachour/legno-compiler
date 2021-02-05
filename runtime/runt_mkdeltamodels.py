@@ -21,15 +21,21 @@ def update_delta_model(dev,delta_model,dataset):
                                       correctable_only=False, \
                                       concrete=False)
     elif dataset.method == llenums.ProfileOpType.INTEG_DERIVATIVE_GAIN:
-        rel = delta_model.get_subexpr(init_cond=False, \
+        gain,offset = delta_model.get_subexpr(init_cond=False, \
                                       correctable_only=False, \
                                       concrete=False)
-    elif dataset.method == llenums.ProfileOpType.INTEG_DERIVATIVE_BIAS:
+        if len(gain.vars()) == 0:
+           print(delta_model.config)
+           raise Exception("gain must have at least one variable")
+
+        rel = gain
+
+    elif dataset.method == llenums.ProfileOpType.INTEG_DERIVATIVE_STABLE:
         var_name = delta_model.spec.get_param_by_label(dataset.method.value)
         assert(not var_name is None)
         rel = genoplib.Var(var_name.name)
 
-    elif dataset.method == llenums.ProfileOpType.INTEG_DERIVATIVE_STABLE:
+    elif dataset.method == llenums.ProfileOpType.INTEG_DERIVATIVE_BIAS:
         var_name = delta_model.spec.get_param_by_label(dataset.method.value)
         assert(not var_name is None)
         rel = genoplib.Var(var_name.name)
@@ -42,6 +48,7 @@ def update_delta_model(dev,delta_model,dataset):
                                           dataset):
         print(delta_model.config)
         print(delta_model)
+        print("relation: %s" % rel)
         print("can't fit model <%s>" % dataset.method)
         return False,-1
 

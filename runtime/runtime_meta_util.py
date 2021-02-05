@@ -362,7 +362,7 @@ def model_based_calibration(board,adp_path,logfile=None,**kwargs):
   CAL_CMD += " --candidate-samples {candidate_samples}"
   CAL_CMD += " --num-iters {num_iters}"
   CAL_CMD += " --grid-size {grid_size}"
-  CAL_CMD += " --default-cutoff"
+  CAL_CMD += " --default-cutoff > log.txt"
 
   cmds = []
   cfg = get_model_calibration_config(**kwargs)
