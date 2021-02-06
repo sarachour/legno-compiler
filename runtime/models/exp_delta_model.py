@@ -398,8 +398,6 @@ def get_calibrated(dev,block,loc,cfg,calib_obj):
   matches = list(dev.physdb.select(dblib.PhysicalDatabase.DB.DELTA_MODELS, \
                                    where_clause))
   models = list(__to_delta_models(dev,matches))
-  print(where_clause, len(models))
-  print(len(get_all(dev)))
   return models
 
 def remove_by_calibration_objective(dev,calib_obj):
