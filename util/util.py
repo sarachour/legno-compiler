@@ -227,11 +227,14 @@ def pos_inf(f):
 def equals(f1,f2):
   return abs(f1-f2) <= 1e-5
 
-def nearest_value(values,value):
+def nearest_value(values,value,index=False):
     scores = list(map(lambda v: abs(value-v),\
                       values))
     idx = np.argmin(scores)
-    return values[idx]
+    if index:
+        return idx
+    else:
+        return values[idx]
 
 def decompress_json(hexstr):
   byte_obj = binascii.unhexlify(hexstr)
@@ -283,3 +286,15 @@ def get_subarray(arr,inds):
 def remove_nans(arr):
   nparr = np.array(arr)
   return nparr[:,~np.isnan(nparr).any(axis=0)]
+
+def singleton(en):
+    items = list(en)
+    if len(items) == 0:
+        raise Exception("singleton: cannot cast empty array to singleton")
+
+    elif len(items) > 1:
+        raise Exception("singleton: cannot cast array wit >1 els (%s) to singleton" % items)
+
+    return items[0]
+
+ 

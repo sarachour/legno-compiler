@@ -71,7 +71,11 @@ class Op:
         return 1 + child_depth
 
     def concretize(self):
-        return self
+      conc_arg = []
+      for arg in self._args:
+        conc_arg.append(arg.concretize())
+
+      return self.__class__(*conc_arg)
 
     def __repr__(self):
         argstr = " ".join(map(lambda arg: str(arg),self._args))
@@ -83,9 +87,6 @@ class Op:
 
     def __hash__(self):
         return hash(str(self))
-
-    def bwvars(self):
-        return self.vars()
 
     def vars(self):
         vars = []

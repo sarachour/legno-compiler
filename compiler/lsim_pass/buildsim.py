@@ -13,10 +13,12 @@ import hwlib.block as blocklib
 from scipy.integrate import ode
 
 import hwlib.hcdc.llenums as llenums
+import hwlib.hcdc.llcmd_compensate as llcmdcomp
 
 import tqdm
 import numpy as np
 import math
+import util.util as util
 
 # physdb -- model physical model parameters
 # model error -- model point errors across input space.
@@ -156,7 +158,7 @@ class ADPEmulVar:
 
 class ADPEmulBlock:
 
-  def __init__(self,board,block,cfg,port,calib_obj):
+  def __init__(self,board,adp,block,cfg,port,calib_obj):
     self.board = board
     self.block = block
     self.cfg = cfg
@@ -164,7 +166,7 @@ class ADPEmulBlock:
     self.port = port
     self.calib_obj = calib_obj
     self.inputs = {}
-    self.data_field_offset = 0.0
+    self.user_defined = None
     self.npts = 10
 
     self.enable_phys = SETTINGS['physdb']
@@ -172,7 +174,7 @@ class ADPEmulBlock:
     self.enable_quantize = SETTINGS['quantize']
     self.enable_model_error = SETTINGS['model_error']
 
-    self._build_model()
+    self._build_model(adp)
 
 
   @property
@@ -184,14 +186,10 @@ class ADPEmulBlock:
     for stmt in self.cfg.stmts:
       if stmt.type == adplib.ConfigStmtType.CONSTANT:
         datum = self.block.data[stmt.name]
-        dig_val = stmt.value*stmt.scf
+        dig_val = stmt.value
 
         # apply offset. Note that there may not be any data offsets
         # if the relation under the selected mode uses no digital fields.
-        if self.enable_phys:
-          #print("TODO: this is obviously not right... what should of offset actually be?")
-          dig_val -= self.data_field_offset
-
         if self.enable_quantize:
           dig_val = datum.round_value(self.cfg.mode, dig_val)
 
@@ -199,6 +197,14 @@ class ADPEmulBlock:
           raise NotImplementedError
 
         values[stmt.name] = dig_val
+
+      if stmt.type == adplib.ConfigStmtType.EXPR:
+        assert(hasattr(stmt,'outputs'))
+        assert(hasattr(stmt,'inputs'))
+        assert(hasattr(stmt,'input_port'))
+        self.user_defined = (stmt.input_port, \
+                             stmt.inputs, \
+                             stmt.outputs)
 
     return values.items()
 
@@ -231,25 +237,8 @@ class ADPEmulBlock:
     conc_expr = expr.substitute(sub_dict)
     return conc_expr
 
-  def _build_data_field_offset(self,spec,model,variables):
-    comp_pars = list(filter(lambda par: par.name in variables, \
-                             spec.get_params_of_type(blocklib.DeltaParamType.CORRECTABLE)))
-    asm_pars = list(filter(lambda par: par.name in variables, \
-                           spec.get_params_of_type(blocklib.DeltaParamType.LL_CORRECTABLE)))
-    if len(comp_pars) == 0 or len(asm_pars) == 0:
-      return
 
-    if len(comp_pars) > 1 or len(asm_pars) > 1:
-      print("compiler pars: %s" % comp_pars)
-      print("runtime pars: %s" % asm_pars)
-      raise Exception("expected exactly one of each type of parameter")
-
-    gain_par = model.params[comp_pars[0].name]
-    offset_par = model.params[asm_pars[0].name]
-    self.data_field_offset = offset_par/gain_par
-
-
-  def _build_model(self):
+  def _build_model(self,adp):
     out = self.block.outputs[self.port.name]
     model = deltalib.get_calibrated_output(self.board, \
                                            block=self.block, \
@@ -260,6 +249,15 @@ class ADPEmulBlock:
 
     self.error_model = None
 
+    # this
+    llcmdcomp.compute_expression_fields(self.board,adp,self.cfg, \
+                                        compensate=self.enable_phys)
+
+    llcmdcomp.compute_constant_fields(self.board, \
+                                      adp, \
+                                      self.cfg, \
+                                      compensate=self.enable_phys)
+
     if not model is None and self.enable_phys:
       dataset = proflib.load(self.board, \
                              self.block, \
@@ -269,9 +267,7 @@ class ADPEmulBlock:
                              method=llenums.ProfileOpType.INPUT_OUTPUT)
       spec = self.block.outputs[self.port.name].deltas[self.cfg.mode]
       expr = spec.get_model(model.params)
-      self._build_data_field_offset(spec,model, \
-                                    variables=spec.relation.vars())
-
+ 
       if not dataset is None:
         errors = model.errors(dataset,init_cond=False)
         surf = parsurflib.build_surface(block=self.block, \
@@ -318,11 +314,19 @@ class ADPEmulBlock:
       vdict[inp] = val
 
 
-    vdict_sym = dict(map(lambda tup: (tup[0], \
-                                      genoplib.Const(tup[1])),  \
-                         vdict.items()))
+    if self.user_defined is None:
+      vdict_sym = dict(map(lambda tup: (tup[0], \
+                                        genoplib.Const(tup[1])),  \
+                          vdict.items()))
 
-    val = expr.substitute(vdict_sym).compute()
+      val = expr.substitute(vdict_sym).compute()
+    else:
+      input_port,inputs,outputs = self.user_defined
+      inp_val = vdict[input_port]
+      idx = util.nearest_value(inputs,inp_val,index=True)
+      val = outputs[idx]
+
+
     val += self._get_error(vdict)
 
     port = self.block.outputs[self.port.name]
@@ -350,8 +354,8 @@ class ADPEmulBlock:
 
 class ADPStatefulEmulBlock(ADPEmulBlock):
 
-  def __init__(self,board,block,cfg,port,calib_obj):
-    ADPEmulBlock.__init__(self,board,block,cfg,port,calib_obj)
+  def __init__(self,board,adp,block,cfg,port,calib_obj):
+    ADPEmulBlock.__init__(self,board,adp,block,cfg,port,calib_obj)
     self.variable = self.cfg.get(port.name).source
 
   def initial_cond(self):
@@ -365,7 +369,7 @@ class ADPStatefulEmulBlock(ADPEmulBlock):
     return value
 
 
-  def _build_model(self):
+  def _build_model(self,adp):
     #expr = blk.outputs[port.name].relation[cfg.mode]
     out = self.block.outputs[self.port.name]
     model = deltalib.get_calibrated_output(self.board, \
@@ -375,6 +379,14 @@ class ADPStatefulEmulBlock(ADPEmulBlock):
                                            cfg=self.cfg, \
                                            calib_obj=self.calib_obj)
 
+    llcmdcomp.compute_expression_fields(self.board, \
+                                        adp, \
+                                        self.cfg, \
+                                        compensate=self.enable_phys)
+    llcmdcomp.compute_constant_fields(self.board, \
+                                      adp, \
+                                      self.cfg, \
+                                      compensate=self.enable_phys)
     self.error_model = None
     if not model is None and self.enable_phys:
       dataset = proflib.load(self.board, \
@@ -386,8 +398,6 @@ class ADPStatefulEmulBlock(ADPEmulBlock):
 
       spec = self.block.outputs[self.port.name].deltas[self.cfg.mode]
       expr = spec.get_model(model.params)
-      self._build_data_field_offset(spec,model, \
-                                    variables=spec.relation.init_cond.vars())
 
       if(not dataset is None):
         errors = model.errors(dataset,init_cond=True)
@@ -425,9 +435,9 @@ def build_expr(dev,sim,adp,block,cfg,port):
                                          .metadata \
                                          .get(adplib.ADPMetadata.Keys.RUNTIME_CALIB_OBJ))
   if is_integrator(block,cfg,port):
-    emul_block = ADPStatefulEmulBlock(dev,block,cfg,port,calib_obj)
+    emul_block = ADPStatefulEmulBlock(dev,adp,block,cfg,port,calib_obj)
   else:
-    emul_block = ADPEmulBlock(dev,block,cfg,port,calib_obj)
+    emul_block = ADPEmulBlock(dev,adp,block,cfg,port,calib_obj)
 
   for input_port in block.inputs:
     for inst,port_name in map(lambda c: (c.source_inst,c.source_port), \

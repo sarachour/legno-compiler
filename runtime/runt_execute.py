@@ -76,24 +76,20 @@ def exec_adp(args):
                        dblk,conn.dest_inst.loc, \
                        conn.dest_port)
 
-    calib_obj = llenums.CalibrateObjective(adp \
-                                           .metadata[ADPMetadata.Keys.RUNTIME_CALIB_OBJ])
     for cfg in adp.configs:
         blk = board.get_block(cfg.inst.block)
         resp = llcmd.set_state(runtime, \
                                board,
                                blk, \
                                cfg.inst.loc, \
-                               adp, \
-                               calib_obj=calib_obj)
+                               adp)
 
         if blk.name == 'lut':
             llcmd.write_lut(runtime, \
                             board, \
                             blk, \
                             cfg.inst.loc, \
-                            adp, \
-                            calib_obj=calib_obj)
+                            adp)
 
     llcmd.execute_simulation(runtime,board, \
                              program, adp,\

@@ -129,6 +129,9 @@ class Const(GenericOp):
     def substitute(self,bindings={}):
         return Const(self._value)
 
+    def concretize(self):
+        return Const(self._value)
+
     @staticmethod
     def from_json(obj):
         return Const(obj['value'])

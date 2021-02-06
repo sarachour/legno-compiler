@@ -3,47 +3,30 @@ import hwlib.hcdc.llenums as llenums
 import hwlib.block as blocklib
 import hwlib.adp as adplib
 import runtime.models.exp_delta_model as exp_delta_lib
+import compiler.lscale_pass.lscale_ops as lscalelib
+import hwlib.hcdc.llcmd_compensate as llcmdcomp
 
 import ops.generic_op as genoplib
 from hwlib.hcdc.llcmd_util import *
 
-def write_lut(runtime,board,blk,loc,adp, \
-              calib_obj=llenums.CalibrateObjective.MINIMIZE_ERROR):
+def write_lut(runtime,board,blk,loc,adp):
     cfg = adp.configs.get(blk.name,loc)
-    input_port = blk.inputs.singleton()
-    output_port = blk.outputs.singleton()
+    do_compensate = adp.metadata[adplib.ADPMetadata.Keys.LSCALE_SCALE_METHOD]  \
+        != lscalelib.ScaleMethod.IDEAL
+
+    llcmdcomp.compute_expression_fields(board, \
+                                        adp, \
+                                        cfg, \
+                                        compensate=do_compensate)
 
     expr_data_field = 'e'
     expr_cfg = cfg[expr_data_field]
     data = blk.data[expr_data_field]
-    assert(isinstance(expr_cfg,adplib.ExprDataConfig))
-    repls = {}
-    for inp in data.inputs:
-        inj = expr_cfg.injs[inp]
-        repls[inp] = genoplib.Mult( \
-                                    genoplib.Const(inj), \
-                                    genoplib.Var(inp))
-
-    inj = expr_cfg.injs[expr_data_field]
-    func_impl = genoplib.Mult(genoplib.Const(inj), \
-                              expr_cfg.expr.substitute(repls))
-
-    rel = output_port.relation[cfg.mode] \
-                     .substitute({expr_data_field:func_impl})
-    final_expr = rel.concretize()
-
-    print(final_expr)
-    lut_outs = []
-    for val in input_port.quantize[cfg.mode] \
-                             .get_values(input_port \
-                                         .interval[cfg.mode]):
-        out = final_expr.compute({input_port.name:val})
-        lut_outs.append(out)
+    lut_outs = expr_cfg.outputs
 
     assert(len(lut_outs) == 256)
     loc_t,loc_d = make_block_loc_t(blk,loc)
     chunksize = 48
-    print("expr: %s" % final_expr)
     print("# values: %d" % len(lut_outs))
     for offset,values in divide_list_into_chunks(lut_outs,chunksize):
         print("-> writing values %d-%d" % (offset,offset+len(values)))
@@ -54,7 +37,7 @@ def write_lut(runtime,board,blk,loc,adp, \
         cmd = cmd_t.build(cmd_data,debug=True)
         runtime.execute_with_payload(cmd,payload_d)
         resp = unpack_response(runtime.result())
-
+'''
 
 def _add_calibration_codes(board,blk,loc,cfg,calib_obj):
     calib_codes = list(filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), \
@@ -99,8 +82,9 @@ def _compensate_for_offsets(blk,cfg,calib_cfg):
                                                        old_val, \
                                                        cfg[data_field].value))
 
-def set_state(runtime,board,blk,loc,adp, \
-              calib_obj=llenums.CalibrateObjective.MINIMIZE_ERROR):
+'''
+
+def set_state(runtime,board,blk,loc,adp):
     assert(isinstance(adp,adplib.ADP))
     if not llenums.BlockType(blk.ll_name).has_state():
         print("[SKIPPING] %s.%s no state required" % (blk.name,loc))
@@ -108,8 +92,11 @@ def set_state(runtime,board,blk,loc,adp, \
 
 
     cfg = adp.configs.get(blk.name,loc)
-    calib_cfg = _add_calibration_codes(board,blk,loc,cfg,calib_obj)
-    _compensate_for_offsets(blk,cfg,calib_cfg)
+    do_compensate = adp.metadata[adplib.ADPMetadata.Keys.LSCALE_SCALE_METHOD]  \
+        != lscalelib.ScaleMethod.IDEAL
+
+    llcmdcomp.compute_constant_fields(board,adp,cfg,compensate=do_compensate)
+    #_compensate_for_offsets(blk,cfg,calib_cfg)
 
     block_state = blk.state.concretize(adp,loc)
     state_t = {blk.name:block_state}
