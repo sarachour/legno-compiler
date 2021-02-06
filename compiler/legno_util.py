@@ -314,19 +314,18 @@ def exec_wav(args,trials=1):
             if adp_file.endswith('.adp'):
                 with open(dirname+"/"+adp_file,'r') as fh:
                     print("===== %s =====" % (adp_file))
-                    obj = json.loads(fh.read())
-                    metadata = ADPMetadata.from_json(obj['metadata'])
+                    adp_obj = json.loads(fh.read())
+                    metadata = ADPMetadata.from_json(adp_obj['metadata'])
                     if not metadata.has(ADPMetadata.Keys.RUNTIME_PHYS_DB) or \
                        not metadata.has(ADPMetadata.Keys.RUNTIME_CALIB_OBJ):
                         continue
 
                     board = get_device(metadata.get(ADPMetadata.Keys.RUNTIME_PHYS_DB))
-                    adp = ADP.from_json(board, obj)
+                    adp = ADP.from_json(board, adp_obj)
                     for trial in range(trials):
                         for var,_,_ in adp.observable_ports(board):
                             for has_scope in [True,False]:
                                 print("------- %s [has_scope=%s] ----" % (adp_file,has_scope))
-
                                 waveform_file = path_handler.measured_waveform_file( \
                                                                                      graph_index=adp.metadata[ADPMetadata.Keys.LGRAPH_ID],
                                                                                      scale_index=adp.metadata[ADPMetadata.Keys.LSCALE_ID],
@@ -341,8 +340,8 @@ def exec_wav(args,trials=1):
                                     with open(waveform_file,'r') as fh:
                                         obj = util.decompress_json(fh.read())
                                         wave = wavelib.Waveform.from_json(obj)
+                                        adp = ADP.from_json(board, adp_obj)
                                         update_summary(adp,var,wave,has_scope=has_scope)
-
                                         for vis in analyzelib.plot_waveform(board,adp,wave):
                                             plot_file = path_handler.waveform_plot_file( \
                                                                                          graph_index=adp.metadata[ADPMetadata.Keys.LGRAPH_ID],

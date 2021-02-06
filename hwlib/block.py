@@ -451,7 +451,7 @@ class BCDataImpl:
       assert(not self.default is None)
       blkcfg = adp.configs.get(block_name,loc)
       stmt = blkcfg[self.variable]
-      value = stmt.value*stmt.scf
+      value = stmt.value
       data_field = self.state.block.data[self.variable]
       interval = data_field.interval[blkcfg.mode]
       code = self.state.block.data[self.variable] \

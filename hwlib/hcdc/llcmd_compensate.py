@@ -94,7 +94,7 @@ def compute_expression_fields(board,adp,cfg,compensate=True):
                                            src_block, \
                                            conn.source_inst.loc, \
                                            src_cfg,calib_obj)
-            gain,offset = get_compensation_parameters(model,False)
+            gain,offset = get_compensation_parameters(model,init_cond=False)
         else:
             gain,offset = 1.0,0.0
 

@@ -6,12 +6,14 @@ import matplotlib.pyplot as plt
 
 def run_adp_simulation(dev, \
                        adp, \
-                       dssim):
+                       dssim, \
+                       recover=False):
   sim =  \
          buildsim.build_simulation(dev, \
                                    adp)
   res = buildsim.run_simulation(sim,dssim.sim_time)
-  times,values = buildsim.get_dsexpr_trajectories(dev,adp,sim,res)
+  times,values = buildsim.get_dsexpr_trajectories(dev,adp,sim,res, \
+                                                  recover=recover)
   return times,values
 
 
@@ -40,8 +42,8 @@ def simulate_adp(dev,adp,plot_file, \
   dssim = DSProgDB.get_sim(prog)
   dev.model_number = adp.metadata[adplib.ADPMetadata.Keys.RUNTIME_PHYS_DB]
   times,values = run_adp_simulation(dev, \
-                              adp,
-                              dssim)
+                                    adp,
+                                    dssim)
   plot_simulation(times,values,plot_file)
 
 

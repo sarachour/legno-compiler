@@ -27,6 +27,7 @@ def write_lut(runtime,board,blk,loc,adp):
     assert(len(lut_outs) == 256)
     loc_t,loc_d = make_block_loc_t(blk,loc)
     chunksize = 48
+    print("expr: %s" % final_expr)
     print("# values: %d" % len(lut_outs))
     for offset,values in divide_list_into_chunks(lut_outs,chunksize):
         print("-> writing values %d-%d" % (offset,offset+len(values)))
@@ -37,52 +38,6 @@ def write_lut(runtime,board,blk,loc,adp):
         cmd = cmd_t.build(cmd_data,debug=True)
         runtime.execute_with_payload(cmd,payload_d)
         resp = unpack_response(runtime.result())
-'''
-
-def _add_calibration_codes(board,blk,loc,cfg,calib_obj):
-    calib_codes = list(filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), \
-                              blk.state))
-
-    if len(calib_codes) == 0:
-        return
-
-    calib_cfgs = exp_delta_lib.get_calibrated(board,blk,loc,cfg,calib_obj)
-    if len(calib_cfgs) == 0:
-        print(cfg)
-        raise Exception("not calibrated model_number=%s calib=%s" % (board.model_number, \
-                                                                    calib_obj))
-
-    calib_cfg = calib_cfgs[0]
-
-    for st in calib_codes:
-        cfg[st.name].value = calib_cfg.config[st.name].value
-
-    return calib_cfg
-
-def _compensate_for_offsets(blk,cfg,calib_cfg):
-    if calib_cfg is None:
-        return
-
-    ll_corr_pars = calib_cfg.spec \
-                            .get_params_of_type(blocklib.DeltaParamType.LL_CORRECTABLE)
-    if len(blk.data) < 1:
-        return
-
-    if len(ll_corr_pars) == 1:
-        assert(len(blk.data) == 1)
-        data_field = blk.data.singleton().name
-        corr_par = ll_corr_pars[0]
-        old_val = cfg[data_field].value
-        cfg[data_field].value -= calib_cfg.get_value(corr_par.name)/cfg[data_field].scf
-        print("=== field %s ===" % data_field)
-        print("scf=%f" % cfg[data_field].scf)
-        print("offset=%f" % calib_cfg.get_value(corr_par.name))
-        print("value=%f" % old_val); 
-        print("=> updated data field %s: %f -> %f" % (data_field, \
-                                                       old_val, \
-                                                       cfg[data_field].value))
-
-'''
 
 def set_state(runtime,board,blk,loc,adp):
     assert(isinstance(adp,adplib.ADP))
@@ -96,7 +51,6 @@ def set_state(runtime,board,blk,loc,adp):
         != lscalelib.ScaleMethod.IDEAL
 
     llcmdcomp.compute_constant_fields(board,adp,cfg,compensate=do_compensate)
-    #_compensate_for_offsets(blk,cfg,calib_cfg)
 
     block_state = blk.state.concretize(adp,loc)
     state_t = {blk.name:block_state}

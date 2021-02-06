@@ -9,7 +9,8 @@ import math
 def get_emulated_waveforms(board,program,adp,dssim):
     times,value_dict = lsimlib.run_adp_simulation(board, \
                                                   adp, \
-                                                  dssim)
+                                                  dssim, \
+                                                  recover=True)
     waveforms = {}
     for varname,values in value_dict.items():
         wav = wavelib.Waveform(variable=varname, \

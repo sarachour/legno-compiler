@@ -2,6 +2,7 @@ import compiler.math_utils as mathutils
 
 import runtime.models.exp_delta_model as deltalib
 import runtime.models.exp_profile_dataset as proflib
+import compiler.lscale_pass.lscale_ops as lscalelib
 
 import ops.base_op as baseoplib
 import ops.generic_op as genoplib
@@ -29,7 +30,8 @@ SETTINGS = {
   'physdb': True,
   'model_error': True,
   'interval': True,
-  'quantize': True
+  'quantize': True,
+  'compensate':True
 }
 
 class ADPSim:
@@ -105,12 +107,12 @@ class ADPSimResult:
 
 
   def times(self,rectify=True):
-    times = self._time
+    times = list(self._time)
     T = np.array(times)/self.sim.time_scale
     return T
 
   def data(self,variable,rectify=True):
-    vals = self.values[variable]
+    vals = list(self.values[variable])
     times = self.times(rectify)
     if rectify:
       scale_factor = self.sim.variable(variable).scale_factor
@@ -170,6 +172,7 @@ class ADPEmulBlock:
     self.npts = 10
 
     self.enable_phys = SETTINGS['physdb']
+    self.enable_compensate = SETTINGS['compensate'] and self.enable_phys
     self.enable_intervals = SETTINGS['interval']
     self.enable_quantize = SETTINGS['quantize']
     self.enable_model_error = SETTINGS['model_error']
@@ -251,12 +254,12 @@ class ADPEmulBlock:
 
     # this
     llcmdcomp.compute_expression_fields(self.board,adp,self.cfg, \
-                                        compensate=self.enable_phys)
+                                        compensate=self.enable_compensate)
 
     llcmdcomp.compute_constant_fields(self.board, \
                                       adp, \
                                       self.cfg, \
-                                      compensate=self.enable_phys)
+                                      compensate=self.enable_compensate)
 
     if not model is None and self.enable_phys:
       dataset = proflib.load(self.board, \
@@ -382,11 +385,11 @@ class ADPStatefulEmulBlock(ADPEmulBlock):
     llcmdcomp.compute_expression_fields(self.board, \
                                         adp, \
                                         self.cfg, \
-                                        compensate=self.enable_phys)
+                                        compensate=self.enable_compensate)
     llcmdcomp.compute_constant_fields(self.board, \
                                       adp, \
                                       self.cfg, \
-                                      compensate=self.enable_phys)
+                                      compensate=self.enable_compensate)
     self.error_model = None
     if not model is None and self.enable_phys:
       dataset = proflib.load(self.board, \
@@ -482,12 +485,6 @@ def build_diffeqs(dev,adp):
 
   return sim
 
-def build_simulation(dev,adp):
-  sim = build_diffeqs(dev,adp)
-  sim.time_scale = 1.0/adp.tau
-  return sim
-
-
 def next_state(sim,values):
   vdict = dict(zip(map(lambda v: "%s" % v, \
                        sim.state_vars),values))
@@ -505,6 +502,20 @@ def func_state(sim,values):
     result[idx] = sim.function(v).compute(vdict)
 
   return result
+
+
+def build_simulation(dev,_adp):
+  adp = _adp.copy(dev)
+  SETTINGS['compensate'] = adp.metadata[adplib.ADPMetadata.Keys.LSCALE_SCALE_METHOD] != \
+    lscalelib.ScaleMethod.IDEAL
+
+  print("--- settings ---")
+  for k,v in SETTINGS.items():
+    print("par %s = %s" % (k,v))
+
+  sim = build_diffeqs(dev,adp)
+  sim.time_scale = 1.0/adp.tau
+  return sim
 
 
 def run_simulation(sim,sim_time):
@@ -549,15 +560,15 @@ def run_simulation(sim,sim_time):
 
   return res
 
-def get_dsexpr_trajectories(dev,adp,sim,res):
+def get_dsexpr_trajectories(dev,adp,sim,res,recover=True):
   dataset = {}
-  times = res.times(rectify=True)
+  times = res.times(rectify=recover)
   for stvar in res.state_vars:
-    _,V = res.data(stvar,rectify=True)
+    _,V = res.data(stvar,rectify=recover)
     dataset[stvar.name] = V
 
   for func in res.functions:
-    _,V = res.data(func,rectify=True)
+    _,V = res.data(func,rectify=recover)
     dataset[func.name] = V
 
   return times,dataset
