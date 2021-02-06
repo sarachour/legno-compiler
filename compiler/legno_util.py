@@ -154,13 +154,16 @@ def exec_lcal(args):
                 if args.maximize_fit:
                     runt_meta_util.legacy_calibration(board, adp_path, \
                                                       llenums.CalibrateObjective.MAXIMIZE_FIT, \
+                                                      widen=True,
                                                       logfile=None)
                 if args.minimize_error:
                     runt_meta_util.legacy_calibration(board, adp_path, \
                                                       llenums.CalibrateObjective.MINIMIZE_ERROR, \
+                                                      widen=True,
                                                       logfile=None)
                 if args.model_based:
                     runt_meta_util.model_based_calibration(board, adp_path, \
+                                                           widen=True,
                                                            logfile=None)
 
     if args.model_based:

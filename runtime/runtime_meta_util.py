@@ -284,10 +284,12 @@ def profile(board,char_board,calib_obj,log_file=None):
                      calib_obj=calib_obj.value)
     run_command(cmd)
 
-def fit_delta_models(board,force=False,log_file=None):
+def fit_delta_models(board,force=False,orphans=True,log_file=None):
     CMD = "python3 grendel.py mkdeltas --model-number {model}"
     if force:
         CMD += " --force"
+    if not orphans:
+        CMD += " --no-orphans"
     if not log_file is None:
         CMD += " > %s" % log_file
 
@@ -309,17 +311,18 @@ def get_calibration_time_logger(board,logname):
   logger = Logger('%s_%s.log' % (logname,board.model_number), fields)
   return logger
 
-def legacy_calibration(board,adp_path,calib_obj,logfile=None,**kwargs):
-  CAL_CMD = 'cal',"python3 grendel.py cal {adp_path} --model-number {model_number} {calib_obj}"
-  PROF_CMD = 'prof',"python3 grendel.py prof {adp_path} --model-number {model_number} {calib_obj}"
-  MKDELTAS_CMD = 'deltas',"python3 grendel.py mkdeltas --model-number {model_number}"
+def legacy_calibration(board,adp_path,calib_obj,widen=False,logfile=None,**kwargs):
+  CAL_CMD = 'cal',"python3 grendel.py cal {adp_path} --model-number {model_number} {calib_obj} {widen}"
+  PROF_CMD = 'prof',"python3 grendel.py prof {adp_path} --model-number {model_number} {calib_obj} {widen}"
+  MKDELTAS_CMD = 'deltas',"python3 grendel.py mkdeltas --model-number {model_number} --force --no-orphans"
 
-
+  widen_flag = " --widen" if widen else ""
   cmds = []
   for label,CMD in [CAL_CMD, PROF_CMD, MKDELTAS_CMD]:
     cmd = CMD.format(adp_path=adp_path, \
                      model_number=board.model_number, \
-                     calib_obj=calib_obj.value)
+                     calib_obj=calib_obj.value, \
+                     widen=widen_flag)
     cmds.append((label,cmd))
 
   logger = None if logfile is None else \
@@ -356,13 +359,15 @@ def get_model_calibration_config(**kwargs):
     }
 
 
-def model_based_calibration(board,adp_path,logfile=None,**kwargs):
+def model_based_calibration(board,adp_path,widen=False,logfile=None,**kwargs):
   CAL_CMD = "python3 meta_grendel.py model_cal {model_number} --adp {adp_path}"
   CAL_CMD += " --bootstrap-samples {bootstrap_samples}"
   CAL_CMD += " --candidate-samples {candidate_samples}"
   CAL_CMD += " --num-iters {num_iters}"
   CAL_CMD += " --grid-size {grid_size}"
   CAL_CMD += " --default-cutoff > log.txt"
+  if widen:
+      CAL_CMD += " --widen"
 
   cmds = []
   cfg = get_model_calibration_config(**kwargs)

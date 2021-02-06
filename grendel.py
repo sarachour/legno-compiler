@@ -65,16 +65,6 @@ dectree_subp.add_argument('--num-points',type=int, help='number points to use fo
 
 
 
-'''
-fastcal_subp = subparsers.add_parser('fastcal', help='fast calibrate blocks in configuration')
-fastcal_subp.add_argument('adp', type=str,help='adp to characterize')
-#fastcal_subp.add_argument('method', type=str,help='fast calibration objective function (minimize_error/maximize_fit)')
-fastcal_subp.add_argument('--char-data',type=str,help='model number for characterization data')
-fastcal_subp.add_argument('--model-number',type=str,help='model number')
-fastcal_subp.add_argument('--grid-size',type=int,default=5,help='grid size')
-fastcal_subp.add_argument('--on-firmware',type=str,help='execute fast calibration routine resident on firmware')
-'''
-
 
 calib_subp = subparsers.add_parser('cal', help='calibrate blocks in configuration')
 calib_subp.add_argument('adp', type=str,help='adp to characterize')
@@ -112,6 +102,7 @@ vis_subp.add_argument('--max-error',type=float, \
 delta_subp = subparsers.add_parser('mkdeltas', help='build delta models from profile information')
 delta_subp.add_argument('--model-number',type=str,help='model number')
 delta_subp.add_argument('--force',action="store_true",help='force')
+delta_subp.add_argument('--no-orphans',action="store_true",help='don\'t add models that don\'t already exist')
 delta_subp.add_argument('--min-points',default=10,help='minimum number of points to fit model')
 args = parser.parse_args()
 

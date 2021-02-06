@@ -61,22 +61,27 @@ def update_delta_model(dev,delta_model,dataset):
     else:
         return True, delta_model.error(dataset)
 
-def _get_delta_models(dev,blk,loc,output,config):
+def _get_delta_models(dev,blk,loc,output,config,orphans=True):
     delta_models = exp_delta_model_lib.get_fully_configured_outputs(dev, \
                                                                    blk, \
                                                                    loc, \
                                                                    output, \
                                                                    config)
     if len(delta_models) == 0:
-        delta_models = [exp_delta_model_lib.ExpDeltaModel(blk, \
-                                                          loc, \
-                                                          output, \
-                                                          config, \
-                                                          llenums.CalibrateObjective.NONE)]
+        if orphans:
+            delta_models = [exp_delta_model_lib.ExpDeltaModel(blk, \
+                                                              loc, \
+                                                              output, \
+                                                              config, \
+                                                              llenums.CalibrateObjective.NONE)]
+        else:
+            delta_models = []
 
     return delta_models
 
-def _update_delta_models_for_configured_block(dev,delta_models,blk,loc,output,config,force=False):
+def _update_delta_models_for_configured_block(dev,delta_models,blk,loc,output, \
+                                              config, \
+                                              force=False):
     model_errors = []
     for dataset in \
         exp_profile_dataset_lib.get_datasets_by_configured_block_instance(dev, \
@@ -108,11 +113,14 @@ def _update_delta_models_for_configured_block(dev,delta_models,blk,loc,output,co
 
     return True
 
-def update_delta_models_for_configured_block(dev,blk,loc,cfg,hidden=True,force=False):
+def update_delta_models_for_configured_block(dev,blk,loc,cfg, \
+                                             hidden=True, \
+                                             force=False, \
+                                             orphans=True):
     num_deltas = 0
 
     for output in blk.outputs:
-        delta_models = _get_delta_models(dev,blk,loc,output,cfg)
+        delta_models = _get_delta_models(dev,blk,loc,output,cfg,orphans=orphans)
         if all(map(lambda model: model.complete, delta_models)) and not force:
             continue
         for model in delta_models:
@@ -123,12 +131,23 @@ def update_delta_models_for_configured_block(dev,blk,loc,cfg,hidden=True,force=F
                                                        hidden=hidden):
             if _update_delta_models_for_configured_block(dev,delta_models,blk, \
                                                          loc,output, \
-                                                         dataset.config, force=force):
+                                                         dataset.config, \
+                                                         force=force):
                 num_deltas += 1
 
 def derive_delta_models_adp(args):
     board = runtime_util.get_device(args.model_number)
 
+    exp_delta_model_lib \
+        .remove_by_calibration_objective(board,llenums.CalibrateObjective.NONE)
+
+
     for blk,loc,cfg in exp_profile_dataset_lib \
         .get_configured_block_instances(board):
-        update_delta_models_for_configured_block(board,blk,loc,cfg,hidden=True,force=args.force)
+        update_delta_models_for_configured_block(board, \
+                                                 blk, \
+                                                 loc, \
+                                                 cfg, \
+                                                 hidden=True, \
+                                                 force=args.force, \
+                                                 orphans=not args.no_orphans)

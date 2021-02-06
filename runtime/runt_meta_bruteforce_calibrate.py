@@ -57,5 +57,5 @@ def calibrate(args):
                                model.loc, \
                                model.config, \
                                llenums.CalibrateObjective.BRUTEFORCE)
-            runtime_meta_util.fit_delta_models(board)
+            runtime_meta_util.fit_delta_models(board,force=True,orphans=False)
 

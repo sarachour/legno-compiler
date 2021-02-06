@@ -401,7 +401,7 @@ def get_calibrated(dev,block,loc,cfg,calib_obj):
   return models
 
 def remove_by_calibration_objective(dev,calib_obj):
-  if calib_obj is None or calib_obj == llenums.CalibrateObjective.NONE:
+  if calib_obj is None:
     raise Exception("no calibration objective specified")
 
   assert(isinstance(calib_obj,llenums.CalibrateObjective))
