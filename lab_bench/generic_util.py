@@ -8,7 +8,11 @@ class RoundMode(Enum):
     DOWN = "down"
     NEAREST = "nearest"
 
+# number of bytes. number of padding..
 def compute_pad_bytes(n,x):
+    if x < n:
+        raise Exception("cannot compute padding: padded=%d data=%d" % (x,n))
+
     over = n % x
     left = x - over
     return left

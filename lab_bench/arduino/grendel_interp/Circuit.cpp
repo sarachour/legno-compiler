@@ -58,6 +58,10 @@ void exec_command(Fabric * fab, cmd_t& cmd, float* inbuf){
   case cmd_type_t::WRITE_LUT:
     wrlutd = cmd.data.write_lut;
     lut = common::get_slice(fab,wrlutd.inst)->lut;
+    sprintf(FMTBUF, "data offset=%d npts=%d cmd_siz=%d\n",
+            wrlutd.offset,wrlutd.n,sizeof(cmd_t));
+    print_info(FMTBUF);
+
     for(int data_idx=0; data_idx < wrlutd.n; data_idx+=1){
       byteval = min(round(inbuf[data_idx]*128.0 + 128.0),255);
 #ifdef DEBUG_CIRC
