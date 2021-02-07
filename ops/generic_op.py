@@ -82,7 +82,8 @@ class Var(Op):
         obj['name'] = self._name
         return obj
 
-
+    def concretize(self):
+        return Var(self._name)
     def __repr__(self):
         return "(%s %s)" % \
             (self._op.value,self._name)

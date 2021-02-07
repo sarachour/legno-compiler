@@ -27,7 +27,6 @@ def write_lut(runtime,board,blk,loc,adp):
     assert(len(lut_outs) == 256)
     loc_t,loc_d = make_block_loc_t(blk,loc)
     chunksize = 48
-    print("expr: %s" % final_expr)
     print("# values: %d" % len(lut_outs))
     for offset,values in divide_list_into_chunks(lut_outs,chunksize):
         print("-> writing values %d-%d" % (offset,offset+len(values)))
