@@ -6,11 +6,10 @@ import scipy.interpolate
 
 class ParametricSurface:
 
-  def __init__(self,num_patches=3):
-    self._patches = {}
-    self.num_patches = num_patches
+  def __init__(self):
+    self._bounds= {}
     self.variables =[]
-    self.data = None
+    self.scale = 10
 
   @property
   def dim(self):
@@ -18,102 +17,81 @@ class ParametricSurface:
 
   def add_variable(self,var,bounds):
     assert(isinstance(bounds,ivallib.Interval))
-    patches = list(ivallib.split_interval(bounds, \
-                                            self.num_patches))
-    self._patches[var] = patches
+    self._bounds[var] = bounds
     self.variables.append(var)
 
-  def patch_to_intervals(self,patch):
-      ivals = {}
-      for var, patch_id in patch.items():
-          ivals[var] = self._patches[var][patch_id]
+  def get(self,inputs):
+    indices = [-1]*self.dim
+    for idx,var in enumerate(self.variables):
+      ival = self._bounds[var]
+      indices[idx] = min(int(round(self.scale/ival.bound*inputs[var]) + self.scale), \
+                         self.scale-1)
 
-      return ivals
+    idx = self.interp_inps[tuple(indices)]
+    val = self.interp_out[idx.astype(int)]
+    return float(val)
 
-  def ticks(self,var):
-    bnds = self._patches[var]
-    return list(map(lambda bnd: \
-                    round((bnd.upper+bnd.lower)/2.0,2), \
-      self._patches[var]))
+  def get_grid(self,npts):
+    grid = np.zeros(shape=tuple([npts]*self.dim))
+    indices = list(map(lambda _: list(range(npts)), \
+                       range(self.dim)))
+    axes = {}
+    for var in self.variables:
+      ival = self._bounds[var]
+      axes[var] = np.linspace(ival.lower,ival.upper,npts)
 
-  def get(self,point):
-    patches = [-1]*self.dim
-    for v in self.variables:
-        if not v in point:
-            raise Exception("missing variable <%s>" % v)
+    for inds in itertools.product(*indices):
+      vdict = {}
+      for idx,var in zip(inds,self.variables):
+        vdict[var] = self._bounds[var].by_index(idx,npts)
 
-    for varname in self.variables:
-        idx = self.variables.index(varname)
-        val = point[varname]
-        for patch_id, patch in enumerate(self._patches[varname]):
-            if patch.contains_value(val):
-                patches[idx] = patch_id
+      grid[inds] = self.get(vdict)
+
+    return axes,grid
+
+  def fit(self,inputs,outputs,npts=10):
+    def scale_val(a,ival):
+      return int(round(a*self.scale/ival.bound))
+
+    nvects = len(inputs[self.variables[0]])
+    outputs = np.array(outputs)
+    interpolants = np.zeros(shape=(nvects, self.dim))
+    gridvals = np.zeros(shape=((self.scale*2)**self.dim, self.dim))
+    self.interp_inps = np.zeros(shape=tuple([self.scale*2]*self.dim))
 
 
-        assert(patches[idx] >= 0)
+    print("mesh=%s" % str(gridvals.shape))
+    mesh_inds = list(map(lambda _ : list(range(self.scale*2)), \
+                               range(self.dim)))
 
-    value = self.data[tuple(patches)]
-    return float(value)
+    for k,indices in enumerate(itertools.product(*mesh_inds)):
+      for idx,ind in enumerate(indices):
+        gridvals[k,idx] = ind
 
+      self.interp_inps[indices] = k
 
-  def interpolate(self,patch,inputs,outputs):
-    n_pts = len(outputs)
-    input_data = np.zeros((n_pts,len(self.variables)));
-    ivals = self.patch_to_intervals(patch)
-    pt = list(map(lambda v: ivals[v].middle,self.variables))
+    for var_id,var in enumerate(self.variables):
+      ival = self._bounds[var]
+      ax = np.linspace(ival.lower,ival.upper,self.scale*2)
+      for idx in range(self.scale*2):
+        gridvals[idx,var_id] = scale_val(ax[idx],ival)
 
-    for idx in range(n_pts):
-      for varid,v in enumerate(self.variables):
-        input_data[idx,varid] = inputs[v][idx]
+    print("interpolants=%s" % str(interpolants.shape))
+    for var_id,var in enumerate(self.variables):
+      ival = self._bounds[var]
+      for idx in range(len(inputs[var])):
+        interpolants[idx,var_id] = scale_val(inputs[var][idx],ival)
 
-    output_data = np.array(outputs)
-    print('-- vars --')
-    print(self.variables)
-    print('-- input --')
-    print(input_data)
-    print('-- output --')
-    print(output_data)
-    print('-------')
-    ys = scipy.interpolate.griddata(input_data, \
-                                    output_data, \
-                                    [pt])
-    return ys[0]
-
-  def divide(self,inputs,output):
-    def test_index(patch,index):
-      for var,patch_id in patch.items():
-        var_range = self._patches[var][patch_id]
-        value = inputs[var][index]
-        if not var_range.contains_value(value):
-          return False
-      return True
-
-    n = len(output)
-    patches = list(range(0,self.num_patches))
-    variables = list(self.variables)
-    combos = [patches]*len(variables)
-    for combo in itertools.product(*combos):
-      patch = dict(zip(variables,combo))
-      indices = list(filter(lambda i : test_index(patch,i), \
-                       range(0,n)))
-      sub_output = util.get_subarray(output,indices)
-      sub_inputs = {}
-      for v in variables:
-        sub_inputs[v] = util.get_subarray(inputs[v], \
-                                               indices)
-      if len(sub_output) == 0:
-        sub_inputs = {}
-        for v in variables:
-          sub_inputs[v] = [patch[v]]
-        sub_output = self.interpolate(patch,inputs,output)
-        yield patch,sub_inputs,[sub_output]
-      else:
-        yield patch,sub_inputs,sub_output
-
+    ## unstructured data
+    outputs_interp = scipy.interpolate.griddata(points=interpolants, \
+                                                values=outputs,\
+                                                xi=gridvals)
+    self.interp_out = outputs_interp
+    print("interp=%s" % str(self.interp_out.shape))
 
 
 def build_surface(block,cfg,port,dataset,output,npts=10,normalize=1.0):
-    surf = ParametricSurface(npts)
+    surf = ParametricSurface()
 
     rel = block.outputs[port.name].relation[cfg.mode]
     rel_vars = rel.vars()
@@ -139,16 +117,7 @@ def build_surface(block,cfg,port,dataset,output,npts=10,normalize=1.0):
       if k in rel_vars:
         inputs[k] = v
 
-
-    dim = len(inputs.keys())
-    array_shape = tuple([surf.num_patches]*dim)
-    surf.data = np.zeros(array_shape);
-
-    for patch,inps,out in surf.divide(inputs,output):
-      value = np.mean(util.remove_nans(out))
-      index = list(map(lambda v: patch[v], surf.variables))
-      surf.data[index] = value/normalize
-      assert(value != np.nan)
+    output = list(map(lambda o : o /normalize, output))
+    surf.fit(inputs,output)
 
     return surf
-

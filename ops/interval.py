@@ -1,5 +1,6 @@
 import math
 import ops.base_op as oplib
+import numpy as np
 
 def same_sign(v,v1):
     if v*v1 >= 0:
@@ -179,6 +180,11 @@ class Interval:
             return Interval.type_infer(1,1)
         elif self.negative():
             return Interval.type_infer(-1,-1)
+
+
+    def by_index(self,index,n):
+        vals = np.linspace(self.lower,self.upper,n)
+        return vals[index]
 
 
     def abs(self):

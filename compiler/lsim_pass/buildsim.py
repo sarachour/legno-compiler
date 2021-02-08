@@ -29,7 +29,7 @@ import util.util as util
 SETTINGS = {
   'physdb': True,
   'model_error': True,
-  'interval': True,
+  'interval': False,
   'quantize': True,
   'compensate':True
 }

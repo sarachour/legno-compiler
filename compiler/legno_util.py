@@ -308,6 +308,11 @@ def exec_wav(args,trials=1):
 
         summary[key].append((adp,wave))
 
+    if args.scope_only:
+        scope_options = [True]
+    else:
+        scope_options = [True,False]
+
     for dirname, subdirlist, filelist in \
         os.walk(path_handler.lscale_adp_dir()):
         for adp_file in filelist:
@@ -324,7 +329,7 @@ def exec_wav(args,trials=1):
                     adp = ADP.from_json(board, adp_obj)
                     for trial in range(trials):
                         for var,_,_ in adp.observable_ports(board):
-                            for has_scope in [True,False]:
+                            for has_scope in scope_options:
                                 print("------- %s [has_scope=%s] ----" % (adp_file,has_scope))
                                 waveform_file = path_handler.measured_waveform_file( \
                                                                                      graph_index=adp.metadata[ADPMetadata.Keys.LGRAPH_ID],
@@ -342,7 +347,9 @@ def exec_wav(args,trials=1):
                                         wave = wavelib.Waveform.from_json(obj)
                                         adp = ADP.from_json(board, adp_obj)
                                         update_summary(adp,var,wave,has_scope=has_scope)
-                                        for vis in analyzelib.plot_waveform(board,adp,wave):
+                                        for vis in analyzelib.plot_waveform(board,adp,wave, \
+                                                                            emulate=args.emulate, \
+                                                                            measured=args.measured):
                                             plot_file = path_handler.waveform_plot_file( \
                                                                                          graph_index=adp.metadata[ADPMetadata.Keys.LGRAPH_ID],
                                                                                          scale_index=adp.metadata[ADPMetadata.Keys.LSCALE_ID],

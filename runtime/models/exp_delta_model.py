@@ -125,7 +125,8 @@ class ExpDeltaModel:
     return np.sqrt(model_error/len(errors))
 
   def get_subexpr(self,init_cond=False, \
-                  correctable_only=False, concrete=True):
+                  correctable_only=False, \
+                  concrete=True):
     params = dict(self.params)
     if not concrete:
        params = {}
@@ -156,16 +157,18 @@ class ExpDeltaModel:
     for k,v in dataset.inputs.items():
       inputs[k] = v
     for k,v in dataset.data.items():
+      assert(not k in inputs)
       inputs[k] = v
 
     params = dict(self.params)
 
     if not init_cond and self.is_integration_op:
+      # return gain
       rel, _ = self.get_subexpr(init_cond=init_cond, \
                             correctable_only=correctable_only)
     else:
       rel = self.get_subexpr(init_cond=init_cond, \
-                            correctable_only=correctable_only)
+                             correctable_only=correctable_only)
 
 
     n = len(dataset)

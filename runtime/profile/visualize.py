@@ -24,46 +24,50 @@ def get_maximum_value(physblk):
 def heatmap(physblk,output_file,dataset,output,n,relative=False, \
             amplitude=None):
   bounds = physblk.get_bounds()
+  npts = 10
 
   normalize_out = 1.0
   if relative:
-    normalize_out = get_maximum_value(physblk)/100.0
+    normalize_out = 100.0/get_maximum_value(physblk)
 
   colormap_name = "coolwarm"
 
   if len(output) == 0:
     return
 
+  print("")
+  print("ampl=%f error=[%f,%f]" % (get_maximum_value(physblk), \
+                                   min(output),max(output)))
+  # build a surface which is normalized by the maximum value of the outputs
   surf = parsurflib.build_surface(physblk.block, \
                                   physblk.config, \
                                   physblk.output, \
                                   dataset, \
                                   output, \
                                   npts=n, \
-                                  normalize=amplitude if not amplitude is None else 1.0)
- 
+                                  normalize=normalize_out)
+
   if not (len(surf.variables) <= 2):
     raise Exception("expected 1 or 2 variables. Received %s inputs" \
                     % str(inputs.keys()))
 
 
   if len(surf.variables) == 2:
-    data = np.zeros((surf.num_patches,surf.num_patches));
     variables = list(surf.variables)
     v1 = surf.variables[0]
     v2 = surf.variables[1]
-
+    axes,data = surf.get_grid(npts)
     fig,ax = plt.subplots()
     ax.set_xlabel(v1)
     ax.set_ylabel(v2)
-    ax.set_xticks(np.arange(surf.num_patches))
-    ax.set_yticks(np.arange(surf.num_patches))
-    ax.set_xticklabels(surf.ticks(v1))
-    ax.set_yticklabels(surf.ticks(v2))
+    ax.set_xticks(range(npts))
+    ax.set_yticks(range(npts))
+    ax.set_xticklabels(axes[v1])
+    ax.set_yticklabels(axes[v2])
     if amplitude is None:
       amplitude = np.max(np.abs(util.remove_nans(data)))
 
-    im = ax.imshow(surf.data, \
+    im = ax.imshow(data, \
                    cmap=plt.get_cmap(colormap_name), \
                    vmin=-amplitude, \
                    vmax=amplitude)
@@ -78,18 +82,19 @@ def heatmap(physblk,output_file,dataset,output,n,relative=False, \
 
   elif len(surf.variables) == 1:
     v1 = surf.variables[0]
-    data = np.zeros((2,surf.num_patches));
+    data = np.zeros((2,npts));
 
-    for patch_id,value in enumerate(surf.data):
-      data[0,patch_id] = value
-      data[1,patch_id] = value
+    axes,values = surf.get_grid(npts)
+    for idx,value in enumerate(values):
+      data[0,idx] = value
+      data[1,idx] = value
 
     fig,ax = plt.subplots()
     ax.set_xlabel(v1)
-    ax.set_xticks(np.arange(surf.num_patches))
-    ax.set_xticklabels(surf.ticks(v1))
+    ax.set_xticks(range(npts))
+    ax.set_xticklabels(axes[v1])
     if amplitude is None:
-      amplitude = np.max(np.abs(data))
+      amplitude = np.max(np.abs(util.remove_nans(data)))
 
 
     im = ax.imshow(data, \

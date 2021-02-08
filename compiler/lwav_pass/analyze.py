@@ -74,21 +74,23 @@ def align_waveform(adp,reference,waveform, \
 
     return rec_exp_aligned
 
-def plot_waveform(dev,adp,waveform,emulate=True):
+def plot_waveform(dev,adp,waveform,emulate=True,measured=True):
     program,dsinfo,dssim,reference = reference_waveform(adp,waveform)
-    emulated_wfs = get_emulated_waveforms(dev,program,adp,dssim)
     if emulate:
+        emulated_wfs = get_emulated_waveforms(dev,program,adp,dssim)
         emulated = emulated_wfs[waveform.variable]
 
     npts = reference.npts
     ref_color = "#E74C3C"
-    emul_color = "#006266"
+    emul_color = "#badc58"
     meas_color = "#5758BB"
     ylabel = "%s (%s)" % (dsinfo.observation,dsinfo.units)
-    vis = wavelib.WaveformVis("meas",ylabel,program.name)
-    vis.set_style('meas',meas_color,'--')
-    vis.add_waveform("meas",waveform.start_from_zero().resample(npts))
-    yield vis
+
+    if measured:
+        vis = wavelib.WaveformVis("meas",ylabel,program.name)
+        vis.set_style('meas',meas_color,'--')
+        vis.add_waveform("meas",waveform.start_from_zero().resample(npts))
+        yield vis
 
     print("==== Align with Reference ====")
     rec_exp_aligned = align_waveform(adp,reference,waveform)
@@ -98,8 +100,8 @@ def plot_waveform(dev,adp,waveform,emulate=True):
     vis = wavelib.WaveformVis("vsref",ylabel,program.name)
     vis.set_style('ref',ref_color,'-')
     vis.set_style('meas',meas_color,'--')
-    vis.add_waveform("meas",rec_exp_aligned.resample(npts))
     vis.add_waveform("ref",reference)
+    vis.add_waveform("meas",rec_exp_aligned.resample(npts))
     yield vis
 
     if emulate:
@@ -111,8 +113,8 @@ def plot_waveform(dev,adp,waveform,emulate=True):
         vis = wavelib.WaveformVis("vsemul",ylabel,program.name)
         vis.set_style('emul',emul_color,'-')
         vis.set_style('meas',meas_color,'--')
-        vis.add_waveform("meas",emul_exp_aligned.resample(npts))
         vis.add_waveform("emul",emulated)
+        vis.add_waveform("meas",emul_exp_aligned.resample(npts))
         yield vis
 
 

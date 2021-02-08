@@ -111,7 +111,7 @@ def visualize(args):
                              baseline=vizlib.ReferenceType.CORRECTABLE_MODEL_PREDICTION, \
                              num_bins=10, \
                              amplitude=args.max_error, \
-                             relative=True)
+                             relative=not args.absolute)
 
             model_file = ph.get_model_file(delta_model.block.name, \
                                            delta_model.loc.file_string(), \
