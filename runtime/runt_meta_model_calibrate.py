@@ -91,6 +91,9 @@ class CandidateCodeHistory:
     def num_codes(self):
         return len(self.keys)
 
+'''
+compute set of possible codes
+'''
 def cast_codes_to_integer(blk,objfun,codes):
     code_names = list(codes.keys())
     possible_values = []
@@ -128,7 +131,9 @@ def generate_candidate_codes(logger, \
     print(calib_expr)
     print("----- Generating Samples -----")
     start_time = time.time()
-    for offsets in phys_model.uncertainty.samples(num_offsets,ampl=sample_ampl,include_zero=True):
+    for offsets in phys_model.uncertainty.samples(num_offsets, \
+                                                  ampl=sample_ampl, \
+                                                  include_zero=True):
         variables = dict(map(lambda tup: (tup[0],tup[1].copy().concretize()), \
                                 phys_model.variables().items()))
         for v in variables.keys():
@@ -172,6 +177,10 @@ def evaluate_delta_model(mdl,num_samples=None):
         return calib_expr,None
 
     calib_score = calib_expr.compute(pars)
+    print("expr: %s" % calib_expr)
+    print("pars: %s" % pars)
+    print("score: %s" % calib_score)
+    input("<wait for input>")
     return calib_expr,calib_score
 
 
