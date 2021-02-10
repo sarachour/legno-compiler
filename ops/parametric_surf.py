@@ -3,13 +3,13 @@ import util.util as util
 import numpy as np
 import itertools
 import scipy.interpolate
+import math
 
 class ParametricSurface:
 
   def __init__(self):
     self._bounds= {}
     self.variables =[]
-    self.scale = 10
 
   @property
   def dim(self):
@@ -20,16 +20,28 @@ class ParametricSurface:
     self._bounds[var] = bounds
     self.variables.append(var)
 
-  def get(self,inputs):
-    indices = [-1]*self.dim
-    for idx,var in enumerate(self.variables):
-      ival = self._bounds[var]
-      indices[idx] = min(int(round(self.scale/ival.bound*inputs[var]) + self.scale), \
-                         self.scale-1)
+  def zero(self):
+    self.outputs = [0.0]*len(self.outputs)
 
-    idx = self.interp_inps[tuple(indices)]
-    val = self.interp_out[idx.astype(int)]
-    return float(val)
+
+  def get(self,inputs):
+    output = 0.0
+    weight = 0.0
+    # interpolation technique: inverse distance weighting
+    expo = 4
+    for idx,out in enumerate(self.outputs):
+      dist = 0.0
+      for v in inputs.keys():
+        dist += (self.inputs[v][idx] - inputs[v])**2
+
+      dist = math.sqrt(dist)**expo
+      if dist == 0:
+        return out
+
+      output += out*dist
+      weight += dist
+
+    return output/weight
 
   def get_grid(self,npts):
     grid = np.zeros(shape=tuple([npts]*self.dim))
@@ -49,46 +61,10 @@ class ParametricSurface:
 
     return axes,grid
 
+
   def fit(self,inputs,outputs,npts=10):
-    def scale_val(a,ival):
-      return int(round(a*self.scale/ival.bound))
-
-    nvects = len(inputs[self.variables[0]])
-    outputs = np.array(outputs)
-    interpolants = np.zeros(shape=(nvects, self.dim))
-    gridvals = np.zeros(shape=((self.scale*2)**self.dim, self.dim))
-    self.interp_inps = np.zeros(shape=tuple([self.scale*2]*self.dim))
-
-
-    print("mesh=%s" % str(gridvals.shape))
-    mesh_inds = list(map(lambda _ : list(range(self.scale*2)), \
-                               range(self.dim)))
-
-    for k,indices in enumerate(itertools.product(*mesh_inds)):
-      for idx,ind in enumerate(indices):
-        gridvals[k,idx] = ind
-
-      self.interp_inps[indices] = k
-
-    for var_id,var in enumerate(self.variables):
-      ival = self._bounds[var]
-      ax = np.linspace(ival.lower,ival.upper,self.scale*2)
-      for idx in range(self.scale*2):
-        gridvals[idx,var_id] = scale_val(ax[idx],ival)
-
-    print("interpolants=%s" % str(interpolants.shape))
-    for var_id,var in enumerate(self.variables):
-      ival = self._bounds[var]
-      for idx in range(len(inputs[var])):
-        interpolants[idx,var_id] = scale_val(inputs[var][idx],ival)
-
-    ## unstructured data
-    outputs_interp = scipy.interpolate.griddata(points=interpolants, \
-                                                values=outputs,\
-                                                xi=gridvals)
-    self.interp_out = outputs_interp
-    print("interp=%s" % str(self.interp_out.shape))
-
+    self.inputs = inputs
+    self.outputs = outputs
 
 def build_surface(block,cfg,port,dataset,output,npts=10,normalize=1.0):
     surf = ParametricSurface()
@@ -118,6 +94,9 @@ def build_surface(block,cfg,port,dataset,output,npts=10,normalize=1.0):
         inputs[k] = v
 
     output = list(map(lambda o : o /normalize, output))
+    #print("normalize: %s" % normalize)
+    #print("output: [%f,%f]" % (min(output),max(output)))
+
     surf.fit(inputs,output)
 
     return surf

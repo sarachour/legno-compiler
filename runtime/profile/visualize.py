@@ -23,21 +23,27 @@ def get_maximum_value(physblk):
 
 def heatmap(physblk,output_file,dataset,output,n,relative=False, \
             amplitude=None):
+  fmtaxes = lambda axes: list(map(lambda v: round(v,2), axes))
   bounds = physblk.get_bounds()
   npts = 10
 
   normalize_out = 1.0
   if relative:
-    normalize_out = 100.0/get_maximum_value(physblk)
+    normalize_out = get_maximum_value(physblk)/100.0
 
   colormap_name = "coolwarm"
 
   if len(output) == 0:
     return
 
+  if amplitude is None:
+      amplitude = np.max(np.abs(util.remove_nans(output)))
+
   print("")
-  print("ampl=%f error=[%f,%f]" % (get_maximum_value(physblk), \
-                                   min(output),max(output)))
+  print("max-val=%f error=[%f,%f]" % (get_maximum_value(physblk), \
+                                      min(output),max(output)))
+  print("ampl=%f" % amplitude)
+
   # build a surface which is normalized by the maximum value of the outputs
   surf = parsurflib.build_surface(physblk.block, \
                                   physblk.config, \
@@ -62,10 +68,8 @@ def heatmap(physblk,output_file,dataset,output,n,relative=False, \
     ax.set_ylabel(v2)
     ax.set_xticks(range(npts))
     ax.set_yticks(range(npts))
-    ax.set_xticklabels(axes[v1])
-    ax.set_yticklabels(axes[v2])
-    if amplitude is None:
-      amplitude = np.max(np.abs(util.remove_nans(data)))
+    ax.set_xticklabels(fmtaxes(axes[v1]))
+    ax.set_yticklabels(fmtaxes(axes[v2]))
 
     im = ax.imshow(data, \
                    cmap=plt.get_cmap(colormap_name), \
@@ -92,10 +96,7 @@ def heatmap(physblk,output_file,dataset,output,n,relative=False, \
     fig,ax = plt.subplots()
     ax.set_xlabel(v1)
     ax.set_xticks(range(npts))
-    ax.set_xticklabels(axes[v1])
-    if amplitude is None:
-      amplitude = np.max(np.abs(util.remove_nans(data)))
-
+    ax.set_xticklabels(fmtaxes(axes[v1]))
 
     im = ax.imshow(data, \
                    cmap=plt.get_cmap(colormap_name), \

@@ -281,9 +281,10 @@ def exec_lemul(args):
 
                     board = get_device(adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB])
                     lsim.simulate_adp(board,adp,plot_file, \
-                                      disable_quantize=args.no_quantize, \
-                                      disable_operating_range=args.no_operating_range, \
-                                      disable_physical_db=args.no_physdb)
+                                      enable_quantization=not args.no_quantize, \
+                                      enable_intervals=not args.no_operating_range, \
+                                      enable_physical_model= not args.no_physdb, \
+                                      enable_model_error =not args.no_model_error)
 
 def exec_wav(args,trials=1):
     import compiler.lwav_pass.waveform as wavelib

@@ -83,6 +83,8 @@ lexec_subp.add_argument('--scope', action='store_true', \
 sim_subp = subparsers.add_parser('lsim', help='simulate circuit.')
 sim_subp.add_argument('program', help='program to simulate.')
 
+
+
 sim_subp = subparsers.add_parser('lemul', help='simulate circuit.')
 sim_subp.add_argument('program', help='program to simulate.')
 sim_subp.add_argument('--unscaled', action='store_true', \
@@ -93,6 +95,9 @@ sim_subp.add_argument('--no-operating-range', action='store_true', \
                        help='don\'t enforce operating range.')
 sim_subp.add_argument('--no-physdb', action='store_true', \
                        help='disable physical database.')
+sim_subp.add_argument('--no-model-error', action='store_true', \
+                       help='disable physical database.')
+
 
 
 

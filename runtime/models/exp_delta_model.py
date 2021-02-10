@@ -110,7 +110,7 @@ class ExpDeltaModel:
     n = 0
     errors = []
     for pred,meas in zip(predictions,dataset.meas_mean):
-      errors.append(pred-meas)
+      errors.append(meas-pred)
 
     return errors
 

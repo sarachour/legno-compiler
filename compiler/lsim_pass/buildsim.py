@@ -29,7 +29,7 @@ import util.util as util
 SETTINGS = {
   'physdb': True,
   'model_error': True,
-  'interval': False,
+  'interval': True,
   'quantize': True,
   'compensate':True
 }
@@ -116,7 +116,7 @@ class ADPSimResult:
     times = self.times(rectify)
     if rectify:
       scale_factor = self.sim.variable(variable).scale_factor
-      print("var %s scf=%f" % (variable,scale_factor))
+      #print("var %s scf=%f" % (variable,scale_factor))
       V = np.array(list(vals))/scale_factor
     else:
       V = vals
@@ -148,6 +148,47 @@ def identify_integrators(dev):
           integs.append((blk.name,mode,out.name))
 
   return integs
+
+
+def validate_model(model,expr,surf,dataset):
+  variables = list(dataset.inputs.keys())
+  inputs = dataset.inputs
+  npts = len(dataset.meas_mean)
+  deviations = []
+
+
+  # the moutiplier is fine
+  # "mult_0_3_2_0" -> okay
+  # "integ_0_3_1_0" -> not okay
+  if str(model.cfg.inst) == "integ_0_3_1_0" or \
+     str(model.cfg.inst) == "integ_0_3_2_0":
+    surf.zero()
+
+  for idx in range(npts):
+    inps = {}
+    for var,val in dataset.get_inputs(idx).items():
+      inps[var] = genoplib.Const(val)
+    expr_val = val = expr.substitute(inps).compute()
+    dev_val = surf.get(dict(map(lambda tup: (tup[0],tup[1].value), inps.items())))
+    val = expr_val + dev_val
+    err = val - dataset.meas_mean[idx]
+    #if abs(err) > 1e-6:
+    #  raise Exception("model validation failed.")
+
+    deviations.append(val - expr_val)
+
+    '''
+    print("pred=%f pred2=%f meas=%f err=%f noise=%f"  \
+          % (val, expr_val, \
+             dataset.meas_mean[idx], \
+             err, \
+             dataset.meas_stdev[idx]))
+
+    '''
+
+  print("DEVIATION %s %s dev=%f +- %f" \
+        % (model.cfg.inst, model.cfg.mode, \
+           np.mean(deviations), np.std(deviations)))
 
 class ADPEmulVar:
 
@@ -184,7 +225,7 @@ class ADPEmulBlock:
   def scale_factor(self):
     return self.port.scf
 
-  def _get_digital_config(self):
+  def get_digital_config(self):
     values = {}
     for stmt in self.cfg.stmts:
       if stmt.type == adplib.ConfigStmtType.CONSTANT:
@@ -197,7 +238,7 @@ class ADPEmulBlock:
           dig_val = datum.round_value(self.cfg.mode, dig_val)
 
         elif self.enable_intervals:
-          raise NotImplementedError
+          dig_val = datum.interval[self.cfg.mode].clip(dig_val)
 
         values[stmt.name] = dig_val
 
@@ -211,7 +252,7 @@ class ADPEmulBlock:
 
     return values.items()
 
-  def _get_error(self,vdict):
+  def get_model_error(self,vdict):
     if self.error_model is None:
       return 0.0
 
@@ -224,7 +265,7 @@ class ADPEmulBlock:
       if var in self.error_model.variables:
         values[var] = val
 
-    for var,val in self._get_digital_config():
+    for var,val in self.get_digital_config():
         values[var] = val
 
     return self.error_model.get(values)
@@ -232,7 +273,7 @@ class ADPEmulBlock:
 
   def _concretize(self,expr):
     sub_dict = {}
-    for var,val in self._get_digital_config():
+    for var,val in self.get_digital_config():
         sub_dict[var] = genoplib.Const(val)
 
 
@@ -279,11 +320,18 @@ class ADPEmulBlock:
                                         dataset=dataset, \
                                         output=errors, \
                                         npts=self.npts)
+
         self.error_model = surf
+        validate_model(self,expr,surf,dataset)
 
 
       else:
+        '''
+        print("-----------------")
         print(model.config)
+        print("output: %s" % out.name)
+        print("calib_obj: %s" % self.calib_obj.value)
+        print("-----------------")
         for row in proflib.get_datasets_by_configured_block_instance(self.board, \
                                                                      self.block, \
                                                                      self.loc, \
@@ -291,10 +339,10 @@ class ADPEmulBlock:
                                                                      model.config, \
                                                                      hidden=False):
           print(row)
+        '''
 
         print("[warn] no dataset for %s %s" \
               % (self.block.name,self.loc))
-        raise Exception("???")
 
     else:
       expr = self.block.outputs[self.port.name].relation[self.cfg.mode]
@@ -330,7 +378,7 @@ class ADPEmulBlock:
       val = outputs[idx]
 
 
-    val += self._get_error(vdict)
+    val += self.get_model_error(vdict)
 
     port = self.block.outputs[self.port.name]
     val = port.interval[self.cfg.mode].clip(val)
@@ -363,7 +411,7 @@ class ADPStatefulEmulBlock(ADPEmulBlock):
 
   def initial_cond(self):
     value =  self._init_cond
-    value += self._get_error({})
+    value += self.get_model_error({})
 
     return value
 
@@ -411,6 +459,8 @@ class ADPStatefulEmulBlock(ADPEmulBlock):
                                         output=errors, \
                                         npts=self.npts)
         self.error_model = surf
+        validate_model(self,expr.init_cond,surf,dataset)
+
       else:
         print("[warn] no dataset for %s %s" \
               % (self.block.name,self.loc))
@@ -504,8 +554,16 @@ def func_state(sim,values):
   return result
 
 
-def build_simulation(dev,_adp):
+def build_simulation(dev,_adp,  \
+                     enable_model_error=True, \
+                     enable_physical_model=True, \
+                     enable_intervals=True, \
+                     enable_quantization=True):
   adp = _adp.copy(dev)
+  SETTINGS['interval'] = enable_intervals
+  SETTINGS['quantize'] = enable_quantization
+  SETTINGS['model_error'] = enable_model_error and enable_physical_model
+  SETTINGS['physdb'] = enable_physical_model
   SETTINGS['compensate'] = adp.metadata[adplib.ADPMetadata.Keys.LSCALE_SCALE_METHOD] != \
     lscalelib.ScaleMethod.IDEAL
 

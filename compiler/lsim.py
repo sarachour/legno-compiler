@@ -7,10 +7,19 @@ import matplotlib.pyplot as plt
 def run_adp_simulation(dev, \
                        adp, \
                        dssim, \
-                       recover=False):
+                       recover=False, \
+                       enable_model_error=True, \
+                       enable_physical_model=True, \
+                       enable_intervals=True, \
+                       enable_quantization=True):
   sim =  \
          buildsim.build_simulation(dev, \
-                                   adp)
+                                   adp, \
+                                   enable_model_error=enable_model_error, \
+                                   enable_physical_model=enable_physical_model, \
+                                   enable_intervals=enable_intervals,
+                                   enable_quantization=enable_quantization)
+
   res = buildsim.run_simulation(sim,dssim.sim_time)
   times,values = buildsim.get_dsexpr_trajectories(dev,adp,sim,res, \
                                                   recover=recover)
@@ -34,16 +43,20 @@ def plot_simulation(times,stvars,plot_file):
 
 
 def simulate_adp(dev,adp,plot_file, \
-                 disable_quantize=False, \
-                 disable_operating_range=False, \
-                 disable_physical_db=False):
+                       enable_model_error=True, \
+                       enable_physical_model=True, \
+                       enable_intervals=True, \
+                       enable_quantization=True):
   print(adp.metadata)
   prog = adp.metadata[adplib.ADPMetadata.Keys.DSNAME]
   dssim = DSProgDB.get_sim(prog)
   dev.model_number = adp.metadata[adplib.ADPMetadata.Keys.RUNTIME_PHYS_DB]
   times,values = run_adp_simulation(dev, \
                                     adp,
-                                    dssim)
+                                    dssim, \
+                                    enable_model_error=enable_model_error, \
+                                    enable_physical_model=enable_physical_model, \
+                                    enable_quantization=enable_quantization)
   plot_simulation(times,values,plot_file)
 
 
