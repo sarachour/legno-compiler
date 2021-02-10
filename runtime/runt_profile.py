@@ -11,7 +11,9 @@ from lab_bench.grendel_runner import GrendelRunner
 import hwlib.hcdc.llenums as llenums
 import hwlib.hcdc.llcmd as llcmd
 
-def profile_kernel(runtime,board,blk,cfg,calib_obj,min_points,grid_size,force=False,adp=None):
+def profile_kernel(runtime,board,blk,cfg,calib_obj, \
+                   min_points,max_points, \
+                   grid_size,force=False,adp=None):
     for exp_delta_model in delta_model_lib.get_calibrated(board, \
                                                           blk, \
                                                           cfg.inst.loc, \
@@ -19,8 +21,9 @@ def profile_kernel(runtime,board,blk,cfg,calib_obj,min_points,grid_size,force=Fa
                                                           calib_obj):
 
         for method,n,m,reps in runtime_util.get_profiling_steps(exp_delta_model.output, \
-                                                            exp_delta_model.config, \
-                                                            grid_size):
+                                                                exp_delta_model.config, \
+                                                                grid_size, \
+                                                                max_points=max_points):
 
             dataset = prof_dataset_lib.load(board,blk,cfg.inst.loc, \
                                             exp_delta_model.output, \
@@ -76,5 +79,6 @@ def profile_adp(args):
             for mode in cfg_modes:
                 cfg.modes = [mode]
                 profile_kernel(runtime,board,blk,cfg,calib_obj, \
-                               args.min_points, args.grid_size, \
+                               args.min_points, args.max_points, \
+                               args.grid_size, \
                                force=args.force, adp=adp)

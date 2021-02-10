@@ -58,6 +58,13 @@ class ExpProfileDataset:
     return runtime_util.get_dynamic_cfg(self.block, self.config)
 
 
+  def get_inputs(self,idx):
+    vdict = {}
+    for v in self.inputs.keys():
+      vdict[v] = self.inputs[v][idx]
+    for v in self.data.keys():
+      vdict[v] = self.data[v][idx]
+    return vdict
 
   def relation(self):
       rel = self.output.relation[self.config.mode]

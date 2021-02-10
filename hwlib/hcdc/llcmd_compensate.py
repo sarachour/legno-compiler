@@ -61,8 +61,8 @@ def get_compensation_parameters(model,init_cond=False):
     return gain_par,offset_par
 
 
-def compute_expression_fields(board,adp,cfg,compensate=True):
-    print(cfg)
+def compute_expression_fields(board,adp,cfg,compensate=True, debug=False):
+    #print(cfg)
     blk = board.get_block(cfg.inst.block)
 
     if(len(blk.data) < 1):
@@ -109,7 +109,8 @@ def compute_expression_fields(board,adp,cfg,compensate=True):
                                                       genoplib.Const(-offset)
                                                      ))
 
-        print("inp-var %s inj=%f offset=%f" % (func_arg,inj,offset))
+        if debug:
+            print("inp-var %s inj=%f offset=%f" % (func_arg,inj,offset))
 
     # compute model of output block
     if compensate:
@@ -127,23 +128,27 @@ def compute_expression_fields(board,adp,cfg,compensate=True):
         gain,offset = 1.0,0.0
 
     inj = data_expr_field.injs[data_expr_field.name]
-    print("out-var %s inj=%f gain=%f offset=%f" % (data_expr_field.name, \
-                                                   inj,gain,offset))
+    if debug:
+        print("out-var %s inj=%f gain=%f offset=%f" % (data_expr_field.name, \
+                                                    inj,gain,offset))
 
     func_impl = genoplib.Mult(genoplib.Const(inj), \
                               data_expr_field.expr.substitute(repls))
-    print("func-expr: %s" % func_impl)
+    if debug:
+        print("func-expr: %s" % func_impl)
     rel_impl = genoplib.Add( \
                         rel.substitute({data_expr_field.name:func_impl}), \
                         genoplib.Const(-offset/gain) \
                        )
-    print("rel-expr: %s" % rel_impl)
-
-    print("--- building lookup table ---")
     output_port = blk.outputs.singleton()
     input_port = blk.inputs.singleton()
     final_expr = rel_impl.concretize()
-    print(final_expr)
+
+    if debug:
+        print("rel-expr: %s" % rel_impl)
+        print("--- building lookup table ---")
+        print(final_expr)
+
     input_values = input_port.quantize[cfg.mode] \
                              .get_values(input_port \
                                          .interval[cfg.mode])
@@ -160,7 +165,7 @@ def compute_expression_fields(board,adp,cfg,compensate=True):
 
 
 
-def compute_constant_fields(board,adp,cfg,compensate=True):
+def compute_constant_fields(board,adp,cfg,compensate=True,debug=False):
     blk = board.get_block(cfg.inst.block)
     data = list(filter(lambda d: d.type == blocklib.BlockDataType.CONST, \
                         blk.data))
@@ -186,12 +191,13 @@ def compute_constant_fields(board,adp,cfg,compensate=True):
     cfg[data_field.name].value *= cfg[data_field.name].scf
     cfg[data_field.name].value -= offset
 
-    print("=== field %s ===" % data_field)
-    print("scf=%f" % cfg[data_field.name].scf)
-    print("gain=%f" % gain)
-    print("offset=%f" % offset)
-    print("value=%f" % old_val);
-    print("=> updated data field %s: %f -> %f" % (data_field, \
-                                                  old_val, \
-                                                  cfg[data_field.name].value))
+    if debug:
+        print("=== field %s ===" % data_field)
+        print("scf=%f" % cfg[data_field.name].scf)
+        print("gain=%f" % gain)
+        print("offset=%f" % offset)
+        print("value=%f" % old_val);
+        print("=> updated data field %s: %f -> %f" % (data_field, \
+                                                    old_val, \
+                                                    cfg[data_field.name].value))
 

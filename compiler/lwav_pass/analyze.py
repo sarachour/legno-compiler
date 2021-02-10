@@ -10,7 +10,12 @@ def get_emulated_waveforms(board,program,adp,dssim):
     times,value_dict = lsimlib.run_adp_simulation(board, \
                                                   adp, \
                                                   dssim, \
-                                                  recover=True)
+                                                  recover=True, \
+                                                  enable_model_error=True, \
+                                                  enable_physical_model=True, \
+                                                  enable_intervals=False, \
+                                                  enable_quantization=False)
+
     waveforms = {}
     for varname,values in value_dict.items():
         wav = wavelib.Waveform(variable=varname, \
@@ -23,6 +28,7 @@ def get_emulated_waveforms(board,program,adp,dssim):
         waveforms[varname] = wav
         print("-> calculated emulated <%s>" % varname)
 
+    input("continue?")
     return waveforms
 
 

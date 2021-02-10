@@ -258,7 +258,7 @@ def homogenous_database_get_block_info(board,use_output=True):
 
 
 def profile_block(board,block,loc,config,calib_obj,log_file=None):
-    CMD = "python3 grendel.py prof --grid-size 15 --model-number {model} {adp} {calib_obj}"
+    CMD = "python3 grendel.py prof --grid-size 50 --max-points 500 --model-number {model} {adp} {calib_obj}"
     if not log_file is None:
         CMD += " > %s" % log_file
 
@@ -271,7 +271,7 @@ def profile_block(board,block,loc,config,calib_obj,log_file=None):
 
 
 def profile(board,char_board,calib_obj,log_file=None):
-    CMD = "python3 grendel.py prof --grid-size 15 --model-number {model} {adp} {calib_obj}"
+    CMD = "python3 grendel.py prof --grid-size 50 --max-points 500 --model-number {model} {adp} {calib_obj}"
     if not log_file is None:
         CMD += " > %s" % log_file
 
