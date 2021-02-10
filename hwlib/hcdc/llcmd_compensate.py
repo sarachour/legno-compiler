@@ -43,17 +43,21 @@ def get_compensation_parameters(model,init_cond=False):
     asm_pars = list(filter(lambda par: par.name in variables, \
                            spec.get_params_of_type(blocklib.DeltaParamType.LL_CORRECTABLE)))
 
-    if len(comp_pars) == 0 or len(asm_pars) == 0:
-        print(model.config)
-        raise Exception("cannot compensate: no parameters (vars=%s)" % variables)
+    if len(comp_pars) == 0:
+        gain_par = 1.0
+    else:
+        gain_par = model.params[comp_pars[0].name]
 
+    if len(asm_pars) == 0:
+        offset_par = 0.0
+    else:
+        offset_par = model.params[asm_pars[0].name] 
+       
     if len(comp_pars) > 1 or len(asm_pars) > 1:
         print(model.config)
         raise Exception("cannot compensate: too many parameters (corr=%s, llcorr=%s)" \
                         % (comp_pars,asm_pars))
 
-    gain_par = model.params[comp_pars[0].name]
-    offset_par = model.params[asm_pars[0].name]
     return gain_par,offset_par
 
 
@@ -146,7 +150,7 @@ def compute_expression_fields(board,adp,cfg,compensate=True):
     lut_outs = []
     for val in input_values:
         out = final_expr.compute({input_port.name:val})
-        lut_outs.append(out)
+        lut_outs.append(max(min(1.0,out),-1.0))
 
 
     cfg[data_expr_field.name].outputs= lut_outs
