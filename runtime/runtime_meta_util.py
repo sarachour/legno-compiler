@@ -257,34 +257,20 @@ def homogenous_database_get_block_info(board,use_output=True):
     return models_get_block_info(models,use_output)
 
 
-def profile_block(board,block,loc,config,calib_obj,log_file=None):
+def _profile_command(board,adp,calib_obj,widen=False,log_file=None):
     CMD = "python3 grendel.py prof --grid-size 50 --max-points 500 --model-number {model} {adp} {calib_obj}"
+    if widen:
+        CMD += "--widen"
     if not log_file is None:
         CMD += " > %s" % log_file
-
-    filename = generate_adp(board,block,loc,config)
 
     cmd = CMD.format(model=board.model_number, \
                      adp=filename, \
                      calib_obj=calib_obj.value)
-    run_command(cmd)
 
+    return cmd
 
-def profile(board,char_board,calib_obj,log_file=None):
-    CMD = "python3 grendel.py prof --grid-size 50 --max-points 500 --model-number {model} {adp} {calib_obj}"
-    if not log_file is None:
-        CMD += " > %s" % log_file
-
-    block,loc,config = homogenous_database_get_block_info(char_board,use_output=False)
-
-    filename = generate_adp(char_board,block,loc,config)
-
-    cmd = CMD.format(model=board.model_number, \
-                     adp=filename, \
-                     calib_obj=calib_obj.value)
-    run_command(cmd)
-
-def fit_delta_models(board,force=False,orphans=True,log_file=None):
+def _deltas_command(board,force=False,orphans=True,log_file=None):
     CMD = "python3 grendel.py mkdeltas --model-number {model}"
     if force:
         CMD += " --force"
@@ -294,6 +280,22 @@ def fit_delta_models(board,force=False,orphans=True,log_file=None):
         CMD += " > %s" % log_file
 
     cmd = CMD.format(model=board.model_number)
+    return cmd
+
+def profile_block(board,block,loc,config,calib_obj,log_file=None):
+    filename = generate_adp(board,block,loc,config)
+    cmd = _profile_command(board,adp,calib_obj,log_file=log_file)
+    run_command(cmd)
+
+def profile(board,char_board,calib_obj,log_file=None):
+    block,loc,config = homogenous_database_get_block_info(char_board,use_output=False)
+    filename = generate_adp(char_board,block,loc,config)
+    cmd = _profile_command(board,adp,calib_obj,log_file=log_file)
+
+    run_command(cmd)
+
+def fit_delta_models(board,force=False,orphans=True,log_file=None):
+    cmd = _deltas_command(board,force,orphans,log_file)
     run_command(cmd)
 
 
@@ -313,8 +315,9 @@ def get_calibration_time_logger(board,logname):
 
 def legacy_calibration(board,adp_path,calib_obj,widen=False,logfile=None,**kwargs):
   CAL_CMD = 'cal',"python3 grendel.py cal {adp_path} --model-number {model_number} {calib_obj} {widen}"
-  PROF_CMD = 'prof',"python3 grendel.py prof {adp_path} --model-number {model_number} {calib_obj} {widen}"
-  MKDELTAS_CMD = 'deltas',"python3 grendel.py mkdeltas --model-number {model_number} --force --no-orphans"
+
+  PROF_CMD = 'prof',_profile_command(board,adp,calib_obj,log_file=logfile,widen=widen)
+  MKDELTAS_CMD = 'deltas',_deltas_command(board,force=True,orphans=False,log_file=logfile)
 
   widen_flag = " --widen" if widen else ""
   cmds = []
