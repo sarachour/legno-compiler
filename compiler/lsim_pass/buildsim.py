@@ -160,20 +160,30 @@ def validate_model(model,expr,surf,dataset):
   # the moutiplier is fine
   # "mult_0_3_2_0" -> okay
   # "integ_0_3_1_0" -> not okay
-  if str(model.cfg.inst) == "integ_0_3_1_0" or \
-     str(model.cfg.inst) == "integ_0_3_2_0":
-    surf.zero()
+  ## "integ_0_3_2_0" -> okay
 
+  '''
+  if str(model.cfg.inst) == "integ_0_3_1_0":
+    surf.zero()
+  '''
+
+  n_failures = 0
   for idx in range(npts):
     inps = {}
-    for var,val in dataset.get_inputs(idx).items():
+    for var,val in dataset.get_input(idx).items():
       inps[var] = genoplib.Const(val)
     expr_val = val = expr.substitute(inps).compute()
     dev_val = surf.get(dict(map(lambda tup: (tup[0],tup[1].value), inps.items())))
     val = expr_val + dev_val
     err = val - dataset.meas_mean[idx]
-    #if abs(err) > 1e-6:
-    #  raise Exception("model validation failed.")
+    if abs(err) > 1e-6:
+      print("fail delta=%f dev=%f pred=%f meas=%f err=%f noise=%f"  \
+            % (expr_val, dev_val, val, \
+               dataset.meas_mean[idx], \
+               err, \
+          dataset.meas_stdev[idx]))
+      n_failures += 1
+
 
     deviations.append(val - expr_val)
 
@@ -185,7 +195,10 @@ def validate_model(model,expr,surf,dataset):
              dataset.meas_stdev[idx]))
 
     '''
+  if n_failures > 0:
+    raise Exception("model validation failed: %d/%d datapoints." % (n_failures,npts))
 
+  print("success")
   print("DEVIATION %s %s dev=%f +- %f" \
         % (model.cfg.inst, model.cfg.mode, \
            np.mean(deviations), np.std(deviations)))
@@ -410,9 +423,11 @@ class ADPStatefulEmulBlock(ADPEmulBlock):
     self.variable = self.cfg.get(port.name).source
 
   def initial_cond(self):
-    value =  self._init_cond
-    value += self.get_model_error({})
-
+    value =  self._init_cond.compute()
+    model_error = self.get_model_error({})
+    print(self._init_cond)
+    print("core-value=%f model_error=%f" % (value,model_error))
+    value += model_error
     return value
 
   def derivative(self,values):
@@ -470,7 +485,7 @@ class ADPStatefulEmulBlock(ADPEmulBlock):
       expr = self.block.outputs[self.port.name].relation[self.cfg.mode]
 
     integ_expr = mathutils.canonicalize_integration_operation(expr)
-    self._init_cond = self._concretize(integ_expr.init_cond).compute()
+    self._init_cond = self._concretize(integ_expr.init_cond)
     self._deriv = self._concretize(integ_expr.deriv)
 
 

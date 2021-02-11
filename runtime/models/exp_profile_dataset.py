@@ -58,13 +58,34 @@ class ExpProfileDataset:
     return runtime_util.get_dynamic_cfg(self.block, self.config)
 
 
-  def get_inputs(self,idx):
-    vdict = {}
-    for v in self.inputs.keys():
-      vdict[v] = self.inputs[v][idx]
-    for v in self.data.keys():
-      vdict[v] = self.data[v][idx]
-    return vdict
+  def get_input(self,idx):
+    inputs = {}
+    for k,v in self.inputs.items():
+      inputs[k] = v[idx]
+
+    for k,v in self.data.items():
+      assert(not k in inputs)
+      quant,ival = self.block.data[k].quantize[self.config.mode], \
+        self.block.data[k].interval[self.config.mode]
+      inputs[k] = quant.round_value(ival,v[idx])
+
+    return inputs
+
+
+  def get_inputs(self):
+    inputs = {}
+    for k,v in self.inputs.items():
+      inputs[k] = v
+ 
+    for k,v in self.data.items():
+      assert(not k in inputs)
+      quant,ival = self.block.data[k].quantize[self.config.mode], \
+        self.block.data[k].interval[self.config.mode]
+      roundit = lambda v: quant.round_value(ival,v)
+      inputs[k] = list(map(lambda vi: roundit(vi), v))
+
+    return inputs
+
 
   def relation(self):
       rel = self.output.relation[self.config.mode]
@@ -280,4 +301,10 @@ def get_datasets_by_configured_block_instance(dev,block,loc,output,cfg, \
                                      where_clause))
 
     return list(__to_datasets(dev,matches))
+
+
+def remove_all(dev):
+  where_clause = {}
+  dev.physdb.delete(dblib.PhysicalDatabase.DB.PROFILE_DATASET, \
+                    where_clause)
 

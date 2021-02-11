@@ -17,6 +17,7 @@ import runtime.runt_profile as runt_prof
 import runtime.runt_visualize as runt_visualize
 import runtime.runt_mkdeltamodels as runt_mkdeltas
 import runtime.runt_mkphysmodels as runt_mkphys
+import runtime.runt_clear as runt_clear
 
 
 parser = argparse.ArgumentParser(description='Grendel runtime.')
@@ -73,6 +74,10 @@ calib_subp.add_argument('--model-number',type=str,help='model number')
 calib_subp.add_argument('--widen',action="store_true",help='widen modes')
 
 
+clear_subp = subparsers.add_parser('clear', help='clear data')
+clear_subp.add_argument('--profiles',action="store_true",help='clear profiling data')
+clear_subp.add_argument('model_number',action="store_true",help='board model')
+
 prof_subp = subparsers.add_parser('prof', help='profile calibrated blocks')
 prof_subp.add_argument('adp', type=str,help='adp to profile')
 prof_subp.add_argument('method', type=str, \
@@ -117,6 +122,8 @@ elif args.subparser_name == "cal":
     runt_cal.calibrate_adp(args)
 elif args.subparser_name == "prof":
     runt_prof.profile_adp(args)
+elif args.subparser_name == "clear":
+    runt_clear.clear(args)
 elif args.subparser_name == "mkdeltas":
     runt_mkdeltas.derive_delta_models_adp(args)
 elif args.subparser_name == "fastcal":

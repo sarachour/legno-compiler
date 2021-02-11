@@ -137,8 +137,10 @@ class ExpDeltaModel:
       rel = self.spec.get_model(params)
 
     if self.is_integration_op and init_cond:
-      return llenums.ProfileOpType \
+      expr = llenums.ProfileOpType \
                     .INTEG_INITIAL_COND.get_expr(self.block,rel)
+      return expr
+
     elif self.is_integration_op and not init_cond:
       return llenums.ProfileOpType \
                     .INTEG_DERIVATIVE_GAIN.get_expr(self.block,rel), \
@@ -153,19 +155,13 @@ class ExpDeltaModel:
   def predict(self,dataset, \
               init_cond=False,
               correctable_only=False):
-    inputs = {}
-    for k,v in dataset.inputs.items():
-      inputs[k] = v
-    for k,v in dataset.data.items():
-      assert(not k in inputs)
-      inputs[k] = v
-
+    inputs = dataset.get_inputs()
     params = dict(self.params)
 
     if not init_cond and self.is_integration_op:
       # return gain
       rel, _ = self.get_subexpr(init_cond=init_cond, \
-                            correctable_only=correctable_only)
+                                correctable_only=correctable_only)
     else:
       rel = self.get_subexpr(init_cond=init_cond, \
                              correctable_only=correctable_only)
