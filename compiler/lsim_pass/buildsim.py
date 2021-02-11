@@ -36,11 +36,13 @@ SETTINGS = {
 
 class ADPSim:
 
-  def __init__(self):
+  def __init__(self,time_constant):
     self._state_vars = []
     self._funcs = []
     self._emul = {}
     self.time_scale = 1.0
+    # board time constant
+    self.time_constant = time_constant
 
   def function(self,var):
     idx = self._funcs.index(var)
@@ -108,7 +110,11 @@ class ADPSimResult:
 
   def times(self,rectify=True):
     times = list(self._time)
-    T = np.array(times)/self.sim.time_scale
+    if rectify:
+      T = np.array(times)/(self.sim.time_constant*self.sim.time_scale)
+    else:
+      T = np.array(times)
+
     return T
 
   def data(self,variable,rectify=True):
@@ -196,9 +202,9 @@ def validate_model(model,expr,surf,dataset):
 
     '''
   if n_failures > 0:
-    raise Exception("model validation failed: %d/%d datapoints." % (n_failures,npts))
+    print("[warn] model validation failed: %d/%d datapoints." % (n_failures,npts))
+    #raise Exception("model validation failed: %d/%d datapoints." % (n_failures,npts))
 
-  print("success")
   print("DEVIATION %s %s dev=%f +- %f" \
         % (model.cfg.inst, model.cfg.mode, \
            np.mean(deviations), np.std(deviations)))
@@ -313,7 +319,8 @@ class ADPEmulBlock:
     llcmdcomp.compute_constant_fields(self.board, \
                                       adp, \
                                       self.cfg, \
-                                      compensate=self.enable_compensate)
+                                      compensate=self.enable_compensate, \
+                                      debug=True)
 
     if not model is None and self.enable_phys:
       dataset = proflib.load(self.board, \
@@ -529,7 +536,7 @@ def build_expr(dev,sim,adp,block,cfg,port):
 
 
 def build_diffeqs(dev,adp):
-  sim = ADPSim()
+  sim = ADPSim(dev.time_constant)
   for cfg in adp.configs:
     blk = dev.get_block(cfg.inst.block)
     for port in cfg.stmts_of_type(adplib.ConfigStmtType.PORT):
@@ -621,7 +628,7 @@ def run_simulation(sim,sim_time):
   last_seg = 0
   with tqdm.tqdm(total=tqdm_segs) as prog:
     while r.successful() and r.t < time:
-        res.add_point(r.t,r.y,func_state(sim,r.y))
+        res.add_point(r.t*sim.time_constant,r.y,func_state(sim,r.y))
         r.integrate(r.t + dt)
         # update tqdm
         seg = int(tqdm_segs*float(r.t)/float(time))

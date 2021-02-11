@@ -31,7 +31,8 @@ class Quantize:
 
     def get_values(self,interval):
         if self.type == QuantizeType.LINEAR:
-            return list(np.linspace(interval.lower,interval.upper,self.n))
+            values = list(np.linspace(interval.lower,interval.upper,self.n))
+            return values
         else:
             raise NotImplementedError
 

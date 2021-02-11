@@ -62,8 +62,10 @@ integ.outputs['z'] \
   .freq_limit.bind(['_','_','_'], MAX_FREQ)
 
 integ.data.add(BlockData('z0',BlockDataType.CONST))
+
+DEL = 1.0/128
 integ.data['z0'] \
-    .interval.bind(['_','_','_'],interval.Interval(-1,0.9921875))
+    .interval.bind(['_','_','_'],interval.Interval(-DEL*128,DEL*127))
 integ.data['z0'] \
     .quantize.bind(['_','_','_'],Quantize(256,QuantizeType.LINEAR))
 

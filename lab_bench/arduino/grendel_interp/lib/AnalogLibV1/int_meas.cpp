@@ -287,12 +287,19 @@ profile_t Fabric::Chip::Tile::Slice::Integrator::measureInitialCond(profile_spec
                                                 measure_steady,
                                                 mean,
                                                 variance);
+
+  util::meas_steady_chip_out(this,mean2,variance2);
+
 #ifdef DEBUG_INTEG_PROF
   sprintf(FMTBUF,"prof-integ-ic inp=%f target=%f mean=%f\n",
           spec.inputs[in0Id],target,mean);
   print_info(FMTBUF);
-#endif
+  sprintf(FMTBUF,"prof-integ-ic-ss inp=%f target=%f mean=%f var2=%f\n",
+          spec.inputs[in0Id],target,mean2);
+  print_info(FMTBUF);
 
+#endif
+  float mean2, variance2;
   profile_t prof = prof::make_profile(spec,
                                       mean,
                                       variance);
