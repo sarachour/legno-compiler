@@ -17,7 +17,7 @@ def write_lut(runtime,board,blk,loc,adp):
     llcmdcomp.compute_expression_fields(board, \
                                         adp, \
                                         cfg, \
-                                        compensate=do_compensate)
+                                        compensate=do_compensate, debug=True)
 
     expr_data_field = 'e'
     expr_cfg = cfg[expr_data_field]
@@ -49,7 +49,7 @@ def set_state(runtime,board,blk,loc,adp):
     do_compensate = adp.metadata[adplib.ADPMetadata.Keys.LSCALE_SCALE_METHOD]  \
         != lscalelib.ScaleMethod.IDEAL
 
-    llcmdcomp.compute_constant_fields(board,adp,cfg,compensate=do_compensate)
+    llcmdcomp.compute_constant_fields(board,adp,cfg,compensate=do_compensate, debug=True)
 
     block_state = blk.state.concretize(adp,loc)
     state_t = {blk.name:block_state}

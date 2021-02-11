@@ -97,7 +97,8 @@ def compute_expression_fields(board,adp,cfg,compensate=True, debug=False):
             model = get_experimental_model(board, \
                                            src_block, \
                                            conn.source_inst.loc, \
-                                           src_cfg,calib_obj)
+                                           src_cfg, \
+                                           calib_obj=calib_obj)
             gain,offset = get_compensation_parameters(model,init_cond=False)
         else:
             gain,offset = 1.0,0.0
@@ -121,9 +122,9 @@ def compute_expression_fields(board,adp,cfg,compensate=True, debug=False):
         model = get_experimental_model(board, \
                                        dest_block, \
                                        dest_cfg.inst.loc, \
-                                       dest_cfg,calib_obj)
+                                       dest_cfg, \
+                                       calib_obj=calib_obj)
         gain,offset = get_compensation_parameters(model,False)
-
     else:
         gain,offset = 1.0,0.0
 
@@ -181,16 +182,16 @@ def compute_constant_fields(board,adp,cfg,compensate=True,debug=False):
         model = get_experimental_model(board, \
                                        blk, \
                                        cfg.inst.loc, \
-                                       cfg,calib_obj)
+                                       cfg, \
+                                       calib_obj=calib_obj)
 
         is_init_cond = model.is_integration_op
         gain,offset = get_compensation_parameters(model,is_init_cond)
     else:
         gain,offset = 1.0,0.0
-
+    
     cfg[data_field.name].value *= cfg[data_field.name].scf
-    cfg[data_field.name].value -= offset
-
+    cfg[data_field.name].value -= offset/gain
     if debug:
         print("=== field %s ===" % data_field)
         print("scf=%f" % cfg[data_field.name].scf)

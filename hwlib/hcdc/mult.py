@@ -81,8 +81,9 @@ mult.outputs['z'] \
 
 
 mult.data.add(BlockData('c',BlockDataType.CONST))
+DLT = 1/128.0
 mult.data['c'] \
-    .interval.bind(['_','_','_'],interval.Interval(-1,0.9921875))
+    .interval.bind(['_','_','_'],interval.Interval(-128*DLT,127*DLT))
 mult.data['c'] \
     .quantize.bind(['_','_','_'],Quantize(256,QuantizeType.LINEAR))
 

@@ -458,6 +458,9 @@ class BCDataImpl:
       code = self.state.block.data[self.variable] \
                        .quantize[blkcfg.mode] \
                        .get_code(interval,value)
+      #print(code)
+      #print(value)
+      #input("continue")
       return code
 
   def lift(self,adp,block,loc,data):
