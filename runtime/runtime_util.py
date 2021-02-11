@@ -35,13 +35,11 @@ def make_block_test_adp(board,adp,block,cfg):
 
 
 def get_profiling_steps(output_port,cfg,grid_size,max_points=None):
-    make_odd = lambda v: v if v % 2 == 1 else v+1
 
     if is_integration_op(output_port.relation[cfg.mode]):
       if max_points < grid_size:
         grid_size = max_points
 
-      grid_size = make_odd(grid_size)
       yield llenums.ProfileOpType.INTEG_DERIVATIVE_BIAS,0,0,3
       yield llenums.ProfileOpType.INTEG_DERIVATIVE_GAIN,0,0,3
       yield llenums.ProfileOpType.INTEG_DERIVATIVE_STABLE,0,0,3
@@ -51,13 +49,11 @@ def get_profiling_steps(output_port,cfg,grid_size,max_points=None):
       if max_points < grid_size*grid_size:
         grid_size = round(math.sqrt(max_points))
 
-      grid_size = make_odd(grid_size)
       yield llenums.ProfileOpType.INPUT_OUTPUT,grid_size,grid_size,1
     else:
       if max_points < grid_size:
         grid_size = max_points
 
-      grid_size = make_odd(grid_size)
       yield llenums.ProfileOpType.INPUT_OUTPUT,grid_size,1,1
 
 

@@ -29,9 +29,6 @@ dac.outputs['z'].relation.bind(['const','m'], \
 dac.outputs['z'].relation.bind(['const','h'], \
                                parser.parse_expr('20.0*c'))
 
-dac.inputs['x'] \
-    .interval.bind(['_','_'],interval.Interval(-1,1))
-
 dac.outputs['z'] \
     .interval.bind(['_','h'],interval.Interval(-20,20))
 dac.outputs['z'] \
@@ -47,8 +44,11 @@ dac.outputs['z'] \
 
 
 dac.data.add(BlockData('c', BlockDataType.CONST))
+DEL = 1.0/128
 dac.data['c'] \
-    .interval.bind(['_','_'],interval.Interval(-1,1))
+    .interval.bind(['_','_'],interval.Interval(-DEL*128,DEL*127))
+dac.inputs['x'] \
+    .interval.bind(['_','_'],interval.Interval(-DEL*128,DEL*127))
 dac.data['c'] \
     .quantize.bind(['_','_'],Quantize(256,QuantizeType.LINEAR))
 dac.inputs['x'] \

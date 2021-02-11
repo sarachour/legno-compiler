@@ -1,5 +1,5 @@
 from dslang.dsprog import DSProg
-from dslang.dssim import DSSim
+from dslang.dssim import DSSim,DSInfo
 
 def dsname():
   return "dbgdac"
@@ -14,8 +14,8 @@ def dsinfo():
 
 def dsprog(prob):
   # dummy diffeq
-  #prob.decl_stvar("V","(-V)","0.0")
-  prob.emit("1.0","TestPoint")
+  prob.decl_var("V","1.0")
+  prob.emit("0.6*V","TestPoint")
   prob.check()
 
 def dssim():

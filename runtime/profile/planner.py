@@ -44,10 +44,6 @@ class BruteForcePlanner(ProfilePlanner):
     self.dynamic_index = 0
 
   def new_hidden(self):				#hidden code is a particular set of nmos,pmos, etc
-    #print(self.config["nmos"].value)
-    #help(self.config)
-    #print(dir(self.config["nmos"]))
-    #help(self.config["nmos"])
     hidden = {}
     for state in filter(lambda st: isinstance(st.impl, blocklib.BCCalibImpl), \
                         self.block.state):
@@ -78,11 +74,11 @@ class BruteForcePlanner(ProfilePlanner):
     counts = [self.n,self.m]
     index = 0
     for inp in filter(lambda inp: inp.name in variables, self.block.inputs):
-      dynamic[inp.name] = runtime_util.select_from_interval(inp.interval[self.config.mode],counts[index])
+      dynamic[inp.name] = [0.0] + runtime_util.select_from_interval(inp.interval[self.config.mode],counts[index]) 
       index += 1
 
     for data in filter(lambda dat: dat.name in variables, self.block.data):
-      dynamic[data.name] = runtime_util.select_from_quantized_interval(data.interval[self.config.mode],  \
+      dynamic[data.name] = [0.0] + runtime_util.select_from_quantized_interval(data.interval[self.config.mode],  \
                                                                     data.quantize[self.config.mode], \
                                                                     counts[index])
       index +=  1
