@@ -53,7 +53,8 @@ def update_delta_model(dev,delta_model,dataset):
         return False,-1
 
     if dataset.method == llenums.ProfileOpType.INTEG_INITIAL_COND:
-        return True, delta_model.error(dataset, init_cond=True)
+        errors = delta_model.error(dataset, init_cond=True)
+        return True, errors
     if dataset.method == llenums.ProfileOpType.INTEG_DERIVATIVE_BIAS:
         return True,[0.0]
     if dataset.method == llenums.ProfileOpType.INTEG_DERIVATIVE_STABLE:

@@ -42,15 +42,12 @@ class Quantize:
 
     def get_code(self,interval,value):
         vals = self.get_values(interval)
-        eps = list(map(lambda v: abs(v-value), vals))
-        idx = np.argmin(eps)
-        return idx
+        return util.nearest_value(vals,value,index=True)
+
 
     def round_value(self,interval,value):
         vals = self.get_values(interval)
-        dist = list(map(lambda v: abs(v-value), vals))
-        idx = np.argmin(dist)
-        return vals[idx]
+        return util.nearest_value(vals,value,index=False)
 
 class BlockType(Enum):
     COMPUTE = "compute"
