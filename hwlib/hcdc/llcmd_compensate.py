@@ -52,7 +52,7 @@ def get_compensation_parameters(model,init_cond=False):
         offset_par = 0.0
     else:
         offset_par = model.params[asm_pars[0].name] 
-       
+
     if len(comp_pars) > 1 or len(asm_pars) > 1:
         print(model.config)
         raise Exception("cannot compensate: too many parameters (corr=%s, llcorr=%s)" \
@@ -189,7 +189,7 @@ def compute_constant_fields(board,adp,cfg,compensate=True,debug=False):
         gain,offset = 1.0,0.0
 
     cfg[data_field.name].value *= cfg[data_field.name].scf
-    cfg[data_field.name].value -= offset
+    cfg[data_field.name].value -= offset/gain
 
     if debug:
         print("=== field %s ===" % data_field)
