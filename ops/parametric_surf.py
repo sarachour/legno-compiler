@@ -85,14 +85,7 @@ def build_surface(block,cfg,port,dataset,output,npts=10,normalize=1.0):
         surf.add_variable(datum,ival)
 
 
-    inputs = {}
-    for k,v in dataset.inputs.items():
-      if k in rel_vars:
-        inputs[k] = v
-    for k,v in dataset.data.items():
-      if k in rel_vars:
-        inputs[k] = v
-
+    inputs = dataset.get_inputs()
     output = list(map(lambda o : o /normalize, output))
     #print("normalize: %s" % normalize)
     #print("output: [%f,%f]" % (min(output),max(output)))
