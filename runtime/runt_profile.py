@@ -34,9 +34,9 @@ def profile_kernel(runtime,board,blk,cfg,calib_obj, \
             print("===========>")
             print("output=%s method=%s" % (exp_delta_model.output.name,method));
             print("relation=%s" % (exp_delta_model.output.relation[cfg.mode]));
-            print("npts=%d" % (len(dataset) if not dataset is None else 0));
+            print("dataset npts=%d" % (len(dataset) if not dataset is None else 0));
             print("n=%d m=%d reps=%d" % (n,m,reps))
-
+            print("---------")
             if not dataset is None and \
             len(dataset) >= min_points and \
             len(dataset) >= n*m*reps and \

@@ -21,6 +21,7 @@ def dsprog(prob):
   freq = 0.5
   prog_util.build_oscillator(prob,ampl,freq,"SIG","TARG")
 
+  prob.max_time = 300
   #params['negTarget'] = -params['target']
   PLANT = "CTRL+{one}"
   ERROR = "PLANT+{one}*(-TARG)"

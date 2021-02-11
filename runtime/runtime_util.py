@@ -41,11 +41,11 @@ def get_profiling_steps(output_port,cfg,grid_size,max_points=None):
       if max_points < grid_size:
         grid_size = max_points
 
-        grid_size = make_odd(grid_size)
-        yield llenums.ProfileOpType.INTEG_DERIVATIVE_BIAS,0,0,3
-        yield llenums.ProfileOpType.INTEG_DERIVATIVE_GAIN,0,0,3
-        yield llenums.ProfileOpType.INTEG_DERIVATIVE_STABLE,0,0,3
-        yield llenums.ProfileOpType.INTEG_INITIAL_COND,grid_size,1,1
+      grid_size = make_odd(grid_size)
+      yield llenums.ProfileOpType.INTEG_DERIVATIVE_BIAS,0,0,3
+      yield llenums.ProfileOpType.INTEG_DERIVATIVE_GAIN,0,0,3
+      yield llenums.ProfileOpType.INTEG_DERIVATIVE_STABLE,0,0,3
+      yield llenums.ProfileOpType.INTEG_INITIAL_COND,grid_size,1,1
 
     elif cfg.inst.block == "mult":
       if max_points < grid_size*grid_size:

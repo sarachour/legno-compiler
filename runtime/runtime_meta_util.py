@@ -260,12 +260,12 @@ def homogenous_database_get_block_info(board,use_output=True):
 def _profile_command(board,adp,calib_obj,widen=False,log_file=None):
     CMD = "python3 grendel.py prof --grid-size 50 --max-points 500 --model-number {model} {adp} {calib_obj}"
     if widen:
-        CMD += "--widen"
+        CMD += " --widen"
     if not log_file is None:
         CMD += " > %s" % log_file
 
     cmd = CMD.format(model=board.model_number, \
-                     adp=filename, \
+                     adp=adp, \
                      calib_obj=calib_obj.value)
 
     return cmd
@@ -313,10 +313,10 @@ def get_calibration_time_logger(board,logname):
   logger = Logger('%s_%s.log' % (logname,board.model_number), fields)
   return logger
 
-def legacy_calibration(board,adp_path,calib_obj,widen=False,logfile=None,**kwargs):
+def legacy_calibration(board,adp_path,calib_obj,widen=False,logfile='log.txt',**kwargs):
   CAL_CMD = 'cal',"python3 grendel.py cal {adp_path} --model-number {model_number} {calib_obj} {widen}"
 
-  PROF_CMD = 'prof',_profile_command(board,adp,calib_obj,log_file=logfile,widen=widen)
+  PROF_CMD = 'prof',_profile_command(board,adp_path,calib_obj,log_file=logfile,widen=widen)
   MKDELTAS_CMD = 'deltas',_deltas_command(board,force=True,orphans=False,log_file=logfile)
 
   widen_flag = " --widen" if widen else ""

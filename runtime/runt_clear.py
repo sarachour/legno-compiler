@@ -15,5 +15,6 @@ import hwlib.hcdc.llcmd as llcmd
 def clear(args):
     board = runtime_util.get_device(args.model_number)
     if args.profiles:
+        print("-> clearing profiles")
         prof_dataset_lib \
         .remove_all(board)

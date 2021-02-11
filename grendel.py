@@ -76,7 +76,7 @@ calib_subp.add_argument('--widen',action="store_true",help='widen modes')
 
 clear_subp = subparsers.add_parser('clear', help='clear data')
 clear_subp.add_argument('--profiles',action="store_true",help='clear profiling data')
-clear_subp.add_argument('model_number',action="store_true",help='board model')
+clear_subp.add_argument('model_number',type=str, help='board model')
 
 prof_subp = subparsers.add_parser('prof', help='profile calibrated blocks')
 prof_subp.add_argument('adp', type=str,help='adp to profile')

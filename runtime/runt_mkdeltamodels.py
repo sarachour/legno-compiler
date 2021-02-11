@@ -92,10 +92,10 @@ def _update_delta_models_for_configured_block(dev,delta_models,blk,loc,output, \
         print("# data points %s (%s): %d" % (blk.name,dataset.method,len(dataset)))
         for delta_model in delta_models:
             succ,error = update_delta_model(dev,delta_model,dataset)
-        if succ:
-            if dataset.method == llenums.ProfileOpType.INPUT_OUTPUT or \
-               dataset.method == llenums.ProfileOpType.INTEG_INITIAL_COND:
-               model_errors.append(abs(error))
+            if succ:
+               if dataset.method == llenums.ProfileOpType.INPUT_OUTPUT or \
+                  dataset.method == llenums.ProfileOpType.INTEG_INITIAL_COND:
+                  model_errors.append(abs(error))
 
     if len(model_errors) == 0:
         return False
