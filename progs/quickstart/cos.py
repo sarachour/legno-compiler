@@ -19,7 +19,7 @@ def dsprog(prob):
   }
   prob.decl_stvar("V","(-P)","{V0}",params)
   prob.decl_stvar("P","V","{P0}",params)
-  prob.emit("P","Position")
+  prob.emit("0.6*P","Position")
   prob.interval("P",-1.0,1.0)
   prob.interval("Position",-1.0,1.0)
   prob.interval("V",-1.0,1.0)
