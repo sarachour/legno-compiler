@@ -14,9 +14,9 @@ def dsinfo():
 
 def dsprog(prob):
   # dummy diffeq
-  prob.decl_stvar("D", "-D", "0")
-  prob.interval("D",-0.1,0.1)
-  prob.emit("0.6*D","TestPoint")
+  prob.decl_var("V","1.0")
+  prob.decl_var("Q","V+V")
+  prob.emit("0.6*V","TestPoint")
   prob.check()
 
 def dssim():
