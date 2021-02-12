@@ -90,7 +90,7 @@ def plot_waveform(dev,adp,waveform,emulate=True,measured=True):
     program,dsinfo,dssim,reference = reference_waveform(adp,waveform)
     if emulate:
         emulated_wfs = get_emulated_waveforms(dev,program,adp,dssim, \
-                                              recover=True)
+                                              recover=False)
         emulated = emulated_wfs[waveform.variable]
 
     npts = reference.npts
@@ -121,7 +121,7 @@ def plot_waveform(dev,adp,waveform,emulate=True,measured=True):
     if emulate:
         print("==== Align with Emulated ====")
         emul_exp_aligned = align_waveform(adp,emulated.start_from_zero(), \
-                                          waveform.start_from_zero().recover())
+                                          waveform.start_from_zero())
         error = emulated.error(emul_exp_aligned)
         print("error: %s" % error)
 
