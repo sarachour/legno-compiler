@@ -257,7 +257,9 @@ def assemble_circuit(stmts):
     if dsexpr in asm_sources:
       source_ports += asm_sources[dsexpr]
 
-    assert(len(sink_ports) <= len(source_ports))
+    if(len(sink_ports) > len(source_ports)):
+      raise Exception("too many sinks: dsexpr=%s sinks=%s source=%s" \
+                      % (dsexpr,sink_ports,source_ports))
     for srcs,sink in zip(source_ports,sink_ports):
       for src in srcs:
         assembled.append(vadplib.VADPConn(src,sink))
