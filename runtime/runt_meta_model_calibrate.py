@@ -180,7 +180,7 @@ def evaluate_delta_model(mdl,num_samples=None):
     print("expr: %s" % calib_expr)
     print("pars: %s" % pars)
     print("score: %s" % calib_score)
-    input("<wait for input>")
+    #input("<wait for input>")
     return calib_expr,calib_score
 
 

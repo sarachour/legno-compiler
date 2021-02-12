@@ -284,7 +284,7 @@ def _deltas_command(board,force=False,orphans=True,log_file=None):
 
 def profile_block(board,block,loc,config,calib_obj,log_file=None):
     filename = generate_adp(board,block,loc,config)
-    cmd = _profile_command(board,adp,calib_obj,log_file=log_file)
+    cmd = _profile_command(board,filename,calib_obj,log_file=log_file)
     run_command(cmd)
 
 def profile(board,char_board,calib_obj,log_file=None):
