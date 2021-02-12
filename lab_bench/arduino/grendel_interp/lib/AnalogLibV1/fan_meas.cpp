@@ -39,7 +39,6 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measure(profile_spec_t spec) {
 #endif
 }
 
-
 profile_t Fabric::Chip::Tile::Slice::Fanout::measureConstVal(profile_spec_t spec) {
 
   int next_slice = (slice_to_int(parentSlice->sliceId) + 1) % 4;
@@ -65,45 +64,12 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measureConstVal(profile_spec_t spec
 
 
   Connection dac_to_fan = Connection ( val_dac->out0, in0 );
-  Connection dac_to_tile = Connection ( val_dac->out0, parentSlice->tileOuts[3].out0);
   Connection tile_to_chip = Connection (parentSlice->tileOuts[3].out0,
                                 parentSlice->parentTile->parentChip \
                                 ->tiles[3].slices[2].chipOutput->in0);
   Connection ref_to_tile = Connection ( ref_dac->out0,
                                         parentSlice->tileOuts[3].in0 );
 
-  float mean,variance;
-  bool measure_steady_state = false;
-
-  // measure dac output first
-  spec.inputs[in0Id] = val_dac->fastMakeValue(spec.inputs[in0Id]);
-  dac_to_tile.setConn();
-  tile_to_chip.setConn();
-  ref_to_tile.setConn();
-
-  calib.success &= cutil::measure_signal_robust(this,
-                                                ref_dac,
-                                                spec.inputs[in0Id],
-                                                measure_steady_state,
-                                                mean,
-                                                variance);
-
-#ifdef DEBUG_FAN_PROF
-  sprintf(FMTBUF,"DAC target=%f mean=%f variance=%f",
-          spec.inputs[in0Id], mean,variance);
-  print_info(FMTBUF);
-#endif
-  spec.inputs[in0Id] = mean;
-  dac_to_tile.brkConn();
-  tile_to_chip.brkConn();
-  ref_to_tile.brkConn();
-
-
-
-  // configure fanout 
-  dac_to_fan.setConn();
-  tile_to_chip.setConn();
-  ref_to_tile.setConn();
   switch(spec.output){
   case port_type_t::out0Id:
     Connection (out0, this->parentSlice->tileOuts[3].in0).setConn();
@@ -122,26 +88,30 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measureConstVal(profile_spec_t spec
   }
 
   // apply profiling state
+
   this->m_state = spec.state.fanout;
   this->update(this->m_state);
+  spec.inputs[in0Id]= val_dac->fastMakeValue(spec.inputs[in0Id]);
 
   float target_out = Fabric::Chip::Tile::Slice::Fanout::computeOutput(this->m_state,
                                                                       spec.output,
                                                                       spec.inputs[in0Id]);
+  dac_to_fan.setConn();
 	tile_to_chip.setConn();
   ref_to_tile.setConn();
 
+  float mean,variance;
+  bool measure_steady_state = false;
   calib.success &= cutil::measure_signal_robust(this,
                                                 ref_dac,
                                                 target_out,
                                                 measure_steady_state,
                                                 mean,
                                                 variance);
-#ifdef DEBUG_FAN_PROF
-  sprintf(FMTBUF,"FAN target=%f mean=%f variance=%f",
-          target_out, mean,variance);
+
+  sprintf(FMTBUF,"PARS mean=%f variance=%f",
+          mean,variance);
   print_info(FMTBUF);
-#endif
   profile_t prof = prof::make_profile(spec, mean,
                                       sqrt(variance));
   if(!calib.success){
