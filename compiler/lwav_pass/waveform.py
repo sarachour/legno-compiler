@@ -235,6 +235,7 @@ class WaveformVis:
 
         ax.grid(False)
 
+        ymax = ymin = 0.0
         for name,wf in self.waveforms.items():
             color,linestyle,opacity = self.styles[name]
             ax.plot(wf.times,wf.values,label=name,
@@ -242,6 +243,10 @@ class WaveformVis:
                     linewidth=3, \
                     color=color, \
                     alpha=opacity)
+            ymax = max(ymax,max(wf.values))
+            ymin = min(ymin,min(wf.values))
+
+        ax.set_ylim(ymin=ymin*1.1,ymax=ymax*1.1)
 
         #plt.tight_layout()
         plt.savefig(filepath)

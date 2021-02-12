@@ -52,7 +52,6 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measureConstVal(profile_spec_t spec
   fanout_state_t codes_fan = this->m_state;
   dac_state_t codes_val_dac = val_dac->m_state;
   dac_state_t codes_ref_dac = ref_dac->m_state;
-  float * input_value = prof::get_input(spec,port_type_t::in0Id);
 
   cutil::buffer_fanout_conns(calib,this);
   cutil::buffer_dac_conns(calib,ref_dac);
@@ -90,16 +89,13 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measureConstVal(profile_spec_t spec
 
   // apply profiling state
 
+  this->m_state = spec.state.fanout;
+  this->update(this->m_state);
+  spec.inputs[in0Id]= val_dac->fastMakeValue(spec.inputs[in0Id]);
 
-  this->m_state= spec.state.fanout;
-  //float in_target = Dac::computeOutput(val_dac->m_state);
-
-  val_dac->setEnable(true);
-  val_dac->setInv(false);
-  *input_value = val_dac->fastMakeValue(*input_value);
-  float out_target = Fabric::Chip::Tile::Slice::Fanout::computeOutput(this->m_state,
-                                                                     spec.output,
-                                                                      *input_value);
+  float target_out = Fabric::Chip::Tile::Slice::Fanout::computeOutput(this->m_state,
+                                                                      spec.output,
+                                                                      spec.inputs[in0Id]);
   dac_to_fan.setConn();
 	tile_to_chip.setConn();
   ref_to_tile.setConn();
@@ -108,7 +104,7 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measureConstVal(profile_spec_t spec
   bool measure_steady_state = false;
   calib.success &= cutil::measure_signal_robust(this,
                                                 ref_dac,
-                                                out_target,
+                                                target_out,
                                                 measure_steady_state,
                                                 mean,
                                                 variance);
@@ -140,7 +136,6 @@ profile_t Fabric::Chip::Tile::Slice::Fanout::measureConstVal(profile_spec_t spec
     error(FMTBUF);
 
   }
-	setEnable (false);
   cutil::restore_conns(calib);
   this->update(codes_fan);
   val_dac->update(codes_val_dac);
