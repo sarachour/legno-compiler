@@ -58,7 +58,9 @@ class ADPSim:
 
   def set_function(self,name,emul):
     assert(not name in self._state_vars)
-    assert(not name in self._funcs)
+    if(name in self._funcs):
+      raise Exception("already bound function <%s>" % name)
+
     self._funcs.append(name)
     self._emul[name] = emul
 
@@ -273,8 +275,8 @@ class ADPEmulBlock:
 
     return values.items()
 
-  def get_model_error(self,vdict):
-    if self.error_model is None:
+  def get_model_error(self,error_model,vdict):
+    if error_model is None:
       return 0.0
 
     if not  self.enable_phys  \
@@ -283,13 +285,13 @@ class ADPEmulBlock:
 
     values = {}
     for var,val in vdict.items():
-      if var in self.error_model.variables:
+      if var in error_model.variables:
         values[var] = val
 
     for var,val in self.get_digital_config():
         values[var] = val
 
-    return self.error_model.get(values)
+    return error_model.get(values)
 
 
   def _concretize(self,expr):
@@ -405,7 +407,7 @@ class ADPEmulBlock:
 
     #print(vdict)
     #print("orig-val: %f" % val)
-    val += self.get_model_error(vdict)
+    val += self.get_model_error(self.error_model, vdict)
 
     #print("err-val: %f" % val)
     port = self.block.outputs[self.port.name]
@@ -439,10 +441,11 @@ class ADPStatefulEmulBlock(ADPEmulBlock):
   def __init__(self,board,adp,block,cfg,port,calib_obj):
     ADPEmulBlock.__init__(self,board,adp,block,cfg,port,calib_obj)
     self.variable = self.cfg.get(port.name).source
+    self.ic_error_model = None
 
   def initial_cond(self):
     value =  self._init_cond.compute()
-    model_error = self.get_model_error({})
+    model_error = self.get_model_error(self.ic_error_model, {})
     print(self._init_cond)
     print("core-value=%f model_error=%f" % (value,model_error))
     value += model_error
@@ -471,7 +474,9 @@ class ADPStatefulEmulBlock(ADPEmulBlock):
                                       adp, \
                                       self.cfg, \
                                       compensate=self.enable_compensate)
+
     self.error_model = None
+    self.ic_error_model = None
     if not model is None and self.enable_phys:
       dataset = proflib.load(self.board, \
                            self.block, \
@@ -490,7 +495,7 @@ class ADPStatefulEmulBlock(ADPEmulBlock):
                                         dataset=dataset, \
                                         output=errors, \
                                         npts=self.npts)
-        self.error_model = surf
+        self.ic_error_model = surf
         validate_model(self,expr.init_cond,surf,dataset)
 
       else:
@@ -559,12 +564,14 @@ def build_diffeqs(dev,adp):
     for port in cfg.stmts_of_type(adplib.ConfigStmtType.PORT):
       source_var = cfg.get(port.name).source
       if not source_var is None and \
-         isinstance(source_var,genoplib.Var) and\
+         isinstance(source_var,genoplib.Var) and \
+         blk.type == blocklib.BlockType.COMPUTE and \
          not source_var in sim.state_vars:
         emul_block = build_expr(dev,sim,adp,blk,cfg,port)
         sim.set_function(source_var, emul_block)
 
 
+  #input()
   return sim
 
 def next_state(sim,values):
