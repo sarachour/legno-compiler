@@ -62,7 +62,7 @@ def visualize(args):
 
         if delta_model.complete and \
            delta_model.calib_obj != llenums.CalibrateObjective.NONE:
-            
+
             print(delta_model.config)
             print(delta_model)
             if delta_model.is_integration_op:
@@ -96,7 +96,7 @@ def visualize(args):
                              baseline=vizlib.ReferenceType.MODEL_PREDICTION, \
                              num_bins=10, \
                              amplitude=args.max_error, \
-                             relative=True)
+                             relative=not args.absolute)
 
             png_file = ph.get_correctable_delta_vis(delta_model.block.name, \
                                                     delta_model.loc.file_string(), \
