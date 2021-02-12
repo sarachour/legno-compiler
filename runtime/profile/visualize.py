@@ -25,7 +25,7 @@ def heatmap(physblk,output_file,dataset,output,n,relative=False, \
             amplitude=None):
   fmtaxes = lambda axes: list(map(lambda v: round(v,2), axes))
   bounds = physblk.get_bounds()
-  npts = 51
+  npts = 10
 
   normalize_out = 1.0
   if relative:
