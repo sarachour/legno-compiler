@@ -62,7 +62,8 @@ for scale in ['m','h']:
     pat[idx] = '+'
     fan.outputs[port.name].relation.bind(pat, parser.parse_expr('x'))
     spec = DeltaSpec(parser.parse_expr('a{idx}*x+b{idx}'.format(idx=idx)))
-    spec.param('a{idx}'.format(idx=idx),DeltaParamType.CORRECTABLE,ideal=1.0)
+    #spec.param('a{idx}'.format(idx=idx),DeltaParamType.CORRECTABLE,ideal=1.0)
+    spec.param('a{idx}'.format(idx=idx),DeltaParamType.GENERAL,ideal=1.0)
     spec.param('b{idx}'.format(idx=idx),DeltaParamType.GENERAL,ideal=0.0)
     fan_calib_obj(spec,idx,1.0 if scale == 'm' else 10.0)
     fan.outputs[port.name].deltas.bind(pat,spec)
@@ -70,7 +71,8 @@ for scale in ['m','h']:
     pat[idx] = '-'
     fan.outputs[port.name].relation.bind(pat, parser.parse_expr('-x'))
     spec = DeltaSpec(parser.parse_expr('-a{idx}*x+b{idx}'.format(idx=idx)))
-    spec.param('a{idx}'.format(idx=idx),DeltaParamType.CORRECTABLE,ideal=1.0)
+    #spec.param('a{idx}'.format(idx=idx),DeltaParamType.CORRECTABLE,ideal=1.0)
+    spec.param('a{idx}'.format(idx=idx),DeltaParamType.GENERAL,ideal=1.0)
     spec.param('b{idx}'.format(idx=idx),DeltaParamType.GENERAL,ideal=0.0)
     fan_calib_obj(spec,idx,1.0 if scale == 'm' else 10.0)
     fan.outputs[port.name].deltas.bind(pat,spec)

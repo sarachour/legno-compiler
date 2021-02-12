@@ -7,14 +7,17 @@ import numpy as np
 import math
 
 def get_emulated_waveforms(board,program,adp,dssim,recover=False):
+    en_phys,en_err,en_ival,en_quant = True,True,False,True
+    en_phys,en_err,en_ival,en_quant = True,False,False,True
+
     times,value_dict = lsimlib.run_adp_simulation(board, \
                                                   adp, \
                                                   dssim, \
                                                   recover=recover, \
-                                                  enable_physical_model=True, \
-                                                  enable_model_error=True, \
-                                                  enable_intervals=False, \
-                                                  enable_quantization=True)
+                                                  enable_physical_model=en_phys, \
+                                                  enable_model_error=en_err, \
+                                                  enable_intervals=en_ival, \
+                                                  enable_quantization=en_quant)
 
     waveforms = {}
     if recover:
