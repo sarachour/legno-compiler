@@ -8,7 +8,7 @@ import math
 
 def get_emulated_waveforms(board,program,adp,dssim,recover=False):
     en_phys,en_err,en_ival,en_quant = True,True,False,True
-    en_phys,en_err,en_ival,en_quant = True,False,False,True
+    en_phys,en_err,en_ival,en_quant = True,True,False,True
 
     times,value_dict = lsimlib.run_adp_simulation(board, \
                                                   adp, \
@@ -71,7 +71,7 @@ def reference_waveform(adp,waveform):
 def align_waveform(adp,reference,measured, \
                    timing_error=2e-5, \
                    min_scaling_error=0.02, \
-                   offset_error=0.10):
+                   offset_error=0.15):
     print("time: [%f,%f]" % (min(measured.times), \
           max(measured.times)))
 
@@ -90,7 +90,7 @@ def plot_waveform(dev,adp,waveform,emulate=True,measured=True):
     program,dsinfo,dssim,reference = reference_waveform(adp,waveform)
     if emulate:
         emulated_wfs = get_emulated_waveforms(dev,program,adp,dssim, \
-                                              recover=False)
+                                              recover=True)
         emulated = emulated_wfs[waveform.variable]
 
     npts = reference.npts
@@ -121,7 +121,7 @@ def plot_waveform(dev,adp,waveform,emulate=True,measured=True):
     if emulate:
         print("==== Align with Emulated ====")
         emul_exp_aligned = align_waveform(adp,emulated.start_from_zero(), \
-                                          waveform.start_from_zero())
+                                          waveform.start_from_zero().recover())
         error = emulated.error(emul_exp_aligned)
         print("error: %s" % error)
 
@@ -148,7 +148,8 @@ def plot_waveform_summaries(dev,adps,waveforms):
 
     print("==== Collating Summaries ====")
     for adp,wf in zip(adps,waveforms):
-        awf = align_waveform(adp,reference,wf)
+        awf = align_waveform(adp,reference, \
+                             wf.start_from_zero().recover())
         error = reference.error(awf)
         align_wfs.append(awf)
         errors.append(error)
