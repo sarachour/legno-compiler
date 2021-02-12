@@ -239,6 +239,11 @@ def eliminate_joins(stmts):
       raise Exception("unsupported statement: %s" % stmt)
 
 
+  if len(sinks) == 0:
+    print("[warn] no sinks.. eliminating join usage")
+    return new_vadp
+
+
   if len(sinks) != 1:
     for stmt in relevent_stmts:
       print(stmt)
