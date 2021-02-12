@@ -309,8 +309,11 @@ def exec_wav(args,trials=1):
 
         summary[key].append((adp,wave))
 
+    assert(not args.scope_only or not args.adc_only)
     if args.scope_only:
         scope_options = [True]
+    elif args.adc_only:
+        scope_options = [False]
     else:
         scope_options = [True,False]
 

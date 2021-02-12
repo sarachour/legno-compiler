@@ -223,7 +223,7 @@ class ADPEmulBlock:
   def __init__(self,board,adp,block,cfg,port,calib_obj):
     self.board = board
     self.block = block
-    self.cfg = cfg
+    self.cfg = cfg.copy()
     self.loc = self.cfg.inst.loc
     self.port = port
     self.calib_obj = calib_obj
@@ -254,7 +254,9 @@ class ADPEmulBlock:
         # apply offset. Note that there may not be any data offsets
         # if the relation under the selected mode uses no digital fields.
         if self.enable_quantize:
+          #print("orig: %f" % (dig_val))
           dig_val = datum.round_value(self.cfg.mode, dig_val)
+          #print("rounded: %f" % (dig_val))
 
         elif self.enable_intervals:
           dig_val = datum.interval[self.cfg.mode].clip(dig_val)
@@ -384,12 +386,15 @@ class ADPEmulBlock:
 
       vdict[inp] = val
 
+    #print("")
+    #print(self.cfg)
 
     if self.user_defined is None:
       vdict_sym = dict(map(lambda tup: (tup[0], \
                                         genoplib.Const(tup[1])),  \
                           vdict.items()))
 
+      #print(expr)
       val = expr.substitute(vdict_sym).compute()
     else:
       input_port,inputs,outputs = self.user_defined
@@ -398,10 +403,16 @@ class ADPEmulBlock:
       val = outputs[idx]
 
 
+    #print(vdict)
+    #print("orig-val: %f" % val)
     val += self.get_model_error(vdict)
 
+    #print("err-val: %f" % val)
     port = self.block.outputs[self.port.name]
-    val = port.interval[self.cfg.mode].clip(val)
+    if self.enable_intervals:
+      val = port.interval[self.cfg.mode].clip(val)
+
+    #print("clip-val: %f" % val)
     return val
 
   def compute(self,values):
@@ -471,7 +482,6 @@ class ADPStatefulEmulBlock(ADPEmulBlock):
 
       spec = self.block.outputs[self.port.name].deltas[self.cfg.mode]
       expr = spec.get_model(model.params)
-
       if(not dataset is None):
         errors = model.errors(dataset,init_cond=True)
         surf = parsurflib.build_surface(block=self.block, \
@@ -614,7 +624,7 @@ def run_simulation(sim,sim_time):
   state_vars = list(sim.state_vars)
   if len(state_vars) == 0:
     for t in np.linspace(0,time,int(n)):
-      res.add_point(t,[])
+      res.add_point(t*sim.time_constant,[],func_state(sim, {}))
 
     return res
 

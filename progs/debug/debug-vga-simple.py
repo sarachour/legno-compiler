@@ -1,12 +1,12 @@
 from dslang.dsprog import DSProg
-from dslang.dssim import DSSim
+from dslang.dssim import DSSim,DSInfo
 
 def dsname():
-  return "dbgvga2"
+  return "dbgvga-simpl"
 
 def dsinfo():
   return DSInfo(dsname(), \
-                "debug-mul",
+                "debug-vga-simple",
                 "signal",
                 "signal")
   return info
@@ -14,9 +14,8 @@ def dsinfo():
 
 def dsprog(prob):
   # dummy diffeq
-  prob.decl_var("X","1.0")
-  prob.decl_var("Z","0.3*X")
-  prob.emit("Z","TestPoint")
+  prob.decl_var("V","1.0")
+  prob.emit("V","TestPoint")
   prob.check()
 
 def dssim():

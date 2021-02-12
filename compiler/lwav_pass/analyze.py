@@ -6,29 +6,36 @@ import compiler.lsim as lsimlib
 import numpy as np
 import math
 
-def get_emulated_waveforms(board,program,adp,dssim):
+def get_emulated_waveforms(board,program,adp,dssim,recover=False):
     times,value_dict = lsimlib.run_adp_simulation(board, \
                                                   adp, \
                                                   dssim, \
-                                                  recover=True, \
-                                                  enable_model_error=True, \
+                                                  recover=recover, \
                                                   enable_physical_model=True, \
+                                                  enable_model_error=True, \
                                                   enable_intervals=False, \
-                                                  enable_quantization=False)
+                                                  enable_quantization=True)
 
     waveforms = {}
+    if recover:
+        time_units = wavelib.Waveform.TimeUnits.DS_TIME_UNITS
+        ampl_units = wavelib.Waveform.AmplUnits.DS_QUANTITY
+    else:
+        time_units = wavelib.Waveform.TimeUnits.WALL_CLOCK_SECONDS
+        ampl_units = wavelib.Waveform.AmplUnits.VOLTAGE
+
     for varname,values in value_dict.items():
         wav = wavelib.Waveform(variable=varname, \
                                times=times, \
                                values=values, \
-                               time_units=wavelib.Waveform.TimeUnits.DS_TIME_UNITS, \
-                               ampl_units=wavelib.Waveform.AmplUnits.DS_QUANTITY, \
+                               time_units=time_units, \
+                               ampl_units=ampl_units, \
                                time_scale=1.0, \
                                mag_scale=1.0)
         waveforms[varname] = wav
         print("-> calculated emulated <%s>" % varname)
 
-    input("continue?")
+    #input("continue?")
     return waveforms
 
 
@@ -58,22 +65,18 @@ def reference_waveform(adp,waveform):
     reference = ref_waveforms[waveform.variable]
     return program,dsinfo,dssim,reference
 
-def align_waveform(adp,reference,waveform, \
+def align_waveform(adp,reference,measured, \
                    timing_error=2e-5, \
                    min_scaling_error=0.02, \
-                   offset_error=0.0002):
+                   offset_error=0.10):
+    print("time: [%f,%f]" % (min(measured.times), \
+          max(measured.times)))
 
-    rec_experimental = waveform.start_from_zero().recover()
-    print("unrec-time: [%f,%f]" % (min(waveform.times), \
-          max(waveform.times)))
-    print("rec-time: [%f,%f]" % (min(rec_experimental.times), \
-          max(rec_experimental.times)))
-
-    scale_error = max(timing_error/waveform.runtime, \
+    scale_error = max(timing_error/measured.runtime, \
                       min_scaling_error)
-    abs_offset_error = offset_error*(rec_experimental.runtime/waveform.runtime)
+    abs_offset_error = offset_error*(reference.runtime)
 
-    rec_exp_aligned = reference.align(rec_experimental, \
+    rec_exp_aligned = reference.align(measured, \
                                       scale_slack=scale_error, \
                                       offset_slack=abs_offset_error)
     rec_exp_aligned.trim(reference.min_time, reference.max_time)
@@ -83,7 +86,8 @@ def align_waveform(adp,reference,waveform, \
 def plot_waveform(dev,adp,waveform,emulate=True,measured=True):
     program,dsinfo,dssim,reference = reference_waveform(adp,waveform)
     if emulate:
-        emulated_wfs = get_emulated_waveforms(dev,program,adp,dssim)
+        emulated_wfs = get_emulated_waveforms(dev,program,adp,dssim, \
+                                              recover=False)
         emulated = emulated_wfs[waveform.variable]
 
     npts = reference.npts
@@ -99,7 +103,8 @@ def plot_waveform(dev,adp,waveform,emulate=True,measured=True):
         yield vis
 
     print("==== Align with Reference ====")
-    rec_exp_aligned = align_waveform(adp,reference,waveform)
+    rec_exp_aligned = align_waveform(adp,reference, \
+                                     waveform.start_from_zero().recover())
     error = reference.error(rec_exp_aligned)
     print("error: %s" % error)
 
@@ -112,7 +117,8 @@ def plot_waveform(dev,adp,waveform,emulate=True,measured=True):
 
     if emulate:
         print("==== Align with Emulated ====")
-        emul_exp_aligned = align_waveform(adp,emulated,waveform)
+        emul_exp_aligned = align_waveform(adp,emulated.start_from_zero(), \
+                                          waveform.start_from_zero())
         error = emulated.error(emul_exp_aligned)
         print("error: %s" % error)
 

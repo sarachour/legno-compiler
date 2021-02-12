@@ -1,12 +1,12 @@
 from dslang.dsprog import DSProg
-from dslang.dssim import DSSim
+from dslang.dssim import DSSim,DSInfo
 
 def dsname():
-  return "dbgmul2"
+  return "dbgmult-simpl"
 
 def dsinfo():
   return DSInfo(dsname(), \
-                "debug-mul",
+                "debug-mult-simple",
                 "signal",
                 "signal")
   return info
@@ -14,9 +14,9 @@ def dsinfo():
 
 def dsprog(prob):
   # dummy diffeq
-  prob.decl_var("X","1.0")
-  prob.decl_var("Z","X*X")
-  prob.emit("Z","TestPoint")
+  prob.decl_var("V","1.0")
+  prob.decl_var("Z","V*V")
+  prob.emit("0.6*Z","TestPoint")
   prob.check()
 
 def dssim():
