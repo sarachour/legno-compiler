@@ -182,6 +182,9 @@ def models_are_homogenous(models,enable_outputs=False):
         outputs.append(model.output.name)
         blocks.append(model.block.name)
 
+    if len(set(locs)) == 0:
+        return True
+
     # test that the data is homogenous
     if len(set(locs)) != 1:
         print("[not homogenous] # locs=%d" % (len(set(locs))))
@@ -201,6 +204,9 @@ def models_are_homogenous(models,enable_outputs=False):
         return False
 
     return True
+
+
+
 
 
 def database_is_homogenous(board,enable_outputs=False):
