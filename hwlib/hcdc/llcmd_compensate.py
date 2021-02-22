@@ -170,6 +170,10 @@ def compute_expression_fields(board,adp,cfg,compensate=True, debug=False):
 
 def set_calibration_codes(board,adp,cfg):
     blk = board.get_block(cfg.inst.block)
+    if all(map(lambda st: not isinstance(st.impl, blocklib.BCCalibImpl), blk.state)):
+       print("[WARN] no calibration codes <%s>" % blk.name)
+       return
+
     calib_obj_str = adp.metadata[adplib.ADPMetadata.Keys.RUNTIME_CALIB_OBJ]
     calib_obj = llenums.CalibrateObjective(calib_obj_str)
     model = get_experimental_model(board, \
