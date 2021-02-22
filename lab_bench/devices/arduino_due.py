@@ -99,5 +99,5 @@ class ArduinoDue:
 
   def write_command(self,byts):
     self.write_bytes(byts, \
-                     suffix=bytearray([253,253,253]), \
-                     prefix=bytearray([254,254,254]))
+                     suffix=bytearray([253,253,253,253,253]), \
+                     prefix=bytearray([254,254,254,254,254]))
