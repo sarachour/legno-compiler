@@ -2,7 +2,6 @@ import hwlib.hcdc.hcdcv2 as hcdclib
 import hwlib.hcdc.llenums as llenums
 import hwlib.block as blocklib
 import hwlib.adp as adplib
-import runtime.models.exp_delta_model as exp_delta_lib
 import compiler.lscale_pass.lscale_ops as lscalelib
 import hwlib.hcdc.llcmd_compensate as llcmdcomp
 
@@ -41,12 +40,14 @@ def write_lut(runtime,board,blk,loc,adp):
 
 def set_state(runtime,board,blk,loc,adp):
     assert(isinstance(adp,adplib.ADP))
+    cfg = adp.configs.get(blk.name,loc)
     if not llenums.BlockType(blk.ll_name).has_state():
         print("[SKIPPING] %s.%s no state required" % (blk.name,loc))
         return
 
 
-    cfg = adp.configs.get(blk.name,loc)
+    llcmdcomp.set_calibration_codes(board,adp,cfg)
+
     do_compensate = adp.metadata[adplib.ADPMetadata.Keys.LSCALE_SCALE_METHOD]  \
         != lscalelib.ScaleMethod.IDEAL
 

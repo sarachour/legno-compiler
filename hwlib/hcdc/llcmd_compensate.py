@@ -58,6 +58,9 @@ def get_compensation_parameters(model,init_cond=False):
         raise Exception("cannot compensate: too many parameters (corr=%s, llcorr=%s)" \
                         % (comp_pars,asm_pars))
 
+    print(model.config)
+    print("gain-pars: %s" % str(comp_pars))
+    print("off-pars: %s" % str(asm_pars))
     return gain_par,offset_par
 
 
@@ -165,6 +168,21 @@ def compute_expression_fields(board,adp,cfg,compensate=True, debug=False):
     return lut_outs
 
 
+def set_calibration_codes(board,adp,cfg):
+    blk = board.get_block(cfg.inst.block)
+    calib_obj_str = adp.metadata[adplib.ADPMetadata.Keys.RUNTIME_CALIB_OBJ]
+    calib_obj = llenums.CalibrateObjective(calib_obj_str)
+    model = get_experimental_model(board, \
+                                   blk, \
+                                   cfg.inst.loc, \
+                                   cfg, \
+                                   calib_obj=calib_obj)
+    if model is None:
+       print(cfg)
+       raise Exception("no empirical model found for <%s>" % calib_obj)
+
+    for code,val in model.hidden_codes():
+       cfg[code].value = val
 
 def compute_constant_fields(board,adp,cfg,compensate=True,debug=False):
     blk = board.get_block(cfg.inst.block)
@@ -176,9 +194,9 @@ def compute_constant_fields(board,adp,cfg,compensate=True,debug=False):
     assert(len(data) == 1)
     data_field = data[0]
 
-    old_val = cfg[data_field.name].value
     if compensate:
-        calib_obj = llenums.CalibrateObjective(adp.metadata[adplib.ADPMetadata.Keys.RUNTIME_CALIB_OBJ])
+        calib_obj_str = adp.metadata[adplib.ADPMetadata.Keys.RUNTIME_CALIB_OBJ]
+        calib_obj = llenums.CalibrateObjective(calib_obj_str)
         model = get_experimental_model(board, \
                                        blk, \
                                        cfg.inst.loc, \
@@ -190,15 +208,19 @@ def compute_constant_fields(board,adp,cfg,compensate=True,debug=False):
     else:
         gain,offset = 1.0,0.0
     
+    orig_val = cfg[data_field.name].value
+    delta = -offset/(gain*cfg[data_field.name].scf)
+    cfg[data_field.name].value = orig_val + delta
     cfg[data_field.name].value *= cfg[data_field.name].scf
-    cfg[data_field.name].value -= offset/gain
     if debug:
         print("=== field %s ===" % data_field)
+        print("old-val=%f" % orig_val);
         print("scf=%f" % cfg[data_field.name].scf)
+        print("delta=%f" % delta)
         print("gain=%f" % gain)
         print("offset=%f" % offset)
-        print("value=%f" % old_val);
+        print("new-val=%f" % cfg[data_field.name].value);
         print("=> updated data field %s: %f -> %f" % (data_field, \
-                                                    old_val, \
+                                                    orig_val, \
                                                     cfg[data_field.name].value))
 
