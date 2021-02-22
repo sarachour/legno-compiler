@@ -215,6 +215,7 @@ def exec_lexec(args):
                        args.force:
                         cmd = EXEC_CMD.format(**kwargs)
                         code = os.system(cmd)
+                        #input("continue")
                         if code == signal.SIGINT or code != 0:
                             raise Exception("User terminated process")
 
