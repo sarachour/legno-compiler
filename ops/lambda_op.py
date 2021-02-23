@@ -481,6 +481,12 @@ def to_sympy(expr,symbols={},wildcard=False,blacklist={},no_aliasing=False):
         else:
             return sympy.Pow(args0,args1)
 
+    elif expr.op == OpType.MAX:
+        args0 = to_sympy(expr.args[0],symbols,wildcard,blacklist,no_aliasing)
+        args1 = to_sympy(expr.args[1],symbols,wildcard,blacklist,no_aliasing)
+        return sympy.Function("max")(args0,args1)
+
+
     elif expr.op == OpType.ABS:
         args0 = to_sympy(expr.args[0],symbols,wildcard,blacklist,no_aliasing)
         return sympy.Function("abs")(args0)
@@ -520,11 +526,19 @@ def from_sympy(symexpr,no_aliasing=False):
         if isinstance(symexpr, sympy.sin):
             e0 = from_sympy(symexpr.args[0],no_aliasing)
             return Sin(e0)
+
         elif symexpr.func.name == "integ":
             assert(len(symexpr.args) == 2)
             e1 = from_sympy(symexpr.args[0],no_aliasing)
             e2 = from_sympy(symexpr.args[1],no_aliasing)
             return genop.Integ(e1,e2)
+
+
+        elif symexpr.func.name == "max":
+            assert(len(symexpr.args) == 2)
+            e1 = from_sympy(symexpr.args[0],no_aliasing)
+            e2 = from_sympy(symexpr.args[1],no_aliasing)
+            return Max(e1,e2)
 
         elif symexpr.func.name == "abs":
             e1 = from_sympy(symexpr.args[-1],no_aliasing)

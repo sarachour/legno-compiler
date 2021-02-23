@@ -62,7 +62,7 @@ def dsprog(prog):
   dU = "{one}*UTF + {kdeg}*(-U)"
 
   # this is a dummy output so that we can flip the sign.
-  prog.decl_var("fU","U");
+  #prog.decl_var("fU","U");
   prog.decl_stvar("V",dV, "{V0}", params);
   prog.decl_stvar("U",dU, "{U0}", params);
   prog.emit("{one}*V", "compV", params)
