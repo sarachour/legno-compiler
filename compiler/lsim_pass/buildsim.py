@@ -306,6 +306,10 @@ class ADPEmulBlock:
 
 
   def _build_model(self,adp):
+    if not self.block.outputs.has(self.port.name):
+      raise Exception("port <%s> is not an output for <%s>" \
+                      % (self.port.name,self.block.name))
+
     out = self.block.outputs[self.port.name]
     model = deltalib.get_calibrated_output(self.board, \
                                            block=self.block, \
@@ -524,6 +528,7 @@ def build_expr(dev,sim,adp,block,cfg,port):
   calib_obj = llenums.CalibrateObjective(adp \
                                          .metadata \
                                          .get(adplib.ADPMetadata.Keys.RUNTIME_CALIB_OBJ))
+  print(block.name, port.name)
   if is_integrator(block,cfg,port):
     emul_block = ADPStatefulEmulBlock(dev,adp,block,cfg,port,calib_obj)
   else:
@@ -566,7 +571,8 @@ def build_diffeqs(dev,adp):
       if not source_var is None and \
          isinstance(source_var,genoplib.Var) and \
          blk.type == blocklib.BlockType.COMPUTE and \
-         not source_var in sim.state_vars:
+         not source_var in sim.state_vars and \
+         blk.outputs.has(port.name):
         emul_block = build_expr(dev,sim,adp,blk,cfg,port)
         sim.set_function(source_var, emul_block)
 
