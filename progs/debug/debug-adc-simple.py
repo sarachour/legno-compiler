@@ -2,7 +2,7 @@ from dslang.dsprog import DSProg
 from dslang.dssim import DSSim,DSInfo
 
 def dsname():
-  return "dbgadc"
+  return "dbgadc-simpl"
 
 def dsinfo():
   return DSInfo(dsname(), \
@@ -15,14 +15,12 @@ def dsinfo():
 def dsprog(prob):
   params = {
     'P0': 1.0,
-    'V0' :0.0
+    'V0' :0.0,
+    'one':0.9999
   }
-  prob.decl_lambda("ident","-T")
-  prob.decl_stvar("V","(-P)","{V0}",params)
-  prob.decl_stvar("P","V","{P0}",params)
-
+  prob.decl_lambda("ident","sgn(T)*sqrt(abs(T))")
   prob.decl_var("Q","emit(ident(P))")
-  prob.interval("V",-1.0,1.0)
+  prob.decl_var("P","0.5")
   prob.interval("P",-1.0,1.0)
   prob.interval("Q",-1.0,1.0)
   prob.check()
