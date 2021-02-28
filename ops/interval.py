@@ -226,13 +226,16 @@ class Interval:
 
         if v == 1.0:
             return self
-        elif v == -1.0:
-            return self.reciprocal()
+
+        elif v < 0.0:
+            ival = self.reciprocal()
+            return ival.power(Interval.type_infer(abs(v), abs(v)))
+
         elif v > 0:
             return self.simple_power(v)
         else:
             print(v)
-            raise Exception("?")
+            raise Exception("%s^(%s) : can't compute" % (self,_v))
 
     def exponent_value(self,value):
         if value > 0:
@@ -401,6 +404,10 @@ class IntervalCollection:
 
     return st
 
+class BackpropFailedError(Exception):
+    pass
+
+
 class UnknownIntervalError(Exception):
     pass
 
@@ -436,7 +443,7 @@ def backpropagate_intervals(expr,ival,ivals):
     elif expr.op == oplib.OpType.INTEG:
         raise UnknownIntervalError("cannot backprop through <%s>" % expr)
     else:
-        raise Exception("backprop expression: %s" % (expr))
+        raise BackpropFailedError("backprop expression: %s" % (expr))
 
 def propagate_intervals(expr,ivals):
     if expr.op == oplib.OpType.VAR:
@@ -485,6 +492,12 @@ def propagate_intervals(expr,ivals):
 
     elif expr.op == oplib.OpType.INTEG:
         raise UnknownIntervalError("cannot propagate through <%s>" % expr)
+
+    elif expr.op == oplib.OpType.MAX:
+        i0 = propagate_intervals(expr.arg(0),ivals)
+        i1 = propagate_intervals(expr.arg(1),ivals)
+        return i0.max(i1)
+
     else:
         raise Exception("prop expression: %s" % (expr))
 

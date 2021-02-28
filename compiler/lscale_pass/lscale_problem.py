@@ -48,6 +48,7 @@ def _generate_dsinfo_backprop(dev,dsinfo,adp):
                  filter(lambda st: isinstance(st, adplib.ExprDataConfig), cfg.stmts)))
       rel = out.relation[bl_mode].substitute(fxns).concretize()
       all_inputs_bound = all(map(lambda v: v in intervals,rel.vars()))
+
       if all_inputs_bound and not out.name in intervals:
           try:
              out_interval = ivallib.propagate_intervals(rel,intervals)
@@ -57,11 +58,13 @@ def _generate_dsinfo_backprop(dev,dsinfo,adp):
           except ivallib.UnknownIntervalError as e:
              continue
 
-      elif out.name in intervals and not all_inputs_bound:
+      elif not all_inputs_bound and out.name in intervals:
            try:
              inp_intervals = ivallib.backpropagate_intervals(rel,intervals[out.name], \
-                                                          intervals)
+                                                             intervals)
            except ivallib.UnknownIntervalError as e:
+             continue
+           except ivallib.BackpropFailedError as e:
              continue
 
            for port_name,ival in inp_intervals.items():
