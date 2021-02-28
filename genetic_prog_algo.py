@@ -139,8 +139,7 @@ class RandomFunctionPool:
 
     def get_best(self):
         idx = np.argmin(self.scores)
-        print(self.scores[idx])
-        return self.pool[idx]
+        return self.scores[idx],self.pool[idx]
 
     def __len__(self):
         return len(self.pool)
@@ -240,6 +239,6 @@ for data in exp_profile_dataset_lib.get_datasets(board):
 
 functions = dict(find_functions(models,datasets))
 print("========= BEST FUNCTIONS =========")
-for var,expr in functions.items():
+for var,(score,expr) in functions.items():
     print("var: %s" % var)
-    print("   %s" % expr)
+    print("   %s (score=%f)" % (expr,score))
