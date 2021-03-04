@@ -13,7 +13,7 @@ def divide_list_into_chunks(lst,n):
 
 def random_locs(board,block,num_locs):
     insts = list(board.layout.instances(block.name))
-    for addr in random.sample(insts,num_locs):
+    for addr in random.sample(insts,min(len(insts),num_locs)):
         yield devlib.Location(addr)
 
 def get_by_ll_identifier(collection,ident):

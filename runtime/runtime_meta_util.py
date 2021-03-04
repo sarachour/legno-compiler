@@ -338,7 +338,12 @@ def legacy_calibration(board,adp_path,calib_obj,widen=False,logfile='log.txt',**
       get_calibration_time_logger(board,logfile)
   for name,cmd in cmds:
         print(cmd)
-        runtime = run_command(cmd)
+        try:
+           runtime = run_command(cmd)
+        except Exception as e:
+           print("[ERROR] command failed!")
+           return
+
         if not logger is None:
             block_name = kwargs['block'].name
             loc = str(kwargs['loc'])
