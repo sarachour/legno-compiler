@@ -1,0 +1,18 @@
+# legno requirements
+python-dateutil==2.8.0
+numpy
+scipy
+parse==1.12.0
+sympy==1.4
+lark-parser
+graphviz
+PuLP==1.6.10
+z3-solver==4.8.5.0
+
+# grendel requirements
+pyserial==3.4
+tqdm
+construct==2.9.45
+matplotlib>=3.0.0
+sklearn
+seaborn
