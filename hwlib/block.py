@@ -747,6 +747,14 @@ class PhysicalModelSpec:
                                                           self.relation)
 class DeltaSpec:
 
+    class MultiObjective:
+
+        def __init__(self):
+            self.objectives = []
+
+        def add(self,obj):
+            self.objectives.append(obj)
+
     class Parameter:
 
         def __init__(self,name,typ,ideal_value,label=None):

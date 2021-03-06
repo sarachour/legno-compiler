@@ -224,17 +224,18 @@ class Device:
     self.time_constant = 1.0
 
     if "/" in model_number:
-      self.model_number = model_number.split("/")[-1]
-      self.model_subdir = "/".join(model_number.split("/")[:-1]) + model_subdir
+      args = model_number.split("/")
+      self.model_number = args[-1]
+      self.model_subdir = "/".join(args[:-1]) if len(args) > 1 else ""
+      self.model_subdir += model_subdir
     else:
       self.model_number = model_number
-      self.model_subdir = ""
+      self.model_subdir = model_subdir
 
     self._physdb = None
     self._paths = pathlib.DeviceStatePathHandler(self.name, \
                                                  self.model_number, \
                                                  model_subdir=self.model_subdir)
-    self.model_subdir = model_subdir
 
   @property
   def full_model_number(self):

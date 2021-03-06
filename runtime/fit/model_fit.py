@@ -192,6 +192,7 @@ def fit_model(all_vars,expr,data):
     raise Exception("fit_model: cannot fit empty dataset")
 
   exec(snippet,globals(),loc)
+
   parameters = loc['lbls']
   #print("parameters:",parameters)
   parameter_values = loc['popt']

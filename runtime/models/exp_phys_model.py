@@ -108,14 +108,6 @@ class ExpPhysModel:
 
       return max(nsamps)
 
-  def random_sample(self):
-    samples = []
-    for par,dectree in self.params.items():
-      samples += dectree.random_sample(samples)
-
-    samples += self.model_error.random_sample(samples)
-    return samples
-
   @property
   def static_cfg(self):
     return runtime_util\
