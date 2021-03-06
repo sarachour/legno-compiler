@@ -43,8 +43,9 @@ CREATE_PHYS_TABLE = '''
 CREATE TABLE IF NOT EXISTS phys_models (
 block text,
 static_config text,
+output text,
 model text,
-primary key (block,static_config)
+primary key (block,static_config,output)
 );
 '''
 
@@ -65,7 +66,7 @@ class PhysicalDatabase:
     self.curs.execute(CREATE_DATA_TABLE)
     self.conn.commit()
     self.keys = {}
-    self.keys[PhysicalDatabase.DB.PHYS_MODELS] = ['block','static_config','model']
+    self.keys[PhysicalDatabase.DB.PHYS_MODELS] = ['block','static_config','output','model']
     self.keys[PhysicalDatabase.DB.DELTA_MODELS] = ['block','loc','output', \
                                                    'static_config','hidden_config', \
                                                    'model','calib_obj','model_error']

@@ -97,6 +97,13 @@ def dict_to_identifier(dict_):
 
   return "[" + st[1:] + "]"
 
+def get_hidden_codes(block,exclude=[]):
+     for st in block.state:
+      if isinstance(st.impl, \
+                        blocklib.BCCalibImpl) and \
+                        not st.name in exclude:
+        yield st
+
 
 def get_hidden_cfg(block,cfg,exclude=[]):
     mode = cfg.mode
@@ -132,10 +139,10 @@ def get_dynamic_cfg(cfg):
         kvs[stmt.name] = stmt.value
     return kvs
 
-def get_device(model_no,layout=False):
+def get_device(model_no,layout=False,subdir=""):
     assert(not model_no is None)
     import hwlib.hcdc.hcdcv2 as hcdclib
-    return hcdclib.get_device(model_no,layout=layout)
+    return hcdclib.get_device(model_no,layout=layout,model_subdir=subdir)
 
 
 def select_from_array(arr,n):

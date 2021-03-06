@@ -2,6 +2,7 @@ import runtime.runtime_meta_util as runtime_meta_util
 import runtime.runtime_util as runtime_util
 import runtime.models.exp_profile_dataset as exp_profile_dataset_lib
 import runtime.models.exp_delta_model as exp_delta_model_lib
+import runtime.models.exp_phys_model as exp_phys_model_lib
 from sklearn.linear_model import Ridge
 
 
@@ -145,9 +146,6 @@ class RandomFunctionPool:
         return len(self.pool)
 
 
-model_number = 'xfer'
-block_name = 'integ'
-mode = "(m,m,+)"
 #block_name = 'integ'
 #mode = "(m,m,+)"
 #block_name = 'mult'
@@ -160,6 +158,9 @@ def get_repr_model(models):
 
 def find_functions(models,datasets,num_generations=5):
     repr_model = get_repr_model(models)
+    if repr_model is None:
+       raise Exception("no representative model found. (# models=%d)" % len(models))
+
     model_pool = {}
 
     print("--- populating pool ---")
@@ -211,34 +212,59 @@ def find_functions(models,datasets,num_generations=5):
     for var,pool in model_pool.items():
         yield var, pool.get_best()
 
-board = runtime_util.get_device(model_number,layout=False)
-block = board.get_block(block_name)
-config = None
-output = 'z'
 
-datasets = {}
-models = {}
-print("-> getting models")
-for model in  exp_delta_model_lib.get_all(board):
-    if model.block.name == block_name and \
-       str(model.config.mode) == mode and \
-       str(model.output.name) == output:
-        if not model.loc in models:
-            models[model.loc] = {}
-            datasets[model.loc] = {}
 
-        models[model.loc][model.hidden_cfg] = model
 
-print("-> getting datasets")
-for data in exp_profile_dataset_lib.get_datasets(board):
-    if data.block.name == block_name and \
-       str(data.config.mode) == mode and \
-       str(data.output.name) == output and \
-       data.loc in models:
-        datasets[data.loc][model.hidden_cfg] = data
 
-functions = dict(find_functions(models,datasets))
-print("========= BEST FUNCTIONS =========")
-for var,(score,expr) in functions.items():
-    print("var: %s" % var)
-    print("   %s (score=%f)" % (expr,score))
+def genetic_infer_model(board,block,config,output,models,datasets,num_generations=1):
+   functions = dict(find_functions(models,datasets,num_generations=num_generations))
+   pmdl = exp_phys_model_lib.ExpPhysModel(block,config,output)
+
+   print("===== BEST FUNCTIONS ======")
+   for var,(score,expr) in functions.items():
+       print("var: %s" % var)
+       print("   %s (score=%f)" % (expr,score))
+       pmdl.set_variable(var,expr,score)
+
+   print(pmdl.to_json())
+   exp_phys_model_lib.update(board, pmdl)
+
+
+def execute(board,num_generations=1):
+    def insert(d,ks):
+        for k in ks:
+            if not k in d:
+                d[k] = {}
+            d = d[k]
+
+    datasets = {}
+    models = {}
+
+    for model in exp_delta_model_lib.get_all(board):
+        keypath = [(model.block.name, str(model.config.mode),model.output.name), \
+                   model.loc]
+        insert(models,keypath)
+        insert(datasets,keypath)
+        models[keypath[0]][keypath[1]][model.hidden_cfg] = model
+        datasets[keypath[0]][keypath[1]][model.hidden_cfg] = None
+
+    for data in exp_profile_dataset_lib.get_datasets(board):
+        keypath = [(model.block.name, str(model.config.mode),model.output.name), \
+                   model.loc]
+        insert(datasets,keypath)
+        datasets[keypath[0]][keypath[1]][model.hidden_cfg] = data
+
+    for key in models.keys():
+        models_b = models[key]
+        datasets_b = datasets[key]
+        repr_model = get_repr_model(models_b)
+        if repr_model is None:
+            raise Exception("no representative model found. (# models=%d)" % len(models_b))
+
+        genetic_infer_model(board,repr_model.block,repr_model.config,repr_model.output, \
+                            models_b,datasets_b)
+
+
+model_number = 'xfer'
+board = runtime_util.get_device(model_number)
+execute(board, num_generations=5)

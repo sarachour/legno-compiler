@@ -11,11 +11,16 @@ class PlotType(Enum):
 class DeviceStatePathHandler:
     DEVICE_STATE_DIR = "device-state"
 
-    def __init__(self,board,model,make_dirs=True):
+    def __init__(self,board,model,make_dirs=True,model_subdir=""):
         self.board = board
         self.model = model
-        self.set_root_dir(DeviceStatePathHandler.DEVICE_STATE_DIR + "/%s/%s"  \
-                          % (board,model))
+        if model_subdir is None or len(model_subdir) == 0:
+            self.set_root_dir(DeviceStatePathHandler.DEVICE_STATE_DIR + "/%s/%s"  \
+                            % (board,model))
+        else:
+            self.set_root_dir(DeviceStatePathHandler.DEVICE_STATE_DIR + "/%s/%s/%s"  \
+                            % (board,model_subdir,model))
+
         for path in [
                 self.ROOT_DIR,
                 self.MODEL_DIR,

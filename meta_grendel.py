@@ -14,6 +14,7 @@ import runtime.runt_meta_characterize_bad_blocks as runt_characterize_bad_blocks
 import runtime.runt_meta_bruteforce_calibrate as runt_bruteforce_cal
 import runtime.runt_meta_best_calibrate as runt_best_cal
 import runtime.runt_meta_model_calibrate as runt_model_cal
+import runtime.runt_meta_active_calibrate as runt_active_cal
 
 parser = argparse.ArgumentParser(description='Meta-grendel routines.')
 
@@ -31,17 +32,25 @@ testboard_subp.add_argument('--minimize-error',action='store_true', \
 testboard_subp.add_argument('--model-based',action='store_true', \
                             help='run model-based calibration routine.')
 
-
-
 '''
-exec_subp = subparsers.add_parser('char_bad_blocks', help='characterize badly calibrated blocks in database')
-exec_subp.add_argument('model_number', type=str,help='model of board to test')
-exec_subp.add_argument('--dry',action='store_true',help='dry run')
-exec_subp.add_argument('--cutoff',default=5.0, type=float, help='percent error cutoff for bad blocks')
-'''
-
 best_subp = subparsers.add_parser('best_cal', help='bruteforce calibration for all individually characterized blocks')
 best_subp.add_argument('model_number', type=str,help='model of board to study')
+'''
+
+
+mdl_subp = subparsers.add_parser('active_cal', help='active learning based calibration with transferrable model')
+mdl_subp.add_argument('model_number', type=str,help='model of board to study')
+mdl_subp.add_argument('--xfer-db', type=str,help='database with physical models for transfer learning')
+mdl_subp.add_argument('--grid-size',default=7,type=int,help='size of grid to profile.')
+mdl_subp.add_argument('--candidate-samples',default=3,type=int, \
+                      help='number of candidate hidden codes per iteration.')
+mdl_subp.add_argument('--num-iters',default=3,type=int,help='number of iterations.')
+mdl_subp.add_argument('--adp',type=str,help='adp to calibrate.')
+mdl_subp.add_argument('--widen',action='store_true',help='widen the set of modes.')
+mdl_subp.add_argument('--cutoff', type=float, \
+                      help='score cutoff to terminate')
+mdl_subp.add_argument('--default-cutoff', action='store_true', \
+                      help='use stored block cutoffs. Overrides cutoff.')
 
 
 mdl_subp = subparsers.add_parser('model_cal', help='linear model calibration for all individually characterized blocks')
@@ -75,6 +84,8 @@ elif args.subparser_name == "bruteforce_cal":
     runt_bruteforce_cal.calibrate(args)
 elif args.subparser_name == "best_cal":
     runt_best_cal.calibrate(args)
+elif args.subparser_name == "active_cal":
+    runt_active_cal.calibrate(args)
 elif args.subparser_name == "model_cal":
     runt_model_cal.calibrate(args)
 else:

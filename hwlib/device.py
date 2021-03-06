@@ -216,15 +216,32 @@ class PinInfo:
 
 class Device:
   
-  def __init__(self,name,model_number):
+  def __init__(self,name,model_number, model_subdir=""):
     self.name = name
-    self.model_number = model_number
     self._blocks = {}
     self.layout = Layout(self)
     self._pins = {}
     self.time_constant = 1.0
+
+    if "/" in model_number:
+      self.model_number = model_number.split("/")[-1]
+      self.model_subdir = "/".join(model_number.split("/")[:-1]) + model_subdir
+    else:
+      self.model_number = model_number
+      self.model_subdir = ""
+
     self._physdb = None
-    self._paths = pathlib.DeviceStatePathHandler(self.name,self.model_number)
+    self._paths = pathlib.DeviceStatePathHandler(self.name, \
+                                                 self.model_number, \
+                                                 model_subdir=self.model_subdir)
+    self.model_subdir = model_subdir
+
+  @property
+  def full_model_number(self):
+    if self.model_subdir is None:
+      return self.model_number
+    else:
+      return "%s/%s" % (self.model_subdir,self.model_number)
 
   @property
   def physdb(self):
