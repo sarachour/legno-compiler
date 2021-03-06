@@ -226,13 +226,19 @@ def build_predictor(xfer_board,block,loc,config):
     return predictor
 
 
-# copied from genetic prog algo
+# fit all the predictor parameters using initial number of samples.
 def update_predictor(predictor,char_board):
+     nsamples = predictor.min_samples()
+
      for model in exp_delta_model_lib.get_all(char_board):
-        print(model)
+        if nsamples == 0:
+            break
+
         for var,val in model.variables().items():
             predictor.data.add_datapoint(model.output, var,  \
                                          dict(model.hidden_codes()), val)
+
+        nsamples -= 1
 
      predictor.fit()
 
@@ -264,6 +270,7 @@ def calibrate_block(logger, \
 
     # collect initial data for fitting the transfer model
     # and fit all of the initial guesses for the parameters on the transfer model
+    # this should give us an initial predictor
     print("==== BOOTSTRAPPING <#samps=%d> ====" % nsamps_reqd)
     '''
     bootstrap_block(logger, \
