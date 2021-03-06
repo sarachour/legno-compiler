@@ -205,6 +205,12 @@ class HiddenCodePool:
             assert(isinstance(v,MultiObjectiveResult))
             self.values.append(v)
 
+        def is_dominant(self,res):
+            for v in self.values:
+                if not res.dominant(v):
+                    return False
+            return True
+
 
     def __init__(self,variables,predictor):
         self.variables = variables
@@ -326,7 +332,9 @@ def update_model(logger,char_board,blk,loc,cfg,num_model_points=3):
     runtime_meta_util.remove_file(adp_file)
 
 
-# bootstrap block to get data
+'''
+Do some initial bootstrapping to fit the elicited models.
+'''
 def bootstrap_block(logger,board,blk,loc,cfg,grid_size=9,num_samples=5):
     CMDS = [ \
              "python3 grendel.py characterize {adp} --model-number {model} --grid-size {grid_size} --num-hidden-codes {num_samples} --adp-locs > characterize.log" \
@@ -382,14 +390,22 @@ def update_predictor(predictor,char_board):
 
      predictor.fit()
 
+'''
+Randomly probe some samples and print out the predictions.
+'''
 def add_random_unlabelled_samples(pool,count):
-    while True:
+    samps = []
+    while len(samps) < count:
         samp = pool.random_sample()
         pred = pool.predictor.predict(samp)
         print("sample %s pred=%s" % (samp,pred))
+        if pool.pred_view.is_dominant(pred):
+            print("dominant!" % (samp,pred))
+            samps.append(samp)
         input()
 
-
+    for samp in samps:
+        pool.add_unlabeled_point(samp)
 
 ####
 # Block calibration routine
