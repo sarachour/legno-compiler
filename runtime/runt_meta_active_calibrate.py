@@ -394,18 +394,19 @@ def update_predictor(predictor,char_board):
 Randomly probe some samples and print out the predictions.
 '''
 def add_random_unlabelled_samples(pool,count):
-    samps = []
-    while len(samps) < count:
+    npts = 0
+    while npts < count: 
         samp = pool.random_sample()
         pred = pool.predictor.predict(samp)
-        print("sample %s pred=%s" % (samp,pred))
+        print("sample %s" % str(samp))
+        print("   pred=%s" % str(pred))
+
         if pool.pred_view.is_dominant(pred):
             print("dominant!" % (samp,pred))
-            samps.append(samp)
+            pool.add_unlabeled_point(samp)
+            npts += 1
         input()
 
-    for samp in samps:
-        pool.add_unlabeled_point(samp)
 
 ####
 # Block calibration routine
