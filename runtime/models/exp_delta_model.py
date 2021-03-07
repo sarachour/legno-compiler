@@ -7,12 +7,12 @@ import hwlib.adp as adplib
 import runtime.runtime_util as runtime_util
 import runtime.models.database as dblib
 
-import ops.generic_op as genoplib
 import numpy as np
 
 class ExpDeltaModel:
   MODEL_ERROR = "modelError"
-  MAX_MODEL_ERROR = 9999
+  NOISE = "noise"
+  MAX_ERROR = 9999
 
   def __init__(self,blk,loc,output,cfg,calib_obj):
     assert(isinstance(blk,blocklib.Block))
@@ -25,7 +25,8 @@ class ExpDeltaModel:
     self.output = output
     self.config = cfg
     self._params = {}
-    self._model_error = ExpDeltaModel.MAX_MODEL_ERROR
+    self._model_error = ExpDeltaModel.MAX_ERROR
+    self._noise = ExpDeltaModel.MAX_ERROR
     self.calib_obj = calib_obj
 
   @property
@@ -35,6 +36,7 @@ class ExpDeltaModel:
   def variables(self):
     variables = self.params
     variables[ExpDeltaModel.MODEL_ERROR] = self.model_error
+    variables[ExpDeltaModel.NOISE] = self.noise
     return variables
 
   def get_value(self,varname):
@@ -44,12 +46,20 @@ class ExpDeltaModel:
     if varname == ExpDeltaModel.MODEL_ERROR:
       return self._model_error
 
+    if varname == ExpDeltaModel.NOISE:
+      return self._noise
+
     raise Exception("unknown variable <%s> (pars:%s)" \
                     % (varname,self._params.keys()))
 
   @property
   def spec(self):
     return self.output.deltas[self.config.mode]
+
+  @property
+  def noise(self):
+    return self._noise
+
 
   @property
   def model_error(self):
@@ -71,8 +81,13 @@ class ExpDeltaModel:
         return False
 
       if var == ExpDeltaModel.MODEL_ERROR and \
-         self._model_error == ExpDeltaModel.MAX_MODEL_ERROR:
+         self._model_error == ExpDeltaModel.MAX_ERROR:
         return False
+
+      if var == ExpDeltaModel.NOISE and \
+         self._noise == ExpDeltaModel.MAX_ERROR:
+        return False
+
 
     return True
 
@@ -91,7 +106,8 @@ class ExpDeltaModel:
 
   def clear(self):
     self._params = {}
-    self._model_error = ExpDeltaModel.MAX_MODEL_ERROR
+    self._model_error = ExpDeltaModel.MAX_ERROR
+    self._noise = ExpDeltaModel.MAX_ERROR
 
   def bind(self,par,value):
     if not (par in self.spec.params):
@@ -99,6 +115,9 @@ class ExpDeltaModel:
       return
 
     self._params[par] = value
+
+  def set_noise(self,noise):
+    self._noise = noise
 
   def set_model_error(self,error):
     self._model_error = error
@@ -232,6 +251,7 @@ class ExpDeltaModel:
         'output': self.output.name,
         'config': self.config.to_json(),
         'model_error':self._model_error,
+        'noise':self._noise,
         'params': self._params,
         'calib_obj':self.calib_obj.value
     }
@@ -249,14 +269,19 @@ class ExpDeltaModel:
     phys = ExpDeltaModel(blk,loc,output,cfg,calib_obj)
 
     phys._params = obj['params']
-    phys._model_error = obj['model_error']
+    if 'model_error' in obj:
+      phys._model_error = obj['model_error']
+
+    if 'noise' in obj:
+      phys._noise= obj['noise']
     return phys
 
 
 
   def __repr__(self):
-    return "empirical-delta-model(%s,model_err=%s) :%s" % (self.params, \
+    return "empirical-delta-model(%s,model_err=%s,noise=%s) :%s" % (self.params, \
                                            self.model_error, \
+                                           self.noise, \
                                            self.calib_obj.value)
 
 

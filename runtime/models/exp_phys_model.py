@@ -15,6 +15,7 @@ import math
 
 class ExpPhysModel:
   MODEL_ERROR = "modelError"
+  NOISE= "noise"
 
   class Param:
 
@@ -66,6 +67,7 @@ class ExpPhysModel:
     self.output = output
     self._params= {}
     self._model_error = None
+    self._noise = None
 
 
   @property
@@ -77,7 +79,16 @@ class ExpPhysModel:
     if not self.model_error is None:
         variables[ExpPhysModel.MODEL_ERROR] = self._model_error
 
+    if not self.model_error is None:
+        variables[ExpPhysModel.NOISE] = self._noise
+
+
     return variables
+
+  @property
+  def noise(self):
+      return self._noise
+
 
   @property
   def model_error(self):
@@ -86,8 +97,17 @@ class ExpPhysModel:
   def set_variable(self,name,expr,error):
     if name == ExpPhysModel.MODEL_ERROR:
       self.set_model_error(expr,error)
+    elif name == ExpPhysModel.NOISE:
+      self.set_noise(expr,error)
     else:
       self.set_param(name,expr,error)
+
+  def set_noise(self,expr,error):
+      assert(isinstance(expr,baseoplib.Op))
+      assert(isinstance(error,float))
+      self._noise = ExpPhysModel.Param(self.block, \
+                                              ExpPhysModel.NOISE, expr,error)
+
 
   def set_model_error(self,expr,error):
       assert(isinstance(expr,baseoplib.Op))
@@ -119,31 +139,24 @@ class ExpPhysModel:
         st += "%s\n" % (param)
     st += "== model error ==\n"
     st += "%s\n" % self._model_error
+    st += "== noise ==\n"
+    st += "%s\n" % self._noise
     return st
 
-
-
-  def copy_from(self,other):
-    assert(self.block.name == other.block.name)
-    assert(self.static_cfg == other.static_cfg)
-    self.config = other.cfg.copy()
-    self._params = {}
-    for par,tree in other._params.items():
-      self._params[par] = tree.copy()
-    self._model_error = other.model_error.copy()
-    self._uncertainties = dict(other._uncertainties)
 
   def to_json(self):
     param_dict = {}
     for par,model in self._params.items():
       param_dict[par] = model.to_json()
 
+    assert(not self._noise is None)
     return {
       'block': self.block.name,
       'output': self.output.name,
       'config': self.config.to_json(),
       'params': param_dict,
-      'model_error':None if self._model_error is None else self._model_error.to_json()
+      'model_error':None if self._model_error is None else self._model_error.to_json(),
+      'noise':None if self._noise is None else self._noise.to_json()
     }
   #'phys_model': self.phys_models.to_json(),
 
@@ -158,9 +171,12 @@ class ExpPhysModel:
     for par,subobj in obj['params'].items():
       mdl._params[par] = ExpPhysModel.Param.from_json(blk,subobj)
 
-    if not obj['model_error'] is None:
+    if "model_error" in obj and not obj['model_error'] is None:
         mdl._model_error = ExpPhysModel.Param.from_json(blk,obj['model_error'])
  
+    if "noise" in obj and not obj['noise'] is None:
+        mdl._noise = ExpPhysModel.Param.from_json(blk,obj['noise'])
+
     return mdl
 
 

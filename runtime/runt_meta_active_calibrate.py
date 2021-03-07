@@ -165,6 +165,8 @@ class Predictor:
 
     def set_variable(self,out,v,mdl):
         assert(not (out.name,v) in self.variables)
+        if mdl is None:
+            raise Exception("no physical model for <%s> of output <%s>" % (v,out.name))
         self.variables[(out.name,v)] = mdl
         self.data.add_variable(out,v)
 

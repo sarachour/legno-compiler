@@ -161,7 +161,7 @@ class RandomFunctionPool:
 
         if all(map(lambda n: not isinstance(n,genoplib.Add), p1.nodes())) and \
            all(map(lambda n: not isinstance(n,genoplib.Add),p2.nodes())):
-               yield genoplib.Mult(p1.copy(), p2_new.copy())
+            yield genoplib.Mult(p1.copy(), p2_new.copy())
 
     def crossover(self,population):
         for p1,p2 in itertools.product(population,population):
