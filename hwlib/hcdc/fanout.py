@@ -56,6 +56,20 @@ def fan_calib_obj(spec,idx,out):
   spec.objective = parser.parse_expr(expr)
   return spec
 
+def fan_calib_obj(spec,idx,out):
+  subobjs = ["abs(modelError)/(a*{out})", \
+             "abs(b{idx})", \
+             "abs((1.0-a{idx}))"]
+
+  obj = DeltaSpec.MultiObjective()
+  for subobj in subobjs:
+    expr = subobj.format(out=out,idx=idx)
+    obj.add(parser.parse_expr(expr)) 
+
+  spec.objective = obj
+  return spec
+
+
 for scale in ['m','h']:
   for idx,port in enumerate([p_out0,p_out1,p_out2]):
     pat = ['_','_','_',scale]

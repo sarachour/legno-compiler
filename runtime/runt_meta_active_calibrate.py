@@ -180,6 +180,7 @@ class Predictor:
                values = modelfitlib.fit_model(model.params,model.expr,{'inputs':codes,'meas_mean':values})
             except Exception as e:
                print("[WARN] failed to predict <%s> for output <%s> of block <%s>" % (var,out,self.block.name))
+               print("   %s.%s deltavar=%s expr=%s" % (self.block.name,out,var, model.expr))
                continue
  
             self.errors[(out,var)] = values['param_error']
@@ -458,10 +459,9 @@ def calibrate_block(logger, \
     # next, we're going to populate the initial pool of points.
     print("==== SETUP INITIAL POOL ====")
     code_pool= load_code_pool_from_database(char_board, predictor)
-    add_random_unlabelled_samples(code_pool,10)
-    print(code_pool)
-
-    raise Exception("TODO: active learning and pptimization")
+    #add_random_unlabelled_samples(code_pool,10)
+    #print(code_pool)
+    #raise Exception("TODO: active learning and pptimization")
 
 def calibrate(args):
     board = runtime_util.get_device(args.model_number)

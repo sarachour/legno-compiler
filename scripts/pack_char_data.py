@@ -33,8 +33,11 @@ devstate_dir = "{tmp}/device-state/".format(tmp=tmpdir)
 os.makedirs(devstate_dir)
 # copy all device state information
 base = 'device-state/hcdcv2'
-path = "{base}/{model_number}*".format(base=base,model_number=model)
-for filename in glob.glob(path,recursive=True):
+path1 = "{base}/{model_number}*".format(base=base,model_number=model)
+path2 = "{base}/*/{model_number}*".format(base=base,model_number=model)
+for path in [path1,path2]:
+   for filename in glob.glob(path,recursive=True):
+    print(filename)
     basefile = filename.split(base)[1]
     dest = "{tmp}/{basefile}".format(tmp=devstate_dir, \
                                      basefile=basefile)

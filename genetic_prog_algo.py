@@ -63,7 +63,9 @@ class RandomFunctionPool:
         for idx,fxn in enumerate(self.pool):
             if self.scores[idx] is None:
                 npars,sumsq_err = self.score_one(fxn,hidden_codes,values)
-                self.scores[idx] = np.sqrt(npars)*np.mean(sumsq_err)
+                par_penalty = 1.0 if npars <= 3 else np.sqrt(npars-2) 
+                self.scores[idx] = par_penalty*np.mean(sumsq_err)
+                  
                 print("%d] gen=%d score=%f" % (idx,self.gens[idx], \
                                                self.scores[idx]))
 
