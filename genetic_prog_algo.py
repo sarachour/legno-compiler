@@ -249,10 +249,10 @@ def execute(board,num_generations=1):
         datasets[keypath[0]][keypath[1]][model.hidden_cfg] = None
 
     for data in exp_profile_dataset_lib.get_datasets(board):
-        keypath = [(model.block.name, str(model.config.mode),model.output.name), \
-                   model.loc]
+        keypath = [(data.block.name, str(data.config.mode),data.output.name), \
+                   data.loc]
         insert(datasets,keypath)
-        datasets[keypath[0]][keypath[1]][model.hidden_cfg] = data
+        datasets[keypath[0]][keypath[1]][data.hidden_cfg] = data
 
     for key in models.keys():
         models_b = models[key]
