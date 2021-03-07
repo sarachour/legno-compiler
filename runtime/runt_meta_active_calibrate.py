@@ -137,6 +137,7 @@ class Predictor:
         self.data = Predictor.Data(list(map(lambda o: o.name, self.block.outputs)), \
                                    runtime_util.get_hidden_codes(self.block))
         self.values = {}
+        self.errors = {}
 
     def predict(self,hidden_codes):
         delta_params = {}
@@ -170,23 +171,30 @@ class Predictor:
 
 
     def fit(self):
-        for  (out,var),model in self.variables.items():
+        for (out,var),model in self.variables.items():
             codes,values = self.data.get_dataset(self.block.outputs[out],var)
             if len(values) == 0:
                 raise Exception("no data for fitting variable <%s> at output <%s>" % (var,out))
 
-            print("TODO: test this with real data")
-            #modelfitlib.fit_model(model.params,model.expr,{'inputs':codes,'meas_mean':values})
+            try:
+               values = modelfitlib.fit_model(model.params,model.expr,{'inputs':codes,'meas_mean':values})
+            except Exception as e:
+               print("[WARN] failed to predict <%s> for output <%s> of block <%s>" % (var,out,self.block.name))
+               continue
+ 
+            self.errors[(out,var)] = values['param_error']
             self.values[(out,var)] = {}
             for par in model.params:
-                self.values[(out,var)][par] = random.random()
+                self.values[(out,var)][par] = values['params'][par]
 
+            print("%s.%s deltavar=%s expr=%s pars=%s error=%s" % (self.block.name,out,var, \
+               model.expr,values['params'],values['param_error']))
 
             subst = dict(map(lambda tup: (tup[0],genoplib.Const(tup[1])), \
                              self.values[(out,var)].items()))
             conc_expr = model.expr.substitute(subst)
+            print("   %s" % conc_expr)
             self.concrete_variables[(out,var)] = conc_expr
-
 ''''
 The pool of hidden codes to sample from when performing calibration.
 The pool maintains a set of hidden codes and a symbolic predictor which guesses
