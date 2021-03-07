@@ -66,6 +66,9 @@ class MultiObjectiveResult:
     def __repr__(self):
         return str(self.values)
 
+    def __iter__(self):
+        for v in self.values:
+            yield v
 
 class Predictor:
 
@@ -176,25 +179,33 @@ class Predictor:
                 raise Exception("no data for fitting variable <%s> at output <%s>" % (var,out))
 
             try:
-               values = modelfitlib.fit_model(model.params,model.expr,{'inputs':codes,'meas_mean':values})
+               result = modelfitlib.fit_model(model.params,model.expr,{'inputs':codes,'meas_mean':values})
             except Exception as e:
                print("[WARN] failed to predict <%s> for output <%s> of block <%s>" % (var,out,self.block.name))
                print("   %s.%s deltavar=%s expr=%s" % (self.block.name,out,var, model.expr))
+               print("   codes=%s" % str(codes))
+               print("  values=%s" % str(values))
+               print("  exception=%s" % e)
                continue
  
-            self.errors[(out,var)] = values['param_error']
+            self.errors[(out,var)] = result['param_error']
             self.values[(out,var)] = {}
             for par in model.params:
-                self.values[(out,var)][par] = values['params'][par]
-
-            print("%s.%s deltavar=%s expr=%s pars=%s error=%s" % (self.block.name,out,var, \
-               model.expr,values['params'],values['param_error']))
+                self.values[(out,var)][par] = result['params'][par]
 
             subst = dict(map(lambda tup: (tup[0],genoplib.Const(tup[1])), \
                              self.values[(out,var)].items()))
             conc_expr = model.expr.substitute(subst)
             print("   %s" % conc_expr)
             self.concrete_variables[(out,var)] = conc_expr
+
+
+            print("%s.%s deltavar=%s expr=%s" % (self.block.name,out,var,conc_expr))
+            print("   codes=%s" % str(codes))
+            print("   pars=%s" % str(result['params']))
+            print("   values=%s" % str(values))
+            print("   errors=%s" % str(result['param_error']))
+            print("")
 ''''
 The pool of hidden codes to sample from when performing calibration.
 The pool maintains a set of hidden codes and a symbolic predictor which guesses
@@ -310,8 +321,9 @@ def load_code_pool_from_database(char_board,predictor):
         actual = code_pool.compute(vs)
 
         print("hist %s" % (codes))
-        print("   pred=%s" % pred)
-        print("   meas=%s" % actual)
+        for (_,expr),pred,act in zip(code_pool.predictor.objectives,pred,actual):
+            print("  obj=%s pred=%f meas=%f" % (expr,pred,act))
+
         if not code_pool.has_code(codes):
            code_pool .add_labeled_code(codes,vs)
 
@@ -440,7 +452,7 @@ def calibrate_block(logger, \
 
     # build a calibration objective predictor with per-variable models.
     predictor = build_predictor(xfer_board,block,loc,config)
-    nsamps_reqd = predictor.min_samples()
+    nsamps_reqd = predictor.min_samples()*2-1
 
     # collect initial data for fitting the transfer model
     # and fit all of the initial guesses for the parameters on the transfer model
