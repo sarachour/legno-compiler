@@ -26,6 +26,7 @@ print("---- copying device state ----")
 devstate_dir = "{tmp}/device-state/*".format(tmp=tmpdir)
 dest_dir = "device-state/hcdcv2"
 for filepath in glob.glob(devstate_dir,recursive=True):
+    print(filepath)
     filename = os.path.basename(filepath)
     dest_file = "%s/%s" % (dest_dir,filename)
     if os.path.exists(dest_file):
