@@ -49,17 +49,22 @@ class MultiObjectiveResult:
 
     def __init__(self):
         self.values = []
+        self.errors = []
 
-    def add(self,val):
+    def add(self,val,error=0.0):
+        assert(isinstance(error,float))
         self.values.append(val)
+        self.errors.append(error)
 
     # is this result pareto dominant over the other result.
     def dominant(self,other):
         dom = False
-        for v1,v2 in zip(self.values,other.values):
-            if v1 > v2:
+        assert(len(self.errors) > 0)
+        for v1,e1,v2,e2 in zip(self.values,self.errors,other.values,other.errors):
+            print(v1,e1,v2,e2)
+            if v1+e1 > v2-e2:
                 return False
-            if v1 < v2:
+            if v1-e1 < v2+e2:
                 dom = True
         return dom
 
@@ -144,17 +149,21 @@ class Predictor:
 
     def predict(self,hidden_codes):
         delta_params = {}
+        delta_errors = {}
         for (out,var),expr in self.concrete_variables.items():
             value = expr.compute(hidden_codes)
             # write predicted value to delta parameter dictionary
             if not out in delta_params:
                 delta_params[out] = {}
+                delta_errors[out] = {}
             delta_params[out][var] = value
+            delta_errors[out][var] = self.errors[(out,var)]
 
         objs = MultiObjectiveResult()
         for out,obj in self.objectives:
             val = obj.compute(delta_params[out])
-            objs.add(val)
+            err = genoplib.propagate_error(obj,delta_errors[out])
+            objs.add(val,error=err)
 
         return objs
 
@@ -177,6 +186,7 @@ class Predictor:
     def fit(self):
         for (out,var),model in self.variables.items():
             codes,values = self.data.get_dataset(self.block.outputs[out],var)
+            npts = len(values)
             if len(values) == 0:
                 raise Exception("no data for fitting variable <%s> at output <%s>" % (var,out))
 
@@ -189,8 +199,7 @@ class Predictor:
                print("  values=%s" % str(values))
                print("  exception=%s" % e)
                continue
- 
-            self.errors[(out,var)] = result['param_error']
+
             self.values[(out,var)] = {}
             for par in model.params:
                 self.values[(out,var)][par] = result['params'][par]
@@ -198,9 +207,14 @@ class Predictor:
             subst = dict(map(lambda tup: (tup[0],genoplib.Const(tup[1])), \
                              self.values[(out,var)].items()))
             conc_expr = model.expr.substitute(subst)
-            print("   %s" % conc_expr)
             self.concrete_variables[(out,var)] = conc_expr
 
+            error = 0.0
+            for idx in range(npts):
+               pred = conc_expr.compute(dict(map(lambda hc: (hc,codes[hc][idx]), self.data.hidden_codes)))
+               error += (values[idx]-pred)**2
+            self.errors[(out,var)] = math.sqrt(error/npts)
+            print("error %s" % self.errors[(out,var)])
 
             print("%s.%s deltavar=%s expr=%s" % (self.block.name,out,var,conc_expr))
             print("   codes=%s" % str(codes))
@@ -229,6 +243,9 @@ class HiddenCodePool:
         def is_dominant(self,res):
             for v in self.values:
                 if not res.dominant(v):
+                    print("not dominant!")
+                    print("res: %s" % (str(res)))
+                    print("val: %s" % (str(v)))
                     return False
             return True
 
@@ -454,7 +471,7 @@ def calibrate_block(logger, \
 
     # build a calibration objective predictor with per-variable models.
     predictor = build_predictor(xfer_board,block,loc,config)
-    nsamps_reqd = predictor.min_samples()*2-1
+    nsamps_reqd = predictor.min_samples()*2+1
 
     # collect initial data for fitting the transfer model
     # and fit all of the initial guesses for the parameters on the transfer model
@@ -472,7 +489,7 @@ def calibrate_block(logger, \
     # next, we're going to populate the initial pool of points.
     print("==== SETUP INITIAL POOL ====")
     code_pool= load_code_pool_from_database(char_board, predictor)
-    #add_random_unlabelled_samples(code_pool,10)
+    add_random_unlabelled_samples(code_pool,10)
     #print(code_pool)
     #raise Exception("TODO: active learning and pptimization")
 
