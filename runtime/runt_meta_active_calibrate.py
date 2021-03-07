@@ -163,7 +163,6 @@ class Predictor:
     def set_variable(self,out,v,mdl):
         assert(not (out.name,v) in self.variables)
         self.variables[(out.name,v)] = mdl
-        self.concrete_variables[(out.name,v)] = None
         self.data.add_variable(out,v)
 
     def min_samples(self):

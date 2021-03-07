@@ -26,6 +26,7 @@ print("---- copying device state ----")
 devstate_dir = "{tmp}/device-state/*".format(tmp=tmpdir)
 dest_dir = "device-state/hcdcv2"
 for filepath in glob.glob(devstate_dir,recursive=True):
+    print(filepath)
     filename = os.path.basename(filepath)
     dest_file = "%s/%s" % (dest_dir,filename)
     if os.path.exists(dest_file):
@@ -44,7 +45,9 @@ if os.path.exists(zipname):
 print("---- copying benchmark data ----")
 bmark_dir = "{tmp}/bmarks/".format(tmp=tmpdir)
 dest_dir = "outputs/legno/unrestricted"
-subdirs = ['lscale-adp/*{model_number}.adp', \
+subdirs = ['lgraph-adp/*.adp', \
+           'lgraph-diag/*.gv*', \
+           'lscale-adp/*{model_number}.adp', \
            'lscale-diag/*{model_number}.dot*', \
            'out-waveform/*_{model_number}_*.json', \
            'plots/wave/*_{model_number}_*.pdf']
