@@ -126,22 +126,24 @@ class HardwareInfo:
       delta = out.deltas[mode]
       cfg = adplib.BlockConfig(instance)
       cfg.modes = [mode]
-      exp_model = exp_delta_model_lib.get_calibrated_output(self.dev, block, \
-                                                            instance.loc, \
-                                                            out, \
-                                                            cfg, \
-                                                            calib_obj=self.calib_obj)
-      if exp_model is None:
+      exp_models = exp_delta_model_lib.get_models(self.dev,  \
+                                                 ['block','loc','output','static_config','calib_obj'],
+                                                 block=block, \
+                                                 loc=instance.loc, \
+                                                 output=out, \
+                                                 config=cfg, \
+                                                 calib_obj=self.calib_obj)
+      if len(exp_models) == 0:
         print("[[WARN]] no experimental model %s (%s)" \
               % (instance,mode))
         return None
 
-      if not exp_model.complete:
+      if not exp_models[0].complete:
         print(cfg)
-        print(exp_model)
+        print(exp_models[0])
         raise Exception("experimental model must be complete")
 
-      expr = delta.get_correctable_model(exp_model.params,low_level=False)
+      expr = delta.get_correctable_model(exp_models[0].params,low_level=False)
       return expr
 
   def get_ideal_relation(self,instance,mode,port):

@@ -339,7 +339,7 @@ def execute(board,num_generations=1,pop_size=1):
         models[keypath[0]][keypath[1]][model.hidden_cfg] = model
         datasets[keypath[0]][keypath[1]][model.hidden_cfg] = None
 
-    for data in exp_profile_dataset_lib.get_datasets(board):
+    for data in exp_profile_dataset_lib.get_all(board):
         keypath = [(data.block.name, str(data.config.mode),data.output.name), \
                    data.loc]
         insert(datasets,keypath)

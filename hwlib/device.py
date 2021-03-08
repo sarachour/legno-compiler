@@ -223,7 +223,7 @@ class Device:
     self._pins = {}
     self.time_constant = 1.0
 
-    if "/" in model_number:
+    if not model_number is None and "/" in model_number:
       args = model_number.split("/")
       self.model_number = args[-1]
       self.model_subdir = "/".join(args[:-1]) if len(args) > 1 else ""

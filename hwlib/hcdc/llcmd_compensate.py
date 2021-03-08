@@ -16,7 +16,9 @@ def get_experimental_model(board,blk,loc,cfg,calib_obj):
     if len(calib_codes) == 0:
         return
 
-    calib_cfgs = deltalib.get_calibrated(board,blk,loc,cfg,calib_obj)
+    calib_cfgs = deltalib.get_models(board, \
+                                     ['block','loc','static_config','calib_obj'], \
+                                     block=blk,loc=loc,config=cfg,calib_obj=calib_obj)
     if len(calib_cfgs) == 0:
         print(cfg)
         raise Exception("not calibrated model_number=%s calib=%s" % (board.model_number, \

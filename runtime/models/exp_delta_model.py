@@ -8,6 +8,7 @@ import runtime.runtime_util as runtime_util
 import runtime.models.database as dblib
 
 import numpy as np
+from enum import Enum
 
 class ExpDeltaModel:
   MODEL_ERROR = "modelError"
@@ -346,59 +347,69 @@ def load(dev,block,loc,output,cfg,calib_obj):
       raise Exception("can only have one match")
 
 
-def get_models_by_block_instance(dev,block,loc,cfg):
-  where_clause = {
-    'block': block.name,
-    'loc': str(loc),
-    'static_config': runtime_util.get_static_cfg(block,cfg)
-  }
-  matches = list(dev.physdb.select(dblib.PhysicalDatabase.DB.DELTA_MODELS, \
-                                   where_clause))
-  return list(__to_delta_models(dev,matches))
+class ExpDeltaModelClause(Enum):
+  BLOCK = "block"
+  LOC = "loc"
+  OUTPUT = "output"
+  STATIC_CONFIG = "static_config"
+  CALIB_OBJ = "calib_obj"
+  HIDDEN_CONFIG = "hidden_config"
 
+def _derive_where_clause(clauses,block,loc,output,cfg,calib_obj):
+  def test_if_null(qty,msg):
+    if qty is None:
+      raise Exception(msg)
 
-def get_models_by_block_config(dev,block,cfg):
-  where_clause = {
-    'block': block.name,
-    'static_config': runtime_util.get_static_cfg(block,cfg)
-  }
-  matches = list(dev.physdb.select(dblib.PhysicalDatabase.DB.DELTA_MODELS, \
-                                   where_clause))
+  where_clause = {}
+  for clause in clauses:
+    cls = ExpDeltaModelClause(clause)
+    if cls == ExpDeltaModelClause.BLOCK:
+      test_if_null(block, "get_models: expected block.")
+      where_clause['block'] = block.name
 
-  return list(__to_delta_models(dev,matches))
+    elif cls == ExpDeltaModelClause.LOC:
+      test_if_null(loc, "get_models: expected loc.")
+      where_clause['loc'] = str(loc)
 
+    elif cls == ExpDeltaModelClause.OUTPUT:
+      test_if_null(loc,"get_models: expected output")
+      where_clause['output'] =output.name
 
+    elif cls == ExpDeltaModelClause.STATIC_CONFIG:
+      test_if_null(cfg,"get_models: expected config")
+      where_clause['static_config'] =runtime_util.get_static_cfg(block,cfg)
 
+    elif cls == ExpDeltaModelClause.HIDDEN_CONFIG:
+      test_if_null(cfg,"get_models: expected config")
+      where_clause['hidden_config'] =runtime_util.get_hidden_cfg(block,cfg)
 
-def get_models_by_fully_configured_block_instance(dev,block,loc,cfg):
-  where_clause = {
-    'block': block.name,
-    'loc': str(loc),
-    'static_config': runtime_util.get_static_cfg(block,cfg),
-    'hidden_config': runtime_util.get_hidden_cfg(block,cfg)
-  }
-  matches = list(dev.physdb.select(dblib.PhysicalDatabase.DB.DELTA_MODELS, \
-                                   where_clause))
+    elif cls == ExpDeltaModelClause.CALIB_OBJ:
+      test_if_null(calib_obj,"get_models: expected calibration objective")
+      assert(isinstance, llenums.CalibrateObjective)
+      where_clause['calib_obj'] =calib_obj.value
+    else:
+      raise Exception("unknown??")
+
+  return where_clause
+
+def get_models(dev,clauses,block=None,loc=None,output=None,config=None,calib_obj=None):
+  where_clause = _derive_where_clause(clauses,block,loc,output,config,calib_obj)
+  matches = list(dev.physdb.select(dblib.PhysicalDatabase.DB.DELTA_MODELS, where_clause))
   models = list(__to_delta_models(dev,matches))
   return models
 
 
+def remove_models(dev,clauses,block=None,loc=None,output=None,config=None,calib_obj=None):
+  where_clause = _derive_where_clause(clauses,block,loc,output,config,calib_obj)
+  dev.physdb.delete(dblib.PhysicalDatabase.DB.DELTA_MODELS, \
+                    where_clause)
 
-def get_fully_configured_outputs(dev,block,loc,output,cfg):
-  where_clause = {
-    'block': block.name,
-    'loc': str(loc),
-    'output': output.name,
-    'static_config': runtime_util.get_static_cfg(block,cfg),
-    'hidden_config': runtime_util.get_hidden_cfg(block,cfg)
-  }
-  matches = list(dev.physdb.select(dblib.PhysicalDatabase.DB.DELTA_MODELS, \
-                                   where_clause))
-  models = list(__to_delta_models(dev,matches))
-  return models
+def get_all(dev):
+  matches = list(dev.physdb.select(dblib.PhysicalDatabase.DB.DELTA_MODELS, {}))
+  return list(__to_delta_models(dev,matches))
 
 
-
+'''
 def get_calibrated_output(dev,block,loc,output,cfg,calib_obj):
   if calib_obj is None:
     raise Exception("no calibration objective specified")
@@ -468,3 +479,56 @@ def is_calibrated(dev,block,loc,cfg,calib_obj):
                             loc, \
                             cfg, \
                             calib_obj)) > 0
+
+def get_models_by_block_instance(dev,block,loc,cfg):
+  where_clause = {
+    'block': block.name,
+    'loc': str(loc),
+    'static_config': runtime_util.get_static_cfg(block,cfg)
+  }
+  matches = list(dev.physdb.select(dblib.PhysicalDatabase.DB.DELTA_MODELS, \
+                                   where_clause))
+  return list(__to_delta_models(dev,matches))
+
+
+def get_models_by_block_config(dev,block,cfg):
+  where_clause = {
+    'block': block.name,
+    'static_config': runtime_util.get_static_cfg(block,cfg)
+  }
+  matches = list(dev.physdb.select(dblib.PhysicalDatabase.DB.DELTA_MODELS, \
+                                   where_clause))
+
+  return list(__to_delta_models(dev,matches))
+
+
+
+
+def get_models_by_fully_configured_block_instance(dev,block,loc,cfg):
+  where_clause = {
+    'block': block.name,
+    'loc': str(loc),
+    'static_config': runtime_util.get_static_cfg(block,cfg),
+    'hidden_config': runtime_util.get_hidden_cfg(block,cfg)
+  }
+  matches = list(dev.physdb.select(dblib.PhysicalDatabase.DB.DELTA_MODELS, \
+                                   where_clause))
+  models = list(__to_delta_models(dev,matches))
+  return models
+
+
+
+def get_fully_configured_outputs(dev,block,loc,output,cfg):
+  where_clause = {
+    'block': block.name,
+    'loc': str(loc),
+    'output': output.name,
+    'static_config': runtime_util.get_static_cfg(block,cfg),
+    'hidden_config': runtime_util.get_hidden_cfg(block,cfg)
+  }
+  matches = list(dev.physdb.select(dblib.PhysicalDatabase.DB.DELTA_MODELS, \
+                                   where_clause))
+  models = list(__to_delta_models(dev,matches))
+  return models
+
+'''

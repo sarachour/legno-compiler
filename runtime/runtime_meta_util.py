@@ -323,7 +323,7 @@ def legacy_calibration(board,adp_path,calib_obj,widen=False,logfile='log.txt',**
   CAL_CMD = 'cal',"python3 grendel.py cal {adp_path} --model-number {model_number} {calib_obj} {widen}"
 
   PROF_CMD = 'prof',_profile_command(board,adp_path,calib_obj,log_file=logfile,widen=widen)
-  MKDELTAS_CMD = 'deltas',_deltas_command(board,force=True,orphans=False,log_file=logfile)
+  MKDELTAS_CMD = 'deltas',_deltas_command(board,force=False,orphans=False,log_file=logfile)
 
   widen_flag = " --widen" if widen else ""
   cmds = []
@@ -342,7 +342,7 @@ def legacy_calibration(board,adp_path,calib_obj,widen=False,logfile='log.txt',**
            runtime = run_command(cmd)
         except Exception as e:
            print("[ERROR] command failed!")
-           return
+           return False
 
         if not logger is None:
             block_name = kwargs['block'].name
@@ -354,6 +354,7 @@ def legacy_calibration(board,adp_path,calib_obj,widen=False,logfile='log.txt',**
                        runtime=runtime)
 
 
+        return True
 
 
 def get_model_calibration_config(**kwargs):

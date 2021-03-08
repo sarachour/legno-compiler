@@ -14,6 +14,7 @@ import runtime.fit.model_fit as fitlib
 import numpy as np
 
 def update_delta_model(dev,delta_model,dataset):
+
     if dataset.method == llenums.ProfileOpType.INPUT_OUTPUT:
         rel = delta_model.get_subexpr(correctable_only=False)
     elif dataset.method == llenums.ProfileOpType.INTEG_INITIAL_COND:
@@ -63,11 +64,12 @@ def update_delta_model(dev,delta_model,dataset):
         return True, delta_model.error(dataset)
 
 def _get_delta_models(dev,blk,loc,output,config,orphans=True):
-    delta_models = exp_delta_model_lib.get_fully_configured_outputs(dev, \
-                                                                   blk, \
-                                                                   loc, \
-                                                                   output, \
-                                                                   config)
+    delta_models = exp_delta_model_lib.get_models(dev, \
+                                                  ['block','loc','output','static_config','hidden_config'],
+                                                  block=blk, \
+                                                  loc=loc, \
+                                                  output=output, \
+                                                  config=config)
     if len(delta_models) == 0:
         if orphans:
             delta_models = [exp_delta_model_lib.ExpDeltaModel(blk, \
@@ -86,11 +88,9 @@ def _update_delta_models_for_configured_block(dev,delta_models,blk,loc,output, \
     model_errors = []
     noises= []
     for dataset in \
-        exp_profile_dataset_lib.get_datasets_by_configured_block_instance(dev, \
-                                                                          blk, \
-                                                                          loc, \
-                                                                          output, \
-                                                                          config):
+        exp_profile_dataset_lib.get_datasets(dev, \
+                                           ['block','loc','output','static_config','hidden_config'],
+                                           block=blk, loc=loc, output=output, config=config):
         #print("# data points %s (%s): %d" % (blk.name,dataset.method,len(dataset)))
         for delta_model in delta_models:
             succ,error = update_delta_model(dev,delta_model,dataset)
@@ -109,48 +109,52 @@ def _update_delta_models_for_configured_block(dev,delta_models,blk,loc,output, \
         #print("avg-err: %f" % avg_error)
         delta_model.set_model_error(avg_error)
         delta_model.set_noise(noise)
+
         if delta_model.complete:
             print("%s %s %s" % (blk.name,loc,config.mode))
             print(delta_model)
+
+        print("-> update")
+        print(delta_model.config)
+        print(delta_model)
         exp_delta_model_lib.update(dev,delta_model)
 
     return True
 
 def update_delta_models_for_configured_block(dev,blk,loc,cfg, \
-                                             hidden=True, \
                                              force=False, \
                                              orphans=True):
     num_deltas = 0
 
+    print("===== all outputs =====")
     for output in blk.outputs:
         delta_models = _get_delta_models(dev,blk,loc,output,cfg,orphans=orphans)
         if all(map(lambda model: model.complete, delta_models)) and not force:
             continue
+
         for model in delta_models:
             model.clear()
 
-        for dataset in exp_profile_dataset_lib \
-            .get_datasets_by_configured_block_instance(dev,blk,loc,output,cfg, \
-                                                       hidden=hidden):
-            if _update_delta_models_for_configured_block(dev,delta_models,blk, \
-                                                         loc,output, \
-                                                         dataset.config, \
-                                                         force=force):
+        if _update_delta_models_for_configured_block(dev,delta_models,blk, \
+                                                     loc,output, \
+                                                     cfg, \
+                                                     force=force):
                 num_deltas += 1
 
 def derive_delta_models_adp(args):
     board = runtime_util.get_device(args.model_number)
 
     exp_delta_model_lib \
-        .remove_by_calibration_objective(board,llenums.CalibrateObjective.NONE)
+        .remove_models(board,['calib_obj'], \
+                       calib_obj=llenums.CalibrateObjective.NONE)
 
 
     for blk,loc,cfg in exp_profile_dataset_lib \
         .get_configured_block_instances(board):
+        print(cfg)
         update_delta_models_for_configured_block(board, \
                                                  blk, \
                                                  loc, \
                                                  cfg, \
-                                                 hidden=True, \
                                                  force=args.force, \
                                                  orphans=not args.no_orphans)

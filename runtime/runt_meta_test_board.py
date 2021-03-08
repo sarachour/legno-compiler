@@ -27,6 +27,13 @@ def finalize_test(board, \
   if model_based:
     runt_meta_util.model_based_calibration_finalize(board,TESTBOARD_LOG)
 
+def is_calibrated(board,block,loc,config,calib_obj):
+  models = exp_delta_model_lib.get_models(board, \
+                                    ['block', 'loc','static_config','calib_obj'], \
+                                          block=block,loc=loc,config=config,calib_obj=calib_obj)
+  if len(models) > 0:
+    return True
+  return False
 
 def test_block(board,block,loc,modes, \
                minimize_error=False, \
@@ -46,37 +53,45 @@ def test_block(board,block,loc,modes, \
     print("======== TESTING BLOCK =====");
     print("%s.%s mode=%s" \
           % (block.name,loc,mode))
-    print("############################")
+    print("###########################")
+ 
+
     upd_adp = runtime_util.make_block_test_adp(board,new_adp,block,blkcfg)
     adp_filename = runtime_meta_util.get_adp(board,block,loc,blkcfg)
 
     with open(adp_filename,'w') as fh:
       fh.write(json.dumps(upd_adp.to_json()))
 
+    succ = True
     if minimize_error:
       objfun = llenums.CalibrateObjective.MINIMIZE_ERROR
-      runtime_meta_util.legacy_calibration(board, \
-                                           adp_filename, \
-                                           objfun,logfile=TESTBOARD_LOG, \
-                                           block=block,mode=mode,loc=loc)
+      if not is_calibrated(board,block,loc,blkcfg,objfun):
+        succ &= runtime_meta_util.legacy_calibration(board, \
+                                                    adp_filename, \
+                                                    objfun,logfile=TESTBOARD_LOG, \
+                                                    block=block,mode=mode,loc=loc)
 
 
-    if maximize_fit:
+    if maximize_fit and succ:
       objfun = llenums.CalibrateObjective.MAXIMIZE_FIT
-      runtime_meta_util.legacy_calibration(board, \
-                                           adp_filename, \
-                                           objfun,logfile=TESTBOARD_LOG, \
-                                           block=block, mode=mode, loc=loc)
+      if not is_calibrated(board,block,loc,blkcfg,objfun):
+        succ &= runtime_meta_util.legacy_calibration(board, \
+                                                    adp_filename, \
+                                                    objfun,logfile=TESTBOARD_LOG, \
+                                                    block=block, mode=mode, loc=loc)
 
-    if model_based:
-      runtime_meta_util.model_based_calibration(board, \
+    if model_based and succ:
+      raise Exception("re-implementing model based testing")
+      succ &= runtime_meta_util.model_based_calibration(board, \
                                                 adp_filename, \
                                                 logfile=TESTBOARD_LOG, \
                                                 block=block, mode=mode, loc=loc)
 
     print(">> removing file: %s" % adp_filename)
     runtime_meta_util.remove_file(adp_filename)
-
+    if not succ:
+      print(blkcfg)
+      raise Exception("[ERROR] failed to calibrate block %s.%s" % (block.name,loc))
 
 def test_board(args):
   board = runtime_util.get_device(args.model_number,layout=True)

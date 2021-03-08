@@ -311,12 +311,17 @@ class ADPEmulBlock:
                       % (self.port.name,self.block.name))
 
     out = self.block.outputs[self.port.name]
-    model = deltalib.get_calibrated_output(self.board, \
-                                           block=self.block, \
-                                           loc=self.loc, \
-                                           output=out, \
-                                           cfg=self.cfg, \
-                                           calib_obj=self.calib_obj)
+    models = deltalib.get_models(self.board, \
+                                ['block','loc','output','static_config','calib_obj'],
+                                block=self.block, \
+                                loc=self.loc, \
+                                output=out, \
+                                config=self.cfg, \
+                                calib_obj=self.calib_obj)
+    if len(models) == 0:
+      model = None
+    else:
+      model = models[0]
 
     self.error_model = None
 
@@ -463,13 +468,19 @@ class ADPStatefulEmulBlock(ADPEmulBlock):
   def _build_model(self,adp):
     #expr = blk.outputs[port.name].relation[cfg.mode]
     out = self.block.outputs[self.port.name]
-    model = deltalib.get_calibrated_output(self.board, \
-                                           block=self.block, \
-                                           loc=self.loc, \
-                                           output=out, \
-                                           cfg=self.cfg, \
-                                           calib_obj=self.calib_obj)
+    models = deltalib.get_models(self.board, \
+                                 ['block','loc','output','static_config','calib_obj'], \
+                                 block=self.block, \
+                                 loc=self.loc, \
+                                 output=out, \
+                                 config=self.cfg, \
+                                 calib_obj=self.calib_obj)
 
+    if len(models) == 0:
+      print(self.cfg)
+      raise Exception("no delta models for block")
+
+    model = models[0]
     llcmdcomp.compute_expression_fields(self.board, \
                                         adp, \
                                         self.cfg, \

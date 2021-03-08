@@ -10,6 +10,12 @@ import hwlib.hcdc.llenums as llenums
 import hwlib.hcdc.llcmd as llcmd
 import time
 
+def is_calibrated(board,blk,loc,cfg,calib_obj):
+    models = delta_model_lib.get_models(board,  \
+                                        ['block','loc','static_config','calib_obj'], \
+                                        block=blk,loc=loc,config=cfg, calib_obj=calib_obj)
+    return len(models) > 0
+
 def calibrate_adp(args):
     board = runtime_util.get_device(args.model_number)
     adp = runtime_util.get_adp(board,args.adp,widen=args.widen)
@@ -29,7 +35,7 @@ def calibrate_adp(args):
                 continue
 
 
-            if delta_model_lib.is_calibrated(board, \
+            if is_calibrated(board, \
                                              blk, \
                                              cfg.inst.loc, \
                                              cfg, \

@@ -8,6 +8,7 @@ import runtime.runtime_util as runtime_util
 import runtime.models.database as dblib
 import ops.generic_op as genoplib
 import ops.op as oplib
+from enum import Enum
 
 import util.util as util
 
@@ -191,6 +192,59 @@ def __to_datasets(dev,matches):
     except Exception as e:
       pass
 
+
+class ExpProfileDatasetClause(Enum):
+  BLOCK = "block"
+  LOC = "loc"
+  OUTPUT = "output"
+  METHOD = "method"
+  CALIB_OBJ = "calib_obj"
+  STATIC_CONFIG = "static_config"
+  HIDDEN_CONFIG = "hidden_config"
+
+def _derive_where_clause(clauses,block,loc,output,cfg,method,calib_obj):
+  def test_if_null(qty,msg):
+    if qty is None:
+      raise Exception(msg)
+
+  where_clause = {}
+  for clause in clauses:
+    cls = ExpProfileDatasetClause(clause)
+    if cls == ExpProfileDatasetClause.BLOCK:
+      test_if_null(block, "get_models: expected block.")
+      where_clause['block'] = block.name
+
+    elif cls == ExpProfileDatasetClause.LOC:
+      test_if_null(loc, "get_models: expected loc.")
+      where_clause['loc'] = str(loc)
+
+    elif cls == ExpProfileDatasetClause.OUTPUT:
+      test_if_null(loc,"get_models: expected output")
+      where_clause['output'] =output.name
+
+    elif cls == ExpProfileDatasetClause.METHOD:
+      test_if_null(loc,"get_models: expected method")
+      where_clause['method'] =output.name
+
+    elif cls == ExpProfileDatasetClause.STATIC_CONFIG:
+      test_if_null(cfg,"get_models: expected config")
+      where_clause['static_config'] =runtime_util.get_static_cfg(block,cfg)
+
+    elif cls == ExpProfileDatasetClause.HIDDEN_CONFIG:
+      test_if_null(cfg,"get_models: expected config")
+      where_clause['hidden_config'] =runtime_util.get_hidden_cfg(block,cfg)
+
+    elif cls == ExpProfileDatasetClause.CALIB_OBJ:
+      test_if_null(calib_obj,"get_models: expected calibration objective")
+      where_clause['calib_obj'] =calib_obj.value
+
+    else:
+      raise Exception("unknown??")
+
+  return where_clause
+
+
+
 def update(dev,dataset):
     assert(isinstance(dataset,ExpProfileDataset))
     #fields['phys_dataset'] = phys_util.encode_dict(fields['phys_dataset'])
@@ -233,7 +287,7 @@ def load(dev,block,loc,output,cfg,method):
 
 def get_configured_block_instances(dev):
   instances = {}
-  for ds in get_datasets(dev):
+  for ds in get_all(dev):
     key = "%s-%s-%s-%s" % (ds.block.name,ds.loc, \
                            ds.static_cfg, \
                            ds.hidden_cfg)
@@ -243,10 +297,31 @@ def get_configured_block_instances(dev):
   for blk,loc,cfg in instances.values():
     yield blk,loc,cfg
 
-def get_datasets(dev):
+def get_all(dev):
      matches = list(dev.physdb.select(dblib.PhysicalDatabase.DB.PROFILE_DATASET, {}))
      return list(__to_datasets(dev,matches))
 
+def remove_all(dev):
+  where_clause = {}
+  dev.physdb.delete(dblib.PhysicalDatabase.DB.PROFILE_DATASET, \
+                    where_clause)
+
+
+def get_datasets(dev,clauses,block=None,loc=None,output=None,config=None,method=None,calib_obj=None):
+  where_clause = _derive_where_clause(clauses,block,loc,output,config,method,calib_obj)
+  matches = list(dev.physdb.select(dblib.PhysicalDatabase.DB.PROFILE_DATASET, where_clause))
+  datasets = list(__to_datasets(dev,matches))
+  return datasets
+
+
+def remove_datasets(dev,clauses,block=None,loc=None,output=None,config=None,method=None,calib_obj=None):
+  where_clause = _derive_where_clause(clauses,block,loc,output,config,calib_obj)
+  dev.physdb.delete(dblib.PhysicalDatabase.DB.PROFILE_DATASET, \
+                    where_clause)
+
+
+
+'''
 def get_datasets_by_configured_block(dev,block,cfg, \
                                      hidden=True):
     where_clause = {
@@ -284,3 +359,5 @@ def remove_all(dev):
   dev.physdb.delete(dblib.PhysicalDatabase.DB.PROFILE_DATASET, \
                     where_clause)
 
+
+'''

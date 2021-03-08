@@ -75,14 +75,17 @@ def characterize_adp(args):
             cfg.modes = [mode]
 
 
-            datasets = list(exp_profile_dataset_lib.get_datasets_by_configured_block(board, \
-                                                                                         blk, \
-                                                                                         cfg, \
-                                                                                         hidden=False))
+            datasets = list(exp_profile_dataset_lib.get_datasets(board, \
+                                                                                     ['block','static_config'],
+                                                                                     block=blk, \
+                                                                                     config=cfg))
+
             unique_hidden_codes = set(map(lambda model: str(model.loc)+"." \
                                           +model.hidden_cfg, datasets))
             total_codes = args.num_hidden_codes*args.num_locs
             if len(unique_hidden_codes) >= total_codes:
+                print("block %s.%s has enough hidden codes %d/%d" % (blk.name,cfg.inst.loc, \
+                                                                     len(unique_hidden_codes),total_codes))
                 continue
 
             if len(datasets) > 0:

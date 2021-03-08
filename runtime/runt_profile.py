@@ -14,11 +14,12 @@ import hwlib.hcdc.llcmd as llcmd
 def profile_kernel(runtime,board,blk,cfg,calib_obj, \
                    min_points,max_points, \
                    grid_size,force=False,adp=None):
-    for exp_delta_model in delta_model_lib.get_calibrated(board, \
-                                                          blk, \
-                                                          cfg.inst.loc, \
-                                                          cfg, \
-                                                          calib_obj):
+    for exp_delta_model in delta_model_lib.get_models(board, \
+                                                          ['block','loc','static_config','calib_obj'],
+                                                          block=blk, \
+                                                          loc=cfg.inst.loc, \
+                                                          config=cfg, \
+                                                          calib_obj=calib_obj):
 
         for method,n,m,reps in runtime_util.get_profiling_steps(exp_delta_model.output, \
                                                                 exp_delta_model.config, \
