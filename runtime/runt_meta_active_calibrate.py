@@ -219,32 +219,37 @@ class HiddenCodePool:
 
     class ParetoPoolView:
 
-        def __init__(self,name):
+        def __init__(self,objectives,name):
+            assert(isinstance(objectives, Predictor.ComplexObjective))
             self.name = name
+            self.multi_objective = objectives
             self.values = []
 
         def add(self,v):
             self.values.append(v)
 
+        def order_by_dominance(self):
+            nsamps = len(self.values)
+            dom = [0]*nsamps
+
+            for i,vi  in enumerate(self.values):
+                for j in range(0,i):
+                    relationship = self.multi_objective.dominant(vi, self.values[j])
+                    if relationship == blocklib.MultiObjective.Relationship.DOM:
+                        dom[i] += 1
+                    elif relationship == blocklib.MultiObjective.Relationship.SUB:
+                        dom[j] += 1
+
+            # go from most to least dominant
+            indices = np.argsort(dom)
+            for idx in range(nsamps-1,0,-1):
+                i = indices[idx]
+                yield i,self.values[i],dom[i]
+
         def get_best(self):
-            v = self.values[0]
-            best_idx = 0
-            for idx,value in enumerate(self.values):
-                if value.dominant(v):
-                    v = value
-                    best_idx = idx
-            return best_idx,v
-
-
-        def is_dominant(self,res):
-            for v in self.values:
-                if not res.dominant(v):
-                    print("not dominant!")
-                    print("res: %s" % (str(res)))
-                    print("val: %s" % (str(v)))
-                    return False
-            return True
-
+            for i,v,_ in self.order_by_dominance():
+                return i,v
+ 
 
     def __init__(self,variables,predictor):
         self.variables = variables
@@ -253,8 +258,8 @@ class HiddenCodePool:
         self.pool = []
         self.pool_keys = []
 
-        self.meas_view = HiddenCodePool.ParetoPoolView('meas')
-        self.pred_view = HiddenCodePool.ParetoPoolView('pred')
+        self.meas_view = HiddenCodePool.ParetoPoolView(self.predictor.objectives,'meas')
+        self.pred_view = HiddenCodePool.ParetoPoolView(self.predictor.objectives,'pred')
 
     def set_range(self,var,values):
         self.ranges[var] = values
@@ -599,9 +604,12 @@ def _sampler_iterate_over_samples(offset,vdict,score,variables,values,scores):
 def sampler_iterate_over_samples(objectives,variables,values,scores,num_samps=1):
     assert(isinstance(objectives, Predictor.ComplexObjective))
     indices = list(range(len(values)))
+
+
     samples = []
-    sample_scores = []
+    sample_scores = HiddenCodePool.ParetoPoolView(objectives, 'samps')
     keys = []
+
     for perm in itertools.permutations(indices):
         ord_variables = list(map(lambda idx: variables[idx],perm))
         ord_values = list(map(lambda idx: values[idx], perm))
@@ -622,27 +630,13 @@ def sampler_iterate_over_samples(objectives,variables,values,scores,num_samps=1)
                 orig_score[perm[idx]] = score[idx]
 
             samples.append(samp)
-            sample_scores.append(orig_score)
+            sample_scores.add(orig_score)
             keys.append(key)
             n_samps += 1
 
-    # group into pareto sets
-    # direction goes from i to j
-    nsamps = len(samples)
-    dom = [0]*nsamps
-
-    print("====== Build Frontier Graph =====")
-    for i,(samp,score) in enumerate(zip(samples,sample_scores)):
-        for j,(samp2,score2) in enumerate(zip(samples,sample_scores)):
-            if i != j:
-                if objectives.dominant(score, score2) == blocklib.MultiObjective.Relationship.DOM:
-                    dom[i] -= 1
-
-    print("====== Extract Dominant Nodes =====")
-    indices = np.argsort(dom)
-    for i in indices:
-        print("samp %d dominant: %s scores=%s #dom=%d" % (i, samples[i],sample_scores[i],dom[i]))
-        yield samples[i],sample_scores[i]
+    for i, score,dom in sample_scores.order_by_dominance():
+        print("samp %d dominant: %s scores=%s #dom=%d" % (i, samples[i],score,dom))
+        yield samples[i],score
 
 
 
@@ -714,9 +708,9 @@ def calibrate_block(logger, \
                     board,xfer_board, \
                     block,loc,config, \
                     grid_size=9, \
-                    random_samples=3, \
                     num_iters=3, \
-                    cutoff=None):
+                    samples_per_round=5, \
+                    rounds=1):
     logger.set_configured_block(block,loc,config.mode)
 
     # get board with initial code pool
@@ -749,13 +743,14 @@ def calibrate_block(logger, \
     print("==== SETUP INITIAL POOL ====")
     code_pool= load_code_pool_from_database(char_board, predictor)
 
-    #TODO: maybe put this in a loop?
-    print("==== ADD UNLABELLED ====")
-    add_random_unlabelled_samples(code_pool,10)
+    for rnd in range(rounds):
+        #TODO: maybe put this in a loop?
+        print("==== ADD UNLABELLED ====")
+        add_random_unlabelled_samples(code_pool,samples_per_round)
 
-    print("==== QUERY UNLABELLED ====")
-    for hcs in code_pool.get_unlabeled():
-       query_hidden_codes(logger,code_pool,char_board,block,loc,config,hcs)
+        print("==== QUERY UNLABELLED ====")
+        for hcs in code_pool.get_unlabeled():
+            query_hidden_codes(logger,code_pool,char_board,block,loc,config,hcs)
 
     write_model_to_database(logger,code_pool, board,char_board)
 
@@ -787,8 +782,8 @@ def calibrate(args):
                                 xfer_board, \
                                 blk,cfg.inst.loc,cfg, \
                                 grid_size=args.grid_size, \
-                                num_iters=args.num_iters, \
-                                cutoff=cutoff)
+                                rounds=1, \
+                                samples_per_round=3)
 
     else:
         raise Exception("unimplemented")
