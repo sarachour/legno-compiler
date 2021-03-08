@@ -262,6 +262,14 @@ class HiddenCodePool:
     def get_values(self,v):
         return self.ranges[v]
 
+    def default_sample(self):
+        codes = {}
+        for c in self.variables:
+            mid = math.floor(len(self.ranges[c])/2)
+            codes[c] = self.ranges[c][mid]
+
+        return codes
+
     def random_sample(self):
         codes = {}
         for c in self.variables:
@@ -628,15 +636,14 @@ def sampler_iterate_over_samples(objectives,variables,values,scores,num_samps=1)
         for j,(samp2,score2) in enumerate(zip(samples,sample_scores)):
             if i != j:
                 if objectives.dominant(score, score2) == blocklib.MultiObjective.Relationship.DOM:
-                    dom[i] += 1
+                    dom[i] -= 1
 
     print("====== Extract Dominant Nodes =====")
     indices = np.argsort(dom)
     for i in indices:
         print("samp %d dominant: %s scores=%s #dom=%d" % (i, samples[i],sample_scores[i],dom[i]))
+        yield samples[i],sample_scores[i]
 
-    input()
-    return
 
 
 def get_sample(pool):
@@ -681,18 +688,16 @@ def get_sample(pool):
     print("===== Produce Samples ===")
     for codes,score in sampler_iterate_over_samples(pool.predictor.objectives, \
                                                     variables,solutions,solution_scores):
-        print(codes,score)
-        yield codes
+        yield codes,score
 
-    print("-> done")
 
 def add_random_unlabelled_samples(pool,count):
     npts = 0
-    for constraint in get_sample(pool):
+    for constraint,score in get_sample(pool):
         if npts > count:
             return
 
-        samp = pool.random_sample()
+        samp = pool.default_sample()
         for var,val in constraint.items():
             samp[var] = val
 
