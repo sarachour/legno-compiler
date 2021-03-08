@@ -81,8 +81,7 @@ class RandomFunctionPool:
                     continue
 
                 par_penalty = npars*self.penalty*median_ampl
-                #self.errors[idx] = np.mean(sumsq_err)
-                self.errors[idx] = max(sumsq_err)
+                self.errors[idx] = np.mean(sumsq_err)
                 self.npars[idx] = npars
                 self.scores[idx] = self.errors[idx] + par_penalty
 
@@ -218,7 +217,7 @@ def get_repr_model(models):
         for cfg,mdl in mdls.items():
             return mdl
 
-def find_functions(models,datasets,num_generations=5,pop_size=5,penalty=0.01,max_params=4,debug=False):
+def find_functions(models,datasets,num_generations=5,pop_size=5,penalty=0.01,max_params=5,debug=False):
     repr_model = get_repr_model(models)
     if repr_model is None:
        raise Exception("no representative model found. (# models=%d)" % len(models))

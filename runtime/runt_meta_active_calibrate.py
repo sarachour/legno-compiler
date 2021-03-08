@@ -45,35 +45,6 @@ class ModelCalibrateLogger(runtime_meta_util.Logger):
         self.iteration = idx
 
 
-class MultiObjectiveResult:
-
-    def __init__(self):
-        self.values = []
-        self.errors = []
-
-    def add(self,val,error=0.0):
-        assert(isinstance(error,float))
-        self.values.append(val)
-        self.errors.append(error)
-
-    # is this result pareto dominant over the other result.
-    def dominant(self,other):
-        dom = False
-        assert(len(self.errors) > 0)
-        for v1,e1,v2,e2 in zip(self.values,self.errors,other.values,other.errors):
-            if v1+e1 > v2-e2:
-                return False
-            if v1-e1 < v2+e2:
-                dom = True
-        return dom
-
-    def __repr__(self):
-        return str(self.values)
-
-    def __iter__(self):
-        for v in self.values:
-            yield v
-
 class Predictor:
 
     '''
@@ -87,8 +58,28 @@ class Predictor:
             self._outputs = []
 
         def add(self,out,obj):
+            assert(isinstance(obj, blocklib.MultiObjective))
             self._outputs.append(out)
             self._objectives[out] = obj
+
+        def dominant(self,v1,v2):
+            idx = 0
+            results = []
+            for out in self._outputs:
+                n = len(self._objectives[out].objectives)
+                vs1 = v1[idx:idx+n]
+                vs2 = v2[idx:idx+n]
+                results.append(self._objectives[out].dominant(vs1,vs2))
+                idx += n
+
+            if any(map(lambda res: blocklib.MultiObjective.Relationship.SUB == res, results)):
+                return blocklib.MultiObjective.Relationship.SUB
+
+            if any(map(lambda res: blocklib.MultiObjective.Relationship.DOM == res, results)):
+                return blocklib.MultiObjective.Relationship.DOM
+
+            return blocklib.MultiObjective.Relationship.EQUAL
+
 
         def __iter__(self):
             for out in self._outputs:
@@ -158,17 +149,16 @@ class Predictor:
             delta_params[out][var] = value
             delta_errors[out][var] = self.errors[(out,var)]
 
-        objs = MultiObjectiveResult()
+        objs = []
         for out,obj in self.objectives:
             val = obj.compute(delta_params[out])
-            err = genoplib.propagate_error(obj,delta_errors[out])
-            objs.add(val,error=err)
+            objs.append(val)
 
         return objs
 
 
     def add_objective(self,out,expr):
-        assert(isinstance(expr,blocklib.DeltaSpec.MultiObjective))
+        assert(isinstance(expr,blocklib.MultiObjective))
         self.objectives.add(out.name,expr) 
 
     def set_variable(self,out,v,mdl):
@@ -234,7 +224,6 @@ class HiddenCodePool:
             self.values = []
 
         def add(self,v):
-            assert(isinstance(v,MultiObjectiveResult) or v is None)
             self.values.append(v)
 
         def get_best(self):
@@ -281,12 +270,12 @@ class HiddenCodePool:
         return codes
 
     def compute(self,delta_params):
-        obj = MultiObjectiveResult()
+        obj = []
 
         for out,subobj in self.predictor.objectives:
             pars = delta_params[out]
             val = subobj.compute(pars)
-            obj.add(val)
+            obj.append(val)
 
         return obj
 
@@ -510,7 +499,11 @@ def query_hidden_codes(logger,pool,board,blk,loc,cfg,hidden_codes,grid_size=9):
     profile_block(logger,board,blk,loc,new_cfg,grid_size)
     update_model(logger,board,blk,loc,new_cfg)
 
-    mdls = exp_delta_model_lib.get_models_by_fully_configured_block_instance(board,blk,loc,new_cfg)
+    mdls = exp_delta_model_lib.get_models(board, \
+                                          ['block','loc','static_config','hidden_config'], \
+                                          block=blk,
+                                          loc=loc,
+                                          config=new_cfg)
     assert(len(mdls) > 0)
     vs = {}
     for mdl in mdls:
@@ -564,23 +557,95 @@ def update_predictor(predictor,char_board,nsamples):
 '''
 Randomly probe some samples and print out the predictions.
 '''
-def get_sample(pool,slack=0.02):
-    def compatible(prim,second):
+def sampler_compatible(prim,second):
         for v,val in second.items():
+            assert(isinstance(val,int))
             if v in prim and prim[v] != val:
+                assert(isinstance(prim[v],int))
                 return False
         return True
 
-    # figure out what the lower bound on the pool is for each subobjective
-    min_vals = pool.pred_view.values[0]
-    for vals in pool.pred_view.values:
-        min_vals = list(map(lambda tup: min(*tup), zip(min_vals,vals)))
+def _sampler_iterate_over_samples(offset,vdict,score,variables,values,scores):
+    if len(variables) == 0:
+        yield vdict,score
+        return
 
+    vdict2 = dict(zip(variables[0], values[0][offset]))
+
+    # move to next
+    if sampler_compatible(vdict,vdict2):
+        vdict_new = dict(list(vdict.items()) + list(vdict2.items()))
+        scores_new = list(score)
+        scores_new.append(scores[0][offset])
+
+        for samp in _sampler_iterate_over_samples(0,vdict_new,scores_new, \
+                                          variables[1:], \
+                                          values[1:], \
+                                          scores[1:]):
+            yield samp
+
+    if offset+1 < len(values[0]):
+        for samp in _sampler_iterate_over_samples(offset+1,vdict,score,variables,values,scores):
+            yield samp
+
+def sampler_iterate_over_samples(objectives,variables,values,scores,num_samps=1):
+    assert(isinstance(objectives, Predictor.ComplexObjective))
+    indices = list(range(len(values)))
+    samples = []
+    sample_scores = []
+    keys = []
+    for perm in itertools.permutations(indices):
+        ord_variables = list(map(lambda idx: variables[idx],perm))
+        ord_values = list(map(lambda idx: values[idx], perm))
+        ord_scores = list(map(lambda idx: scores[idx], perm))
+
+        n_samps = 0
+        for samp,score in _sampler_iterate_over_samples(0,{},[], \
+                                                        ord_variables,ord_values,ord_scores):
+            if n_samps >= num_samps:
+                break
+
+            key = runtime_util.dict_to_identifier(samp)
+            if key in keys:
+                break
+
+            orig_score = [0]*len(indices)
+            for idx in indices:
+                orig_score[perm[idx]] = score[idx]
+
+            samples.append(samp)
+            sample_scores.append(orig_score)
+            keys.append(key)
+            n_samps += 1
+
+    # group into pareto sets
+    # direction goes from i to j
+    nsamps = len(samples)
+    dom = [0]*nsamps
+
+    print("====== Build Frontier Graph =====")
+    for i,(samp,score) in enumerate(zip(samples,sample_scores)):
+        for j,(samp2,score2) in enumerate(zip(samples,sample_scores)):
+            if i != j:
+                if objectives.dominant(score, score2) == blocklib.MultiObjective.Relationship.DOM:
+                    dom[i] += 1
+
+    print("====== Extract Dominant Nodes =====")
+    indices = np.argsort(dom)
+    for i in indices:
+        print("samp %d dominant: %s scores=%s #dom=%d" % (i, samples[i],sample_scores[i],dom[i]))
+
+    input()
+    return
+
+
+def get_sample(pool):
     # compute constraints over hidden codes
     solutions = []
     solution_scores = []
     variables = []
-    for idx,((out,obj), min_val) in enumerate(zip(pool.predictor.objectives,min_vals)):
+    nobjs = len(list(pool.predictor.objectives))
+    for idx,(out,obj) in enumerate(pool.predictor.objectives):
 
         # first derive a concrete expression for the subobjective
         # mapping hidden codes to objective function values
@@ -599,47 +664,25 @@ def get_sample(pool,slack=0.02):
         scores = []
         for vs in options:
             vdict = dict(zip(free_vars,vs))
-            scores.append(conc_obj.compute(vdict) - min_val)
+            obj_val = conc_obj.compute(vdict)
+            scores.append(obj_val)
 
-        #wrhite these data points to the collection of solutions
+        #write these data points to the collection of solutions
         indices = np.argsort(scores)
         variables.append(free_vars)
-        valid_options = []
-        valid_scores = []
-        for idx in indices:
-            if scores[idx] < slack:
-                valid_options.append(options[idx])
-                valid_scores.append(scores[idx])
+        solutions.append(list(map(lambda idx: list(options[idx]), indices)))
+        solution_scores.append(list(map(lambda idx: scores[idx], indices)))
 
-        solutions.append(valid_options)
-        solution_scores.append(valid_scores)
+    print("===== Sample Counts ===")
+    for idx,sln in enumerate(solutions):
+        print("%d] %d variables=%s" % (idx,len(sln),str(variables[idx])))
 
-    keys = []
-    for order in itertools.permutations(list(range(len(solutions)))):
-        vdict = {}
-        failed=False
-        for idx in order:
-            found = False
-            pos = 0
-            while not failed and not found and pos < len(solutions[idx]):
-                subdict = dict(zip(variables[idx],solutions[idx][pos]))
-                if compatible(vdict,subdict):
-                    for v,val in subdict.items():
-                        vdict[v] = val
-                    found=True
 
-                pos += 1
-
-            if not found:
-                failed = True
-
-        key = runtime_util.dict_to_identifier(vdict)
-        if not failed and not key in keys:
-            print("=> success!")
-            keys.append(key)
-            print(vdict)
-            yield vdict
-
+    print("===== Produce Samples ===")
+    for codes,score in sampler_iterate_over_samples(pool.predictor.objectives, \
+                                                    variables,solutions,solution_scores):
+        print(codes,score)
+        yield codes
 
     print("-> done")
 

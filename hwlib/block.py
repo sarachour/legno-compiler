@@ -745,15 +745,65 @@ class PhysicalModelSpec:
         return "{hidden-state:%s, params:%s, expr:%s}" % (self.hidden_state, \
                                                           self.params, \
                                                           self.relation)
-class DeltaSpec:
 
-    class MultiObjective:
+class MultiObjective:
+
+        class Relationship:
+            DOM = "dom"
+            EQUAL = "equal"
+            SUB = "sub"
 
         def __init__(self):
             self.objectives = []
+            self.by_priority = {}
+            self.epsilons = []
+            self.priorities = []
 
-        def add(self,obj):
+        def add(self,obj,priority=1,epsilon=1e-6):
+            idx = len(self.objectives)
             self.objectives.append(obj)
+            self.epsilons.append(epsilon)
+
+            if not priority in self.priorities:
+                self.priorities.append(priority)
+                self.by_priority[priority] = []
+
+            self.priorities .sort()
+            self.by_priority[priority].append(idx)
+
+        def dominant(self,vs1,vs2):
+            results = []
+            for prio in self.priorities:
+                better = False
+                worse = False
+                num_better = 0
+                num_worse = 0
+                num_equal = 0
+                for idx in self.by_priority[prio]:
+                    eps = self.epsilons[idx]
+                    if vs1[idx]-eps > vs2[idx]+eps:
+                        num_better +=1 
+                    if vs1[idx]+eps < vs2[idx]-eps:
+                        num_worse += 1
+                    if abs(vs1[idx] - vs2[idx]) <= eps:
+                        num_equal += 1
+
+                if num_better > 0 and num_worse == 0:
+                    results.append(MultiObjective.Relationship.DOM)
+                elif num_worse > 0:
+                    results.append(MultiObjective.Relationship.SUB)
+                else:
+                    results.append(MultiObjective.Relationship.EQUAL)
+
+            if any(map(lambda r: r == MultiObjective.Relationship.SUB, results)):
+                return MultiObjective.Relationship.SUB
+            elif any(map(lambda r: r == MultiObjective.Relationship.DOM, results)):
+                return MultiObjective.Relationship.DOM
+            
+            return MultiObjective.Relationship.EQUAL
+
+
+class DeltaSpec:
 
     class Parameter:
 
@@ -771,7 +821,6 @@ class DeltaSpec:
                                       label=self.label)
             return par
 
-        
         def copy(self):
             return DeltaSpec.Parameter(self.name, \
                                        self.typ, \
