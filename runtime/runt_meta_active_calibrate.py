@@ -237,6 +237,16 @@ class HiddenCodePool:
             assert(isinstance(v,MultiObjectiveResult) or v is None)
             self.values.append(v)
 
+        def get_best(self):
+            v = self.values[0]
+            best_idx = 0
+            for idx,value in enumerate(self.values):
+                if value.dominant(v):
+                    v = value
+                    best_idx = idx
+            return best_idx,v
+
+
         def is_dominant(self,res):
             for v in self.values:
                 if not res.dominant(v):
@@ -426,9 +436,9 @@ def bootstrap_block(logger,board,blk,loc,cfg,grid_size=9,num_samples=5):
     runtime_meta_util.remove_file(adp_file)
 
 
-def profile_block(logger,board,blk,loc,cfg,grid_size=9):
+def profile_block(logger,board,blk,loc,cfg,grid_size=9,calib_obj=llenums.CalibrateObjective.NONE):
     CMDS = [ \
-             "python3 grendel.py prof {adp} --model-number {model} --grid-size {grid_size} none > profile.log" \
+             "python3 grendel.py prof {adp} --model-number {model} --grid-size {grid_size} {calib_obj} > profile.log" \
             ]
 
     adp_file = runtime_meta_util.generate_adp(board,blk,loc,cfg)
@@ -437,16 +447,55 @@ def profile_block(logger,board,blk,loc,cfg,grid_size=9):
     for CMD in CMDS:
         cmd = CMD.format(adp=adp_file, \
                          model=board.full_model_number, \
-                         grid_size=grid_size)
+                         grid_size=grid_size, \
+                         calib_obj=calib_obj.value)
         print(">> %s" % cmd)
         runtime_sec += runtime_meta_util.run_command(cmd)
 
     logger.log('profile',runtime_sec)
-
     runtime_meta_util.remove_file(adp_file)
 
 
+def write_model_to_database(logger,pool,board,grid_size=50):
+    idx,score = pool.meas_view.get_best()
+    code_values = pool.pool[idx]
+    hidden_codes = dict(zip(pool.variables, \
+                            code_values))
+    print(idx)
+    print(score)
+    print(hidden_codes)
+    '''
+    execute_hidden_codes(logger,board, \
+                         pool.predictor.block,  \
+                         pool.predictor.loc,  \
+                         pool.predictor.config, hidden_codes, \
+                         grid_size=grid_size, \
+                         calib_obj=llenums.CalibrateObjective.MODELBASED)
+    '''
+    raise Exception("stopped here")
 
+def execute_hidden_codes(logger,board,blk,loc,cfg,hidden_codes,grid_size=9, \
+                         calib_obj=llenums.CalibrateObjective.NONE):
+    new_cfg = cfg.copy()
+    for var,value in hidden_codes.items():
+        int_value = blk.state[var].nearest_value(value)
+        new_cfg[var].value = int_value
+
+    for out in blk.outputs:
+        exp_model = exp_delta_model_lib.ExpDeltaModel(blk,loc,out,new_cfg, \
+                                                      calib_obj=llenums.CalibrateObjective.NONE)
+        exp_delta_model_lib.update(board,exp_model)
+
+    profile_block(logger,board,blk,loc,new_cfg, \
+                  grid_size=grid_size, \
+                  calib_obj=calib_obj)
+    update_model(logger,board,blk,loc,new_cfg)
+
+
+'''
+This function takes a point and evaluates it in the hardware to identify
+the delta model parameters. These labels are attached.
+'''
 def query_hidden_codes(logger,pool,board,blk,loc,cfg,hidden_codes,grid_size=9):
     new_cfg = cfg.copy()
     for var,value in hidden_codes.items():
@@ -460,10 +509,6 @@ def query_hidden_codes(logger,pool,board,blk,loc,cfg,hidden_codes,grid_size=9):
 
     profile_block(logger,board,blk,loc,new_cfg,grid_size)
     update_model(logger,board,blk,loc,new_cfg)
-
-    for mdl in exp_delta_model_lib.get_all(board):
-        print(mdl.config)
-        print(mdl)
 
     mdls = exp_delta_model_lib.get_models_by_fully_configured_block_instance(board,blk,loc,new_cfg)
     assert(len(mdls) > 0)
@@ -596,6 +641,8 @@ def get_sample(pool,slack=0.02):
             yield vdict
 
 
+    print("-> done")
+
 def add_random_unlabelled_samples(pool,count):
     npts = 0
     for constraint in get_sample(pool):
@@ -656,15 +703,19 @@ def calibrate_block(logger, \
     print("==== SETUP INITIAL POOL ====")
     code_pool= load_code_pool_from_database(char_board, predictor)
 
+    #TODO: maybe put this in a loop?
+    '''
     print("==== ADD UNLABELLED ====")
     add_random_unlabelled_samples(code_pool,10)
+    '''
 
+    '''
     print("==== QUERY UNLABELLED ====")
     for hcs in code_pool.get_unlabeled():
-        query_hidden_codes(logger,code_pool,char_board,block,loc,config,hcs)
+       query_hidden_codes(logger,code_pool,char_board,block,loc,config,hcs)
+    '''
 
-    #print(code_pool)
-    raise Exception("TODO: active learning and optimization")
+    write_model_to_database(logger,code_pool, board)
 
 def calibrate(args):
     board = runtime_util.get_device(args.model_number)

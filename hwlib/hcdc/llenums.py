@@ -88,8 +88,6 @@ class ProfileOpType(Enum):
     def from_code(idx):
         return ProfileOpType.array()[idx]
 
-
-      
     def get_expr(self,block,rel):
         if self == ProfileOpType.INPUT_OUTPUT:
             return rel
@@ -101,9 +99,6 @@ class ProfileOpType(Enum):
         elif self == ProfileOpType.INTEG_DERIVATIVE_GAIN:
             integ_expr = genoplib.unpack_integ(rel)
             coeff,offset,exprs = genoplib.unpack_linear_operator(integ_expr.deriv)
-            print(coeff)
-            print(offset)
-            print(exprs)
             assert(all(map(lambda expr: expr.op == oplib.OpType.VAR, exprs)))
             all_vars = list(map(lambda e: e.name, exprs))
 

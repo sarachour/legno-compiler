@@ -239,7 +239,7 @@ class Device:
 
   @property
   def full_model_number(self):
-    if self.model_subdir is None:
+    if self.model_subdir is None or self.model_subdir == "":
       return self.model_number
     else:
       return "%s/%s" % (self.model_subdir,self.model_number)

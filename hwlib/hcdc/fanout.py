@@ -57,9 +57,10 @@ def fan_calib_obj(spec,idx,out):
   return spec
 
 def fan_calib_obj(spec,idx,out):
-  subobjs = ["abs(modelError)/(a*{out})", \
+  subobjs = ["abs(modelError)", \
              "abs(b{idx})", \
-             "abs((1.0-a{idx}))"]
+             "abs((1.0-a{idx}))", \
+             "abs(noise)"]
 
   obj = DeltaSpec.MultiObjective()
   for subobj in subobjs:

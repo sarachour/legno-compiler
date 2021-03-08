@@ -110,14 +110,13 @@ def integ_calib_obj(spec,out_scale):
 
 def integ_calib_obj(spec,out_scale):
   # u : this has high error... don't fit this
-  base_expr = '{deviation2}*abs((b-1.0)) + {deviation}*abs((a-1.0)) + abs(modelError)*{gainOut} + {gainOut}*abs(v)'
-  base_expr += " + abs(c)"
   exprs = [
     "abs((a-1.0))",
     "abs((b-1.0))",
     "modelError/(a*{gainOut})",
     "abs(v)",
-    "abs(c)"
+    "abs(c)",
+    "abs(noise)"
   ]
   new_spec = spec.copy()
   new_spec.objective = DeltaSpec.MultiObjective()
