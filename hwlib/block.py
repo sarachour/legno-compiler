@@ -753,11 +753,12 @@ class MultiObjective:
             EQUAL = "equal"
             SUB = "sub"
 
-        def __init__(self):
+        def __init__(self,minimize=True):
             self.objectives = []
             self.by_priority = {}
             self.epsilons = []
             self.priorities = []
+            self.minimize = minimize
 
         def add(self,obj,priority=1,epsilon=1e-6):
             idx = len(self.objectives)
@@ -782,9 +783,17 @@ class MultiObjective:
                 for idx in self.by_priority[prio]:
                     eps = self.epsilons[idx]
                     if vs1[idx]-eps > vs2[idx]+eps:
-                        num_better +=1 
+                        if self.minimize:
+                            num_worse +=1
+                        else:
+                            num_better += 1
+
                     if vs1[idx]+eps < vs2[idx]-eps:
-                        num_worse += 1
+                        if self.minimize:
+                            num_better += 1
+                        else:
+                            num_worse += 1
+
                     if abs(vs1[idx] - vs2[idx]) <= eps:
                         num_equal += 1
 
