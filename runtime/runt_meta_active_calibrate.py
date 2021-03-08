@@ -61,7 +61,6 @@ class MultiObjectiveResult:
         dom = False
         assert(len(self.errors) > 0)
         for v1,e1,v2,e2 in zip(self.values,self.errors,other.values,other.errors):
-            print(v1,e1,v2,e2)
             if v1+e1 > v2-e2:
                 return False
             if v1-e1 < v2+e2:
@@ -213,9 +212,7 @@ class Predictor:
             for idx in range(npts):
                pred = conc_expr.compute(dict(map(lambda hc: (hc,codes[hc][idx]), self.data.hidden_codes)))
                error += (values[idx]-pred)**2
-            self.errors[(out,var)] = math.sqrt(error/npts)
-            print("error %s" % self.errors[(out,var)])
-
+            self.errors[(out,var)] = math.sqrt(error)/npts
             print("%s.%s deltavar=%s expr=%s" % (self.block.name,out,var,conc_expr))
             print("   codes=%s" % str(codes))
             print("   pars=%s" % str(result['params']))
@@ -237,7 +234,7 @@ class HiddenCodePool:
             self.values = []
 
         def add(self,v):
-            assert(isinstance(v,MultiObjectiveResult))
+            assert(isinstance(v,MultiObjectiveResult) or v is None)
             self.values.append(v)
 
         def is_dominant(self,res):
@@ -263,6 +260,9 @@ class HiddenCodePool:
     def set_range(self,var,values):
         self.ranges[var] = values
 
+    def get_values(self,v):
+        return self.ranges[v]
+
     def random_sample(self):
         codes = {}
         for c in self.variables:
@@ -283,6 +283,37 @@ class HiddenCodePool:
     def has_code(self,codes):
         key = runtime_util.dict_to_identifier(codes)
         return key in self.pool_keys
+
+    def get_unlabeled(self):
+        for mv,p in zip(self.meas_view.values,self.pool):
+            if mv is None:
+                yield dict(zip(self.variables,p))
+
+    def add_unlabeled_code(self,codes):
+        key = runtime_util.dict_to_identifier(codes)
+        if key in self.pool_keys:
+            raise Exception("code already tested: %s score=%f" % (codes,score))
+
+        self.pool_keys.append(key)
+
+        pred = self.predictor.predict(codes)
+        vals = list(map(lambda v: codes[v], self.variables))
+        self.pool.append(vals)
+        self.meas_view.add(None)
+        self.pred_view.add(pred)
+
+
+    def affix_label_to_code(self,codes,values):
+        key = runtime_util.dict_to_identifier(codes)
+        assert(key in self.pool_keys)
+        idx = self.pool_keys.index(key)
+        if not self.meas_view.values[idx] is None:
+            print(self.meas_view.values[idx])
+            raise Exception("there is already a label for this code <%s>" % (str(codes)))
+
+        meas = self.compute(values)
+        self.meas_view.values[idx] = meas
+
 
     def add_labeled_code(self,codes,values):
         key = runtime_util.dict_to_identifier(codes)
@@ -349,7 +380,7 @@ def load_code_pool_from_database(char_board,predictor):
     return code_pool
 
 
-def update_model(logger,char_board,blk,loc,cfg,num_model_points=3):
+def update_model(logger,char_board,blk,loc,cfg):
     #"python3 grendel.py mkphys --model-number {model} --max-depth 0 --num-leaves 1 --shrink" 
     CMDS = [ \
              "python3 grendel.py mkdeltas --model-number {model} --force > deltas.log" \
@@ -361,8 +392,7 @@ def update_model(logger,char_board,blk,loc,cfg,num_model_points=3):
     runtime_sec = 0
     for CMD in CMDS:
         cmd = CMD.format(adp=adp_file, \
-                         model=char_board.full_model_number, \
-                         num_model_points=num_model_points)
+                         model=char_board.full_model_number)
         print(">> %s" % cmd)
         runtime_sec += runtime_meta_util.run_command(cmd)
 
@@ -396,6 +426,63 @@ def bootstrap_block(logger,board,blk,loc,cfg,grid_size=9,num_samples=5):
     runtime_meta_util.remove_file(adp_file)
 
 
+def profile_block(logger,board,blk,loc,cfg,grid_size=9):
+    CMDS = [ \
+             "python3 grendel.py prof {adp} --model-number {model} --grid-size {grid_size} none > profile.log" \
+            ]
+
+    adp_file = runtime_meta_util.generate_adp(board,blk,loc,cfg)
+
+    runtime_sec = 0
+    for CMD in CMDS:
+        cmd = CMD.format(adp=adp_file, \
+                         model=board.full_model_number, \
+                         grid_size=grid_size)
+        print(">> %s" % cmd)
+        runtime_sec += runtime_meta_util.run_command(cmd)
+
+    logger.log('profile',runtime_sec)
+
+    runtime_meta_util.remove_file(adp_file)
+
+
+
+def query_hidden_codes(logger,pool,board,blk,loc,cfg,hidden_codes,grid_size=9):
+    new_cfg = cfg.copy()
+    for var,value in hidden_codes.items():
+        int_value = blk.state[var].nearest_value(value)
+        new_cfg[var].value = int_value
+
+    for out in blk.outputs:
+        exp_model = exp_delta_model_lib.ExpDeltaModel(blk,loc,out,new_cfg, \
+                                                      calib_obj=llenums.CalibrateObjective.NONE)
+        exp_delta_model_lib.update(board,exp_model)
+
+    profile_block(logger,board,blk,loc,new_cfg,grid_size)
+    update_model(logger,board,blk,loc,new_cfg)
+
+    for mdl in exp_delta_model_lib.get_all(board):
+        print(mdl.config)
+        print(mdl)
+
+    mdls = exp_delta_model_lib.get_models_by_fully_configured_block_instance(board,blk,loc,new_cfg)
+    assert(len(mdls) > 0)
+    vs = {}
+    for mdl in mdls:
+        vs[mdl.output.name] = mdl.variables()
+
+    codes = dict(mdl.hidden_codes())
+    actual = pool.compute(vs)
+    pred = pool.predictor.predict(codes)
+    print("samp %s" % (codes))
+    for (_,expr),pred,act in zip(pool.predictor.objectives,pred,actual):
+        print("  obj=%s pred=%f meas=%f" % (expr,pred,act))
+
+
+    assert(pool.has_code(codes))
+    pool .affix_label_to_code(codes,vs)
+
+
 '''
 Build the symbolic predictor from the transfer learning data
 and the block specification
@@ -414,8 +501,8 @@ def build_predictor(xfer_board,block,loc,config):
 '''
 Update the predictor parameters with the characterization data
 '''
-def update_predictor(predictor,char_board):
-     nsamples = predictor.min_samples()
+def update_predictor(predictor,char_board,nsamples):
+     assert(predictor.min_samples() <= nsamples)
 
      for model in exp_delta_model_lib.get_all(char_board):
         if nsamples == 0:
@@ -432,19 +519,96 @@ def update_predictor(predictor,char_board):
 '''
 Randomly probe some samples and print out the predictions.
 '''
+def get_sample(pool,slack=0.02):
+    def compatible(prim,second):
+        for v,val in second.items():
+            if v in prim and prim[v] != val:
+                return False
+        return True
+
+    # figure out what the lower bound on the pool is for each subobjective
+    min_vals = pool.pred_view.values[0]
+    for vals in pool.pred_view.values:
+        min_vals = list(map(lambda tup: min(*tup), zip(min_vals,vals)))
+
+    # compute constraints over hidden codes
+    solutions = []
+    solution_scores = []
+    variables = []
+    for idx,((out,obj), min_val) in enumerate(zip(pool.predictor.objectives,min_vals)):
+
+        # first derive a concrete expression for the subobjective
+        # mapping hidden codes to objective function values
+        vdict = {}
+        for (out2,var),expr in pool.predictor.concrete_variables.items():
+            if out2 == out:
+                vdict[var] = expr
+
+        conc_obj = obj.substitute(vdict)
+
+        # next iterate over all possible combinations of hidden codes
+        # and score them according to how far they are over the limit
+        free_vars = list(conc_obj.vars())
+        values = list(map(lambda v: pool.get_values(v), free_vars))
+        options = list(itertools.product(*values))
+        scores = []
+        for vs in options:
+            vdict = dict(zip(free_vars,vs))
+            scores.append(conc_obj.compute(vdict) - min_val)
+
+        #wrhite these data points to the collection of solutions
+        indices = np.argsort(scores)
+        variables.append(free_vars)
+        valid_options = []
+        valid_scores = []
+        for idx in indices:
+            if scores[idx] < slack:
+                valid_options.append(options[idx])
+                valid_scores.append(scores[idx])
+
+        solutions.append(valid_options)
+        solution_scores.append(valid_scores)
+
+    keys = []
+    for order in itertools.permutations(list(range(len(solutions)))):
+        vdict = {}
+        failed=False
+        for idx in order:
+            found = False
+            pos = 0
+            while not failed and not found and pos < len(solutions[idx]):
+                subdict = dict(zip(variables[idx],solutions[idx][pos]))
+                if compatible(vdict,subdict):
+                    for v,val in subdict.items():
+                        vdict[v] = val
+                    found=True
+
+                pos += 1
+
+            if not found:
+                failed = True
+
+        key = runtime_util.dict_to_identifier(vdict)
+        if not failed and not key in keys:
+            print("=> success!")
+            keys.append(key)
+            print(vdict)
+            yield vdict
+
+
 def add_random_unlabelled_samples(pool,count):
     npts = 0
-    while npts < count: 
-        samp = pool.random_sample()
-        pred = pool.predictor.predict(samp)
-        print("sample %s" % str(samp))
-        print("   pred=%s" % str(pred))
+    for constraint in get_sample(pool):
+        if npts > count:
+            return
 
-        if pool.pred_view.is_dominant(pred):
-            print("dominant!" % (samp,pred))
-            pool.add_unlabeled_point(samp)
-            npts += 1
-        input()
+        samp = pool.random_sample()
+        for var,val in constraint.items():
+            samp[var] = val
+
+        print(samp)
+        pool.add_unlabeled_code(samp)
+        npts += 1
 
 
 ####
@@ -477,21 +641,30 @@ def calibrate_block(logger, \
     # and fit all of the initial guesses for the parameters on the transfer model
     # this should give us an initial predictor
     print("==== BOOTSTRAPPING <#samps=%d> ====" % nsamps_reqd)
+    '''
     bootstrap_block(logger, \
                     char_board,block,loc,config, \
                     grid_size=grid_size, \
                     num_samples=nsamps_reqd)
     update_model(logger,char_board,block,loc,config)
+    '''
 
     # fit all of the parameters in the predictor.
-    update_predictor(predictor,char_board)
+    update_predictor(predictor,char_board,nsamps_reqd)
 
     # next, we're going to populate the initial pool of points.
     print("==== SETUP INITIAL POOL ====")
     code_pool= load_code_pool_from_database(char_board, predictor)
+
+    print("==== ADD UNLABELLED ====")
     add_random_unlabelled_samples(code_pool,10)
+
+    print("==== QUERY UNLABELLED ====")
+    for hcs in code_pool.get_unlabeled():
+        query_hidden_codes(logger,code_pool,char_board,block,loc,config,hcs)
+
     #print(code_pool)
-    #raise Exception("TODO: active learning and pptimization")
+    raise Exception("TODO: active learning and optimization")
 
 def calibrate(args):
     board = runtime_util.get_device(args.model_number)

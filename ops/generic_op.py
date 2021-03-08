@@ -342,6 +342,39 @@ def unpack_sum(expr):
     else:
         return 0.0,[expr]
 
+def _propagate_error(expr,values,coeff=False):
+    if expr.op == OpType.CONST:
+        return False,abs(expr.value)
+    elif expr.op == OpType.VAR:
+        return True,abs(values[expr.name])
+    elif expr.op == OpType.POW:
+        has_var1,e1 = _propagate_error(expr.arg(0),values,coeff=False)
+        has_var2,e2 = _propagate_error(expr.arg(1),values,coeff=True)
+        return has_var1 or has_var2, e1**e2
+
+    elif expr.op == OpType.ABS:
+        return _propagate_error(expr.arg(0),values)
+
+    elif expr.op == OpType.MULT:
+        has_var1,e1 = _propagate_error(expr.arg(0),values,coeff=True)
+        has_var2,e2 = _propagate_error(expr.arg(1),values,coeff=True)
+        return has_var1 or has_var2,e1*e2
+    elif expr.op == OpType.ADD:
+        has_var1,e1 = _propagate_error(expr.arg(0),values,coeff=True)
+        has_var2,e2 = _propagate_error(expr.arg(1),values,coeff=True)
+        res = 0.0
+        if has_var1:
+            res+=e1
+        if has_var2:
+            res+=2
+        return has_var1 or has_var2, res
+    else:
+        raise Exception("unsupported: %s" % expr)
+
+def propagate_error(expr,values):
+    _,res = _propagate_error(expr,values)
+    return res
+
 def unpack_linear_operator(expr):
     offset,exprs = unpack_sum(expr)
     if(len(exprs) == 1):
