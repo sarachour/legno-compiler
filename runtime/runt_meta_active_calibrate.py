@@ -301,10 +301,14 @@ class HiddenCodePool:
             if mv is None:
                 yield dict(zip(self.variables,p))
 
+    def has_code(self,codes):
+        key = runtime_util.dict_to_identifier(codes)
+        return key in self.pool_keys
+
     def add_unlabeled_code(self,codes):
         key = runtime_util.dict_to_identifier(codes)
         if key in self.pool_keys:
-            raise Exception("code already tested: %s score=%f" % (codes,score))
+            raise Exception("code already in pool: %s" % (codes))
 
         self.pool_keys.append(key)
 
@@ -696,8 +700,9 @@ def add_random_unlabelled_samples(pool,count):
             samp[var] = val
 
         print(samp)
-        pool.add_unlabeled_code(samp)
-        npts += 1
+        if not pool.has_code(samp):
+           pool.add_unlabeled_code(samp)
+           npts += 1
 
 
 ####
