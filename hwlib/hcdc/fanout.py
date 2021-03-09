@@ -153,10 +153,10 @@ fan.state['third'].impl.outgoing(source_port='z2', \
 fan.state['third'].impl.set_default(enums.BoolType.FALSE)
 '''
 
-fan.state.add(BlockState('enable',
+fan.state.add(BlockState('third',
                         values=enums.SignType, \
                         state_type=BlockStateType.CONSTANT))
-fan.state['enable'].impl.bind(enums.BoolType.TRUE)
+fan.state['third'].impl.bind(enums.BoolType.TRUE)
 
 
 fan.state.add(BlockState('enable',
