@@ -434,7 +434,7 @@ Do some initial bootstrapping to fit the elicited models.
 '''
 def bootstrap_block(logger,board,blk,loc,cfg,grid_size=9,num_samples=5):
     CMDS = [ \
-             "python3 grendel.py characterize {adp} --model-number {model} --grid-size {grid_size} --num-hidden-codes {num_samples} --adp-locs > characterize.log" \
+             "python3 grendel.py characterize --adp {adp} --model-number {model} --grid-size {grid_size} --num-hidden-codes {num_samples} --adp-locs > characterize.log" \
             ]
 
 

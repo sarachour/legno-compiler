@@ -41,12 +41,12 @@ testosc_subp.add_argument('--no-osc',action='store_true',help='no oscilloscope c
 char_subp = subparsers.add_parser('characterize', help='characterize blocks for fast calibration. This takes a really long time')
 char_subp.add_argument('--adp', type=str,help='adp to characterize')
 char_subp.add_argument('--model-number',type=str,help='model number')
-char_subp.add_argument('--grid-size',type=int,default=7, \
-                       help="number of inputs to sample along each axis")
-char_subp.add_argument('--num-hidden-codes',type=int,default=200, \
-                       help="number of hidden codes to sample")
-char_subp.add_argument('--num-locs',type=int,default=1, \
-                       help="number of hidden codes to sample")
+char_subp.add_argument('--grid-size',type=int,default=25, \
+                       help="number of inputs to sample along each axis (25)")
+char_subp.add_argument('--num-hidden-codes',type=int,default=50, \
+                       help="number of hidden codes to sample (50)")
+char_subp.add_argument('--num-locs',type=int,default=5, \
+                       help="number of locations to sample (5)")
 char_subp.add_argument('--adp-locs',action='store_true', \
                        help="only characterize the locations which appear in the adp")
 char_subp.add_argument('--widen',action='store_true', \
