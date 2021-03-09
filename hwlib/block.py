@@ -806,10 +806,12 @@ class MultiObjective:
 
             if any(map(lambda r: r == MultiObjective.Relationship.SUB, results)):
                 return MultiObjective.Relationship.SUB
-            elif any(map(lambda r: r == MultiObjective.Relationship.DOM, results)):
-                return MultiObjective.Relationship.DOM
-            
-            return MultiObjective.Relationship.EQUAL
+
+            for result in results:
+                if result == MultiObjective.Relationship.EQUAL:
+                   return MultiObjective.Relationship.EQUAL
+
+            return MultiObjective.Relationship.DOM
 
 
 class DeltaSpec:

@@ -21,7 +21,8 @@ def count_hidden_codes(delta_models):
                                                        cfg)))
 
 def continue_characterization(runtime,board,datasets,block,config, \
-                              grid_size,num_locs,num_hidden_codes):
+                              grid_size,num_locs,num_hidden_codes, \
+                              only_adp_locs=False):
     locs = set(map(lambda ds: ds.loc, datasets))
     datasets_by_loc = dict(map(lambda loc: (loc,set()), locs))
     for dataset in datasets:
@@ -46,7 +47,8 @@ def continue_characterization(runtime,board,datasets,block,config, \
     if len(locs) < num_locs:
         new_locs = num_locs - len(locs)
         new_characterization(runtime,board,block,config, \
-                             grid_size,new_locs,num_hidden_codes)
+                             grid_size,new_locs,num_hidden_codes, \
+                             only_adp_locs)
 
 def new_characterization(runtime,board,block,config, \
                          grid_size,num_locs,num_hidden_codes, \
@@ -70,11 +72,10 @@ def characterize_configured_block(runtime,board,block,cfg, \
                                  num_locs=5, \
                                  num_hidden_codes=50, \
                                  adp_locs=False):
-
         datasets = list(exp_profile_dataset_lib.get_datasets(board, \
-                                                                                ['block','static_config'],
-                                                                                block=block, \
-                                                                                config=cfg))
+                                                             ['block','static_config'],
+                                                             block=block, \
+                                                             config=cfg))
 
         unique_hidden_codes = set(map(lambda model: str(model.loc)+"." \
                                     +model.hidden_cfg, datasets))
@@ -92,7 +93,8 @@ def characterize_configured_block(runtime,board,block,cfg, \
                                     datasets=datasets,\
                                     grid_size=grid_size, \
                                     num_locs=num_locs, \
-                                    num_hidden_codes=num_hidden_codes
+                                    num_hidden_codes=num_hidden_codes, \
+                                    only_adp_locs=adp_locs
             )
         else:
             new_characterization(runtime, \
@@ -112,6 +114,9 @@ def characterize_adp(args):
     runtime.initialize()
     if not args.adp is None:
         adp = runtime_util.get_adp(board,args.adp,widen=args.widen)
+        if args.adp_locs:
+           args.num_hidden_codes = 1
+
         for cfg in adp.configs:
             blk = board.get_block(cfg.inst.block)
             cfg_modes = cfg.modes
@@ -121,7 +126,7 @@ def characterize_adp(args):
                                               grid_size=args.grid_size, \
                                               num_locs=args.num_locs,\
                                               num_hidden_codes=args.num_hidden_codes, \
-                                              only_adp_locs=args.adp_locs)
+                                              adp_locs=args.adp_locs)
 
     else:
         if args.adp_locs or args.widen:
