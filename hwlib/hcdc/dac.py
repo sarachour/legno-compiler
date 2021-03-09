@@ -64,6 +64,22 @@ def dac_calib_obj(spec,out_scale):
   new_spec.objective = parser.parse_expr(expr)
   return new_spec
 
+def dac_calib_obj(spec,out_scale):
+  base_expr = '{deviate}*abs((a-1.0))+{gainOut}*abs(modelError)+abs(b)'
+  subobjs = [
+    ("abs((a-1.0))", 1, 0.05), \
+    ("abs((b))", 1, 0.01), \
+    ("abs(modelError)", 1, 0.01), \
+    ("abs(noise)", 1, 0.01)
+  ]
+  new_spec = spec.copy()
+  new_spec.objective = MultiObjective()
+  for expr,prio,eps in subobjs:
+     new_spec.objective.add(parser.parse_expr(expr), \
+                                priority=prio,epsilon=eps)
+  return new_spec
+
+
 
 
 spec = DeltaSpec(parser.parse_expr('2.0*(a*c+b)'))

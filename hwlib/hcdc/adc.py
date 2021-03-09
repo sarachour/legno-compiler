@@ -60,6 +60,23 @@ def adc_calib_obj(spec):
   new_spec.objective = parser.parse_expr(expr)
   return new_spec
 
+def adc_calib_obj(spec):
+  subobj = [
+    ("abs((a-1.0))", 1, 0.05), \
+    ("abs(modelError)", 1, 0.01), \
+    ("abs(noise)", 1, 0.01), \
+    ("abs(b)", 2, 0.01)
+  ]
+  new_spec = spec.copy()
+  new_spec.objective = MultiObjective()
+  for expr,priority,eps in subobj:
+     new_spec.objective.add(parser.parse_expr(expr),
+               priority=priority, \
+               epsilon=eps)
+
+  return new_spec
+
+
 
 
 spec = DeltaSpec(parser.parse_expr('a*0.5*x+b'))
