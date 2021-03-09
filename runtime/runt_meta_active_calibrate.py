@@ -241,7 +241,7 @@ class HiddenCodePool:
                 for j,vj  in enumerate(self.values):
                     relationship = self.multi_objective.dominant(vi, vj)
                     if relationship.kind == blocklib.Relationship.Type.DOM:
-                        dom[i] += 1/relationship.rank
+                        dom[i] += (1.0/relationship.rank)
 
             # go from most to least dominant
             indices = np.argsort(dom)
@@ -406,7 +406,7 @@ def load_code_pool_from_database(char_board,predictor):
     print(predictor.config)
     print("")
     for fxn,score,dom in code_pool.meas_view.order_by_dominance():
-        print("%s score=%s dom=%d" % (fxn,score,dom))
+        print("%s score=%s dom=%f" % (fxn,score,dom))
 
     return code_pool
 
@@ -687,7 +687,7 @@ def sampler_iterate_over_samples(objectives,variables,values,scores,num_samps=1)
             n_samps += 1
 
     for i, score,dom in sample_scores.order_by_dominance():
-        print("samp %d dominant: %s scores=%s #dom=%d" % (i, samples[i],score,dom))
+        print("samp %d dominant: %s scores=%s #dom=%f" % (i, samples[i],score,dom))
         yield samples[i],score
 
 
@@ -842,7 +842,7 @@ def calibrate(args):
                                 blk,cfg.inst.loc,cfg, \
                                 grid_size=args.grid_size, \
                                 rounds=1, \
-                                samples_per_round=3)
+                                samples_per_round=10)
 
     else:
         raise Exception("unimplemented")
