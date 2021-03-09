@@ -113,7 +113,7 @@ def integ_calib_obj(spec,out_scale):
   exprs = [
     ("abs((a-1.0))",2,0.05),
     ("abs((b-1.0))",2,0.05),
-    ("modelError",1,0.01),
+    ("abs(modelError)",1,0.01),
     ("abs(v)",1,0.0001),
     ("abs(c)",4,0.01),
     ("abs(noise)",1,0.0001)
@@ -121,8 +121,7 @@ def integ_calib_obj(spec,out_scale):
   new_spec = spec.copy()
   new_spec.objective = MultiObjective()
   for expr,priority,epsilon in exprs:
-    conc_expr = expr.format(gainOut=out_scale)
-    new_spec.objective.add(parser.parse_expr(conc_expr), \
+    new_spec.objective.add(parser.parse_expr(expr), \
                            priority=priority, \
                            epsilon=epsilon)
 

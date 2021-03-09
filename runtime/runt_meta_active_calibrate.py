@@ -381,7 +381,10 @@ def load_code_pool_from_database(char_board,predictor):
 
     print("===== Initial Code Pool ====")
     for _,mdls in by_output.items():
-        codes = dict(mdl.hidden_codes())
+        if any(map(lambda mdl: not mdl.complete, mdls)):
+           continue
+
+        codes = dict(mdls[0].hidden_codes())
         pred = code_pool.predictor.predict(codes)
         vs = {}
         for mdl in mdls:
@@ -553,6 +556,9 @@ def build_predictor(xfer_board,block,loc,config):
     predictor = Predictor(block,loc,config)
     for output in block.outputs:
         phys_model = exp_phys_model_lib.load(xfer_board,block,config,output)
+        if phys_model is None:
+           raise Exception("no physical model for output <%s> of block <%s> under config <%s>" \
+                           % (output.name,block.name,config.mode))
         for var,pmodel in phys_model.variables().items():
             predictor.set_variable(output,var,pmodel)
 
