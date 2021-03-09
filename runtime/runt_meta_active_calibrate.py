@@ -396,6 +396,13 @@ def load_code_pool_from_database(char_board,predictor):
         if not code_pool.has_code(codes):
            code_pool .add_labeled_code(codes,vs)
 
+    print("==== pool (best to worst) ====")
+    print(predictor.config)
+    print("")
+    for fxn,score,dom in code_pool.meas_view.order_by_dominance():
+        print("%s score=%s dom=%d" % (fxn,score,dom))
+
+    input("continue?")
     return code_pool
 
 
@@ -638,7 +645,6 @@ def sampler_iterate_over_samples(objectives,variables,values,scores,num_samps=1)
         ord_values = list(map(lambda idx: values[idx], perm))
         ord_scores = list(map(lambda idx: scores[idx], perm))
 
-        print(perm)
         n_samps = 0
         for samp,score in _sampler_iterate_over_samples(0,0,{},[], \
                                                         ord_variables,ord_values,ord_scores, \
@@ -770,6 +776,9 @@ def calibrate_block(logger, \
     # next, we're going to populate the initial pool of points.
     print("==== SETUP INITIAL POOL ====")
     code_pool= load_code_pool_from_database(char_board, predictor)
+
+    print("TODO: remove me")
+    return
 
     for rnd in range(rounds):
         #TODO: maybe put this in a loop?
