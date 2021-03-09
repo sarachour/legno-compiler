@@ -72,13 +72,18 @@ class Predictor:
                 results.append(self._objectives[out].dominant(vs1,vs2))
                 idx += n
 
-            if any(map(lambda res: blocklib.MultiObjective.Relationship.SUB == res, results)):
-                return blocklib.MultiObjective.Relationship.SUB
+            subs =  list(filter(lambda res: blocklib.Relationship.Type.SUB == res.kind, results))
+            doms =  list(filter(lambda res: blocklib.Relationship.Type.DOM== res.kind, results))
 
-            if any(map(lambda res: blocklib.MultiObjective.Relationship.DOM == res, results)):
-                return blocklib.MultiObjective.Relationship.DOM
+            if len(subs) > 0:
+                rank = sum(map(lambda s: s.rank, subs))
+                return blocklib.Relationship(blocklib.Relationship.Type.SUB, rank+1)
 
-            return blocklib.MultiObjective.Relationship.EQUAL
+            if len(doms) > 0:
+                rank = sum(map(lambda s: s.rank, doms))
+                return blocklib.Relationship(blocklib.Relationship.Type.DOM, rank+1)
+
+            return blocklib.Relationship(blocklib.Relationship.Type.EQUAL, 1)
 
 
         def __iter__(self):
@@ -233,12 +238,10 @@ class HiddenCodePool:
             dom = [0]*nsamps
 
             for i,vi  in enumerate(self.values):
-                for j in range(0,i):
-                    relationship = self.multi_objective.dominant(vi, self.values[j])
-                    if relationship == blocklib.MultiObjective.Relationship.DOM:
-                        dom[i] += 1
-                    elif relationship == blocklib.MultiObjective.Relationship.SUB:
-                        dom[j] += 1
+                for j,vj  in enumerate(self.values):
+                    relationship = self.multi_objective.dominant(vi, vj)
+                    if relationship.kind == blocklib.Relationship.Type.DOM:
+                        dom[i] += 1/relationship.rank
 
             # go from most to least dominant
             indices = np.argsort(dom)

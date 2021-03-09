@@ -745,13 +745,17 @@ class PhysicalModelSpec:
         return "{hidden-state:%s, params:%s, expr:%s}" % (self.hidden_state, \
                                                           self.params, \
                                                           self.relation)
+class Relationship:
+   class Type(Enum):
+       DOM = "dom"
+       EQUAL = "equal"
+       SUB = "sub"
+
+   def __init__(self,kind,rank):
+        self.kind = kind
+        self.rank = rank
 
 class MultiObjective:
-
-        class Relationship:
-            DOM = "dom"
-            EQUAL = "equal"
-            SUB = "sub"
 
         def __init__(self,minimize=True):
             self.objectives = []
@@ -798,20 +802,23 @@ class MultiObjective:
                         num_equal += 1
 
                 if num_better > 0 and num_worse == 0:
-                    results.append(MultiObjective.Relationship.DOM)
+                    results.append(Relationship.Type.DOM)
                 elif num_worse > 0:
-                    results.append(MultiObjective.Relationship.SUB)
+                    results.append(Relationship.Type.SUB)
                 else:
-                    results.append(MultiObjective.Relationship.EQUAL)
+                    results.append(Relationship.Type.EQUAL)
 
-            if any(map(lambda r: r == MultiObjective.Relationship.SUB, results)):
-                return MultiObjective.Relationship.SUB
+            if any(map(lambda r: r == Relationship.Type.SUB, results)):
+                for idx,result in enumerate(results):
+                    if result == Relationship.Type.SUB:
+                        return Relationship(Relationship.Type.SUB,idx)
 
-            for result in results:
-                if result == MultiObjective.Relationship.EQUAL:
-                   return MultiObjective.Relationship.EQUAL
+            for idx,result in enumerate(results):
+                if result == Relationship.Type.DOM:
+                    return Relationship(Relationship.Type.DOM,idx)
 
-            return MultiObjective.Relationship.DOM
+            return Relationship(Relationship.Type.EQUAL,0)
+
 
 
 class DeltaSpec:
