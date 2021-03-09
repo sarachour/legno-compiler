@@ -40,6 +40,11 @@ class ExpDeltaModel:
     variables[ExpDeltaModel.NOISE] = self.noise
     return variables
 
+  def has_value(self,varname):
+    return varname in self._params or \
+      varname == ExpDeltaModel.MODEL_ERROR or \
+      varname == ExpDeltaModel.NOISE
+
   def get_value(self,varname):
     if varname in self._params:
       return self._params[varname]

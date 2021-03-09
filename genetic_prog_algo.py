@@ -44,10 +44,10 @@ class RandomFunctionPool:
     def score_one(self,expr,hidden_codes,values):
         params = self.get_params(expr)
         scores = []
+
         for loc,vals in values.items():
             hcs = dict(hidden_codes[loc])
-            assert(all(map(lambda hc : len(vals) == len(hc), \
-                           hcs.values())))
+            assert(all(map(lambda hc: len(hc) == len(vals), hcs.values())))
 
             data = {}
             data['inputs'] = hcs
@@ -61,7 +61,7 @@ class RandomFunctionPool:
 
 
             except RuntimeError as e:
-                raise e
+                raise Exception("exception: %s" % str(e))
 
 
         return len(params),scores
@@ -75,6 +75,7 @@ class RandomFunctionPool:
                 try:
                    npars,sumsq_err = self.score_one(fxn,hidden_codes,values)
                 except Exception as e:
+                    print("[warn] cannot score function <%s>" % str(e))
                     continue
 
                 if npars > self.max_params:
@@ -84,7 +85,8 @@ class RandomFunctionPool:
                 self.errors[idx] = np.mean(sumsq_err)
                 self.npars[idx] = npars
                 self.scores[idx] = self.errors[idx] + par_penalty
-
+                print("%f] %s" % (self.errors[idx],fxn))
+                print("  %s" % str(sumsq_err))
         # remove any functions that failed to fit
         indices = list(filter(lambda idx: not self.scores[idx] is None, \
                            range(self.npts())))
@@ -109,7 +111,6 @@ class RandomFunctionPool:
 
         for v in self.variables:
             yield genoplib.Mult(genoplib.Var('par0'), genoplib.Var(v))
-
 
         if False:
             for v in self.variables:
@@ -179,10 +180,13 @@ class RandomFunctionPool:
         self.gens.append(self.generation)
 
     def evolve(self,pop_size=3):
+        if len(self.scores) == 0:
+            raise Exception("the sample pool is empty.")
+
         max_score = max(self.scores)
         pool = {}
         # choose parents
-        for tries in range(100):
+        for tries in range(1000):
             if len(pool) >= pop_size:
                 break
 
@@ -217,12 +221,18 @@ def get_repr_model(models):
         for cfg,mdl in mdls.items():
             return mdl
 
-def find_functions(models,datasets,num_generations=5,pop_size=5,penalty=0.01,max_params=5,debug=False):
+def find_functions(models,num_generations=5,pop_size=5,penalty=0.001,max_params=5,debug=False):
     repr_model = get_repr_model(models)
     if repr_model is None:
        raise Exception("no representative model found. (# models=%d)" % len(models))
 
     model_pool = {}
+
+    print("############################")
+    print(repr_model.config)
+    print("############################")
+    if repr_model.block.name != "mult":
+        return
 
     print("--- populating pool ---")
     for var in repr_model.variables():
@@ -237,7 +247,7 @@ def find_functions(models,datasets,num_generations=5,pop_size=5,penalty=0.01,max
 
         pool.initialize()
         model_pool[var] = pool
-        print("%s #: %d" % (var, len(model_pool[var].pool)))
+        print("%s #: %d" % (var, len(pool.pool)))
 
 
     print("--- extract dataset ---")
@@ -249,14 +259,23 @@ def find_functions(models,datasets,num_generations=5,pop_size=5,penalty=0.01,max
         for var in repr_model.variables():
             variables[var][loc] = []
 
+        npts = 0
         for st, mdl in mdls.items():
-            for var in mdl.variables():
+            if not mdl.complete:
+                continue
+
+            for var in repr_model.variables():
                 variables[var][loc].append(mdl.get_value(var))
-            for var,val in mdl.hidden_codes():
+
+            for var,val in repr_model.hidden_codes():
                 hidden_configs[loc][var].append(val)
+                npts += 1
+
+        print("# datapoints [%s]: %d" % (loc,npts))
 
     print("--- initially score functions in pool ---")
     for var,pool in model_pool.items():
+        print("-> %s (%d)" % (var,len(pool.pool)))
         pool.score(hidden_configs,variables[var])
 
     for generation in range(num_generations):
@@ -306,21 +325,24 @@ def find_functions(models,datasets,num_generations=5,pop_size=5,penalty=0.01,max
 
 
 
-def genetic_infer_model(board,block,config,output,models,datasets,num_generations=1, pop_size=1):
-   functions = dict(find_functions(models,datasets,num_generations=num_generations,pop_size=pop_size))
+def genetic_infer_model(board,block,config,output,models,datasets,num_generations=1, pop_size=1,penalty=0.001):
+   functions = dict(find_functions(models,num_generations=num_generations,pop_size=pop_size,penalty=penalty))
    pmdl = exp_phys_model_lib.ExpPhysModel(block,config,output)
 
    print("===== BEST FUNCTIONS ======")
+   print(config)
+   print("")
    for var,(score,expr) in functions.items():
        print("var: %s" % var)
        print("   %s score=%f" % (expr,score))
        pmdl.set_variable(var,expr,score)
 
-   exp_phys_model_lib.update(board, pmdl)
+   if len(functions) > 0:
+      exp_phys_model_lib.update(board, pmdl)
    input("done!")
 
 
-def execute(board,num_generations=1,pop_size=1):
+def execute(board,num_generations=1,pop_size=1,penalty=0.001):
     def insert(d,ks):
         for k in ks:
             if not k in d:
@@ -352,9 +374,10 @@ def execute(board,num_generations=1,pop_size=1):
             raise Exception("no representative model found. (# models=%d)" % len(models_b))
 
         genetic_infer_model(board,repr_model.block,repr_model.config,repr_model.output, \
-                            models_b,datasets_b,num_generations=num_generations, pop_size=pop_size)
+                            models_b,datasets_b,num_generations=num_generations, pop_size=pop_size, penalty=penalty)
 
 
 model_number = 'xfer'
+model_number = 'xfer3'
 board = runtime_util.get_device(model_number)
-execute(board, num_generations=5,pop_size=10)
+execute(board, num_generations=5,pop_size=25,penalty=0.001)

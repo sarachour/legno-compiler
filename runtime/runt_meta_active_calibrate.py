@@ -614,7 +614,11 @@ def sampler_permute(indices,max_size=6,k=4,count=4000):
         for combo in itertools.combinations(indices,k):
             remainder = list(filter(lambda ind: not ind in combo,indices))
             for perm in itertools.permutations(combo):
-                    yield list(perm) + remainder
+                if count == 0:
+                    return
+
+                yield list(perm) + remainder
+                count -= 1
 
 def sampler_iterate_over_samples(objectives,variables,values,scores,num_samps=1):
     assert(isinstance(objectives, Predictor.ComplexObjective))
@@ -631,7 +635,6 @@ def sampler_iterate_over_samples(objectives,variables,values,scores,num_samps=1)
         ord_values = list(map(lambda idx: values[idx], perm))
         ord_scores = list(map(lambda idx: scores[idx], perm))
 
-        print(perm)
         n_samps = 0
         for samp,score in _sampler_iterate_over_samples(0,{},[], \
                                                         ord_variables,ord_values,ord_scores):
