@@ -605,6 +605,17 @@ def _sampler_iterate_over_samples(offset,vdict,score,variables,values,scores):
         for samp in _sampler_iterate_over_samples(offset+1,vdict,score,variables,values,scores):
             yield samp
 
+def sampler_permute(indices,k=6):
+    if len(indices) <= k:
+        for perm in itertools.permutations(indices):
+            yield list(perm)
+
+    else:
+        for combo in itertools.combinations(indices,k):
+            remainder = list(filter(lambda ind: not ind in combo,indices))
+            for perm in itertools.permutations(combo):
+                    yield list(perm) + remainder
+
 def sampler_iterate_over_samples(objectives,variables,values,scores,num_samps=1):
     assert(isinstance(objectives, Predictor.ComplexObjective))
     indices = list(range(len(values)))
@@ -614,7 +625,8 @@ def sampler_iterate_over_samples(objectives,variables,values,scores,num_samps=1)
     sample_scores = HiddenCodePool.ParetoPoolView(objectives, 'samps')
     keys = []
 
-    for perm in itertools.permutations(indices):
+    sampler_permute(indices)
+    for perm in sampler_permute(indices,k=6):
         ord_variables = list(map(lambda idx: variables[idx],perm))
         ord_values = list(map(lambda idx: values[idx], perm))
         ord_scores = list(map(lambda idx: scores[idx], perm))
