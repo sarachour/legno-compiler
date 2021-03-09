@@ -753,6 +753,7 @@ def calibrate_block(logger, \
                     rounds=1):
     logger.set_configured_block(block,loc,config.mode)
 
+
     # get board with initial code pool
     char_model = runtime_meta_util.get_model(board,block,loc,config)
     char_board = runtime_util.get_device("active-cal/%s" % char_model,layout=False)
@@ -783,8 +784,6 @@ def calibrate_block(logger, \
     print("==== SETUP INITIAL POOL ====")
     code_pool= load_code_pool_from_database(char_board, predictor)
 
-    print("TODO: remove me")
-    return
 
     for rnd in range(rounds):
         #TODO: maybe put this in a loop?
