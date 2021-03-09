@@ -27,13 +27,13 @@ def get_objective(objective,cstr_prob):
   elif scalelib.ObjectiveFun.QUALITY_SPEED == objective:
     monom = scalelib.SCMonomial()
     for qv in quality_vars:
-      monom.add_term(qv,-1.0)
-    monom.add_term(timescale)
+      monom.add_term(qv,-0.5)
+    monom.add_term(timescale,-1)
     return monom
 
   elif scalelib.ObjectiveFun.SPEED == objective:
     monom = scalelib.SCMonomial()
-    monom.add_term(timescale)
+    monom.add_term(timescale,-1)
     return monom
 
   else:
