@@ -582,28 +582,31 @@ def sampler_compatible(prim,second):
                 return False
         return True
 
-def _sampler_iterate_over_samples(offset,vdict,score,variables,values,scores):
-    if len(variables) == 0:
+def _sampler_iterate_over_samples(code_idx,offset,vdict,score,variables,values,scores,memos={}):
+    if code_idx == len(variables):
         yield vdict,score
         return
 
-    vdict2 = dict(zip(variables[0], values[0][offset]))
+    for idx in range(offset,len(values[code_idx])):
+        curr_vdict = dict(zip(variables[code_idx], values[code_idx][idx]))
 
-    # move to next
-    if sampler_compatible(vdict,vdict2):
-        vdict_new = dict(list(vdict.items()) + list(vdict2.items()))
-        scores_new = list(score)
-        scores_new.append(scores[0][offset])
+        # move to next
+        if sampler_compatible(vdict,curr_vdict):
+            vdict_next = dict(list(vdict.items()) + list(curr_vdict.items()))
+            scores_next = list(score)
+            scores_next.append(scores[code_idx][idx])
 
-        for samp in _sampler_iterate_over_samples(0,vdict_new,scores_new, \
-                                          variables[1:], \
-                                          values[1:], \
-                                          scores[1:]):
-            yield samp
+            for samp in _sampler_iterate_over_samples(\
+                                                      code_idx+1, \
+                                                      0, \
+                                                      vdict_next, \
+                                                      scores_next, \
+                                                      variables, \
+                                                      values, \
+                                                      scores, \
+                                                      memos):
+                yield samp
 
-    if offset+1 < len(values[0]):
-        for samp in _sampler_iterate_over_samples(offset+1,vdict,score,variables,values,scores):
-            yield samp
 
 def sampler_permute(indices,max_size=6,k=4,count=4000):
     if len(indices) <= max_size:
@@ -635,9 +638,11 @@ def sampler_iterate_over_samples(objectives,variables,values,scores,num_samps=1)
         ord_values = list(map(lambda idx: values[idx], perm))
         ord_scores = list(map(lambda idx: scores[idx], perm))
 
+        print(perm)
         n_samps = 0
-        for samp,score in _sampler_iterate_over_samples(0,{},[], \
-                                                        ord_variables,ord_values,ord_scores):
+        for samp,score in _sampler_iterate_over_samples(0,0,{},[], \
+                                                        ord_variables,ord_values,ord_scores, \
+                                                        memos={}):
             if n_samps >= num_samps:
                 break
 
@@ -670,6 +675,8 @@ def get_sample(pool):
 
         # first derive a concrete expression for the subobjective
         # mapping hidden codes to objective function values
+        print("-> processing objective %d (%s)" % (idx,obj))
+
         vdict = {}
         for (out2,var),expr in pool.predictor.concrete_variables.items():
             if out2 == out:
