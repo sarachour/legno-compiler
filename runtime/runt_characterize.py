@@ -1,10 +1,13 @@
-from hwlib.adp import ADP,ADPMetadata
+from hwlib.adp import ADP,ADPMetadata, BlockConfig,BlockInst
 
 import runtime.runtime_util as runtime_util
 import runtime.models.exp_delta_model as exp_delta_model_lib
 import runtime.models.exp_profile_dataset as exp_profile_dataset_lib
 
 from lab_bench.grendel_runner import GrendelRunner
+
+import hwlib.device as devlib
+
 import hwlib.hcdc.llcmd_util as llutil
 import hwlib.hcdc.llenums as llenums
 import hwlib.hcdc.llcmd as llcmd
@@ -29,6 +32,7 @@ def continue_characterization(runtime,board,datasets,block,config, \
         if len(hidden_cfgs) < num_hidden_codes:
             new_hidden_codes = num_hidden_codes - len(hidden_cfgs) + 1
             print("=>> LOC=%s new-hidden-codes=%d" % (loc,new_hidden_codes))
+            config.inst.loc = loc
             upd_cfg = llcmd.characterize(runtime, \
                                          board, \
                                          block, \
@@ -61,51 +65,80 @@ def new_characterization(runtime,board,block,config, \
                                num_hidden_codes=num_hidden_codes)
 
 
+def characterize_configured_block(runtime,board,block,cfg, \
+                                 grid_size=11, \
+                                 num_locs=5, \
+                                 num_hidden_codes=50, \
+                                 adp_locs=False):
+
+        datasets = list(exp_profile_dataset_lib.get_datasets(board, \
+                                                                                ['block','static_config'],
+                                                                                block=block, \
+                                                                                config=cfg))
+
+        unique_hidden_codes = set(map(lambda model: str(model.loc)+"." \
+                                    +model.hidden_cfg, datasets))
+        total_codes = num_hidden_codes*num_locs
+        if len(unique_hidden_codes) >= total_codes:
+            print("block %s.%s has enough hidden codes %d/%d" % (block.name,cfg.inst.loc, \
+                                                                len(unique_hidden_codes),total_codes))
+            return
+
+        if len(datasets) > 0:
+            continue_characterization(runtime, \
+                                    board=board,
+                                    block=block,
+                                    config=cfg, \
+                                    datasets=datasets,\
+                                    grid_size=grid_size, \
+                                    num_locs=num_locs, \
+                                    num_hidden_codes=num_hidden_codes
+            )
+        else:
+            new_characterization(runtime, \
+                                board=board,
+                                block=block,
+                                config=cfg, \
+                                grid_size=grid_size, \
+                                num_locs=num_locs, \
+                                num_hidden_codes=num_hidden_codes, \
+                                only_adp_locs=adp_locs
+            )
 
 
 def characterize_adp(args):
     board = runtime_util.get_device(args.model_number,layout=True)
-    adp = runtime_util.get_adp(board,args.adp,widen=args.widen)
     runtime = GrendelRunner()
     runtime.initialize()
-    for cfg in adp.configs:
-        blk = board.get_block(cfg.inst.block)
-        cfg_modes = cfg.modes
-        for mode in cfg_modes:
-            cfg.modes = [mode]
+    if not args.adp is None:
+        adp = runtime_util.get_adp(board,args.adp,widen=args.widen)
+        for cfg in adp.configs:
+            blk = board.get_block(cfg.inst.block)
+            cfg_modes = cfg.modes
+            for mode in cfg_modes:
+                cfg.modes = [mode]
+                characterize_configured_block(runtime,board,blk,cfg, \
+                                              grid_size=args.grid_size, \
+                                              num_locs=args.num_locs,\
+                                              num_hidden_codes=args.num_hidden_codes, \
+                                              only_adp_locs=args.adp_locs)
 
+    else:
+        if args.adp_locs or args.widen:
+            raise Exception("full board characterization doesn't accept adp-locs or widen parameters")
 
-            datasets = list(exp_profile_dataset_lib.get_datasets(board, \
-                                                                                     ['block','static_config'],
-                                                                                     block=blk, \
-                                                                                     config=cfg))
-
-            unique_hidden_codes = set(map(lambda model: str(model.loc)+"." \
-                                          +model.hidden_cfg, datasets))
-            total_codes = args.num_hidden_codes*args.num_locs
-            if len(unique_hidden_codes) >= total_codes:
-                print("block %s.%s has enough hidden codes %d/%d" % (blk.name,cfg.inst.loc, \
-                                                                     len(unique_hidden_codes),total_codes))
+        for block in board.blocks:
+            if not block.requires_calibration():
                 continue
 
-            if len(datasets) > 0:
-                continue_characterization(runtime, \
-                                          board=board,
-                                          block=blk,
-                                          config=cfg, \
-                                          datasets=datasets,\
-                                          grid_size=args.grid_size, \
-                                          num_locs=args.num_locs, \
-                                          num_hidden_codes=args.num_hidden_codes
-                )
-            else:
-                new_characterization(runtime, \
-                                     board=board,
-                                     block=blk,
-                                     config=cfg, \
-                                     grid_size=args.grid_size, \
-                                     num_locs=args.num_locs, \
-                                     num_hidden_codes=args.num_hidden_codes, \
-                                     only_adp_locs=args.adp_locs
-                )
+            for mode in block.modes:
+                loc = devlib.Location(list(board.layout.instances(block.name))[0])
+                cfg = BlockConfig.make(block,loc)
+                cfg.modes = [mode]
+                characterize_configured_block(runtime,board,block,cfg, \
+                                                grid_size=args.grid_size, \
+                                                num_locs=args.num_locs,\
+                                                num_hidden_codes=args.num_hidden_codes, \
+                                                adp_locs=False)
+
 

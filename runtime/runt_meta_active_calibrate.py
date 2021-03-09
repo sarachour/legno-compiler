@@ -517,6 +517,8 @@ def write_model_to_database(logger,pool,board,char_board):
         exp_delta_model_lib.update(board,model)
 
     print("###################")
+    print("")
+    print("")
 
 '''
 This function takes a point and evaluates it in the hardware to identify

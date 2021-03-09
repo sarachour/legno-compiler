@@ -39,7 +39,7 @@ testosc_subp.add_argument('--model-number',type=str,help='model database to use'
 testosc_subp.add_argument('--no-osc',action='store_true',help='no oscilloscope connected')
 
 char_subp = subparsers.add_parser('characterize', help='characterize blocks for fast calibration. This takes a really long time')
-char_subp.add_argument('adp', type=str,help='adp to characterize')
+char_subp.add_argument('--adp', type=str,help='adp to characterize')
 char_subp.add_argument('--model-number',type=str,help='model number')
 char_subp.add_argument('--grid-size',type=int,default=7, \
                        help="number of inputs to sample along each axis")
