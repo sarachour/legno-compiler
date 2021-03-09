@@ -4,7 +4,7 @@ import runtime.models.exp_profile_dataset as exp_profile_dataset_lib
 import runtime.models.exp_delta_model as exp_delta_model_lib
 import runtime.models.exp_phys_model as exp_phys_model_lib
 from sklearn.linear_model import Ridge
-
+import argparse
 
 import ops.base_op as oplib
 import ops.generic_op as genoplib
@@ -111,6 +111,13 @@ class RandomFunctionPool:
 
         for v in self.variables:
             yield genoplib.Mult(genoplib.Var('par0'), genoplib.Var(v))
+
+        if False:
+            for v in self.variables:
+                for v2 in self.variables:
+                    yield genoplib.Mult(genoplib.Var('par0'), 
+                                                genoplib.Mult(genoplib.Var(v), genoplib.Var(v2)))
+
 
         if False:
             for v in self.variables:
@@ -231,8 +238,6 @@ def find_functions(models,num_generations=5,pop_size=5,penalty=0.001,max_params=
     print("############################")
     print(repr_model.config)
     print("############################")
-    if repr_model.block.name != "mult":
-        return
 
     print("--- populating pool ---")
     for var in repr_model.variables():
@@ -264,10 +269,10 @@ def find_functions(models,num_generations=5,pop_size=5,penalty=0.001,max_params=
             if not mdl.complete:
                 continue
 
-            for var in repr_model.variables():
+            for var in mdl.variables():
                 variables[var][loc].append(mdl.get_value(var))
 
-            for var,val in repr_model.hidden_codes():
+            for var,val in mdl.hidden_codes():
                 hidden_configs[loc][var].append(val)
                 npts += 1
 
@@ -377,7 +382,18 @@ def execute(board,num_generations=1,pop_size=1,penalty=0.001):
                             models_b,datasets_b,num_generations=num_generations, pop_size=pop_size, penalty=penalty)
 
 
-model_number = 'xfer'
-model_number = 'xfer3'
-board = runtime_util.get_device(model_number)
-execute(board, num_generations=5,pop_size=25,penalty=0.001)
+parser = argparse.ArgumentParser(description='Physical model inference script.')
+parser.add_argument('model_number', type=str,help='physical model database to analyze')
+parser.add_argument('--penalty',default=0.01, \
+                       type=float,help='parameter penalty')
+parser.add_argument('--generations',default=5, \
+                       type=int,help='generations to execute for')
+parser.add_argument('--parents',default=25, \
+                       type=int,help='number of progenators to select per generation')
+
+args = parser.parse_args()
+
+board = runtime_util.get_device(args.model_number)
+execute(board, num_generations=args.generations, \
+        pop_size=args.parents, \
+        penalty=args.penalty)
