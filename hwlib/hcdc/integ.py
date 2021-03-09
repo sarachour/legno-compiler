@@ -115,7 +115,7 @@ def integ_calib_obj(spec,out_scale):
     ("abs((a-1.0))",2,0.05),
     ("abs((b-1.0))",2,0.05),
     ("abs(modelError)",2,0.01),
-    ("abs(v)",1,0.00001),
+    ("abs(v)",1,0.01*out_scale),
     ("abs(c)",2,0.01),
     ("abs(noise)",2,0.0001)
   ]

@@ -755,6 +755,9 @@ class Relationship:
         self.kind = kind
         self.rank = rank
 
+   def __repr__(self):
+        return "%s(%d)" % (self.kind.value,self.rank)
+
 class MultiObjective:
 
         def __init__(self,minimize=True):
@@ -811,13 +814,13 @@ class MultiObjective:
             if any(map(lambda r: r == Relationship.Type.SUB, results)):
                 for idx,result in enumerate(results):
                     if result == Relationship.Type.SUB:
-                        return Relationship(Relationship.Type.SUB,idx)
+                        return Relationship(Relationship.Type.SUB,idx+1)
 
             for idx,result in enumerate(results):
                 if result == Relationship.Type.DOM:
-                    return Relationship(Relationship.Type.DOM,idx)
+                    return Relationship(Relationship.Type.DOM,idx+1)
 
-            return Relationship(Relationship.Type.EQUAL,0)
+            return Relationship(Relationship.Type.EQUAL,1)
 
 
 

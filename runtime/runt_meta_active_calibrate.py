@@ -57,6 +57,13 @@ class Predictor:
             self._objectives = {}
             self._outputs = []
 
+        @property
+        def priorities(self):
+            ps = []
+            for obj in self._objectives.values():
+                ps += obj.priorities
+            return list(set(ps))
+
         def add(self,out,obj):
             assert(isinstance(obj, blocklib.MultiObjective))
             self._outputs.append(out)
@@ -76,12 +83,12 @@ class Predictor:
             doms =  list(filter(lambda res: blocklib.Relationship.Type.DOM== res.kind, results))
 
             if len(subs) > 0:
-                rank = sum(map(lambda s: s.rank, subs))
-                return blocklib.Relationship(blocklib.Relationship.Type.SUB, rank+1)
+                idx = np.argmax(map(lambda s: -s.rank, subs))
+                return blocklib.Relationship(blocklib.Relationship.Type.SUB, subs[idx].rank)
 
             if len(doms) > 0:
-                rank = sum(map(lambda s: s.rank, doms))
-                return blocklib.Relationship(blocklib.Relationship.Type.DOM, rank+1)
+                idx = np.argmax(map(lambda s: -s.rank, doms))
+                return blocklib.Relationship(blocklib.Relationship.Type.DOM, doms[idx].rank)
 
             return blocklib.Relationship(blocklib.Relationship.Type.EQUAL, 1)
 
@@ -235,19 +242,34 @@ class HiddenCodePool:
 
         def order_by_dominance(self):
             nsamps = len(self.values)
+            nprios = max(self.multi_objective.priorities)+1
             dom = [0]*nsamps
+            for idx in range(nsamps):
+                dom[idx] = [0]*nprios
+                for rank in range(nprios):
+                    dom[idx][rank] = 0
 
             for i,vi  in enumerate(self.values):
                 for j,vj  in enumerate(self.values):
                     relationship = self.multi_objective.dominant(vi, vj)
                     if relationship.kind == blocklib.Relationship.Type.DOM:
-                        dom[i] += (1.0/relationship.rank)
+                        dom[i][relationship.rank] += 1
+
+            scores = [0]*nsamps
+            max_val = np.max(dom[:])+1
+
+            for i in range(nsamps):
+                for rank in range(nprios):
+                    n = (nprios-rank)
+                    scores[i] += dom[i][rank]*(max_val**n)
+
+                print("%d] %s score=%d" % (i,dom[i],scores[i]))
 
             # go from most to least dominant
-            indices = np.argsort(dom)
+            indices = np.argsort(scores)
             for idx in range(nsamps-1,0,-1):
                 i = indices[idx]
-                yield i,self.values[i],dom[i]
+                yield i,self.values[i],scores[i]
 
         def get_best(self):
             for i,v,_ in self.order_by_dominance():
