@@ -605,8 +605,8 @@ def _sampler_iterate_over_samples(offset,vdict,score,variables,values,scores):
         for samp in _sampler_iterate_over_samples(offset+1,vdict,score,variables,values,scores):
             yield samp
 
-def sampler_permute(indices,k=6):
-    if len(indices) <= k:
+def sampler_permute(indices,max_size=6,k=4,count=4000):
+    if len(indices) <= max_size:
         for perm in itertools.permutations(indices):
             yield list(perm)
 

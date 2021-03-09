@@ -141,7 +141,7 @@ fan.state['range'] \
   .impl.bind(['_','_','_','m'], enums.RangeType.MED)
 fan.state['range'] \
   .impl.bind(['_','_','_','h'], enums.RangeType.HIGH)
-
+''''
 fan.state.add(BlockState('third', \
                         state_type=BlockStateType.CONNECTION, \
                         values=enums.BoolType))
@@ -151,6 +151,13 @@ fan.state['third'].impl.outgoing(source_port='z2', \
                                  sink_port='_', \
                                  value=enums.BoolType.TRUE)
 fan.state['third'].impl.set_default(enums.BoolType.FALSE)
+''''
+
+fan.state.add(BlockState('enable',
+                        values=enums.SignType, \
+                        state_type=BlockStateType.CONSTANT))
+fan.state['enable'].impl.bind(enums.BoolType.TRUE)
+
 
 fan.state.add(BlockState('enable',
                         values=enums.SignType, \
