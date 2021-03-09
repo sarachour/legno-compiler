@@ -228,7 +228,7 @@ def get_repr_model(models):
         for cfg,mdl in mdls.items():
             return mdl
 
-def find_functions(models,num_generations=5,pop_size=5,penalty=0.001,max_params=5,debug=False):
+def find_functions(models,num_generations=5,pop_size=5,penalty=0.001,max_params=4,debug=False):
     repr_model = get_repr_model(models)
     if repr_model is None:
        raise Exception("no representative model found. (# models=%d)" % len(models))
@@ -330,8 +330,8 @@ def find_functions(models,num_generations=5,pop_size=5,penalty=0.001,max_params=
 
 
 
-def genetic_infer_model(board,block,config,output,models,datasets,num_generations=1, pop_size=1,penalty=0.001):
-   functions = dict(find_functions(models,num_generations=num_generations,pop_size=pop_size,penalty=penalty))
+def genetic_infer_model(board,block,config,output,models,datasets,num_generations=1, pop_size=1,penalty=0.001,max_params=4):
+   functions = dict(find_functions(models,num_generations=num_generations,pop_size=pop_size,penalty=penalty,max_params=max_params))
    pmdl = exp_phys_model_lib.ExpPhysModel(block,config,output)
 
    print("===== BEST FUNCTIONS ======")
@@ -344,10 +344,10 @@ def genetic_infer_model(board,block,config,output,models,datasets,num_generation
 
    if len(functions) > 0:
       exp_phys_model_lib.update(board, pmdl)
-   input("done!")
+   #input("done!")
 
 
-def execute(board,num_generations=1,pop_size=1,penalty=0.001):
+def execute(board,num_generations=1,pop_size=1,penalty=0.001,max_params=4):
     def insert(d,ks):
         for k in ks:
             if not k in d:
@@ -379,13 +379,15 @@ def execute(board,num_generations=1,pop_size=1,penalty=0.001):
             raise Exception("no representative model found. (# models=%d)" % len(models_b))
 
         genetic_infer_model(board,repr_model.block,repr_model.config,repr_model.output, \
-                            models_b,datasets_b,num_generations=num_generations, pop_size=pop_size, penalty=penalty)
+                            models_b,datasets_b,num_generations=num_generations, pop_size=pop_size, penalty=penalty, max_params=max_params)
 
 
 parser = argparse.ArgumentParser(description='Physical model inference script.')
 parser.add_argument('model_number', type=str,help='physical model database to analyze')
 parser.add_argument('--penalty',default=0.01, \
                        type=float,help='parameter penalty')
+parser.add_argument('--max_params',default=3, \
+                       type=int,help='maximum number of physical model parameters')
 parser.add_argument('--generations',default=5, \
                        type=int,help='generations to execute for')
 parser.add_argument('--parents',default=25, \
@@ -396,4 +398,5 @@ args = parser.parse_args()
 board = runtime_util.get_device(args.model_number)
 execute(board, num_generations=args.generations, \
         pop_size=args.parents, \
+        max_params=args.max_params, \
         penalty=args.penalty)
