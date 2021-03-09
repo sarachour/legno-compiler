@@ -801,8 +801,6 @@ def calibrate_block(logger, \
 
 
     for rnd in range(rounds):
-        print("TODO: remove me")
-        continue
         #TODO: maybe put this in a loop?
         print("==== ADD UNLABELLED ====")
         add_random_unlabelled_samples(code_pool,samples_per_round)
