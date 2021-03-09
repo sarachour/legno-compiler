@@ -619,6 +619,7 @@ def sampler_iterate_over_samples(objectives,variables,values,scores,num_samps=1)
         ord_values = list(map(lambda idx: values[idx], perm))
         ord_scores = list(map(lambda idx: scores[idx], perm))
 
+        print(perm)
         n_samps = 0
         for samp,score in _sampler_iterate_over_samples(0,{},[], \
                                                         ord_variables,ord_values,ord_scores):
