@@ -166,6 +166,10 @@ class RandomFunctionPool:
         p2_new = p2.substitute(p2_repl)
         yield genoplib.Add(p1.copy(), p2_new.copy())
 
+        yield genoplib.Mult(lamboplib.SmoothStep(p1.copy()), p1.copy())
+
+        yield genoplib.Mult(lamboplib.SmoothStep(p2.copy()), p2_new.copy())
+
         if all(map(lambda n: not isinstance(n,genoplib.Add), p1.nodes())) and \
            all(map(lambda n: not isinstance(n,genoplib.Add),p2.nodes())):
             yield genoplib.Mult(p1.copy(), p2_new.copy())
@@ -341,6 +345,9 @@ def genetic_infer_model(board,block,config,output,models,datasets,num_generation
        print("var: %s" % var)
        print("   %s score=%f" % (expr,score))
        pmdl.set_variable(var,expr,score)
+
+   if block.name == "adc" or block.name == "dac":
+        input("continue")
 
    if len(functions) > 0:
       exp_phys_model_lib.update(board, pmdl)

@@ -2,6 +2,7 @@ from ops.base_op import *
 import ops.generic_op as genop
 import ops.interval as interval
 import math
+import numpy as np
 
 def to_python(e):
     if e.op == OpType.VAR:
@@ -77,6 +78,12 @@ def to_python(e):
     elif e.op == OpType.ABS:
         v,a = to_python(e.arg(0))
         return v,"abs(%s)" % a
+
+    elif e.op == OpType.SMOOTH_STEP:
+        v,a = to_python(e.arg(0))
+        fxn = e.function()
+        return [], fxn % a
+
 
     elif e.op == OpType.CALL:
         expr = e.func.expr
@@ -243,6 +250,45 @@ class Clamp(Op):
     def __repr__(self):
         return "clamp(%s,%s)" % (self.arg(0), \
                               self._interval)
+
+class SmoothStep(Op):
+
+    def __init__(self,arg,ampl=0.5,offset=0.5):
+        self.ampl = ampl
+        self.offset = offset
+        Op.__init__(self,OpType.SMOOTH_STEP,[arg])
+        pass
+
+    def copy(self):
+        return SmoothStep(self.ampl,self.offset,self.deg)
+
+    @staticmethod
+    def from_json(obj):
+        return SmoothStep(Op.from_json(obj['args'][0]), \
+                       obj['ampl'], \
+                       obj['offset'])
+
+    def to_json(self):
+        obj = Op.to_json(self)
+        obj['ampl'] = self.ampl
+        obj['offset'] = self.offset
+        return obj
+
+    def function(self):
+        fxn = "({ampl}*np.tanh(%s)+{offset})"
+        return fxn.format(ampl=self.ampl,offset=self.offset)
+
+
+    def compute(self,bindings):
+        result = self.arg(0).compute(bindings)
+        return self.ampl*np.tanh(result) + self.offset
+
+
+    def substitute(self,args):
+        return SmoothStep(self.arg(0).substitute(args), \
+                        self.ampl, self.offset)
+
+
 
 class Abs(Op):
 

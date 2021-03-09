@@ -405,7 +405,6 @@ def load_code_pool_from_database(char_board,predictor):
     for fxn,score,dom in code_pool.meas_view.order_by_dominance():
         print("%s score=%s dom=%d" % (fxn,score,dom))
 
-    input("continue?")
     return code_pool
 
 
@@ -477,6 +476,7 @@ def profile_block(logger,board,blk,loc,cfg,grid_size=9,calib_obj=llenums.Calibra
 
 def write_model_to_database(logger,pool,board,char_board):
     idx,score = pool.meas_view.get_best()
+
     code_values = pool.pool[idx]
     hidden_codes = dict(zip(pool.variables, \
                             code_values))
@@ -487,7 +487,7 @@ def write_model_to_database(logger,pool,board,char_board):
 
 
     exp_delta_model_lib.remove_models(board, \
-                                      ['block','loc','static_config','hidden_config','calib_obj'], \
+                                      ['block','loc','static_config','calib_obj'], \
                                       block=pool.predictor.block, \
                                       loc=pool.predictor.loc, \
                                       config=new_config,  \
@@ -501,12 +501,22 @@ def write_model_to_database(logger,pool,board,char_board):
         exp_profile_dataset_lib.update(board,dataset)
 
 
+    print("##### BEST DELTAS ######")
+    print(new_config)
+    print("---------- codes and score ------")
+    print(hidden_codes)
+    print(score)
+    print("-------- delta models ----------------")
     for model in exp_delta_model_lib.get_models(char_board, \
                                                 ['block','loc','static_config','hidden_config'], \
                                                 block=pool.predictor.block, loc=pool.predictor.loc, \
                                                 config=new_config):
         model.calib_obj = llenums.CalibrateObjective.MODELBASED
+        print(model)
+        print("------------")
         exp_delta_model_lib.update(board,model)
+
+    print("###################")
 
 '''
 This function takes a point and evaluates it in the hardware to identify
@@ -786,6 +796,8 @@ def calibrate_block(logger, \
 
 
     for rnd in range(rounds):
+        print("TODO: remove me")
+        continue
         #TODO: maybe put this in a loop?
         print("==== ADD UNLABELLED ====")
         add_random_unlabelled_samples(code_pool,samples_per_round)

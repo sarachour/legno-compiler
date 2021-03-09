@@ -23,6 +23,7 @@ class OpType(Enum):
   SIN = "sin"
   LN= "ln"
   EXP= "exp"
+  SMOOTH_STEP= "cstep"
   CLAMP="clamp"
   MIN ="min"
   MAX ="max"
@@ -129,6 +130,8 @@ class Op:
             return lambd.Abs.from_json(obj)
         elif op == OpType.SIN:
             return lambd.Sin.from_json(obj)
+        elif op == OpType.SMOOTH_STEP:
+            return lambd.SmoothStep.from_json(obj)
         elif op == OpType.COS:
             return lambd.Cos.from_json(obj)
         elif op == OpType.ROUND:
