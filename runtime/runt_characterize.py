@@ -82,9 +82,7 @@ def characterize_configured_block(runtime,board,block,cfg, \
                                     +model.hidden_cfg, datasets))
         total_codes = num_hidden_codes*num_locs
         if len(unique_hidden_codes) >= total_codes:
-            for key in unique_hidden_codes:
-               print(key)
-            print("block %s.%s has enough hidden codes %d/%d" % (block.name,cfg.inst.loc, \
+            print("block %s.%s [%s] has enough hidden codes %d/%d" % (block.name,cfg.inst.loc, cfg.mode, \
                                                                 len(unique_hidden_codes),total_codes))
             return
 
