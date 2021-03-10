@@ -45,6 +45,7 @@ mdl_subp.add_argument('--grid-size',default=25,type=int,help='size of grid to pr
 mdl_subp.add_argument('--samples-per-round',default=3,type=int, \
                       help='number of candidate hidden codes per iteration.')
 mdl_subp.add_argument('--rounds',default=3,type=int,help='number of iterations.')
+mdl_subp.add_argument('--max-samples',default=20,type=int,help='max number of samples.')
 mdl_subp.add_argument('--adp',type=str,help='adp to calibrate.')
 mdl_subp.add_argument('--widen',action='store_true',help='widen the set of modes.')
 

@@ -824,7 +824,8 @@ def calibrate_block(logger, \
                     grid_size=9, \
                     num_iters=3, \
                     samples_per_round=5, \
-                    rounds=1):
+                    rounds=1, \
+                    max_samples):
     logger.set_configured_block(block,loc,config.mode)
 
 
@@ -858,6 +859,8 @@ def calibrate_block(logger, \
     print("==== SETUP INITIAL POOL ====")
     code_pool= load_code_pool_from_database(char_board, predictor)
 
+    if len(code_pool) >= max_samples:
+        return
 
     for rnd in range(rounds):
         #TODO: maybe put this in a loop?
@@ -900,7 +903,8 @@ def calibrate(args):
                                 blk,cfg.inst.loc,cfg, \
                                 grid_size=args.grid_size, \
                                 rounds=args.rounds, \
-                                samples_per_round=args.samples_per_round)
+                                samples_per_round=args.samples_per_round, \
+                                max_samples=args.max_samples)
 
     else:
         raise Exception("unimplemented")
