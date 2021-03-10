@@ -41,7 +41,7 @@ best_subp.add_argument('model_number', type=str,help='model of board to study')
 mdl_subp = subparsers.add_parser('active_cal', help='active learning based calibration with transferrable model')
 mdl_subp.add_argument('model_number', type=str,help='model of board to study')
 mdl_subp.add_argument('--xfer-db', type=str,help='database with physical models for transfer learning')
-mdl_subp.add_argument('--grid-size',default=7,type=int,help='size of grid to profile.')
+mdl_subp.add_argument('--grid-size',default=25,type=int,help='size of grid to profile.')
 mdl_subp.add_argument('--candidate-samples',default=3,type=int, \
                       help='number of candidate hidden codes per iteration.')
 mdl_subp.add_argument('--num-iters',default=3,type=int,help='number of iterations.')
