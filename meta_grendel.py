@@ -42,17 +42,13 @@ mdl_subp = subparsers.add_parser('active_cal', help='active learning based calib
 mdl_subp.add_argument('model_number', type=str,help='model of board to study')
 mdl_subp.add_argument('--xfer-db', type=str,help='database with physical models for transfer learning')
 mdl_subp.add_argument('--grid-size',default=7,type=int,help='size of grid to profile.')
-mdl_subp.add_argument('--candidate-samples',default=3,type=int, \
+mdl_subp.add_argument('--samples-per-round',default=3,type=int, \
                       help='number of candidate hidden codes per iteration.')
-mdl_subp.add_argument('--num-iters',default=3,type=int,help='number of iterations.')
+mdl_subp.add_argument('--rounds',default=3,type=int,help='number of iterations.')
 mdl_subp.add_argument('--adp',type=str,help='adp to calibrate.')
 mdl_subp.add_argument('--widen',action='store_true',help='widen the set of modes.')
-mdl_subp.add_argument('--cutoff', type=float, \
-                      help='score cutoff to terminate')
-mdl_subp.add_argument('--default-cutoff', action='store_true', \
-                      help='use stored block cutoffs. Overrides cutoff.')
 
-
+'''
 mdl_subp = subparsers.add_parser('model_cal', help='linear model calibration for all individually characterized blocks')
 mdl_subp.add_argument('model_number', type=str,help='model of board to study')
 mdl_subp.add_argument('--grid-size',default=7,type=int,help='size of grid to profile.')
@@ -73,6 +69,7 @@ mdl_subp.add_argument('--default-cutoff', action='store_true', \
 brute_subp = subparsers.add_parser('bruteforce_cal', \
                                    help='bruteforce calibration for all individually characterized blocks')
 brute_subp.add_argument('model_number', type=str,help='model of board to study')
+'''
 
 args = parser.parse_args()
 
