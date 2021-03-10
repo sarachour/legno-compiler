@@ -108,9 +108,16 @@ class Predictor:
         def __init__(self,outputs,hidden_codes):
             self.outputs = outputs
             self.hidden_codes = list(map(lambda hc: hc.name, hidden_codes))
+            self.variables = []
             self.dataset = {}
-            for out in outputs:
+            self.clear()
+
+        def clear(self):
+            for out in self.outputs:
+                variables = list(self.dataset[out].keys()) if out in self.dataset else []
                 self.dataset[out] = {}
+                for var in variables:
+                    self.dataset[out][var] = {'codes':[],'values':[]}
 
         def add_variable(self,output,var):
             self.dataset[output.name][var] = {'codes':[], 'values':[]}
@@ -180,6 +187,10 @@ class Predictor:
         self.variables[(out.name,v)] = mdl
         self.data.add_variable(out,v)
 
+    def clear(self):
+        self.data.clear()
+        self.conc_variables = {}
+
     def min_samples(self):
         return max(map(lambda v: len(v.params) + 1, self.variables.values()))
 
@@ -196,8 +207,6 @@ class Predictor:
             except Exception as e:
                print("[WARN] failed to predict <%s> for output <%s> of block <%s>" % (var,out,self.block.name))
                print("   %s.%s deltavar=%s expr=%s" % (self.block.name,out,var, model.expr))
-               print("   codes=%s" % str(codes))
-               print("  values=%s" % str(values))
                print("  exception=%s" % e)
                continue
 
@@ -211,15 +220,17 @@ class Predictor:
             self.concrete_variables[(out,var)] = conc_expr
 
             error = 0.0
+            all_errors = []
             for idx in range(npts):
                pred = conc_expr.compute(dict(map(lambda hc: (hc,codes[hc][idx]), self.data.hidden_codes)))
+               all_errors.append(values[idx]-pred)
                error += (values[idx]-pred)**2
+
             self.errors[(out,var)] = math.sqrt(error)/npts
-            print("%s.%s deltavar=%s expr=%s" % (self.block.name,out,var,conc_expr))
-            print("   codes=%s" % str(codes))
-            print("   pars=%s" % str(result['params']))
-            print("   values=%s" % str(values))
-            print("   errors=%s" % str(result['param_error']))
+            print("%s.%s npts=%d deltavar=%s expr=%s" % (self.block.name,out,npts, var,conc_expr))
+            for idx,(v,e) in enumerate(zip(values,all_errors)):
+                ci = dict(map(lambda c: (c,codes[c][idx]), codes.keys()))
+                print("   codes=%s value=%s error=%s" % (ci,v,e))
             print("")
 
         for (out,var),model in self.variables.items():
@@ -245,7 +256,7 @@ class HiddenCodePool:
         def add(self,v):
             self.values.append(v)
 
-        def order_by_dominance(self):
+        def order_by_dominance(self,debug=False):
             nsamps = len(self.values)
             nprios = max(self.multi_objective.priorities)+1
             dom = [0]*nsamps
@@ -254,6 +265,7 @@ class HiddenCodePool:
                 for rank in range(nprios):
                     dom[idx][rank] = 0
 
+            # build the ranked dominance matrix
             for i,vi  in enumerate(self.values):
                 for j,vj  in enumerate(self.values):
                     relationship = self.multi_objective.dominant(vi, vj)
@@ -263,12 +275,16 @@ class HiddenCodePool:
             scores = [0]*nsamps
             max_val = np.max(dom[:])+1
 
+            # compute a score for each scample
+            # this algorithm computes a single score which effectively compares the rank 1 scores, moves to rank 2 if they're equal
+            # and so on.
             for i in range(nsamps):
                 for rank in range(nprios):
                     n = (nprios-rank)
                     scores[i] += dom[i][rank]*(max_val**n)
 
-                print("%d] %s score=%d" % (i,dom[i],scores[i]))
+                if debug:
+                    print("%d] %s score=%d" % (i,dom[i],scores[i]))
 
             # go from most to least dominant
             indices = np.argsort(scores)
@@ -433,7 +449,8 @@ def load_code_pool_from_database(char_board,predictor):
     print(predictor.config)
     print("")
     for fxn,score,dom in code_pool.meas_view.order_by_dominance():
-        print("%s score=%s dom=%f" % (fxn,score,dom))
+        print("%s  dom=%f" % (fxn,dom))
+        print("  score=%s" % (str(score)))
 
     return code_pool
 
@@ -611,7 +628,10 @@ def build_predictor(xfer_board,block,loc,config):
 '''
 Update the predictor parameters with the characterization data
 '''
-def update_predictor(predictor,char_board,nsamples):
+def update_predictor(predictor,char_board,nsamples=None):
+     if nsamples is None:
+         nsamples = len(list(exp_delta_model_lib.get_all(char_board)))
+
      assert(predictor.min_samples() <= nsamples)
 
      for model in exp_delta_model_lib.get_all(char_board):
@@ -636,7 +656,9 @@ def sampler_compatible(prim,second):
                 assert(isinstance(prim[v],int))
                 return False
         return True
-
+'''
+Helper function for finding compatible combinations of subobjective solutions
+'''
 def _sampler_iterate_over_samples(code_idx,offset,vdict,score,variables,values,scores,memos={}):
     if code_idx == len(variables):
         yield vdict,score
@@ -662,7 +684,11 @@ def _sampler_iterate_over_samples(code_idx,offset,vdict,score,variables,values,s
                                                       memos):
                 yield samp
 
-
+'''
+This function produces permutations of a list of indices. If the list of indices
+is too long, it only permutes the first k elements of the array. It randomly selects k indices
+to permute and put in the prefix of the array.
+'''
 def sampler_permute(indices,max_size=6,k=4,count=4000):
     if len(indices) <= max_size:
         for perm in itertools.permutations(indices):
@@ -700,26 +726,31 @@ def sampler_iterate_over_samples(objectives,variables,values,scores,num_samps=1)
             if n_samps >= num_samps:
                 break
 
+            # only add samples which haven't been seen before
             key = runtime_util.dict_to_identifier(samp)
             if key in keys:
                 break
 
+            # restructure score to invert permutation
             orig_score = [0]*len(indices)
             for idx in indices:
                 orig_score[perm[idx]] = score[idx]
 
+            # add the sample to the list of samples
             samples.append(samp)
             sample_scores.add(orig_score)
             keys.append(key)
             n_samps += 1
 
+    # order samples by dominance
     for i, score,dom in sample_scores.order_by_dominance():
-        print("samp %d dominant: %s scores=%s #dom=%f" % (i, samples[i],score,dom))
+        print("%d] dom=%d %s" % (i, dom,samples[i]))
+        print("   scores=%s" % (str(score)))
         yield samples[i],score
 
 
 
-def get_sample(pool):
+def get_sample(pool,debug=False):
     # compute constraints over hidden codes
     solutions = []
     solution_scores = []
@@ -729,7 +760,8 @@ def get_sample(pool):
 
         # first derive a concrete expression for the subobjective
         # mapping hidden codes to objective function values
-        print("-> processing objective %d (%s)" % (idx,obj))
+        if debug:
+            print("-> processing objective %d (%s)" % (idx,obj))
 
         vdict = {}
         for (out2,var),expr in pool.predictor.concrete_variables.items():
@@ -755,9 +787,10 @@ def get_sample(pool):
         solutions.append(list(map(lambda idx: list(options[idx]), indices)))
         solution_scores.append(list(map(lambda idx: scores[idx], indices)))
 
-    print("===== Sample Counts ===")
-    for idx,sln in enumerate(solutions):
-        print("%d] %d variables=%s" % (idx,len(sln),str(variables[idx])))
+    if debug:
+        print("===== Sample Counts ===")
+        for idx,sln in enumerate(solutions):
+            print("%d] %d variables=%s" % (idx,len(sln),str(variables[idx])))
 
 
     print("===== Produce Samples ===")
@@ -776,7 +809,6 @@ def add_random_unlabelled_samples(pool,count):
         for var,val in constraint.items():
             samp[var] = val
 
-        print(samp)
         if not pool.has_code(samp):
            pool.add_unlabeled_code(samp)
            npts += 1
@@ -807,7 +839,7 @@ def calibrate_block(logger, \
 
     # build a calibration objective predictor with per-variable models.
     predictor = build_predictor(xfer_board,block,loc,config)
-    nsamps_reqd = predictor.min_samples()*2+1
+    nsamps_reqd = predictor.min_samples()+1
 
     # collect initial data for fitting the transfer model
     # and fit all of the initial guesses for the parameters on the transfer model
@@ -829,10 +861,15 @@ def calibrate_block(logger, \
 
     for rnd in range(rounds):
         #TODO: maybe put this in a loop?
-        print("==== ADD UNLABELLED ====")
+        # fit all of the parameters in the predictor.
+        print("==== UPDATING PREDICTOR [%d/%d] ====" % (rnd+1,rounds))
+        predictor.clear()
+        update_predictor(predictor,char_board)
+
+        print("==== ADD UNLABELLED [%d/%d] ====" % (rnd+1, rounds))
         add_random_unlabelled_samples(code_pool,samples_per_round)
 
-        print("==== QUERY UNLABELLED ====")
+        print("==== QUERY UNLABELLED [%d/%d] ====" % (rnd+1,rounds))
         for hcs in code_pool.get_unlabeled():
             query_hidden_codes(logger,code_pool,char_board,block,loc,config,hcs, \
                      grid_size=grid_size)
@@ -857,18 +894,13 @@ def calibrate(args):
             for mode in cfg_modes:
                 cfg.modes = [mode]
 
-                cutoff = args.cutoff
-                if args.default_cutoff:
-                    cutoff = runtime_meta_util.get_tolerance(blk,cfg)
-
-
                 calibrate_block(logger, \
                                 board, \
                                 xfer_board, \
                                 blk,cfg.inst.loc,cfg, \
                                 grid_size=args.grid_size, \
-                                rounds=1, \
-                                samples_per_round=10)
+                                rounds=args.rounds, \
+                                samples_per_round=args.samples_per_round)
 
     else:
         raise Exception("unimplemented")
