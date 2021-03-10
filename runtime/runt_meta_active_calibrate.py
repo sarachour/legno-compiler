@@ -69,14 +69,14 @@ class Predictor:
             self._outputs.append(out)
             self._objectives[out] = obj
 
-        def dominant(self,v1,v2,strict=False):
+        def dominant(self,v1,v2):
             idx = 0
             results = []
             for out in self._outputs:
                 n = len(self._objectives[out].objectives)
                 vs1 = v1[idx:idx+n]
                 vs2 = v2[idx:idx+n]
-                results.append(self._objectives[out].dominant(vs1,vs2,strict=strict))
+                results.append(self._objectives[out].dominant(vs1,vs2))
                 idx += n
 
             subs =  list(filter(lambda res: blocklib.Relationship.Type.SUB == res.kind, results))
@@ -111,6 +111,7 @@ class Predictor:
             self.variables = []
             self.dataset = {}
             self.clear()
+
 
         def clear(self):
             for out in self.outputs:
@@ -256,11 +257,11 @@ class HiddenCodePool:
         def add(self,v):
             self.values.append(v)
 
-        def get_best(self,debug=False,strict=False):
-            for idx,score,dom in self.order_by_dominance(debug,strict):
+        def get_best(self,debug=False):
+            for idx,score,dom in self.order_by_dominance(debug):
                 return idx,score
 
-        def order_by_dominance(self,debug=False,strict=False):
+        def order_by_dominance(self,debug=False):
             nsamps = len(self.values)
             nprios = max(self.multi_objective.priorities)+1
             dom = [0]*nsamps
@@ -272,7 +273,7 @@ class HiddenCodePool:
             # build the ranked dominance matrix
             for i,vi  in enumerate(self.values):
                 for j,vj  in enumerate(self.values):
-                    relationship = self.multi_objective.dominant(vi, vj,strict=strict)
+                    relationship = self.multi_objective.dominant(vi, vj)
                     if relationship.kind == blocklib.Relationship.Type.DOM:
                         dom[i][relationship.rank] += 1
 
@@ -523,12 +524,11 @@ def profile_block(logger,board,blk,loc,cfg,grid_size=9,calib_obj=llenums.Calibra
 
 def write_model_to_database(logger,pool,board,char_board):
     print("------- ")
-    for idx,score,dom in pool.meas_view.order_by_dominance(strict=True):
-
-        print("%d] dom=%s" % (str(dom)))
+    for idx,score,dom in pool.meas_view.order_by_dominance():
+        print("%d] dom=%s" % (idx,str(dom)))
         print("   score=%s" % str(score))
 
-    idx,score = pool.meas_view.get_best(strict=True)
+    idx,score = pool.meas_view.get_best()
 
     code_values = pool.pool[idx]
     hidden_codes = dict(zip(pool.variables, \
@@ -634,21 +634,12 @@ def build_predictor(xfer_board,block,loc,config):
 '''
 Update the predictor parameters with the characterization data
 '''
-def update_predictor(predictor,char_board,nsamples=None):
-     if nsamples is None:
-         nsamples = len(list(exp_delta_model_lib.get_all(char_board)))
-
-     assert(predictor.min_samples() <= nsamples)
-
+def update_predictor(predictor,char_board):
      for model in exp_delta_model_lib.get_all(char_board):
-        if nsamples == 0:
-            break
-
         for var,val in model.variables().items():
             predictor.data.add_datapoint(model.output, var,  \
                                          dict(model.hidden_codes()), val)
 
-        nsamples -= 1
 
      predictor.fit()
 
@@ -841,12 +832,10 @@ def calibrate_block(logger, \
 
     # load physical models for transfer learning. Compute the number of parameters
     phys_models = {}
-    nsamps_reqd = 0
-
 
     # build a calibration objective predictor with per-variable models.
     predictor = build_predictor(xfer_board,block,loc,config)
-    nsamps_reqd = predictor.min_samples()+1
+    nsamps_reqd = predictor.min_samples() + 1
 
     # collect initial data for fitting the transfer model
     # and fit all of the initial guesses for the parameters on the transfer model
@@ -859,7 +848,7 @@ def calibrate_block(logger, \
     update_model(logger,char_board,block,loc,config)
 
     # fit all of the parameters in the predictor.
-    update_predictor(predictor,char_board,nsamps_reqd)
+    update_predictor(predictor,char_board)
 
     # next, we're going to populate the initial pool of points.
     print("==== SETUP INITIAL POOL ====")

@@ -20,8 +20,8 @@ class GrendelRunner:
   def close(self):
     self.due.close()
 
-  def result(self):
-    return grendel_util.get_response(self.due,quiet=self.quiet)
+  def result(self,quiet=False):
+    return grendel_util.get_response(self.due,quiet=self.quiet or quiet)
 
   def execute(self,cmd):
     self.due.write_command(cmd)

@@ -166,9 +166,11 @@ class RandomFunctionPool:
         p2_new = p2.substitute(p2_repl)
         yield genoplib.Add(p1.copy(), p2_new.copy())
 
-        yield genoplib.Mult(lamboplib.SmoothStep(p1.copy()), p1.copy())
+        if all(map(lambda n: isinstance(n,genoplib.Var), p1.nodes())): 
+            yield genoplib.Mult(lamboplib.SmoothStep(p1.copy()), p1.copy())
 
-        yield genoplib.Mult(lamboplib.SmoothStep(p2.copy()), p2_new.copy())
+        if all(map(lambda n: isinstance(n,genoplib.Var), p2_new.nodes())): 
+            yield genoplib.Mult(lamboplib.SmoothStep(p2_new.copy()), p2_new.copy())
 
         if all(map(lambda n: not isinstance(n,genoplib.Add), p1.nodes())) and \
            all(map(lambda n: not isinstance(n,genoplib.Add),p2.nodes())):

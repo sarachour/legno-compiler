@@ -8,14 +8,15 @@ import runtime.models.exp_profile_dataset as exp_profile_lib
 def profile(runtime,dev, \
             blk,loc,adp,output_port, \
             inputs, \
-            method=llenums.ProfileOpType.INPUT_OUTPUT):
+            method=llenums.ProfileOpType.INPUT_OUTPUT,quiet=False):
     state_t = {blk.name:blk.state.concretize(adp,loc)}
     # build profiling command
     loc_t,loc_d = llutil.make_block_loc_t(blk,loc)
     values = [0.0]*2
     for input_ident,input_val in inputs.items():
         values[input_ident.code()] = input_val
-    print("profile-inputs: %s" % values)
+    if not quiet:
+       print("profile-inputs: %s" % values)
     profile_data = {"method": method.name, \
                     "inst": loc_d,
                     "in_vals": values, \
@@ -27,7 +28,7 @@ def profile(runtime,dev, \
     cmd = cmd_t.build(cmd_data,debug=True)
     # execute profiling command
     runtime.execute(cmd)
-    resp = llutil.unpack_response(runtime.result())
+    resp = llutil.unpack_response(runtime.result(quiet=quiet))
 
     # reconstruct analog device program
     new_adp= adplib.ADP()
@@ -42,7 +43,9 @@ def profile(runtime,dev, \
     port = llutil.get_by_ll_identifier(blk.inputs,llenums.PortType.IN0)
     if not port is None:
         inputs[port.name] = resp['spec']['in_vals'][llenums.PortType.IN0.code()]
-        print("in %s = %f" % (port.name,inputs[port.name]))
+        if not quiet:
+           print("in %s = %f" % (port.name,inputs[port.name]))
+
     port = llutil.get_by_ll_identifier(blk.inputs,llenums.PortType.IN1)
     if not port is None:
         inputs[port.name]= resp['spec']['in_vals'][llenums.PortType.IN1.code()]
@@ -55,8 +58,10 @@ def profile(runtime,dev, \
     out_mean = resp['mean']
     out_std = resp['stdev']
     out_status = llenums.ProfileStatus.from_code(int(resp['status']))
-    print("datum inputs=%s out=%f std=%f status=%s" % (inputs,out_mean,out_std,out_status.value))
-    print(blkcfg)
+    if not quiet:
+       print("datum inputs=%s out=%f std=%f status=%s" % (inputs,out_mean,out_std,out_status.value))
+       print(blkcfg)
+
     # insert into database
     if out_status == llenums.ProfileStatus.SUCCESS:
         dataset= exp_profile_lib.load(dev,blk,loc,new_out,blkcfg,method)

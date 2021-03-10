@@ -30,6 +30,7 @@ def continue_characterization(runtime,board,datasets,block,config, \
 
     print("=== Continuing Characterization! ===")
     for loc,hidden_cfgs in datasets_by_loc.items():
+        print("----- %s (%d/%d) ----" % (loc,len(hidden_cfgs),num_hidden_codes))
         if len(hidden_cfgs) < num_hidden_codes:
             new_hidden_codes = num_hidden_codes - len(hidden_cfgs) + 1
             print("=>> LOC=%s new-hidden-codes=%d" % (loc,new_hidden_codes))
@@ -81,6 +82,8 @@ def characterize_configured_block(runtime,board,block,cfg, \
                                     +model.hidden_cfg, datasets))
         total_codes = num_hidden_codes*num_locs
         if len(unique_hidden_codes) >= total_codes:
+            for key in unique_hidden_codes:
+               print(key)
             print("block %s.%s has enough hidden codes %d/%d" % (block.name,cfg.inst.loc, \
                                                                 len(unique_hidden_codes),total_codes))
             return
@@ -115,7 +118,7 @@ def characterize_adp(args):
     if not args.adp is None:
         adp = runtime_util.get_adp(board,args.adp,widen=args.widen)
         if args.adp_locs:
-           args.num_hidden_codes = 1
+           args.num_locs = 1
 
         for cfg in adp.configs:
             blk = board.get_block(cfg.inst.block)

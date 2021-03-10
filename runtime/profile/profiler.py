@@ -30,7 +30,7 @@ def calibrate(dev,runtime,block,inst,cfg):
 
 
 
-def profile_hidden_state(runtime,dev,planner,hidden,adp=None):
+def profile_hidden_state(runtime,dev,planner,hidden,adp=None,quiet=False):
   # make new config for profiling operation
   if adp is None:
      new_adp= adplib.ADP()
@@ -63,8 +63,10 @@ def profile_hidden_state(runtime,dev,planner,hidden,adp=None):
       else:
         st = planner.block.inputs[name]
         input_vals[st.ll_identifier] = value
+    
+    if not quiet:
+       print("-> input %s" % str(dynamic))
 
-    print("-> input %s" % str(dynamic))
     profile(runtime, \
             dev, \
             planner.block, \
@@ -72,14 +74,15 @@ def profile_hidden_state(runtime,dev,planner,hidden,adp=None):
             new_adp, \
             output.ll_identifier, \
             method=method, \
-            inputs=input_vals)
+            inputs=input_vals, \
+            quiet=quiet)
 
     dynamic = planner.next_dynamic()
 
-def profile_all_hidden_states(runtime,dev,planner,adp=None):
+def profile_all_hidden_states(runtime,dev,planner,adp=None,quiet=False):
   planner.new_hidden()
   hidden_state = planner.next_hidden()
   while not hidden_state is None:
     print(hidden_state)
-    profile_hidden_state(runtime,dev,planner,hidden_state,adp=adp)
+    profile_hidden_state(runtime,dev,planner,hidden_state,adp=adp,quiet=quiet)
     hidden_state = planner.next_hidden()

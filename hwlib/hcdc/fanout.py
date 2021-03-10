@@ -58,14 +58,14 @@ def fan_calib_obj(spec,idx,out):
 
 def fan_calib_obj(spec,idx,out):
   subobjs = [ \
-              ("abs(modelError)",2,0.01), \
-              ("abs(b{idx})",1,0.01), \
+              ("abs(modelError)",2,0.0005*out), \
+              ("abs(b{idx})",1,0.0005*out), \
              ("abs((1.0-a{idx}))",2,0.05), \
-              ("abs(noise)",2,0.01)]
+              ("abs(noise)",2,0.0005*out)]
 
   obj = MultiObjective()
   for subobj,prio,eps  in subobjs:
-    expr = subobj.format(out=out,idx=idx)
+    expr = subobj.format(idx=idx)
     obj.add(parser.parse_expr(expr),prio,eps) 
 
   spec.objective = obj
