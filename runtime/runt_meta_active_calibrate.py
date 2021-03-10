@@ -459,7 +459,7 @@ def load_code_pool_from_database(char_board,predictor):
 def update_model(logger,char_board,blk,loc,cfg):
     #"python3 grendel.py mkphys --model-number {model} --max-depth 0 --num-leaves 1 --shrink" 
     CMDS = [ \
-             "python3 grendel.py mkdeltas --model-number {model} --force > deltas.log" \
+             "python3 grendel.py mkdeltas {model} --force > deltas.log" \
     ]
 
 
@@ -828,7 +828,7 @@ def calibrate_block(logger, \
 
     # get board with initial code pool
     char_model = runtime_meta_util.get_model(board,block,loc,config)
-    char_board = runtime_util.get_device("active-cal/%s" % char_model,layout=False)
+    char_board = runtime_util.get_device("%s-active-cal/%s" % (board.name,char_model),layout=False)
 
     # load physical models for transfer learning. Compute the number of parameters
     phys_models = {}
@@ -836,6 +836,8 @@ def calibrate_block(logger, \
     # build a calibration objective predictor with per-variable models.
     predictor = build_predictor(xfer_board,block,loc,config)
     nsamps_reqd = predictor.min_samples() + 1
+
+    max_samples += nsamps_reqd
 
     # collect initial data for fitting the transfer model
     # and fit all of the initial guesses for the parameters on the transfer model

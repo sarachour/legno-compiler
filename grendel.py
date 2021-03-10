@@ -54,15 +54,16 @@ char_subp.add_argument('--widen',action='store_true', \
 
 
 
-dectree_subp = subparsers.add_parser('mkphys', help='Use characterization data to build calibration decision tree.')
-dectree_subp.add_argument('--model-number',type=str,help='model number')
-#dectree_subp.add_argument('--max-depth',type=int,default=2,\
-#                          help='maximum depth (default=2)')
-#dectree_subp.add_argument('--num-leaves',type=int,default=3,\
-#                          help='number of leaves (default=3)')
-#dectree_subp.add_argument('--shrink',action='store_true', help='shrink model')
-dectree_subp.add_argument('--local-model',action='store_true', help='only model points around local minima')
-dectree_subp.add_argument('--num-points',type=int, help='number points to use for local model')
+dectree_subp = subparsers.add_parser('mkphys', help='Infer master symbolic model from characterization data for each configured block.')
+dectree_subp.add_argument('model_number',type=str,help='model with the superset of characterization data')
+parser.add_argument('--penalty',default=0.01, \
+                       type=float,help='penalty for including extra parameters (0.01)')
+parser.add_argument('--max_params',default=4, \
+                       type=int,help='maximum number of physical model parameters (4)')
+parser.add_argument('--generations',default=5, \
+                       type=int,help='number of generations to execute')
+parser.add_argument('--parents',default=25, \
+                       type=int,help='number of progenators to select per generation')
 
 
 
@@ -82,25 +83,25 @@ prof_subp = subparsers.add_parser('prof', help='profile calibrated blocks')
 prof_subp.add_argument('adp', type=str,help='adp to profile')
 prof_subp.add_argument('method', type=str, \
                        default='none', \
-                       help='delta label to profile (/minimize_error/maximize_fit/best/dectree)')
+                       help='delta label to profile (minimize_error/maximize_fit/model/none)')
 prof_subp.add_argument('--model-number',type=str,help='model number')
 prof_subp.add_argument('--grid-size',type=int,default=15, \
-                       help="number of inputs to sample along each axis")
+                       help="number of inputs to sample along each axi (15)")
 prof_subp.add_argument('--max-points',type=int,default=255, \
-                       help="maximum number of points to sample")
+                       help="maximum number of points to sample (255)")
 prof_subp.add_argument('--min-points',type=int,default=0, \
-                       help="minimum number of dataset points")
+                       help="minimum number of dataset points (0)")
 prof_subp.add_argument('--missing',action='store_true', \
-                       help="calibrate missing")
+                       help="profiling models with missing data")
 prof_subp.add_argument('--force',action="store_true",help='force')
 prof_subp.add_argument('--widen',action="store_true",help='widen modes')
 
 
 
 vis_subp = subparsers.add_parser('vis', help='build delta model visualizations')
-vis_subp.add_argument('calib_obj', type=str, \
+vis_subp.add_argument('model-number',type=str,help='model number')
+vis_subp.add_argument('--calib_obj', type=str, \
                        help='vis label to profile (none/maximize_fit/minimize_error/brute)')
-vis_subp.add_argument('--model-number',type=str,help='model number')
 vis_subp.add_argument('--histogram',action="store_true",help='render error histograms')
 vis_subp.add_argument('--absolute',action="store_true",help='absolute error')
 vis_subp.add_argument('--max-error',type=float, \
@@ -108,7 +109,7 @@ vis_subp.add_argument('--max-error',type=float, \
 
 
 delta_subp = subparsers.add_parser('mkdeltas', help='build delta models from profile information')
-delta_subp.add_argument('--model-number',type=str,help='model number')
+delta_subp.add_argument('model-number',type=str,help='model number')
 delta_subp.add_argument('--force',action="store_true",help='force')
 delta_subp.add_argument('--no-orphans',action="store_true",help='don\'t add models that don\'t already exist')
 delta_subp.add_argument('--min-points',default=10,help='minimum number of points to fit model')
@@ -131,7 +132,7 @@ elif args.subparser_name == "fastcal":
 elif args.subparser_name == "characterize":
     runt_char.characterize_adp(args)
 elif args.subparser_name == "mkphys":
-    runt_mkphys.mktree(args)
+    runt_mkphys.execute(args)
 elif args.subparser_name == "vis":
     runt_visualize.visualize(args)
 else:

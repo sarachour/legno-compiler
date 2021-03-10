@@ -1,287 +1,403 @@
-from hwlib.adp import ADP,ADPMetadata
-
+import runtime.runtime_meta_util as runtime_meta_util
 import runtime.runtime_util as runtime_util
+import runtime.models.exp_profile_dataset as exp_profile_dataset_lib
 import runtime.models.exp_delta_model as exp_delta_model_lib
 import runtime.models.exp_phys_model as exp_phys_model_lib
-import runtime.models.exp_profile_dataset as exp_profile_dataset_lib
-import runtime.runt_mkdeltamodels as runt_mkdeltamodels
-from lab_bench.grendel_runner import GrendelRunner
+from sklearn.linear_model import Ridge
+import argparse
 
-import hwlib.hcdc.llenums as llenums
-import hwlib.hcdc.llcmd as llcmd
-import hwlib.block as blocklib
+import ops.base_op as oplib
 import ops.generic_op as genoplib
-import ops.lambda_op as lambdoplib
-import ops.interval as ivallib
-from scipy.stats import pearsonr
-
-
-import runtime.fit.model_fit as expr_fit_lib
-import runtime.dectree.dectree_fit as dectree_fit_lib
-import runtime.dectree.dectree as dectreelib
-import runtime.dectree.dectree_nnfit as dectree_nn_fit_lib
-import runtime.dectree.dectree_shrink as dectree_shrink_lib
-import runtime.dectree.dectree_generalize as dectree_generalize_lib
-import runtime.dectree.dectree_eval as dectree_eval
-import runtime.dectree.dectree as dectreelib
-import runtime.dectree.region as regionlib
-
+import ops.lambda_op as lamboplib
+import hwlib.hcdc.llenums as llenums
 import numpy as np
-import json
-import scipy
+import runtime.fit.model_fit as modelfitlib
+import random
+import itertools
 
-def add(dict_,key,value):
-    if not key in dict_:
-        dict_[key] = []
-    dict_[key].append(value)
+class RandomFunctionPool:
 
-def update_dectree_data(blk,loc,output, \
-                        exp_mdl, \
-                        metadata, \
-                        params, \
-                        model_errors, \
-                        hidden_code_fields, \
-                        hidden_code_bounds, \
-                        hidden_codes):
+    def __init__(self,name,variables,penalty=0.01,max_params=10):
+        self.name = name
+        self.variables = variables
+        self.ranges = {}
+        self.pool = []
+        self.gens = []
 
-    key = (blk.name,loc,output.name,exp_mdl.static_cfg)
-    if not key in params:
-        params[key] = {}
-        metadata[key] = (blk,loc,output,exp_mdl.config)
-        model_errors[key] = []
-        hidden_codes[key] = []
-        hidden_code_fields[key] = []
-        hidden_code_bounds[key] = {}
+        self.scores = []
+        self.errors = []
+        self.npars = []
 
-    for par,value in exp_mdl.params.items():
-        add(params[key],par,value)
- 
+        self.generation = 0
+        self.penalty = penalty
+        self.max_params = max_params
 
-    for hidden_code,_ in exp_mdl.hidden_codes():
-        if not hidden_code in hidden_code_fields[key]:
-            hidden_code_bounds[key][hidden_code] = (blk.state[hidden_code].min_value, \
-                                                    blk.state[hidden_code].max_value)
-            hidden_code_fields[key].append(hidden_code)
+    def npts(self):
+        return len(self.scores)
 
-    entry = [0]*len(hidden_code_fields[key])
-    for hidden_code,value in exp_mdl.hidden_codes():
-        idx = hidden_code_fields[key].index(hidden_code)
-        entry[idx] = value
+    def set_range(self,var,values):
+        self.ranges[var] = values
 
-    hidden_codes[key].append(entry)
-    model_errors[key].append(exp_mdl.model_error)
+    def get_params(self,expr):
+        return list(filter(lambda v: 'par' in v, expr.vars()))
 
+    def score_one(self,expr,hidden_codes,values):
+        params = self.get_params(expr)
+        scores = []
 
+        for loc,vals in values.items():
+            hcs = dict(hidden_codes[loc])
+            assert(all(map(lambda hc: len(hc) == len(vals), hcs.values())))
 
-def get_ideal_value(model,output,var_name):
-    # get the ideal value for the parameter
-    delta_spec = output.deltas[model.config.mode]
-    if var_name == exp_delta_model_lib.ExpDeltaModel.MODEL_ERROR:
-        return 0.0
-    else:
-        return delta_spec[var_name].val
+            data = {}
+            data['inputs'] = hcs
+            data['meas_mean'] = vals
+            try:
+                result = modelfitlib.fit_model(params,expr,data)
+                params = result['params']
+                preds = modelfitlib.predict_output(params,expr,data)
+                sumsq = sum(map(lambda v: (v[0]-v[1])**2, zip(preds,vals)))/len(preds)
+                scores.append(sumsq)
 
 
-def build_dectree(model, \
-                  key,metadata, \
-                  hidden_code_fields, \
-                  hidden_code_bounds, \
-                  hidden_codes,\
-                  params, model_errors, \
-                  local_model=False, \
-                  num_points=20):
-
-    blk,loc,out,cfg = metadata[key]
-    n_samples = len(model_errors[key])
-    #min_size = round(n_samples/num_leaves)
-    print("--- fitting decision tree (%d samples) ---" % n_samples)
-    hidden_code_fields_ = hidden_code_fields[key]
-    hidden_code_bounds_ = hidden_code_bounds[key]
-    hidden_codes_ = hidden_codes[key]
-    model_errors_ = model_errors[key]
-
-    #model.num_samples += n_samples
-
-    print(cfg)
-
-    print("==== MODEL ERROR ====")
-    target_value = get_ideal_value(model,out,exp_phys_model_lib.ExpPhysModel.MODEL_ERROR) \
-        if local_model else None
-    dectree,predictions = dectree_nn_fit_lib.fit_decision_tree(hidden_code_fields_, \
-                                                               hidden_code_bounds_,\
-                                                               hidden_codes_, \
-                                                               model_errors_, \
-                                                               num_points, \
-                                                               target_value=target_value)
+            except RuntimeError as e:
+                raise Exception("exception: %s" % str(e))
 
 
-    model.uncertainty.set_error(out, \
-                                exp_phys_model_lib.ExpPhysModel.MODEL_ERROR,\
-                                predictions,model_errors_)
-    model.set_model_error(out, dectree)
+        return len(params),scores
 
-    err = dectree_fit_lib.model_error(predictions,model_errors_)
-    pct_err = err/max(np.abs(model_errors_))*100.0
-    print("<<dectree>>: [[Model-Err]] err=%f pct-err=%f param-range=[%f,%f]" \
-            % (err, pct_err, \
-                min(model_errors_), \
-                max(model_errors_)))
+    def score(self,hidden_codes,values):
+        median_ampl = np.median(list(map(lambda v: np.median(np.abs(v)), \
+                                         values.values())))
 
+        for idx,fxn in enumerate(self.pool):
+            if self.scores[idx] is None:
+                try:
+                   npars,sumsq_err = self.score_one(fxn,hidden_codes,values)
+                except Exception as e:
+                    print("[warn] cannot score function <%s>" % str(e))
+                    continue
 
-    for param,param_values in params[key].items():
-        assert(len(param_values) == n_samples)
-        target_value = get_ideal_value(model,out,param) if local_model else None
+                if npars > self.max_params:
+                    continue
 
-        print("==== PARAM %s ====" % param)
-        dectree,predictions = dectree_nn_fit_lib.fit_decision_tree(hidden_code_fields_, \
-                                                                   hidden_code_bounds_,\
-                                                                   hidden_codes_, \
-                                                                   param_values, \
-                                                                   num_points, \
-                                                                   target_value=target_value)
+                par_penalty = npars*self.penalty*median_ampl
+                self.errors[idx] = np.mean(sumsq_err)
+                self.npars[idx] = npars
+                self.scores[idx] = self.errors[idx] + par_penalty
+        # remove any functions that failed to fit
+        indices = list(filter(lambda idx: not self.scores[idx] is None, \
+                           range(self.npts())))
+        self.scores = list(map(lambda idx: self.scores[idx],indices))
+        self.errors = list(map(lambda idx: self.errors[idx],indices))
+        self.npars = list(map(lambda idx: self.npars[idx],indices))
+        self.pool = list(map(lambda idx: self.pool[idx],indices))
+        self.gens= list(map(lambda idx: self.gens[idx],indices))
 
-        err = dectree_fit_lib.model_error(predictions,param_values)
-        model.uncertainty.set_error(out,param,\
-                                    predictions,param_values)
+    def get_all(self,ranked_only=False,since=None):
+        for idx,fxn in enumerate(self.pool):
+            if self.scores[idx] is None and ranked_only:
+                continue
+            if not since is None and self.gens[idx] < since:
+                continue
 
-        pct_err = err/max(np.abs(param_values))*100.0
-        print("<<dectree>>: [[Param:%s]] err=%f pct-err=%f param-range=[%f,%f]" \
-                % (param, err, pct_err, \
-                    min(param_values), \
-                    max(param_values)))
-        assert(isinstance(dectree, dectreelib.RegressionLeafNode))
-        model.set_param(out, param, dectree)
-
-
-    return model
-
-def get_hidden_code_intervals(phys_model):
-    intervals = {}
-    for st in filter(lambda st: isinstance(st.impl,blocklib.BCCalibImpl), \
-                     phys_model.block.state):
-        minval = min(st.values)
-        maxval = max(st.values)
-        intervals[st.name] = ivallib.Interval(minval,maxval)
-
-    return intervals
+            yield self.gens[idx],self.scores[idx],fxn
 
 
-def study_objective_fun(phys_model):
-    blk = phys_model.block
-    cfg = phys_model.config
+    def root_functions(self):
+        yield genoplib.Var('par0')
 
-    for var,mdl in phys_model.variables().items():
-        expr = lambdoplib.Abs(genoplib.Var(var))
-        nodes = dectree_eval.eval_expr(expr, {var:mdl})
-        expr_tree = dectreelib.RegressionNodeCollection(nodes)
-        minval,assigns = expr_tree.find_minimum()
+        for v in self.variables:
+            yield genoplib.Mult(genoplib.Var('par0'), genoplib.Var(v))
 
-        print("var %s: minimum=%f" % (var,minval))
-        print("    %s" % assigns)
+        if False:
+            for v in self.variables:
+                for v2 in self.variables:
+                    yield genoplib.Mult(genoplib.Var('par0'), 
+                                                genoplib.Mult(genoplib.Var(v), genoplib.Var(v2)))
 
-    for out in blk.outputs:
-        calib_obj = out.deltas[cfg.mode].objective
-        nodes = dectree_eval.eval_expr(calib_obj, phys_model.variables())
-        objfun_dectree = dectreelib.RegressionNodeCollection(nodes)
-        minval,assigns = objfun_dectree.find_minimum()
 
-        print(calib_obj)
-        print("minimum=%f" % (minval))
-        print("    %s" % assigns)
+        if False:
+            for v in self.variables:
+                for v2 in self.variables:
+                    yield genoplib.Add( \
+                                        genoplib.Mult(genoplib.Var('par0'), genoplib.Var(v))
+                                        , genoplib.Mult(genoplib.Var('par1'), genoplib.Var(v2)))
+
+        if False:
+            for v in self.variables:
+                yield genoplib.Mult(genoplib.Var('par0'), \
+                                lamboplib.Pow(genoplib.Var(v), genoplib.Var('par1')))
 
 
 
-def mktree(args):
-    dev = runtime_util.get_device(args.model_number,layout=True)
-    params = {}
-    metadata = {}
-    hidden_codes = {}
-    hidden_code_fields = {}
-    hidden_code_bounds = {}
-    model_errors = {}
-    for exp_mdl in exp_delta_model_lib.get_all(dev):
-        blk = exp_mdl.block
+    def initialize(self):
+        self.pool = list(self.root_functions())
+        self.scores = [None]*len(self)
+        self.errors = [None]*len(self)
+        self.npars = [None]*len(self)
+        self.gens = [0]*len(self)
 
-        if not exp_mdl.complete:
-            for dataset in exp_profile_dataset_lib.get_datasets_by_configured_block(dev, \
-                                                                                    blk, \
-                                                                                    exp_mdl.config, \
-                                                                                    hidden=True):
+    # tournament selection
+    def selection(self, k=10, p=0.5):
+        indices = list(range(len(self)))
+        tourney = random.sample(indices, min(len(indices), k))
+        subpool = list(map(lambda i: self.pool[i], indices))
+        subscores = list(map(lambda i: self.scores[i], indices))
 
-                runt_mkdeltamodels.update_delta_model(dev,exp_mdl,dataset)
-
-        if not exp_mdl.complete:
-            print(exp_mdl.config)
-            print("[WARN] incomplete delta model!")
-            continue
-
-        update_dectree_data(blk,exp_mdl.loc, \
-                            exp_mdl.output, \
-                            exp_mdl, \
-                            metadata,params,model_errors, \
-                            hidden_code_fields, \
-                            hidden_code_bounds, \
-                            hidden_codes)
+        indices_sorted = np.argsort(subscores)
+        prob = p
+        for idx in indices_sorted:
+            if random.random() <= prob:
+                yield subpool[idx]
+            prob *= (1-p)
 
 
+
+    def breed(self,p1,p2):
+        par_idx = len(self.get_params(p1))
+        p2_pars = self.get_params(p2)
+        p2_repl = dict(map(lambda i: (p2_pars[i], \
+                                 genoplib.Var('par%d' % (par_idx + i))), \
+                           range(len(p2_pars))))
+
+        p2_new = p2.substitute(p2_repl)
+        yield genoplib.Add(p1.copy(), p2_new.copy())
+
+        if all(map(lambda n: isinstance(n,genoplib.Var), p1.nodes())): 
+            yield genoplib.Mult(lamboplib.SmoothStep(p1.copy()), p1.copy())
+
+        if all(map(lambda n: isinstance(n,genoplib.Var), p2_new.nodes())): 
+            yield genoplib.Mult(lamboplib.SmoothStep(p2_new.copy()), p2_new.copy())
+
+        if all(map(lambda n: not isinstance(n,genoplib.Add), p1.nodes())) and \
+           all(map(lambda n: not isinstance(n,genoplib.Add),p2.nodes())):
+            yield genoplib.Mult(p1.copy(), p2_new.copy())
+
+    def crossover(self,population):
+        for p1,p2 in itertools.product(population,population):
+            if str(p1) <= str(p2):
+                continue
+
+            for progeny in self.breed(p1,p2):
+                yield progeny
+
+
+    def add_unlabeled_function(self,new,generation):
+        self.pool.append(new)
+        self.scores.append(None)
+        self.errors.append(None)
+        self.npars.append(None)
+        self.gens.append(self.generation)
+
+    def evolve(self,pop_size=3):
+        if len(self.scores) == 0:
+            raise Exception("the sample pool is empty.")
+
+        max_score = max(self.scores)
+        pool = {}
+        # choose parents
+        for tries in range(1000):
+            if len(pool) >= pop_size:
+                break
+
+            for member in self.selection():
+                if not str(member) in pool:
+                    pool[str(member)] = member
+
+        children = []
+        self.generation += 1
+        for new in self.crossover(pool.values()):
+            self.add_unlabeled_function(new,self.generation)
+            children.append(new)
+
+        return list(pool.values()), children
+
+
+    def get_best(self):
+        idx = np.argmin(self.scores)
+        return idx,self.scores[idx],self.gens[idx],self.pool[idx]
+
+    def __len__(self):
+        return len(self.pool)
+
+
+
+
+
+def find_functions(models,num_generations=5,pop_size=5,penalty=0.001,max_params=4,debug=False):
+    repr_model = get_repr_model(models)
+    if repr_model is None:
+       raise Exception("no representative model found. (# models=%d)" % len(models))
+
+    model_pool = {}
+
+    print("############################")
+    print(repr_model.config)
+    print("############################")
+
+    print("--- populating pool ---")
+    for var in repr_model.variables():
+        hidden_codes = list(dict(repr_model.hidden_codes()).keys())
+        pool = RandomFunctionPool(var,hidden_codes, \
+                                  penalty=penalty, \
+                                  max_params=max_params)
+
+        block = repr_model.block
+        for hc in hidden_codes:
+            pool.set_range(hc,block.state[hc].values)
+
+        pool.initialize()
+        model_pool[var] = pool
+        print("%s #: %d" % (var, len(pool.pool)))
+
+
+    print("--- extract dataset ---")
+    hidden_configs = {}
+    variables = dict(map(lambda v: (v,{}), repr_model.variables()))
+    for loc,mdls in models.items():
+        hidden_configs[loc] = dict(map(lambda v: (v[0],[]), \
+                                       repr_model.hidden_codes()))
+        for var in repr_model.variables():
+            variables[var][loc] = []
+
+        npts = 0
+        for st, mdl in mdls.items():
+            if not mdl.complete:
+                continue
+
+            for var in mdl.variables():
+                variables[var][loc].append(mdl.get_value(var))
+
+            for var,val in mdl.hidden_codes():
+                hidden_configs[loc][var].append(val)
+                npts += 1
+
+        print("# datapoints [%s]: %d" % (loc,npts))
+
+    print("--- initially score functions in pool ---")
+    for var,pool in model_pool.items():
+        pool.score(hidden_configs,variables[var])
+
+    for generation in range(num_generations):
+        print("---- generation %d/%d ----" \
+              % (generation,num_generations))
+        for var, pool in model_pool.items():
+            if debug:
+                for idx,(gen,score,fxn) in enumerate(pool.get_all(since=generation)):
+                    print("%d] gen=%d score=%f expr=%s" % (idx,gen, \
+                                                        score, fxn))
+
+        print("--- evolve pool ---")
+        for delta_var,pool in model_pool.items():
+            parents,children = pool.evolve(pop_size=pop_size)
+            print("evolve var=%s parents=%d children=%d" \
+                  % (delta_var, len(parents),len(children)))
+
+
+        print("--- scoring pool ---")
+        for var,pool in model_pool.items():
+            pool.score(hidden_configs,variables[var])
+
+        for var,pool in model_pool.items():
+            index,score,gen,expr = pool.get_best()
+            if debug:
+                print("var=%s score=%s gen=%d expr=%s" %  (var,score,gen,expr))
+
+
+
+    print("---- finalizing pool and getting best codes ----")
+    print("   -> identify lowest number of parameters")
+    max_pars = 0
+    for var,pool in model_pool.items():
+        index,score,gen,expr = pool.get_best()
+        max_pars = max(max_pars, pool.npars[index])
+
+    print("number of parameters=%d" % max_pars)
+    print("   -> choose best function with no parameter penalty")
+    for var,pool in model_pool.items():
+        indices = list(filter(lambda idx: pool.npars[idx] <= max_pars, \
+                              range(pool.npts())))
+        best_idx = np.argmin(list(map(lambda idx: pool.errors[idx], indices)))
+        yield var,(pool.errors[best_idx],pool.pool[best_idx])
+
+
+
+def get_repr_model(models):
+    for loc,mdls in models.items():
+        for cfg,mdl in mdls.items():
+            return mdl
+
+
+
+def genetic_infer_model(board,block,config,output,models,datasets, \
+                        num_generations=1, pop_size=1,penalty=0.001,max_params=4):
+   functions = dict(find_functions(models,num_generations=num_generations,pop_size=pop_size,penalty=penalty,max_params=max_params))
+   pmdl = exp_phys_model_lib.ExpPhysModel(block,config,output)
+
+   print("===== BEST FUNCTIONS ======")
+   print(config)
+   print("")
+   for var,(score,expr) in functions.items():
+       print("var: %s" % var)
+       print("   %s score=%f" % (expr,score))
+       pmdl.set_variable(var,expr,score)
+
+   if block.name == "adc" or block.name == "dac":
+        input("continue")
+
+   if len(functions) > 0:
+      exp_phys_model_lib.update(board, pmdl)
+   #input("done!")
+
+
+
+def preprocess_board_data(board):
+    def insert(d,ks):
+            for k in ks:
+                if not k in d:
+                    d[k] = {}
+                d = d[k]
+
+    datasets = {}
     models = {}
-    tmpfile = "models.tmp"
-    for key in model_errors.keys():
-        (blk,loc,out,cfg) = key
-        #num_leaves = min(pow(2,args.max_depth), \
-        #                 args.num_leaves)
 
-        if not (blk,loc,cfg) in models:
-            _blk,_loc,_out,_cfg = metadata[key]
-            models[(blk,loc,cfg)] = exp_phys_model_lib.ExpPhysModel(_blk,_cfg)
+    for model in exp_delta_model_lib.get_all(board):
+        keypath = [(model.block.name, str(model.config.mode),model.output.name), \
+                   model.loc]
+        insert(models,keypath)
+        insert(datasets,keypath)
+        models[keypath[0]][keypath[1]][model.hidden_cfg] = model
+        datasets[keypath[0]][keypath[1]][model.hidden_cfg] = None
 
-        new_model = build_dectree(models[(blk,loc,cfg)], \
-                                  key, \
-                                  metadata, \
-                                  hidden_code_fields, \
-                                  hidden_code_bounds, \
-                                  hidden_codes, \
-                                  params, model_errors, \
-                                  local_model=args.local_model, \
-                                  num_points=args.num_points)
-        if new_model is None:
-            print("[warn] nixed model.. could not build decision tree which fits data.")
-            models[(blk,loc,cfg)] = None
-            continue
+    for data in exp_profile_dataset_lib.get_all(board):
+        keypath = [(data.block.name, str(data.config.mode),data.output.name), \
+                   data.loc]
+        insert(datasets,keypath)
+        datasets[keypath[0]][keypath[1]][data.hidden_cfg] = data
 
-        with open(tmpfile,'a') as fh:
-            fh.write("%s\n" % json.dumps(new_model.to_json()))
+    return models,datasets
 
-    models_by_cfg = {}
-    for (blk,loc,cfg), mdl in models.items():
-        add(models_by_cfg,(blk,cfg),mdl)
 
-    print("==== Generalizing + Minimizing Models ===")
-    for key,mdls in models_by_cfg.items():
-        if len(mdls) == 0:
-            continue
+def execute(args):
+    board = runtime_util.get_device(args.model_number)
 
-        print(mdls[0].config)
-        '''
-        if args.shrink:
-            for mdl in mdls:
-                print(str(key))
-                intervals = get_hidden_code_intervals(mdl)
-                for varname,dectree in mdl.variables().items():
-                    print("orig   var=%s min-samps=%d" % (varname,dectree.min_sample()))
-                    min_tree = dectree_shrink_lib.dectree_shrink(dectree,intervals)
-                    print("shrink var=%s min-samps=%d" % (varname,min_tree.min_sample()))
-                    mdl.set_variable(varname,min_tree)
+    models_ds, datasets_ds = preprocess_board_data(board)
 
-                print("-----")
-        '''
+    for key in models_ds.keys():
+        models =models_ds[key]
+        datasets = datasets_ds[key]
+        repr_model = get_repr_model(models)
 
-        print("num-models: %d" % len(mdls))
-        if len(mdls) > 1:
-            general_phys_model = dectree_generalize_lib.dectree_generalize(mdls)
-        else:
-            general_phys_model = mdls[0]
+        if repr_model is None:
+            raise Exception("no representative model found. (# models=%d)" % len(models_b))
 
-        #study_objective_fun(general_phys_model)
-        exp_phys_model_lib.update(dev,general_phys_model)
-
+        genetic_infer_model(board, \
+                            repr_model.block, \
+                            repr_model.config, \
+                            repr_model.output, \
+                            models,datasets, \
+                            num_generations=args.generations, \
+                            pop_size=args.parents,  \
+                            penalty=args.penalty, \
+                            max_params=args.max_params)

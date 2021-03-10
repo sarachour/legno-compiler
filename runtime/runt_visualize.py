@@ -50,14 +50,14 @@ def make_histogram(args):
 
 def visualize(args):
     board = runtime_util.get_device(args.model_number,layout=True)
-    calib_obj = llenums.CalibrateObjective(args.calib_obj)
+    calib_obj = llenums.CalibrateObjective(args.calib_obj) if args.calib_obj else None
     ph = paths.DeviceStatePathHandler(board.name, \
                                       board.model_number,make_dirs=True)
     if args.histogram:
         make_histogram(args)
 
     for delta_model in delta_model_lib.get_all(board):
-        if delta_model.calib_obj != calib_obj:
+        if not calib_obj is None and delta_model.calib_obj != calib_obj:
             continue
 
         if delta_model.complete and \

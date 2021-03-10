@@ -277,7 +277,7 @@ def _profile_command(board,adp,calib_obj,widen=False,log_file=None):
     return cmd
 
 def _deltas_command(board,force=False,orphans=True,log_file=None):
-    CMD = "python3 grendel.py mkdeltas --model-number {model}"
+    CMD = "python3 grendel.py mkdeltas {model}"
     if force:
         CMD += " --force"
     if not orphans:
