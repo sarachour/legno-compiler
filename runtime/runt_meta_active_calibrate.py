@@ -207,7 +207,7 @@ class Predictor:
             except Exception as e:
                print("[WARN] failed to predict <%s> for output <%s> of block <%s>" % (var,out,self.block.name))
                print("   %s.%s deltavar=%s expr=%s" % (self.block.name,out,var, model.expr))
-               print("  exception=%s" % e)
+               print("   EXCEPTION=%s" % e)
                continue
 
             self.values[(out,var)] = {}
@@ -825,7 +825,7 @@ def calibrate_block(logger, \
                     num_iters=3, \
                     samples_per_round=5, \
                     rounds=1, \
-                    max_samples):
+                    max_samples=20):
     logger.set_configured_block(block,loc,config.mode)
 
 
@@ -859,7 +859,8 @@ def calibrate_block(logger, \
     print("==== SETUP INITIAL POOL ====")
     code_pool= load_code_pool_from_database(char_board, predictor)
 
-    if len(code_pool) >= max_samples:
+    if len(code_pool.pool) >= max_samples:
+        write_model_to_database(logger,code_pool, board,char_board)
         return
 
     for rnd in range(rounds):
