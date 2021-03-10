@@ -221,6 +221,11 @@ class Predictor:
             print("   values=%s" % str(values))
             print("   errors=%s" % str(result['param_error']))
             print("")
+
+        for (out,var),model in self.variables.items():
+            if not (out,var) in self.concrete_variables:
+               raise Exception("could not infer parametres for <%s> in output <%s>" % (var,out))
+
 ''''
 The pool of hidden codes to sample from when performing calibration.
 The pool maintains a set of hidden codes and a symbolic predictor which guesses
@@ -829,7 +834,8 @@ def calibrate_block(logger, \
 
         print("==== QUERY UNLABELLED ====")
         for hcs in code_pool.get_unlabeled():
-            query_hidden_codes(logger,code_pool,char_board,block,loc,config,hcs)
+            query_hidden_codes(logger,code_pool,char_board,block,loc,config,hcs, \
+                     grid_size=grid_size)
 
     write_model_to_database(logger,code_pool, board,char_board)
 
