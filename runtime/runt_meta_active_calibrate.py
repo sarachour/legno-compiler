@@ -69,14 +69,14 @@ class Predictor:
             self._outputs.append(out)
             self._objectives[out] = obj
 
-        def dominant(self,v1,v2):
+        def dominant(self,v1,v2,strict=False):
             idx = 0
             results = []
             for out in self._outputs:
                 n = len(self._objectives[out].objectives)
                 vs1 = v1[idx:idx+n]
                 vs2 = v2[idx:idx+n]
-                results.append(self._objectives[out].dominant(vs1,vs2))
+                results.append(self._objectives[out].dominant(vs1,vs2,strict=strict))
                 idx += n
 
             subs =  list(filter(lambda res: blocklib.Relationship.Type.SUB == res.kind, results))
@@ -256,7 +256,11 @@ class HiddenCodePool:
         def add(self,v):
             self.values.append(v)
 
-        def order_by_dominance(self,debug=False):
+        def get_best(self,debug=False,strict=False):
+            for idx,score,dom in self.order_by_dominance(debug,strict):
+                return idx,score
+
+        def order_by_dominance(self,debug=False,strict=False):
             nsamps = len(self.values)
             nprios = max(self.multi_objective.priorities)+1
             dom = [0]*nsamps
@@ -268,7 +272,7 @@ class HiddenCodePool:
             # build the ranked dominance matrix
             for i,vi  in enumerate(self.values):
                 for j,vj  in enumerate(self.values):
-                    relationship = self.multi_objective.dominant(vi, vj)
+                    relationship = self.multi_objective.dominant(vi, vj,strict=strict)
                     if relationship.kind == blocklib.Relationship.Type.DOM:
                         dom[i][relationship.rank] += 1
 
@@ -292,10 +296,6 @@ class HiddenCodePool:
                 i = indices[idx]
                 yield i,self.values[i],scores[i]
 
-        def get_best(self):
-            for i,v,_ in self.order_by_dominance():
-                return i,v
- 
 
     def __init__(self,variables,predictor):
         self.variables = variables
@@ -522,7 +522,13 @@ def profile_block(logger,board,blk,loc,cfg,grid_size=9,calib_obj=llenums.Calibra
 
 
 def write_model_to_database(logger,pool,board,char_board):
-    idx,score = pool.meas_view.get_best()
+    print("------- ")
+    for idx,score,dom in pool.meas_view.order_by_dominance(strict=True):
+
+        print("%d] dom=%s" % (str(dom)))
+        print("   score=%s" % str(score))
+
+    idx,score = pool.meas_view.get_best(strict=True)
 
     code_values = pool.pool[idx]
     hidden_codes = dict(zip(pool.variables, \

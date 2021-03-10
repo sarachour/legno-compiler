@@ -779,7 +779,7 @@ class MultiObjective:
             self.priorities .sort()
             self.by_priority[priority].append(idx)
 
-        def dominant(self,vs1,vs2):
+        def dominant(self,vs1,vs2,strict=False):
             results = []
             for prio in self.priorities:
                 better = False
@@ -788,7 +788,8 @@ class MultiObjective:
                 num_worse = 0
                 num_equal = 0
                 for idx in self.by_priority[prio]:
-                    eps = self.epsilons[idx]
+                    eps = self.epsilons[idx] if not strict else 0.0
+
                     if vs1[idx]-eps > vs2[idx]+eps:
                         if self.minimize:
                             num_worse +=1
