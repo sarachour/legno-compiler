@@ -75,9 +75,9 @@ class HiddenCodePool:
         return key in self.pool_keys
 
     def get_unlabeled(self):
-        for mv,p in zip(self.meas_view.values,self.pool):
+        for idx,(mv,p) in enumerate(zip(self.meas_view.values,self.pool)):
             if mv is None:
-                yield dict(zip(self.variables,p))
+                yield self.pred_view.values[idx],dict(zip(self.variables,p))
 
     def has_code(self,codes):
         key = runtime_util.dict_to_identifier(codes)

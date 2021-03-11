@@ -27,12 +27,12 @@ class Result:
 
 
     @staticmethod
-    def make(obj,values):
+    def make(multiobj,values):
         objs = Result()
         idx = 0
-        for out in obj.outputs:
-            multi_obj = obj.objective(out)
-            for obj,tol,prio in multi_obj:
+        for out in multiobj.outputs:
+            subobj = multiobj.objective(out)
+            for obj,tol,prio in subobj:
                 objs.add(values[idx],tol,prio)
                 idx += 1
         assert(idx == len(values))

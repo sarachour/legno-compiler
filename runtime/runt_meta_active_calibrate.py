@@ -100,7 +100,7 @@ def load_code_pool_from_database(char_board,predictor,objectives):
 def update_model(logger,char_board,blk,loc,cfg):
     #"python3 grendel.py mkphys --model-number {model} --max-depth 0 --num-leaves 1 --shrink" 
     CMDS = [ \
-             "python3 grendel.py mkdeltas --model-number {model} --force > deltas.log" \
+             "python3 grendel.py mkdeltas {model} --force > deltas.log" \
     ]
 
 
@@ -362,12 +362,13 @@ def calibrate_block(logger, \
         add_random_unlabelled_samples(code_pool,samples_per_round)
 
         print("==== QUERY UNLABELLED [%d/%d] ====" % (rnd+1,rounds))
-        for hcs in code_pool.get_unlabeled():
+        for pred_score, hcs in code_pool.get_unlabeled():
+            print("=> codes=%s" % hcs)
+            print("=> score=%s" % pred_score)
             query_hidden_codes(logger,code_pool,char_board,block,loc,config,hcs, \
                      grid_size=grid_size)
 
     write_model_to_database(logger,code_pool, board,char_board)
-    input("continue?")
 
 def calibrate(args):
     board = runtime_util.get_device(args.model_number)

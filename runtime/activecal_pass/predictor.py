@@ -34,7 +34,9 @@ class MultiOutputObjective:
         return list(set(ps))
 
     def add(self,out,obj):
-        assert(isinstance(obj, blocklib.MultiObjective))
+        if not (isinstance(obj, blocklib.MultiObjective)):
+           raise Exception("for out <%s>: not a multiobjective argument: %s" % (out.name,obj))
+
         self._outputs.append(out.name)
         self._objectives[out.name] = obj
 

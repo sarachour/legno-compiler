@@ -41,7 +41,8 @@ for path in [path1,path2]:
     basefile = filename.split(base)[1]
     dest = "{tmp}/{basefile}".format(tmp=devstate_dir, \
                                      basefile=basefile)
-    shutil.copytree(filename,dest)
+    if not os.path.exists(dest):
+        shutil.copytree(filename,dest)
 
 # copy all of the logs
 print("---- copying logs ----")
