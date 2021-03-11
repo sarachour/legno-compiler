@@ -118,7 +118,14 @@ def get_repr_model(models):
 
 
 def genetic_infer_model(board,block,config,output,models,datasets, \
-                        num_generations=1, pop_size=1,penalty=0.001,max_params=4):
+                        num_generations=1, pop_size=1,penalty=0.001,max_params=4,force=False):
+   existing_models = exp_phys_model_lib.get_models(board,['block','static_config','output'],block, config, output)
+
+   if len(existing_models) > 0 and not force:
+      print(config)
+      print("[warn] already exists, returning!")
+      return
+
    functions = dict(find_functions(models,num_generations=num_generations,pop_size=pop_size,penalty=penalty,max_params=max_params))
    pmdl = exp_phys_model_lib.ExpPhysModel(block,config,output)
 
@@ -187,4 +194,5 @@ def execute(args):
                             num_generations=args.generations, \
                             pop_size=args.parents,  \
                             penalty=args.penalty, \
-                            max_params=args.max_params)
+                            max_params=args.max_params, \
+                            force=args.force)

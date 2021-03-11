@@ -9,7 +9,7 @@ import ops.base_op as baseoplib
 
 import numpy as np
 import math
-
+from enum import Enum
 
 
 class ExpPhysModel:
@@ -179,10 +179,37 @@ class ExpPhysModel:
     return mdl
 
 
+class ExpPhysModelClause(Enum):
+  BLOCK = "block"
+  OUTPUT = "output"
+  STATIC_CONFIG = "static_config"
+
+
 def __to_phys_models(dev,matches):
   for match in matches:
     yield ExpPhysModel.from_json(dev, \
                                  runtime_util.decode_dict(match['model']))
+
+def get_models(dev,fields,block=None,config=None,output=None):
+    where_clause = {}
+    for field_name in fields:
+       field = ExpPhysModelClause(field_name)
+       if field == ExpPhysModelClause.BLOCK:
+          assert(isinstance(block,blocklib.Block))
+          where_clause['block'] = block.name
+       elif field == ExpPhysModelClause.STATIC_CONFIG:
+          assert(isinstance(block,blocklib.Block))
+          assert(isinstance(config,adplib.BlockConfig))
+          where_clause['static_config'] = runtime_util.get_static_cfg(block,config)
+       elif field == ExpPhysModelClause.OUTPUT:
+          where_clause['output'] = output.name
+
+    matches = list(dev.physdb.select(dblib \
+                                  .PhysicalDatabase \
+                                  .DB.PHYS_MODELS,
+                                  where_clause))
+
+    return list(__to_phys_models(dev,matches))
 
 def load(dev,blk,cfg,output):
     where_clause = {
