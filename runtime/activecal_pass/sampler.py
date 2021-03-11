@@ -66,7 +66,7 @@ def sampler_permute(indices,max_size=6,k=4,count=4000):
                 yield list(perm) + remainder
                 count -= 1
 
-def sampler_iterate_over_samples(objectives,variables,values,scores,num_samps=1):
+def sampler_iterate_over_samples(objectives,variables,values,scores,num_samples=1):
     assert(isinstance(objectives, predlib.MultiOutputObjective))
     indices = list(range(len(values)))
 
@@ -85,7 +85,7 @@ def sampler_iterate_over_samples(objectives,variables,values,scores,num_samps=1)
         for samp,score in _sampler_iterate_over_samples(0,0,{},[], \
                                                         ord_variables,ord_values,ord_scores, \
                                                         memos={}):
-            if n_samps >= num_samps:
+            if n_samps >= num_samples:
                 break
 
             # only add samples which haven't been seen before
@@ -104,7 +104,7 @@ def sampler_iterate_over_samples(objectives,variables,values,scores,num_samps=1)
             keys.append(key)
             n_samps += 1
 
-    indices = np.argsort(sample_scores)
+    indices = np.argsort(sample_scores.values)
     for idx in indices:
         samp = samples[idx]
         score = sample_scores.values[idx]
@@ -114,7 +114,7 @@ def sampler_iterate_over_samples(objectives,variables,values,scores,num_samps=1)
 
 
 
-def get_sample(pool,debug=False):
+def get_sample(pool,num_samples=100,debug=True):
     # compute constraints over hidden codes
     solutions = []
     solution_scores = []
@@ -159,6 +159,7 @@ def get_sample(pool,debug=False):
 
     print("===== Produce Samples ===")
     for codes,score in sampler_iterate_over_samples(pool.objectives, \
-                                                    variables,solutions,solution_scores):
+                                                    variables,solutions,solution_scores, \
+                                                    num_samples=num_samples):
         yield codes,score
 

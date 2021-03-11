@@ -111,12 +111,11 @@ def integ_calib_obj(spec,out_scale):
 def integ_calib_obj(spec,out_scale):
   # u : this has high error... don't fit this
   exprs = [
-    ("max(0,(a-1.0))",3,0.05),
-    ("abs((a-1.0))",2,0.05),
-    ("abs((b-1.0))",3,0.05),
-    ("abs(modelError)",2,0.01),
-    ("abs(v)",1,0.005*out_scale),
-    ("abs(c)",2,0.01),
+    ("abs((a-1.0))",2,0.02),
+    ("abs((b-1.0))",2,0.02),
+    ("abs(modelError)",2,0.001),
+    ("abs(v)",2,0.001),
+    ("abs(c)",2,0.005),
     ("abs(noise)",2,0.0001)
   ]
   new_spec = spec.copy()

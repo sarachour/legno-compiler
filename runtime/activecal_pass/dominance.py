@@ -35,15 +35,16 @@ class Result:
             for obj,tol,prio in multi_obj:
                 objs.add(values[idx],tol,prio)
                 idx += 1
-
+        assert(idx == len(values))
         return objs
 
     def distance(self):
         scores = []
+        max_prio = max(self.priorities)
         for value,tol,prio in zip(self.values,self.tolerances,self.priorities):
-            subscore = (10**prio)*value/tol
+            subscore = (10**(max_prio-prio))*value/tol
             scores.append(subscore)
-
+        
         score = sum(scores)
         return score
 

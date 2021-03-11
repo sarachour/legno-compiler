@@ -763,7 +763,7 @@ class MultiObjective:
                 self.priorities.append(priority)
                 self.by_priority[priority] = []
 
-            self.priorities .sort()
+            self.priorities.sort()
             self.by_priority[priority].append(idx)
 
 

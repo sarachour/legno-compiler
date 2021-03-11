@@ -174,7 +174,8 @@ class Predictor:
                error += (values[idx]-pred)**2
 
             self.errors[(out,var)] = math.sqrt(error)/npts
-            print("%s.%s npts=%d deltavar=%s expr=%s" % (self.block.name,out,npts, var,conc_expr))
+            print("%s.%s npts=%d deltavar=%s error=%s expr=%s" \
+                       % (self.block.name,out,npts, var,self.errors[(out,var)], conc_expr))
             for idx,(v,e) in enumerate(zip(values,all_errors)):
                 ci = dict(map(lambda c: (c,codes[c][idx]), codes.keys()))
                 #print("   codes=%s value=%s error=%s" % (ci,v,e))

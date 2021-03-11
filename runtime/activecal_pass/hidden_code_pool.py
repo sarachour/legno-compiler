@@ -23,10 +23,9 @@ class ParetoPoolView:
             return idx,score
 
     def order_by_dominance(self,debug=False):
-        nsamps = len(self.values)
-        indices = np.argsort(self.values)
-        for idx in range(nsamps-1,0,-1):
-            i = indices[idx]
+        dists = list(map(lambda v: v.distance(), self.values))
+        indices = list(np.argsort(dists))
+        for i in indices:
             yield i,self.values[i]
 
 

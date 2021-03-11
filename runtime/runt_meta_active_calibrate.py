@@ -287,9 +287,9 @@ def update_predictor(predictor,char_board):
 
      predictor.fit()
 
-def add_random_unlabelled_samples(pool,count):
+def add_random_unlabelled_samples(pool,count,total=4000):
     npts = 0
-    for constraint,score in samplelib.get_sample(pool):
+    for constraint,score in samplelib.get_sample(pool,num_samples=2):
         if npts > count:
             return
 
@@ -319,7 +319,7 @@ def calibrate_block(logger, \
 
     # get board with initial code pool
     char_model = runtime_meta_util.get_model(board,block,loc,config)
-    char_board = runtime_util.get_device("%s-active-cal/%s" % (board.name,char_model),layout=False)
+    char_board = runtime_util.get_device("%s-active-cal/%s" % (board.model_number,char_model),layout=False)
 
     # load physical models for transfer learning. Compute the number of parameters
     phys_models = {}
@@ -367,6 +367,7 @@ def calibrate_block(logger, \
                      grid_size=grid_size)
 
     write_model_to_database(logger,code_pool, board,char_board)
+    input("continue?")
 
 def calibrate(args):
     board = runtime_util.get_device(args.model_number)
