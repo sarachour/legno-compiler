@@ -1,0 +1,136 @@
+import runtime.runtime_util as runtime_util
+
+import runtime.activecal_pass.predictor as predlib
+import runtime.activecal_pass.dominance as domlib
+
+import numpy as np
+import math
+
+class ParetoPoolView:
+
+    def __init__(self,objectives,name):
+        assert(isinstance(objectives, predlib.MultiOutputObjective))
+        self.name = name
+        self.multi_objective = objectives
+        self.values = []
+
+    def add(self,v):
+        assert(isinstance(v, domlib.Result) or v is None)
+        self.values.append(v)
+
+    def get_best(self,debug=False):
+        for idx,score in self.order_by_dominance(debug):
+            return idx,score
+
+    def order_by_dominance(self,debug=False):
+        nsamps = len(self.values)
+        indices = np.argsort(self.values)
+        for idx in range(nsamps-1,0,-1):
+            i = indices[idx]
+            yield i,self.values[i]
+
+
+
+''''
+The pool of hidden codes to sample from when performing calibration.
+The pool maintains a set of hidden codes and a symbolic predictor which guesses
+the function value from the set of hidden code values
+
+'''
+class HiddenCodePool:
+
+    def __init__(self,variables,predictor,objectives):
+        self.variables = variables
+        self.predictor = predictor
+        self.objectives = objectives
+        self.ranges = {}
+        self.pool = []
+        self.pool_keys = []
+
+        self.meas_view = ParetoPoolView(self.objectives,'meas')
+        self.pred_view = ParetoPoolView(self.objectives,'pred')
+
+    def set_range(self,var,values):
+        self.ranges[var] = values
+
+    def get_values(self,v):
+        return self.ranges[v]
+
+    def default_sample(self):
+        codes = {}
+        for c in self.variables:
+            mid = math.floor(len(self.ranges[c])/2)
+            codes[c] = self.ranges[c][mid]
+
+        return codes
+
+    def random_sample(self):
+        codes = {}
+        for c in self.variables:
+            codes[c] = random.choice(self.ranges[c])
+
+        return codes
+
+    def has_code(self,codes):
+        key = runtime_util.dict_to_identifier(codes)
+        return key in self.pool_keys
+
+    def get_unlabeled(self):
+        for mv,p in zip(self.meas_view.values,self.pool):
+            if mv is None:
+                yield dict(zip(self.variables,p))
+
+    def has_code(self,codes):
+        key = runtime_util.dict_to_identifier(codes)
+        return key in self.pool_keys
+
+    def add_unlabeled_code(self,codes):
+        key = runtime_util.dict_to_identifier(codes)
+        if key in self.pool_keys:
+            raise Exception("code already in pool: %s" % (codes))
+
+        self.pool_keys.append(key)
+
+        pred_deltavars,_ = self.predictor.predict(codes)
+        pred_obj = self.objectives.compute(pred_deltavars)
+        vals = list(map(lambda v: codes[v], self.variables))
+        self.pool.append(vals)
+        self.meas_view.add(None)
+        self.pred_view.add(pred_obj)
+
+
+    def affix_label_to_code(self,codes,values):
+        key = runtime_util.dict_to_identifier(codes)
+        assert(key in self.pool_keys)
+        idx = self.pool_keys.index(key)
+        if not self.meas_view.values[idx] is None:
+            print(self.meas_view.values[idx])
+            raise Exception("there is already a label for this code <%s>" % (str(codes)))
+
+        meas = self.objectives.compute(values)
+        self.meas_view.values[idx] = meas
+
+
+    def add_labeled_code(self,codes,values):
+        key = runtime_util.dict_to_identifier(codes)
+        if key in self.pool_keys:
+            raise Exception("code already tested: %s score=%f" % (codes,score))
+
+        self.pool_keys.append(key)
+
+        meas_obj = self.objectives.compute(values)
+        pred_delta_vars,_ = self.predictor.predict(codes)
+        pred_obj = self.objectives.compute(pred_delta_vars)
+
+        vals = list(map(lambda v: codes[v], self.variables))
+        self.pool.append(vals)
+        self.meas_view.add(meas_obj)
+        self.pred_view.add(pred_obj)
+
+    @property
+    def ranking(self):
+        for idx,key in enumerate(self.keys):
+           yield self.scores[idx]
+ 
+    def num_codes(self):
+        return len(self.keys)

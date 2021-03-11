@@ -11,7 +11,6 @@ import argparse
 
 import runtime.runt_characterize as runt_char
 import runtime.runt_calibrate as runt_cal
-import runtime.runt_fastcal as runt_fastcal
 import runtime.runt_execute as runt_exec
 import runtime.runt_profile as runt_prof
 import runtime.runt_visualize as runt_visualize
@@ -109,7 +108,7 @@ vis_subp.add_argument('--max-error',type=float, \
 
 
 delta_subp = subparsers.add_parser('mkdeltas', help='build delta models from profile information')
-delta_subp.add_argument('model-number',type=str,help='model number')
+delta_subp.add_argument('--model-number',type=str,help='model number')
 delta_subp.add_argument('--force',action="store_true",help='force')
 delta_subp.add_argument('--no-orphans',action="store_true",help='don\'t add models that don\'t already exist')
 delta_subp.add_argument('--min-points',default=10,help='minimum number of points to fit model')

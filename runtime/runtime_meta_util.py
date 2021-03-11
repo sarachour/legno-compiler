@@ -1,6 +1,5 @@
 import runtime.models.exp_delta_model as exp_delta_model_lib
 import runtime.models.exp_phys_model as exp_phys_model_lib
-import runtime.dectree.dectree as dectreelib
 
 import ops.generic_op as genoplib
 import util.paths as pathlib
@@ -277,7 +276,7 @@ def _profile_command(board,adp,calib_obj,widen=False,log_file=None):
     return cmd
 
 def _deltas_command(board,force=False,orphans=True,log_file=None):
-    CMD = "python3 grendel.py mkdeltas {model}"
+    CMD = "python3 grendel.py mkdeltas --model-number {model}"
     if force:
         CMD += " --force"
     if not orphans:
@@ -372,62 +371,4 @@ def get_model_calibration_config(**kwargs):
         'grid_size': 7,
         'cutoff':cutoff
     }
-
-
-def model_based_calibration(board,adp_path,widen=False,logfile=None,**kwargs):
-  CAL_CMD = "python3 meta_grendel.py model_cal {model_number} --adp {adp_path}"
-  CAL_CMD += " --bootstrap-samples {bootstrap_samples}"
-  CAL_CMD += " --candidate-samples {candidate_samples}"
-  CAL_CMD += " --num-iters {num_iters}"
-  CAL_CMD += " --grid-size {grid_size}"
-  CAL_CMD += " --default-cutoff"
-  if widen:
-      CAL_CMD += " --widen"
-  CAL_CMD += " > log.txt"
-
-  cmds = []
-  cfg = get_model_calibration_config(**kwargs)
-  cfg['model_number'] = board.model_number
-  cfg['adp_path'] = adp_path
-  cmds.append(('model_cal', CAL_CMD.format(**cfg)))
-
-  logger = None if logfile is None else \
-      get_calibration_time_logger(board,logfile)
-
-
-  for name,cmd in cmds:
-        print(cmd)
-        runtime = run_command(cmd)
-        if not logger is None:
-            block_name = kwargs['block'].name
-            loc = str(kwargs['loc'])
-            mode = str(kwargs['mode'])
-            logger.log(block=block_name, loc=loc, mode=mode, \
-                       calib_obj='model',  \
-                       operation=name, \
-                       runtime=runtime)
-
-
-
-  return cmds
-
-def model_based_calibration_finalize(board,logfile=None):
-    BRCAL_CMD = "python3 meta_grendel.py bruteforce_cal {model_number}"
-    cmds = []
-    cmds.append(('brute_cal',BRCAL_CMD.format(model_number=board.model_number)))
-
-
-    logger = None if logfile is None else \
-        get_calibration_time_logger(board,logfile)
-
-
-    for name,cmd in cmds:
-        runtime = run_command(cmd)
-        if not logger is None:
-           logger.log(block='', loc='', mode='', \
-                      calib_obj='model',operation=name, \
-                      runtime=runtime)
-
-
-
 

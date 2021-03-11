@@ -745,27 +745,14 @@ class PhysicalModelSpec:
         return "{hidden-state:%s, params:%s, expr:%s}" % (self.hidden_state, \
                                                           self.params, \
                                                           self.relation)
-class Relationship:
-   class Type(Enum):
-       DOM = "dom"
-       EQUAL = "equal"
-       SUB = "sub"
-
-   def __init__(self,kind,rank):
-        self.kind = kind
-        self.rank = rank
-
-   def __repr__(self):
-        return "%s(%d)" % (self.kind.value,self.rank)
 
 class MultiObjective:
 
-        def __init__(self,minimize=True):
+        def __init__(self):
             self.objectives = []
             self.by_priority = {}
             self.epsilons = []
             self.priorities = []
-            self.minimize = minimize
 
         def add(self,obj,priority=1,epsilon=1e-6):
             idx = len(self.objectives)
@@ -779,51 +766,11 @@ class MultiObjective:
             self.priorities .sort()
             self.by_priority[priority].append(idx)
 
-        def dominant(self,vs1,vs2,strict=False):
-            results = []
-            for prio in self.priorities:
-                better = False
-                worse = False
-                num_better = 0
-                num_worse = 0
-                num_equal = 0
-                for idx in self.by_priority[prio]:
-                    eps = self.epsilons[idx] if not strict else 0.0
 
-                    if vs1[idx]-eps > vs2[idx]+eps:
-                        if self.minimize:
-                            num_worse +=1
-                        else:
-                            num_better += 1
-
-                    if vs1[idx]+eps < vs2[idx]-eps:
-                        if self.minimize:
-                            num_better += 1
-                        else:
-                            num_worse += 1
-
-                    if abs(vs1[idx] - vs2[idx]) <= eps:
-                        num_equal += 1
-
-                if num_better > 0 and num_worse == 0:
-                    results.append(Relationship.Type.DOM)
-                elif num_worse > 0:
-                    results.append(Relationship.Type.SUB)
-                else:
-                    results.append(Relationship.Type.EQUAL)
-
-            if any(map(lambda r: r == Relationship.Type.SUB, results)):
-                for idx,result in enumerate(results):
-                    if result == Relationship.Type.SUB:
-                        return Relationship(Relationship.Type.SUB,idx+1)
-
-            for idx,result in enumerate(results):
-                if result == Relationship.Type.DOM:
-                    return Relationship(Relationship.Type.DOM,idx+1)
-
-            return Relationship(Relationship.Type.EQUAL,1)
-
-
+        def __iter__(self):
+            for prio,indices in self.by_priority.items():
+                for idx in indices:
+                    yield self.objectives[idx],self.epsilons[idx],prio
 
 class DeltaSpec:
 

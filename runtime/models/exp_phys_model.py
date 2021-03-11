@@ -1,7 +1,6 @@
 import hwlib.adp as adplib
 import hwlib.block as blocklib
 
-import runtime.dectree.dectree as dectreelib
 import runtime.runtime_util as runtime_util
 import runtime.models.database as dblib
 
