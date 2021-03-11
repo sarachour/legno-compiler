@@ -98,8 +98,8 @@ prof_subp.add_argument('--widen',action="store_true",help='widen modes')
 
 
 vis_subp = subparsers.add_parser('vis', help='build delta model visualizations')
-vis_subp.add_argument('model-number',type=str,help='model number')
-vis_subp.add_argument('--calib_obj', type=str, \
+vis_subp.add_argument('model_number',type=str,help='model number')
+vis_subp.add_argument('--calib-obj', type=str, \
                        help='vis label to profile (none/maximize_fit/minimize_error/brute)')
 vis_subp.add_argument('--histogram',action="store_true",help='render error histograms')
 vis_subp.add_argument('--absolute',action="store_true",help='absolute error')
@@ -108,11 +108,12 @@ vis_subp.add_argument('--max-error',type=float, \
 
 
 delta_subp = subparsers.add_parser('mkdeltas', help='build delta models from profile information')
-delta_subp.add_argument('--model-number',type=str,help='model number')
+delta_subp.add_argument('model_number',type=str,help='model number')
 delta_subp.add_argument('--force',action="store_true",help='force')
 delta_subp.add_argument('--no-orphans',action="store_true",help='don\'t add models that don\'t already exist')
 delta_subp.add_argument('--min-points',default=10,help='minimum number of points to fit model')
 args = parser.parse_args()
+print(args)
 
 if args.subparser_name == "exec":
     runt_exec.exec_adp(args)
