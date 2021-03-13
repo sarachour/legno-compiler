@@ -88,8 +88,7 @@ def find_functions(models,num_generations=5,pop_size=5,penalty=0.001,max_params=
 
         for var,pool in model_pool.items():
             index,score,gen,expr = pool.get_best()
-            if debug:
-                print("var=%s score=%s gen=%d expr=%s" %  (var,score,gen,expr))
+            print("var=%s score=%s gen=%d" %  (var,score,gen))
 
 
 
@@ -137,8 +136,6 @@ def genetic_infer_model(board,block,config,output,models,datasets, \
        print("   %s score=%f" % (expr,score))
        pmdl.set_variable(var,expr,score)
 
-   if block.name == "adc" or block.name == "dac":
-        input("continue")
 
    if len(functions) > 0:
       exp_phys_model_lib.update(board, pmdl)

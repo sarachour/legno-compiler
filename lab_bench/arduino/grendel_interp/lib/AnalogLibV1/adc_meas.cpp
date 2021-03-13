@@ -62,6 +62,7 @@ profile_t Fabric::Chip::Tile::Slice::ChipAdc::measureConstVal(profile_spec_t spe
   float mean,variance;
   util::meas_dist_adc(this,mean,variance);
   mean = this->digitalCodeToValue(mean);
+  variance = this->digitalOffsetToValue(mean);
 #ifdef DEBUG_ADC_PROF
   sprintf(FMTBUF, "prof inp=%f targ=%f mean=%f\n",
           spec.inputs[in0Id],

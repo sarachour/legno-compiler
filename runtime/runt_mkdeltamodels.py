@@ -47,10 +47,6 @@ def update_delta_model(dev,delta_model,dataset):
     if not fitlib.fit_delta_model_to_data(delta_model, \
                                           rel, \
                                           dataset):
-        print(delta_model.config)
-        print(delta_model)
-        print("relation: %s" % rel)
-        print("can't fit model <%s>" % dataset.method)
         return False,-1
 
     if dataset.method == llenums.ProfileOpType.INTEG_INITIAL_COND:
@@ -69,7 +65,7 @@ def _get_delta_models(dev,blk,loc,output,config,orphans=True):
                                                   block=blk, \
                                                   loc=loc, \
                                                   output=output, \
-                                                  config=config)
+                                                  config=config) 
     if len(delta_models) == 0:
         if orphans:
             delta_models = [exp_delta_model_lib.ExpDeltaModel(blk, \
@@ -114,9 +110,6 @@ def _update_delta_models_for_configured_block(dev,delta_models,blk,loc,output, \
             print("%s %s %s" % (blk.name,loc,config.mode))
             print(delta_model)
 
-        print("-> update")
-        print(delta_model.config)
-        print(delta_model)
         exp_delta_model_lib.update(dev,delta_model)
 
     return True
@@ -126,7 +119,6 @@ def update_delta_models_for_configured_block(dev,blk,loc,cfg, \
                                              orphans=True):
     num_deltas = 0
 
-    print("===== all outputs =====")
     for output in blk.outputs:
         delta_models = _get_delta_models(dev,blk,loc,output,cfg,orphans=orphans)
         if all(map(lambda model: model.complete, delta_models)) and not force:
@@ -143,15 +135,15 @@ def update_delta_models_for_configured_block(dev,blk,loc,cfg, \
 
 def derive_delta_models_adp(args):
     board = runtime_util.get_device(args.model_number)
-
-    exp_delta_model_lib \
-        .remove_models(board,['calib_obj'], \
-                       calib_obj=llenums.CalibrateObjective.NONE)
+ 
+    if args.no_orphans:
+       exp_delta_model_lib \
+           .remove_models(board,['calib_obj'], \
+                          calib_obj=llenums.CalibrateObjective.NONE)
 
 
     for blk,loc,cfg in exp_profile_dataset_lib \
         .get_configured_block_instances(board):
-        print(cfg)
         update_delta_models_for_configured_block(board, \
                                                  blk, \
                                                  loc, \

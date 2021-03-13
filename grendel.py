@@ -57,7 +57,7 @@ mkphys_subp = subparsers.add_parser('mkphys', help='Infer master symbolic model 
 mkphys_subp.add_argument('model_number',type=str,help='model with the superset of characterization data')
 mkphys_subp.add_argument('--penalty',default=0.01, \
                        type=float,help='penalty for including extra parameters (0.01)')
-mkphys_subp.add_argument('--max_params',default=4, \
+mkphys_subp.add_argument('--max-params',default=4, \
                        type=int,help='maximum number of physical model parameters (4)')
 mkphys_subp.add_argument('--generations',default=5, \
                        type=int,help='number of generations to execute')

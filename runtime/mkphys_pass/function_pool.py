@@ -49,8 +49,7 @@ class RandomFunctionPool:
                 preds = modelfitlib.predict_output(params,expr,data)
                 sumsq = sum(map(lambda v: (v[0]-v[1])**2, zip(preds,vals)))/len(preds)
                 scores.append(sumsq)
-
-
+    
             except RuntimeError as e:
                 raise Exception("exception: %s" % str(e))
 
@@ -76,6 +75,7 @@ class RandomFunctionPool:
                 self.errors[idx] = np.mean(sumsq_err)
                 self.npars[idx] = npars
                 self.scores[idx] = self.errors[idx] + par_penalty
+
         # remove any functions that failed to fit
         indices = list(filter(lambda idx: not self.scores[idx] is None, \
                            range(self.npts())))
@@ -155,10 +155,10 @@ class RandomFunctionPool:
         p2_new = p2.substitute(p2_repl)
         yield genoplib.Add(p1.copy(), p2_new.copy())
 
-        if all(map(lambda n: isinstance(n,genoplib.Var), p1.nodes())): 
+        if isinstance(p1,genoplib.Var) and not "par" in p1.name:
             yield genoplib.Mult(lamboplib.SmoothStep(p1.copy()), p1.copy())
 
-        if all(map(lambda n: isinstance(n,genoplib.Var), p2_new.nodes())): 
+        if isinstance(p2_new,genoplib.Var) and not "par" in p2_new.name:
             yield genoplib.Mult(lamboplib.SmoothStep(p2_new.copy()), p2_new.copy())
 
         if all(map(lambda n: not isinstance(n,genoplib.Add), p1.nodes())) and \
