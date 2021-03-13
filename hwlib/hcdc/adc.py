@@ -65,7 +65,7 @@ def adc_calib_obj(spec):
     ("abs((a-1.0))", 1, 0.05), \
     ("abs(modelError)", 1, 0.01), \
     ("abs(noise)", 1, 0.01), \
-    ("abs(b)", 2, 0.01)
+    ("abs(b)", 1, 0.01)
   ]
   new_spec = spec.copy()
   new_spec.objective = MultiObjective()
