@@ -65,7 +65,6 @@ def dac_calib_obj(spec,out_scale):
   return new_spec
 
 def dac_calib_obj(spec,out_scale):
-  base_expr = '{deviate}*abs((a-1.0))+{gainOut}*abs(modelError)+abs(b)'
   subobjs = [
     ("abs((a-1.0))", 1, 0.02), \
     ("abs((b))", 1, 0.01*out_scale), \

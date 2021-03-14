@@ -237,6 +237,23 @@ def vga_assign_calib_obj(spec,in0,out):
   new_spec.objective = parser.parse_expr(expr)
   return new_spec
 
+def vga_assign_calib_obj(spec,in0_scale,out_scale):
+  subobjs = [
+    ("abs((a-1.0))", 1, 0.02), \
+    ("abs((u))", 1, 0.001*in0_scale), \
+    ("abs((v))", 1, 0.001*out_scale), \
+    ("abs(modelError)", 1, 0.001*out_scale), \
+    ("abs(noise)", 1, 0.001*out_scale)
+  ]
+  new_spec = spec.copy()
+  new_spec.objective = MultiObjective()
+  for expr,prio,eps in subobjs:
+     new_spec.objective.add(parser.parse_expr(expr), \
+                                priority=prio,epsilon=eps)
+  return new_spec
+
+
+
 spec = DeltaSpec(parser.parse_expr('(a*c+b)*x+a*c*u+v'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('b',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
@@ -275,6 +292,23 @@ def mul_assign_calib_obj(spec,in0,in1,out):
                           in1=1.0/in1)
   new_spec = spec.copy()
   new_spec.objective = parser.parse_expr(expr)
+  return new_spec
+
+
+def mul_assign_calib_obj(spec,in0_scale,in1_scale,out_scale):
+  subobjs = [
+    ("abs((a-1.0))", 1, 0.02), \
+    ("abs((u))", 1, 0.001*in0_scale), \
+    ("abs((v))", 1, 0.001*in1_scale), \
+    ("abs((w))", 1, 0.001*out_scale), \
+    ("abs(modelError)", 1, 0.001*out_scale), \
+    ("abs(noise)", 1, 0.001*out_scale)
+  ]
+  new_spec = spec.copy()
+  new_spec.objective = MultiObjective()
+  for expr,prio,eps in subobjs:
+     new_spec.objective.add(parser.parse_expr(expr), \
+                                priority=prio,epsilon=eps)
   return new_spec
 
 
