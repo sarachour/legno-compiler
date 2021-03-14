@@ -60,9 +60,9 @@ mkphys_subp.add_argument('--penalty',default=0.01, \
 mkphys_subp.add_argument('--max-params',default=4, \
                        type=int,help='maximum number of physical model parameters (4)')
 mkphys_subp.add_argument('--generations',default=5, \
-                       type=int,help='number of generations to execute')
+                       type=int,help='number of generations to execute (5)')
 mkphys_subp.add_argument('--parents',default=25, \
-                       type=int,help='number of progenators to select per generation')
+                       type=int,help='number of progenators to select per generation (25)')
 mkphys_subp.add_argument('--force',action='store_true', \
                        help="force recomputation")
 

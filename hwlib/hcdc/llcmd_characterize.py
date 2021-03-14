@@ -45,5 +45,5 @@ def characterize(runtime,board,block,_cfg,locs, \
                                                                      m=m,
                                                                      reps=reps,
                                                                      hidden_codes=hidden_code)
-                        proflib.profile_all_hidden_states(runtime, board, planner, adp=new_adp, quiet=False)
+                        proflib.profile_all_hidden_states(runtime, board, planner, adp=new_adp, quiet=True)
 

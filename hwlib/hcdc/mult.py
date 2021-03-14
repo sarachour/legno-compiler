@@ -240,6 +240,7 @@ def vga_assign_calib_obj(spec,in0,out):
 def vga_assign_calib_obj(spec,in0_scale,out_scale):
   subobjs = [
     ("abs((a-1.0))", 1, 0.02), \
+    ("abs((b))", 1, 0.005), \
     ("abs((u))", 1, 0.001*in0_scale), \
     ("abs((v))", 1, 0.001*out_scale), \
     ("abs(modelError)", 1, 0.001*out_scale), \

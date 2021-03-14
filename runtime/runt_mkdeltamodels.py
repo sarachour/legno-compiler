@@ -14,7 +14,6 @@ import runtime.fit.model_fit as fitlib
 import numpy as np
 
 def update_delta_model(dev,delta_model,dataset):
-
     if dataset.method == llenums.ProfileOpType.INPUT_OUTPUT:
         rel = delta_model.get_subexpr(correctable_only=False)
     elif dataset.method == llenums.ProfileOpType.INTEG_INITIAL_COND:

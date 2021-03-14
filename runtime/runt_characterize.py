@@ -136,6 +136,7 @@ def characterize_adp(args):
         for block in board.blocks:
             if not block.requires_calibration():
                 continue
+                continue
 
             for mode in block.modes:
                 loc = devlib.Location(list(board.layout.instances(block.name))[0])

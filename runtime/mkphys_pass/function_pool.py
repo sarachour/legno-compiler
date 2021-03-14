@@ -65,7 +65,7 @@ class RandomFunctionPool:
                 try:
                    npars,sumsq_err = self.score_one(fxn,hidden_codes,values)
                 except Exception as e:
-                    print("[warn] cannot score function <%s>" % str(e))
+                    #print("[warn] cannot score function <%s>" % str(e))
                     continue
 
                 if npars > self.max_params:
@@ -146,6 +146,10 @@ class RandomFunctionPool:
 
 
     def breed(self,p1,p2):
+        def const_expr(p):
+           len(p.vars()) == 0 or \
+              all(map(lambda n: "par" in n, p.vars()))
+
         par_idx = len(self.get_params(p1))
         p2_pars = self.get_params(p2)
         p2_repl = dict(map(lambda i: (p2_pars[i], \
@@ -153,17 +157,17 @@ class RandomFunctionPool:
                            range(len(p2_pars))))
 
         p2_new = p2.substitute(p2_repl)
-        yield genoplib.Add(p1.copy(), p2_new.copy())
 
-        if isinstance(p1,genoplib.Var) and not "par" in p1.name:
+        yield genoplib.Add(p1.copy(), p2_new.copy())
+        yield genoplib.Mult(p1.copy(), p2_new.copy())
+
+        if not const_expr(p1) and \
+           all(map(lambda n: isinstance(n,genoplib.Var), p1.nodes())):
             yield genoplib.Mult(lamboplib.SmoothStep(p1.copy()), p1.copy())
 
-        if isinstance(p2_new,genoplib.Var) and not "par" in p2_new.name:
+        if not const_expr(p2) and \
+           all(map(lambda n: isinstance(n,genoplib.Var), p2_new.nodes())):
             yield genoplib.Mult(lamboplib.SmoothStep(p2_new.copy()), p2_new.copy())
-
-        if all(map(lambda n: not isinstance(n,genoplib.Add), p1.nodes())) and \
-           all(map(lambda n: not isinstance(n,genoplib.Add),p2.nodes())):
-            yield genoplib.Mult(p1.copy(), p2_new.copy())
 
     def crossover(self,population):
         for p1,p2 in itertools.product(population,population):

@@ -95,24 +95,11 @@ integ.outputs['z'].relation \
 integ.outputs['z'].relation \
                  .bind(['h','m','-'],parser.parse_expr('-integ((0.1*x),(2.0*z0))'))
 
-def integ_calib_obj(spec,out_scale):
-  # u : this has high error... don't fit this
-  base_expr = '{deviation2}*abs((b-1.0)) + {deviation}*abs((a-1.0)) + abs(modelError)*{gainOut} + {gainOut}*abs(v)'
-  base_expr += " + abs(c)"
-  expr = base_expr.format(gainOut=1.0/out_scale, \
-                          deviation=0.2, \
-                          deviation2=0.001, \
-                          quantize=1.0/128.0)
-  new_spec = spec.copy()
-  new_spec.objective = parser.parse_expr(expr)
-  return new_spec
-
-
-def integ_calib_obj(spec,out_scale):
+def integ_calib_obj(spec,in_scale,out_scale):
   # u : this has high error... don't fit this
   exprs = [
     ("abs((a-1.0))",2,0.02),
-    ("abs((b-1.0))",2,0.02),
+    ("abs((b-1.0))",2,0.01),
     ("abs(modelError)",2,0.001),
     ("abs(v)",2,0.001),
     ("abs(c)",2,0.005),
@@ -137,7 +124,7 @@ spec.param('u',DeltaParamType.GENERAL,ideal=0.0, \
 spec.param('v',DeltaParamType.GENERAL,ideal=0.0, \
            label=enums.ProfileOpType.INTEG_DERIVATIVE_STABLE.value)
 
-new_spec = integ_calib_obj(spec,2.0)
+new_spec = integ_calib_obj(spec,2.0,2.0)
 integ.outputs['z'].deltas.bind(['m','m','+'],new_spec)
 
 spec = DeltaSpec(parser.parse_expr('integ((-1*a*x+v),(-2.0*(b*z0+c)))'))
@@ -149,7 +136,7 @@ spec.param('u',DeltaParamType.GENERAL,ideal=0.0, \
 spec.param('v',DeltaParamType.GENERAL,ideal=0.0, \
            label=enums.ProfileOpType.INTEG_DERIVATIVE_STABLE.value)
 
-new_spec = integ_calib_obj(spec,2.0)
+new_spec = integ_calib_obj(spec,2.0,2.0)
 integ.outputs['z'].deltas.bind(['m','m','-'],new_spec)
 
 
@@ -162,7 +149,7 @@ spec.param('u',DeltaParamType.GENERAL,ideal=0.0, \
 spec.param('v',DeltaParamType.GENERAL,ideal=0.0, \
            label=enums.ProfileOpType.INTEG_DERIVATIVE_STABLE.value)
 
-new_spec = integ_calib_obj(spec,20.0)
+new_spec = integ_calib_obj(spec,20.0,20.0)
 integ.outputs['z'].deltas.bind(['h','h','+'],new_spec)
 
 
@@ -175,7 +162,7 @@ spec.param('u',DeltaParamType.GENERAL,ideal=0.0, \
 spec.param('v',DeltaParamType.GENERAL,ideal=0.0, \
            label=enums.ProfileOpType.INTEG_DERIVATIVE_STABLE.value)
 
-new_spec = integ_calib_obj(spec,20.0)
+new_spec = integ_calib_obj(spec,20.0,20.0)
 integ.outputs['z'].deltas.bind(['h','h','-'],new_spec)
 
 
@@ -189,7 +176,7 @@ spec.param('u',DeltaParamType.GENERAL,ideal=0.0, \
 spec.param('v',DeltaParamType.GENERAL,ideal=0.0, \
            label=enums.ProfileOpType.INTEG_DERIVATIVE_STABLE.value)
 
-new_spec = integ_calib_obj(spec,20.0)
+new_spec = integ_calib_obj(spec,2.0,20.0)
 integ.outputs['z'].deltas.bind(['m','h','+'],new_spec)
 
 spec = DeltaSpec(parser.parse_expr('integ((-10.0*a*x),(-20.0*(b*z0+c)))'))
@@ -201,7 +188,7 @@ spec.param('u',DeltaParamType.GENERAL,ideal=0.0, \
 spec.param('v',DeltaParamType.GENERAL,ideal=0.0, \
            label=enums.ProfileOpType.INTEG_DERIVATIVE_STABLE.value)
 
-new_spec = integ_calib_obj(spec,20.0)
+new_spec = integ_calib_obj(spec,2.0,20.0)
 integ.outputs['z'].deltas.bind(['m','h','-'],new_spec)
 
 
@@ -215,7 +202,7 @@ spec.param('u',DeltaParamType.GENERAL,ideal=0.0, \
 spec.param('v',DeltaParamType.GENERAL,ideal=0.0, \
            label=enums.ProfileOpType.INTEG_DERIVATIVE_STABLE.value)
 
-new_spec = integ_calib_obj(spec,2.0)
+new_spec = integ_calib_obj(spec,20.0,2.0)
 integ.outputs['z'].deltas.bind(['h','m','+'],new_spec)
 
 
@@ -228,7 +215,7 @@ spec.param('u',DeltaParamType.GENERAL,ideal=0.0, \
 spec.param('v',DeltaParamType.GENERAL,ideal=0.0, \
            label=enums.ProfileOpType.INTEG_DERIVATIVE_STABLE.value)
 
-new_spec = integ_calib_obj(spec,2.0)
+new_spec = integ_calib_obj(spec,20.0,2.0)
 integ.outputs['z'].deltas.bind(['h','m','-'],new_spec)
 
 
