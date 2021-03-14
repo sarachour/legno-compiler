@@ -298,6 +298,7 @@ def mul_assign_calib_obj(spec,in0,in1,out):
 def mul_assign_calib_obj(spec,in0_scale,in1_scale,out_scale):
   subobjs = [
     ("abs((a-1.0))", 1, 0.02), \
+    ("abs((b-1.0))",1,0.02), \
     ("abs((u))", 1, 0.001*in0_scale), \
     ("abs((v))", 1, 0.001*in1_scale), \
     ("abs((w))", 1, 0.001*out_scale), \
