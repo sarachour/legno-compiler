@@ -150,6 +150,10 @@ class RandomFunctionPool:
            len(p.vars()) == 0 or \
               all(map(lambda n: "par" in n, p.vars()))
 
+        def product_expr(p):
+            return all(map(lambda n: isinstance(n,genoplib.Var) or \
+                    isinstance(n,genoplib.Mult), p.nodes()))
+
         par_idx = len(self.get_params(p1))
         p2_pars = self.get_params(p2)
         p2_repl = dict(map(lambda i: (p2_pars[i], \
@@ -159,15 +163,21 @@ class RandomFunctionPool:
         p2_new = p2.substitute(p2_repl)
 
         yield genoplib.Add(p1.copy(), p2_new.copy())
-        yield genoplib.Mult(p1.copy(), p2_new.copy())
 
-        if not const_expr(p1) and \
-           all(map(lambda n: isinstance(n,genoplib.Var), p1.nodes())):
-            yield genoplib.Mult(lamboplib.SmoothStep(p1.copy()), p1.copy())
+        if product_expr(p1) and product_expr(p2):
+            variables = ['par0']
+            variables += list(filter(lambda v: not 'par' in v, p1.vars()))
+            variables += list(filter(lambda v: not 'par' in v, p2_new.vars()))
+            yield genoplib.product(list(map(lambda v: genoplib.Var(v), \
+                                            variables)))
+        #else:
+        #   yield genoplib.Mult(p1.copy(), p2_new.copy())
 
-        if not const_expr(p2) and \
-           all(map(lambda n: isinstance(n,genoplib.Var), p2_new.nodes())):
-            yield genoplib.Mult(lamboplib.SmoothStep(p2_new.copy()), p2_new.copy())
+
+        for p in [p1,p2_new]:
+            if not const_expr(p) and \
+            all(map(lambda n: isinstance(n,genoplib.Var), p.nodes())):
+                yield genoplib.Mult(lamboplib.SmoothStep(p.copy()), p.copy())
 
     def crossover(self,population):
         for p1,p2 in itertools.product(population,population):
