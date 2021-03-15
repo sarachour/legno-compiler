@@ -251,16 +251,58 @@ class Clamp(Op):
         return "clamp(%s,%s)" % (self.arg(0), \
                               self._interval)
 
+
+
+
+class Normalize(Op):
+
+    def __init__(self,arg,ampl=1.0,offset=0.0):
+        self.ampl = ampl
+        self.offset = offset
+        Op.__init__(self,OpType.NORMALIZE,[arg])
+        pass
+
+    def copy(self):
+        return Normalize(self.arg(0),self.ampl,self.offset)
+
+    @staticmethod
+    def from_json(obj):
+        return Normalize(Op.from_json(obj['args'][0]), \
+                       obj['ampl'], \
+                       obj['offset'])
+
+    def to_json(self):
+        obj = Op.to_json(self)
+        obj['ampl'] = self.ampl
+        obj['offset'] = self.offset
+        return obj
+
+    def function(self):
+        fxn = "({ampl}*((%s)+{offset}))"
+        return fxn.format(ampl=1.0/self.ampl,offset=-self.offset)
+
+
+    def compute(self,bindings):
+        result = self.arg(0).compute(bindings)
+        return 1.0/self.ampl*(result - self.offset)
+
+
+    def substitute(self,args):
+        return Normalize(self.arg(0).substitute(args), \
+                        self.ampl, self.offset)
+
+
+
+
 class SmoothStep(Op):
 
     def __init__(self,arg,ampl=0.5,offset=0.5):
         self.ampl = ampl
         self.offset = offset
         Op.__init__(self,OpType.SMOOTH_STEP,[arg])
-        pass
 
     def copy(self):
-        return SmoothStep(self.ampl,self.offset,self.deg)
+        return SmoothStep(self.arg(0),self.ampl,self.offset)
 
     @staticmethod
     def from_json(obj):

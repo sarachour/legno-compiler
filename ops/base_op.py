@@ -24,6 +24,7 @@ class OpType(Enum):
   LN= "ln"
   EXP= "exp"
   SMOOTH_STEP= "cstep"
+  NORMALIZE ="norm"
   CLAMP="clamp"
   MIN ="min"
   MAX ="max"

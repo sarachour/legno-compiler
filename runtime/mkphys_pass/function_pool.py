@@ -5,6 +5,7 @@ import ops.lambda_op as lamboplib
 import numpy as np
 import random
 import itertools
+import math
 
 class RandomFunctionPool:
 
@@ -17,6 +18,7 @@ class RandomFunctionPool:
 
         self.scores = []
         self.errors = []
+        self.raw_errors = []
         self.npars = []
 
         self.generation = 0
@@ -30,7 +32,7 @@ class RandomFunctionPool:
         self.ranges[var] = values
 
     def get_params(self,expr):
-        return list(filter(lambda v: 'par' in v, expr.vars()))
+        return list(set(filter(lambda v: 'par' in v, expr.vars())))
 
     def score_one(self,expr,hidden_codes,values):
         params = self.get_params(expr)
@@ -72,15 +74,17 @@ class RandomFunctionPool:
                     continue
 
                 par_penalty = npars*self.penalty*median_ampl
+                self.raw_errors[idx] = sumsq_err
                 self.errors[idx] = np.mean(sumsq_err)
+                self.scores[idx] = np.mean(self.errors[idx]) + par_penalty
                 self.npars[idx] = npars
-                self.scores[idx] = self.errors[idx] + par_penalty
 
         # remove any functions that failed to fit
         indices = list(filter(lambda idx: not self.scores[idx] is None, \
                            range(self.npts())))
         self.scores = list(map(lambda idx: self.scores[idx],indices))
         self.errors = list(map(lambda idx: self.errors[idx],indices))
+        self.raw_errors = list(map(lambda idx: self.raw_errors[idx],indices))
         self.npars = list(map(lambda idx: self.npars[idx],indices))
         self.pool = list(map(lambda idx: self.pool[idx],indices))
         self.gens= list(map(lambda idx: self.gens[idx],indices))
@@ -101,24 +105,12 @@ class RandomFunctionPool:
         for v in self.variables:
             yield genoplib.Mult(genoplib.Var('par0'), genoplib.Var(v))
 
-        if False:
-            for v in self.variables:
-                for v2 in self.variables:
-                    yield genoplib.Mult(genoplib.Var('par0'), 
-                                                genoplib.Mult(genoplib.Var(v), genoplib.Var(v2)))
-
-
-        if False:
-            for v in self.variables:
-                for v2 in self.variables:
-                    yield genoplib.Add( \
-                                        genoplib.Mult(genoplib.Var('par0'), genoplib.Var(v))
-                                        , genoplib.Mult(genoplib.Var('par1'), genoplib.Var(v2)))
-
-        if False:
-            for v in self.variables:
-                yield genoplib.Mult(genoplib.Var('par0'), \
-                                lamboplib.Pow(genoplib.Var(v), genoplib.Var('par1')))
+        for v in self.variables:
+            rng = self.ranges[v]
+            middle = np.mean(rng)
+            scale = max(abs(max(rng)), abs(min(rng)))
+            norm = lamboplib.Normalize(genoplib.Var(v), offset=middle, ampl=scale)
+            #yield genoplib.Mult(genoplib.Var('par0'), norm)
 
 
 
@@ -126,33 +118,48 @@ class RandomFunctionPool:
         self.pool = list(self.root_functions())
         self.scores = [None]*len(self)
         self.errors = [None]*len(self)
+        self.raw_errors = [None]*len(self)
         self.npars = [None]*len(self)
         self.gens = [0]*len(self)
 
     # tournament selection
-    def selection(self, k=10, p=0.5):
-        indices = list(range(len(self)))
+    def selection(self, exclude=[], k=10, p=0.5):
+        indices = list(filter(lambda idx: not self.pool[idx] in exclude, \
+                 range(len(self))))
         tourney = random.sample(indices, min(len(indices), k))
-        subpool = list(map(lambda i: self.pool[i], indices))
-        subscores = list(map(lambda i: self.scores[i], indices))
+        subpool = list(map(lambda i: self.pool[i], tourney))
+        subscores = list(map(lambda i: self.scores[i], tourney))
 
-        indices_sorted = np.argsort(subscores)
+        tourney_sorted = np.argsort(subscores)
         prob = p
-        for idx in indices_sorted:
+        for idx in tourney_sorted:
             if random.random() <= prob:
                 yield subpool[idx]
             prob *= (1-p)
 
 
 
+    def mutate(self,p):
+        def const_expr(p):
+           len(p.vars()) == 0 or \
+              all(map(lambda n: "par" in n, p.vars()))
+        
+        par_idx = len(self.get_params(p))
+        if not const_expr(p) and \
+            all(map(lambda n: isinstance(n,genoplib.Var), p.nodes())):
+                yield genoplib.Mult(lamboplib.SmoothStep(p.copy()), p.copy())
+
     def breed(self,p1,p2):
         def const_expr(p):
            len(p.vars()) == 0 or \
               all(map(lambda n: "par" in n, p.vars()))
+        
 
         def product_expr(p):
             return all(map(lambda n: isinstance(n,genoplib.Var) or \
-                    isinstance(n,genoplib.Mult), p.nodes()))
+                    isinstance(n,genoplib.Mult) or \
+                    isinstance(n,lamboplib.SmoothStep) or \
+                    isinstance(n,lamboplib.Normalize), p.nodes()))
 
         par_idx = len(self.get_params(p1))
         p2_pars = self.get_params(p2)
@@ -162,36 +169,42 @@ class RandomFunctionPool:
 
         p2_new = p2.substitute(p2_repl)
 
-        yield genoplib.Add(p1.copy(), p2_new.copy())
+        if not const_expr(p1) or not const_expr(p2):
+            yield genoplib.Add(p1.copy(), p2_new.copy())
 
-        if product_expr(p1) and product_expr(p2):
+        if product_expr(p1) and product_expr(p2_new):
             variables = ['par0']
             variables += list(filter(lambda v: not 'par' in v, p1.vars()))
             variables += list(filter(lambda v: not 'par' in v, p2_new.vars()))
             yield genoplib.product(list(map(lambda v: genoplib.Var(v), \
                                             variables)))
-        #else:
+
+        #elif not const_expr(p1) and not const_expr(p2):
         #   yield genoplib.Mult(p1.copy(), p2_new.copy())
 
 
-        for p in [p1,p2_new]:
-            if not const_expr(p) and \
-            all(map(lambda n: isinstance(n,genoplib.Var), p.nodes())):
-                yield genoplib.Mult(lamboplib.SmoothStep(p.copy()), p.copy())
 
     def crossover(self,population):
-        for p1,p2 in itertools.product(population,population):
-            if str(p1) <= str(p2):
-                continue
-
-            for progeny in self.breed(p1,p2):
+        
+        for p in population:
+            for progeny in self.mutate(p):
                 yield progeny
+
+        indices = list(range(len(population)))
+        for i,j in itertools.product(indices,indices):
+            if i > j:
+                continue
+            p1,p2 = population[i],population[j]
+            for progeny in self.breed(p1,p2):
+                if len(self.get_params(progeny)) <= self.max_params:
+                   yield progeny
 
 
     def add_unlabeled_function(self,new,generation):
         self.pool.append(new)
         self.scores.append(None)
         self.errors.append(None)
+        self.raw_errors.append(None)
         self.npars.append(None)
         self.gens.append(self.generation)
 
@@ -206,13 +219,13 @@ class RandomFunctionPool:
             if len(pool) >= pop_size:
                 break
 
-            for member in self.selection():
+            for member in self.selection(exclude=list(pool.values())):
                 if not str(member) in pool:
                     pool[str(member)] = member
 
         children = []
         self.generation += 1
-        for new in self.crossover(pool.values()):
+        for new in self.crossover(list(pool.values())):
             self.add_unlabeled_function(new,self.generation)
             children.append(new)
 

@@ -55,14 +55,14 @@ char_subp.add_argument('--widen',action='store_true', \
 
 mkphys_subp = subparsers.add_parser('mkphys', help='Infer master symbolic model from characterization data for each configured block.')
 mkphys_subp.add_argument('model_number',type=str,help='model with the superset of characterization data')
-mkphys_subp.add_argument('--penalty',default=0.01, \
-                       type=float,help='penalty for including extra parameters (0.01)')
+mkphys_subp.add_argument('--penalty',default=0.0001, \
+                       type=float,help='penalty for including extra parameters (0.0001)')
 mkphys_subp.add_argument('--max-params',default=4, \
                        type=int,help='maximum number of physical model parameters (4)')
-mkphys_subp.add_argument('--generations',default=5, \
-                       type=int,help='number of generations to execute (5)')
-mkphys_subp.add_argument('--parents',default=25, \
-                       type=int,help='number of progenators to select per generation (25)')
+mkphys_subp.add_argument('--generations',default=3, \
+                       type=int,help='number of generations to execute (2)')
+mkphys_subp.add_argument('--parents',default=40, \
+                       type=int,help='number of progenators to select per generation (40)')
 mkphys_subp.add_argument('--force',action='store_true', \
                        help="force recomputation")
 
