@@ -36,10 +36,10 @@ def calibrate_adp(args):
 
 
             if is_calibrated(board, \
-                                             blk, \
-                                             cfg.inst.loc, \
-                                             cfg, \
-                                             calib_obj):
+                             blk, \
+                             cfg.inst.loc, \
+                             cfg, \
+                             calib_obj):
                 print("-> already calibrated")
                 continue
 

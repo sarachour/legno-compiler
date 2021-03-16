@@ -69,12 +69,7 @@ def find_functions(models,num_generations=5,pop_size=5,penalty=0.001,max_params=
     for generation in range(num_generations):
         print("---- generation %d/%d ----" \
               % (generation,num_generations))
-        for var, pool in model_pool.items():
-            if debug:
-                for idx,(gen,score,fxn) in enumerate(pool.get_all(since=generation)):
-                    print("%d] gen=%d score=%f expr=%s" % (idx,gen, \
-                                                        score, fxn))
-
+        
         print("--- evolve pool ---")
         for delta_var,pool in model_pool.items():
             parents,children = pool.evolve(pop_size=pop_size)
@@ -88,7 +83,9 @@ def find_functions(models,num_generations=5,pop_size=5,penalty=0.001,max_params=
 
         for var,pool in model_pool.items():
             index,score,gen,expr = pool.get_best()
-            print("var=%s score=%s gen=%d" %  (var,score,gen))
+            print("var=%s score=%s gen=%d npars=%d" \
+              % (var,score,gen,pool.npars[index]))
+            print("  %s" % str(pool.raw_errors[index]))
 
 
 
@@ -123,6 +120,9 @@ def genetic_infer_model(board,block,config,output,models,datasets, \
    if len(existing_models) > 0 and not force:
       print(config)
       print("[warn] already exists, returning!")
+      return
+
+   if block.name == "fanout" or block.name == "integ" or str(config.mode) != "(x,m,h)":
       return
 
    functions = dict(find_functions(models,num_generations=num_generations,pop_size=pop_size,penalty=penalty,max_params=max_params))

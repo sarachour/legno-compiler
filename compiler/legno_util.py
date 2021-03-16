@@ -161,13 +161,6 @@ def exec_lcal(args):
                                                       llenums.CalibrateObjective.MINIMIZE_ERROR, \
                                                       widen=True,
                                                       logfile=None)
-                if args.model_based:
-                    runt_meta_util.model_based_calibration(board, adp_path, \
-                                                           widen=True,
-                                                           logfile=None)
-
-    if args.model_based:
-        runt_meta_util.model_based_calibration_finalize(board,logfile=None)
 
 
 
