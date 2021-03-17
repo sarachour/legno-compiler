@@ -3,6 +3,7 @@ from hwlib.adp import ADP,ADPMetadata
 import runtime.runtime_util as runtime_util
 import runtime.models.exp_delta_model as exp_delta_model_lib
 import runtime.models.exp_profile_dataset as exp_profile_dataset_lib
+import ops.parametric_surf as parsurflib
 
 from lab_bench.grendel_runner import GrendelRunner
 
@@ -41,22 +42,43 @@ def update_delta_model(dev,delta_model,dataset):
         rel = genoplib.Var(var_name.name)
 
     else:
-        return False,-1
+        return False
 
     if not fitlib.fit_delta_model_to_data(delta_model, \
                                           rel, \
                                           dataset):
-        return False,-1
+        return False
+
+    return True
+
+def finalize_delta_model(dev,delta_model,dataset):
+    if dataset.method == llenums.ProfileOpType.INPUT_OUTPUT:
+        rel = delta_model.get_subexpr(correctable_only=False)
+    elif dataset.method == llenums.ProfileOpType.INTEG_INITIAL_COND:
+        rel = delta_model.get_subexpr(init_cond=True, \
+                                      correctable_only=False, \
+                                      concrete=False)
+    else:
+        return False
 
     if dataset.method == llenums.ProfileOpType.INTEG_INITIAL_COND:
-        errors = delta_model.error(dataset, init_cond=True)
-        return True, errors
-    if dataset.method == llenums.ProfileOpType.INTEG_DERIVATIVE_BIAS:
-        return True,[0.0]
-    if dataset.method == llenums.ProfileOpType.INTEG_DERIVATIVE_STABLE:
-        return True,[0.0]
+        errors = delta_model.errors(dataset, init_cond=True)
+    elif dataset.method == llenums.ProfileOpType.INPUT_OUTPUT:
+        errors = delta_model.errors(dataset)
     else:
-        return True, delta_model.error(dataset)
+        raise Exception("unexpected")
+
+    surf = parsurflib.build_surface_for_expr(delta_model.block, \
+                                             delta_model.config, \
+                                             rel, \
+                                            dataset,errors, \
+                                             npts=delta_model.model_error.n)
+    noise = np.mean(dataset.meas_stdev)
+    for index,point in delta_model.model_error.points():
+        error = surf.get(point)
+        delta_model.model_error.set_error(index,error)
+
+    delta_model.set_noise(noise)
 
 def _get_delta_models(dev,blk,loc,output,config,orphans=True):
     delta_models = exp_delta_model_lib.get_models(dev, \
@@ -80,31 +102,30 @@ def _get_delta_models(dev,blk,loc,output,config,orphans=True):
 def _update_delta_models_for_configured_block(dev,delta_models,blk,loc,output, \
                                               config, \
                                               force=False):
-    model_errors = []
-    noises= []
+    num_upds = 0
     for dataset in \
         exp_profile_dataset_lib.get_datasets(dev, \
                                            ['block','loc','output','static_config','hidden_config'],
                                            block=blk, loc=loc, output=output, config=config):
         #print("# data points %s (%s): %d" % (blk.name,dataset.method,len(dataset)))
         for delta_model in delta_models:
-            succ,error = update_delta_model(dev,delta_model,dataset)
-            noise = np.mean(dataset.meas_stdev)
+            succ = update_delta_model(dev,delta_model,dataset)
             if succ:
-               if dataset.method == llenums.ProfileOpType.INPUT_OUTPUT or \
-                  dataset.method == llenums.ProfileOpType.INTEG_INITIAL_COND:
-                  model_errors.append(abs(error))
-                  noises.append(noise)
+                num_upds += 1
 
-    if len(model_errors) == 0:
+    if num_upds == 0:
         return False
 
-    for delta_model in delta_models:
-        avg_error = np.mean(model_errors)
-        #print("avg-err: %f" % avg_error)
-        delta_model.set_model_error(avg_error)
-        delta_model.set_noise(noise)
+    for dataset in \
+        exp_profile_dataset_lib.get_datasets(dev, \
+                                        ['block','loc','output','static_config','hidden_config'],
+                                        block=blk, loc=loc, output=output, config=config):
+        #print("# data points %s (%s): %d" % (blk.name,dataset.method,len(dataset)))
+        for delta_model in delta_models:
+            finalize_delta_model(dev,delta_model,dataset)
 
+
+    for delta_model in delta_models:
         if delta_model.complete:
             print("%s %s %s" % (blk.name,loc,config.mode))
             print(delta_model)

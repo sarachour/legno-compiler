@@ -209,13 +209,18 @@ def predict_output(variable_assigns,expr,data):
 
   return pred
 
-def fit_delta_model_to_data(delta_model,relation,data):
+def make_input_data(data):
   dataset = {}
   dataset['inputs'] = {}
   for k,v in data.inputs.items():
     dataset['inputs'][k] = v
   for k,v in data.data.items():
     dataset['inputs'][k] = v
+  return dataset
+
+
+def fit_delta_model_to_data(delta_model,relation,data):
+  dataset = make_input_data(data)
   dataset['meas_mean'] = data.meas_mean
 
   try:

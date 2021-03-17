@@ -32,7 +32,8 @@ class ParametricSurface:
     for idx,out in enumerate(self.outputs):
       dist = 0.0
       for v in inputs.keys():
-        dist += (self.inputs[v][idx] - inputs[v])**2
+        if v in self.inputs:
+          dist += (self.inputs[v][idx] - inputs[v])**2
 
       dist = math.sqrt(dist)**expo
       if dist == 0:
@@ -66,10 +67,9 @@ class ParametricSurface:
     self.inputs = inputs
     self.outputs = outputs
 
-def build_surface(block,cfg,port,dataset,output,npts=10,normalize=1.0):
+def build_surface_for_expr(block,cfg,rel,dataset,output,npts=10,normalize=1.0):
     surf = ParametricSurface()
 
-    rel = block.outputs[port.name].relation[cfg.mode]
     rel_vars = rel.vars()
 
     for inp_port in dataset.inputs.keys():
@@ -93,3 +93,10 @@ def build_surface(block,cfg,port,dataset,output,npts=10,normalize=1.0):
     surf.fit(inputs,output)
 
     return surf
+
+def build_surface(block,cfg,port,dataset,output,npts=10,normalize=1.0):
+    surf = ParametricSurface()
+
+    rel = block.outputs[port.name].relation[cfg.mode]
+    build_surface_for_expr(block,cfg,rel,dataset,output,npts,normalize)
+ 

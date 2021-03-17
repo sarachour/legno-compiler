@@ -9,13 +9,110 @@ import runtime.models.database as dblib
 
 import numpy as np
 from enum import Enum
+import itertools
+
+class  ExpDeltaErrorModel:
+
+  def __init__(self,n):
+    self._ranges = {}
+    self._errors = {}
+    self.n = n
+    self._variables = []
+    self._values = {}
+    self._frozen = False
+
+  def set_range(self,v,l,u):
+    assert(not self._frozen)
+    assert(l<u)
+    assert(not v in self._variables)
+    assert(isinstance(v,str))
+    self._ranges[v] = (l,u)
+    self._values[v] = list(np.linspace(l,u,self.n))
+    self._variables.append(v)
+
+  def set_error(self,index,error):
+    assert(self._frozen)
+    assert(index in self._errors)
+    self._errors[index] = error
+
+  @property
+  def avg_error(self):
+    return np.mean(list(self._errors.values()))
+
+  @property
+  def min_error(self):
+    return min(self._errors.values())
+
+  @property
+  def max_error(self):
+    return max(self._errors.values())
+
+  @property
+  def variables(self):
+    return list(self._variables)
+
+  @property
+  def errors(self):
+    return self._errors
+
+  def points(self):
+    assert(self._frozen)
+    for idx in self._errors.keys():
+      vardict = {}
+      for var,i in zip(self.variables,idx):
+        vardict[var] = self._values[var][i]
+
+      yield idx,vardict
+
+
+  def clear(self):
+    for key in self.errors:
+      self._errors[key] = 0.0
+
+  def build(self):
+    vals = list(map(lambda v: list(range(self.n)), \
+                    self.variables))
+
+    self._frozen = True
+    self._errors = {}
+    for idx in itertools.product(*vals):
+      self._errors[tuple(idx)] = 0.0
+
+  @staticmethod
+  def from_json(obj):
+    mdl = ExpDeltaErrorModel(obj['n'])
+    mdl._frozen = obj['frozen']
+    mdl._ranges = obj['ranges']
+    mdl._values = obj['values']
+    mdl._errors = dict(map(lambda t: (tuple(t[0]),t[1]), obj['errors']))
+    mdl._variables = obj['variables']
+    return mdl
+
+  def to_json(self):
+    return {
+      'frozen': self._frozen,
+      'ranges': self._ranges,
+      'errors': list(self._errors.items()),
+      'variables':list(self._variables),
+      'values':dict(self._values),
+      'n':self.n
+    }
+
+
+  def __len__(self):
+    return self.n**len(self.variables)
+
+
+  def __repr__(self):
+    return "err-mdl(rng=[%f,%f],mean=%f)" \
+      % (self.min_error,self.max_error,self.avg_error)
+
 
 class ExpDeltaModel:
-  MODEL_ERROR = "modelError"
+  #MODEL_ERROR = "modelError"
   NOISE = "noise"
-  MAX_ERROR = 9999
 
-  def __init__(self,blk,loc,output,cfg,calib_obj):
+  def __init__(self,blk,loc,output,cfg,calib_obj,n=10):
     assert(isinstance(blk,blocklib.Block))
     assert(isinstance(loc,devlib.Location))
     assert(isinstance(output,blocklib.BlockOutput))
@@ -26,9 +123,22 @@ class ExpDeltaModel:
     self.output = output
     self.config = cfg
     self._params = {}
-    self._model_error = ExpDeltaModel.MAX_ERROR
-    self._noise = ExpDeltaModel.MAX_ERROR
+    self._model_error = ExpDeltaErrorModel(n)
+
+    self._noise = 0.0
     self.calib_obj = calib_obj
+
+    rel = self.spec.get_model(self.params)
+    for name in filter(lambda v: self.block.inputs.has(v) , rel.vars()):
+        ival = self.block.inputs[name].interval[self.config.mode]
+        self._model_error.set_range(name, ival.lower,ival.upper)
+
+    for name in filter(lambda v: self.block.data.has(v), rel.vars()):
+        ival = self.block.data[name].interval[self.config.mode]
+        self._model_error.set_range(name, ival.lower,ival.upper)
+
+    self._model_error.build()
+
 
   @property
   def params(self):
@@ -36,7 +146,7 @@ class ExpDeltaModel:
 
   def variables(self):
     variables = self.params
-    variables[ExpDeltaModel.MODEL_ERROR] = self.model_error
+    #variables[ExpDeltaModel.MODEL_ERROR] = self.model_error
     variables[ExpDeltaModel.NOISE] = self.noise
     return variables
 
@@ -86,15 +196,6 @@ class ExpDeltaModel:
          not var in self._params:
         return False
 
-      if var == ExpDeltaModel.MODEL_ERROR and \
-         self._model_error == ExpDeltaModel.MAX_ERROR:
-        return False
-
-      if var == ExpDeltaModel.NOISE and \
-         self._noise == ExpDeltaModel.MAX_ERROR:
-        return False
-
-
     return True
 
   @property
@@ -112,8 +213,8 @@ class ExpDeltaModel:
 
   def clear(self):
     self._params = {}
-    self._model_error = ExpDeltaModel.MAX_ERROR
-    self._noise = ExpDeltaModel.MAX_ERROR
+    self._model_error.clear()
+    self._noise = 0.0
 
   def bind(self,par,value):
     if not (par in self.spec.params):
@@ -124,9 +225,6 @@ class ExpDeltaModel:
 
   def set_noise(self,noise):
     self._noise = noise
-
-  def set_model_error(self,error):
-    self._model_error = error
 
   def errors(self,dataset,init_cond=False,correctable_only=False):
     predictions = self.predict(dataset, \
@@ -256,7 +354,7 @@ class ExpDeltaModel:
         'loc': str(self.loc),
         'output': self.output.name,
         'config': self.config.to_json(),
-        'model_error':self._model_error,
+        'model_error':self._model_error.to_json(),
         'noise':self._noise,
         'params': self._params,
         'calib_obj':self.calib_obj.value
@@ -275,11 +373,8 @@ class ExpDeltaModel:
     phys = ExpDeltaModel(blk,loc,output,cfg,calib_obj)
 
     phys._params = obj['params']
-    if 'model_error' in obj:
-      phys._model_error = obj['model_error']
-
-    if 'noise' in obj:
-      phys._noise= obj['noise']
+    phys._model_error = ExpDeltaErrorModel.from_json(obj['model_error'])
+    phys._noise= obj['noise']
     return phys
 
 
