@@ -143,7 +143,7 @@ class RandomFunctionPool:
         def const_expr(p):
            len(p.vars()) == 0 or \
               all(map(lambda n: "par" in n, p.vars()))
-        
+
         par_idx = len(self.get_params(p))
         if not const_expr(p) and \
             all(map(lambda n: isinstance(n,genoplib.Var), p.nodes())):
@@ -153,7 +153,7 @@ class RandomFunctionPool:
         def const_expr(p):
            len(p.vars()) == 0 or \
               all(map(lambda n: "par" in n, p.vars()))
-        
+
 
         def product_expr(p):
             return all(map(lambda n: isinstance(n,genoplib.Var) or \
@@ -185,7 +185,6 @@ class RandomFunctionPool:
 
 
     def crossover(self,population):
-        
         for p in population:
             for progeny in self.mutate(p):
                 yield progeny

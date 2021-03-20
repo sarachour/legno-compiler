@@ -10,6 +10,7 @@ import runtime.models.database as dblib
 import numpy as np
 from enum import Enum
 import itertools
+import math
 
 class  ExpDeltaErrorModel:
 
@@ -20,6 +21,7 @@ class  ExpDeltaErrorModel:
     self._variables = []
     self._values = {}
     self._frozen = False
+    self._expo = 4
 
   def set_range(self,v,l,u):
     assert(not self._frozen)
@@ -51,17 +53,52 @@ class  ExpDeltaErrorModel:
   def variables(self):
     return list(self._variables)
 
-  @property
-  def errors(self):
-    return self._errors
+  def get_distance(self,index,inputs):
+    vardict = self.get_point(index)
+    for var,i in zip(self.variables,index):
+        vardict[var] = self._values[var][i]
+
+    dist = 0.0
+    for inp,value in filter(lambda tup: tup[0] in inputs, vardict.items()):
+      dist += (value-inputs[inp])**2
+
+    dist = math.sqrt(dist)**self._expo
+    return dist
+
+  def get_weight(self,index,inputs):
+    dist = self.get_distance(index,inputs)
+    return math.exp(-dist)/math.exp(0)
+
+  def get_error(self,inputs):
+    numer,denom = 0.0,0.0
+    for indices,point_inputs in self.points():
+      error = self._errors[indices]
+      dist = 0.0
+      for inp,value in filter(lambda tup: tup[0] in inputs, point_inputs.items()):
+        dist += (value-inputs[inp])**2
+
+        dist = math.sqrt(dist)**self._expo
+        if dist == 0:
+          return error
+
+        numer += error*dist
+        denom += dist
+
+    return numer/denom
+
+  def get_point(self,idx):
+    if not idx in self._errors:
+      raise Exception("unknown index <%s> in error model" % (str(index)))
+
+    vardict = {}
+    for var,i in zip(self.variables,idx):
+      vardict[var] = self._values[var][i]
+    return vardict
 
   def points(self):
     assert(self._frozen)
     for idx in self._errors.keys():
-      vardict = {}
-      for var,i in zip(self.variables,idx):
-        vardict[var] = self._values[var][i]
-
+      vardict = self.get_point(idx)
       yield idx,vardict
 
 
@@ -152,15 +189,11 @@ class ExpDeltaModel:
 
   def has_value(self,varname):
     return varname in self._params or \
-      varname == ExpDeltaModel.MODEL_ERROR or \
       varname == ExpDeltaModel.NOISE
 
   def get_value(self,varname):
     if varname in self._params:
       return self._params[varname]
-
-    if varname == ExpDeltaModel.MODEL_ERROR:
-      return self._model_error
 
     if varname == ExpDeltaModel.NOISE:
       return self._noise

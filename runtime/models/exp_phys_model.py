@@ -10,10 +10,77 @@ import ops.base_op as baseoplib
 import numpy as np
 import math
 from enum import Enum
+import itertools
+
+class ExpPhysErrorModel:
+
+  def __init__(self,n):
+    self._ranges = {}
+    self._exprs = {}
+    self._errors = {}
+    self.n = n
+    self._variables = []
+    self._values = {}
+    self._frozen = False
+
+  @property
+  def variables(self):
+    return list(self._variables)
+
+  def set_range(self,v,l,u):
+    assert(not self._frozen)
+    assert(l<u)
+    assert(not v in self._variables)
+    assert(isinstance(v,str))
+    self._ranges[v] = (l,u)
+    self._values[v] = list(np.linspace(l,u,self.n))
+    self._variables.append(v)
+
+
+  def set_expr(self,index,expr,error):
+    assert(self._frozen)
+    if not (index in self._exprs):
+      raise Exception("index <%s> not found in error model" % str(index))
+
+    self._exprs[index] = expr
+    self._errors[index] = error
+
+  def clear(self):
+    for key in self.errors:
+      self._errors[key] = 0.0
+      self._exprs[key] = None
+
+
+  def build(self):
+    vals = list(map(lambda v: list(range(self.n)), \
+                    self.variables))
+
+    self._frozen = True
+    self._errors = {}
+    self._exprs= {}
+    for idx in itertools.product(*vals):
+      self._errors[tuple(idx)] = 0.0
+      self._exprs[tuple(idx)] = None
+
+
+  def to_json(self):
+    return {
+      'frozen': self._frozen,
+      'ranges': self._ranges,
+      'errors': list(self._errors.items()),
+      'exprs': list(map(lambda tup: (tup[0],tup[1].to_json()), \
+                        self._exprs.items())),
+      'variables':list(self._variables),
+      'values':dict(self._values),
+      'n':self.n
+    }
+
+
+
 
 
 class ExpPhysModel:
-  MODEL_ERROR = "modelError"
+  #MODEL_ERROR = "modelError"
   NOISE= "noise"
 
   class Param:
@@ -60,13 +127,30 @@ class ExpPhysModel:
                                                 self.expr,self._params,self.error)
 
 
-  def __init__(self,blk,cfg,output):
+  def __init__(self,blk,cfg,output,n=10):
     self.block = blk
     self.config = cfg
     self.output = output
     self._params= {}
-    self._model_error = None
+    self._model_error = ExpPhysErrorModel(n)
     self._noise = None
+
+    rel = self.spec.get_model(self.params)
+    for name in filter(lambda v: self.block.inputs.has(v) , rel.vars()):
+        ival = self.block.inputs[name].interval[self.config.mode]
+        self._model_error.set_range(name, ival.lower,ival.upper)
+
+    for name in filter(lambda v: self.block.data.has(v), rel.vars()):
+        ival = self.block.data[name].interval[self.config.mode]
+        self._model_error.set_range(name, ival.lower,ival.upper)
+
+    self._model_error.build()
+
+
+
+  @property
+  def spec(self):
+    return self.output.deltas[self.config.mode]
 
 
   @property
@@ -75,12 +159,9 @@ class ExpPhysModel:
 
   def variables(self):
     variables = dict(list(self.params.items())) 
-    if not self.model_error is None:
-        variables[ExpPhysModel.MODEL_ERROR] = self._model_error
 
-    if not self.model_error is None:
+    if not self.noise is None:
         variables[ExpPhysModel.NOISE] = self._noise
-
 
     return variables
 
@@ -94,9 +175,7 @@ class ExpPhysModel:
       return self._model_error
 
   def set_variable(self,name,expr,error):
-    if name == ExpPhysModel.MODEL_ERROR:
-      self.set_model_error(expr,error)
-    elif name == ExpPhysModel.NOISE:
+    if name == ExpPhysModel.NOISE:
       self.set_noise(expr,error)
     else:
       self.set_param(name,expr,error)
@@ -107,12 +186,6 @@ class ExpPhysModel:
       self._noise = ExpPhysModel.Param(self.block, \
                                               ExpPhysModel.NOISE, expr,error)
 
-
-  def set_model_error(self,expr,error):
-      assert(isinstance(expr,baseoplib.Op))
-      assert(isinstance(error,float))
-      self._model_error  = ExpPhysModel.Param(self.block, \
-                                              ExpPhysModel.MODEL_ERROR, expr,error)
 
   def set_param(self,par,expr,error):
       assert(isinstance(expr,baseoplib.Op))
@@ -154,7 +227,7 @@ class ExpPhysModel:
       'output': self.output.name,
       'config': self.config.to_json(),
       'params': param_dict,
-      'model_error':None if self._model_error is None else self._model_error.to_json(),
+      'model_error': self._model_error.to_json(),
       'noise':None if self._noise is None else self._noise.to_json()
     }
   #'phys_model': self.phys_models.to_json(),

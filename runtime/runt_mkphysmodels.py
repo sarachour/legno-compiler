@@ -10,9 +10,66 @@ import hwlib.hcdc.llenums as llenums
 import argparse
 import numpy as np
 
+class ModelErrorVar:
+
+    def __init__(self,*indices):
+        self.indices = indices
+
+    def __repr__(self):
+        idx = ",".join(map(lambda i: str(i), self.indices))
+        return "model-err(%s)" % idx
+
+def find_best_function(pool, \
+                       var_name, hidden_codes,values, \
+                       num_generations=5,pop_size=5,penalty=0.001,max_params=4,debug=False):
 
 
-def find_functions(models,num_generations=5,pop_size=5,penalty=0.001,max_params=4,debug=False):
+    print("--- initially score functions in pool ---")
+    pool.score(hidden_codes,values)
+
+    for generation in range(num_generations):
+        print("---- generation %d/%d ----" \
+              % (generation,num_generations))
+
+        print("--- evolve pool ---")
+        parents,children = pool.evolve(pop_size=pop_size)
+        print("evolve var=%s parents=%d children=%d" \
+              % (var_name, len(parents),len(children)))
+
+
+        print("--- scoring pool ---")
+        pool.score(hidden_codes,values)
+
+    index,score,gen,expr = pool.get_best()
+    print("var=%s score=%s gen=%d npars=%d" \
+        % (var_name,score,gen,pool.npars[index]))
+    print("  %s" % str(pool.raw_errors[index]))
+
+    index,score,gen,expr = pool.get_best()
+    print("===  best model for %s ===" % var_name)
+    print("generation=%d index=%d" % (index,gen))
+    print("score=%s" % score)
+    print("expr=%s" % expr)
+    print("")
+    return index,score,gen,expr
+
+
+def make_pool(repr_model,variable,penalty=0.001,max_params=4):
+    hidden_codes = list(dict(repr_model.hidden_codes()).keys())
+    pool = fxnlib.RandomFunctionPool(variable, \
+                                     hidden_codes, \
+                                     penalty=penalty, \
+                                     max_params=max_params)
+
+    block = repr_model.block
+    for hc in hidden_codes:
+        pool.set_range(hc,block.state[hc].values)
+
+    pool.initialize()
+
+    return hidden_codes,pool
+
+def find_error_model_functions(physical_model,models,num_generations=5,pop_size=5,penalty=0.001,max_params=4,debug=False):
     repr_model = get_repr_model(models)
     if repr_model is None:
        raise Exception("no representative model found. (# models=%d)" % len(models))
@@ -22,87 +79,101 @@ def find_functions(models,num_generations=5,pop_size=5,penalty=0.001,max_params=
     print("############################")
     print(repr_model.config)
     print("############################")
+    print("--- populating model errors ---")
+    for index,block_inputs in repr_model.model_error.points():
+        model_error_var = ModelErrorVar(index)
+        print(index,model_error_var)
+        hidden_codes,pool = make_pool(repr_model,model_error_var, \
+                                      penalty=penalty,max_params=max_params)
 
-    print("--- populating pool ---")
-    for var in repr_model.variables():
-        hidden_codes = list(dict(repr_model.hidden_codes()).keys())
-        pool = fxnlib.RandomFunctionPool(var,hidden_codes, \
+
+        print("number of functions=%d" % len(pool))
+        print("-> collating values of model error <%s>" % model_error_var)
+        values = {}
+        hcs = {}
+        npts = 0
+        for loc,mdls in models.items():
+            hcs[loc] = dict(map(lambda hc: (hc,[]), hidden_codes))
+            values[loc] = []
+            for mdl in filter(lambda m: m.complete, mdls.values()):
+                for var,val in mdl.hidden_codes():
+                    hcs[loc][var].append(val)
+
+                values[loc].append(mdl.model_error.get_error(block_inputs))
+                npts += 1
+
+        print("-> fitting function for model_error <%s> npts=%d" % (model_error_var,npts))
+        ident,score,gen,expr = find_best_function(pool, \
+                                                                model_error_var, \
+                                                                hcs, \
+                                                                values, \
+                                                                num_generations=5, \
+                                                                pop_size=5, \
+                                                                penalty=0.001, \
+                                                                max_params=4, \
+                                                                debug=False)
+
+        physical_model.model_error.set_expr(index=index,expr=expr,error=score)
+
+
+def find_delta_variable_functions(physical_model,models,num_generations=5,pop_size=5,penalty=0.001,max_params=4,debug=False):
+    repr_model = get_repr_model(models)
+    if repr_model is None:
+       raise Exception("no representative model found. (# models=%d)" % len(models))
+
+    model_pool = {}
+
+    print("############################")
+    print(repr_model.config)
+    print("############################")
+    print("--- populating model errors ---")
+    for delta_var in repr_model.variables():
+        hidden_codes,pool = make_pool(repr_model,delta_var, \
+                                      penalty=penalty,max_params=max_params)
+
+
+        print("number of functions=%d" % len(pool))
+        print("-> collating values of model error <%s>" % delta_var)
+        values = {}
+        hcs = {}
+        npts = 0
+        for loc,mdls in models.items():
+            hcs[loc] = dict(map(lambda hc: (hc,[]), hidden_codes))
+            values[loc] = []
+            for mdl in filter(lambda m: m.complete, mdls.values()):
+                for var,val in mdl.hidden_codes():
+                    hcs[loc][var].append(val)
+
+                values[loc].append(mdl.get_value(delta_var))
+                npts += 1
+
+        print("-> fitting function for model_error <%s> npts=%d" % (delta_var,npts))
+        index,score,gen,expr = find_best_function(pool, \
+                                                                delta_var, \
+                                                                hcs, \
+                                                                values, \
+                                                                num_generations=5, \
+                                                                pop_size=5, \
+                                                                penalty=0.001, \
+                                                                max_params=4, \
+                                                                debug=False)
+
+        physical_model.set_variable(name=delta_var,expr=expr,error=score)
+
+
+def find_all_functions(physical_model,models,num_generations=5,pop_size=5,penalty=0.001,max_params=4,debug=False):
+    find_delta_variable_functions(physical_model, \
+                                  models,num_generations=num_generations, \
+                                  pop_size=pop_size, \
                                   penalty=penalty, \
                                   max_params=max_params)
 
-        block = repr_model.block
-        for hc in hidden_codes:
-            pool.set_range(hc,block.state[hc].values)
 
-        pool.initialize()
-        model_pool[var] = pool
-        print("%s #: %d" % (var, len(pool.pool)))
-
-
-    print("--- extract dataset ---")
-    hidden_configs = {}
-    variables = dict(map(lambda v: (v,{}), repr_model.variables()))
-    for loc,mdls in models.items():
-        hidden_configs[loc] = dict(map(lambda v: (v[0],[]), \
-                                       repr_model.hidden_codes()))
-        for var in repr_model.variables():
-            variables[var][loc] = []
-
-        npts = 0
-        for st, mdl in mdls.items():
-            if not mdl.complete:
-                continue
-
-            for var in mdl.variables():
-                variables[var][loc].append(mdl.get_value(var))
-
-            for var,val in mdl.hidden_codes():
-                hidden_configs[loc][var].append(val)
-                npts += 1
-
-        print("# datapoints [%s]: %d" % (loc,npts))
-
-    print("--- initially score functions in pool ---")
-    for var,pool in model_pool.items():
-        pool.score(hidden_configs,variables[var])
-
-    for generation in range(num_generations):
-        print("---- generation %d/%d ----" \
-              % (generation,num_generations))
-        
-        print("--- evolve pool ---")
-        for delta_var,pool in model_pool.items():
-            parents,children = pool.evolve(pop_size=pop_size)
-            print("evolve var=%s parents=%d children=%d" \
-                  % (delta_var, len(parents),len(children)))
-
-
-        print("--- scoring pool ---")
-        for var,pool in model_pool.items():
-            pool.score(hidden_configs,variables[var])
-
-        for var,pool in model_pool.items():
-            index,score,gen,expr = pool.get_best()
-            print("var=%s score=%s gen=%d npars=%d" \
-              % (var,score,gen,pool.npars[index]))
-            print("  %s" % str(pool.raw_errors[index]))
-
-
-
-    print("---- finalizing pool and getting best codes ----")
-    print("   -> identify lowest number of parameters")
-    max_pars = 0
-    for var,pool in model_pool.items():
-        index,score,gen,expr = pool.get_best()
-        max_pars = max(max_pars, pool.npars[index])
-
-    print("number of parameters=%d" % max_pars)
-    print("   -> choose best function with no parameter penalty")
-    for var,pool in model_pool.items():
-        indices = list(filter(lambda idx: pool.npars[idx] <= max_pars, \
-                              range(pool.npts())))
-        best_idx = np.argmin(list(map(lambda idx: pool.errors[idx], indices)))
-        yield var,(pool.errors[best_idx],pool.pool[best_idx])
+    find_error_model_functions(physical_model, \
+                               models,num_generations=num_generations, \
+                               pop_size=pop_size, \
+                               penalty=penalty, \
+                               max_params=max_params)
 
 
 
@@ -115,6 +186,8 @@ def get_repr_model(models):
 
 def genetic_infer_model(board,block,config,output,models,datasets, \
                         num_generations=1, pop_size=1,penalty=0.001,max_params=4,force=False):
+
+
    existing_models = exp_phys_model_lib.get_models(board,['block','static_config','output'],block, config, output)
 
    if len(existing_models) > 0 and not force:
@@ -122,23 +195,25 @@ def genetic_infer_model(board,block,config,output,models,datasets, \
       print("[warn] already exists, returning!")
       return
 
-   if block.name == "fanout" or block.name == "integ" or str(config.mode) != "(x,m,h)":
-      return
+   #if block.name == "fanout" or block.name == "integ" or str(config.mode) != "(x,m,h)":
+    #  return
 
-   functions = dict(find_functions(models,num_generations=num_generations,pop_size=pop_size,penalty=penalty,max_params=max_params))
-   pmdl = exp_phys_model_lib.ExpPhysModel(block,config,output)
-
-   print("===== BEST FUNCTIONS ======")
-   print(config)
-   print("")
-   for var,(score,expr) in functions.items():
-       print("var: %s" % var)
-       print("   %s score=%f" % (expr,score))
-       pmdl.set_variable(var,expr,score)
+   repr_model = get_repr_model(models)
+   if repr_model is None:
+       raise Exception("no representative model found. (# models=%d)" % len(models))
 
 
-   if len(functions) > 0:
-      exp_phys_model_lib.update(board, pmdl)
+   # make a physical model with the same dimensions of the delta model
+   pmdl = exp_phys_model_lib.ExpPhysModel(block,config,output, \
+                                          n=repr_model.model_error.n)
+
+   find_all_functions(pmdl,models, \
+                      num_generations=num_generations, \
+                      pop_size=pop_size \
+                      ,penalty=penalty, \
+                      max_params=max_params)
+
+   exp_phys_model_lib.update(board, pmdl)
    #input("done!")
 
 
