@@ -210,7 +210,7 @@ class VariablePredictionModel:
                        npts, self.key, self.model_error, self.conc_expr))
         for idx,(v,e) in enumerate(zip(values,all_errors)):
             ci = dict(map(lambda c: (c,codes[c][idx]), codes.keys()))
-            print("   codes=%s value=%s error=%s" % (ci,v,e))
+            #print("   codes=%s value=%s error=%s" % (ci,v,e))
 
     def predict(self,hidden_codes):
         value = self.conc_expr.compute(hidden_codes)

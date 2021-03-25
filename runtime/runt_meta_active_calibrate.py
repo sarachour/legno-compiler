@@ -388,7 +388,7 @@ def calibrate_block(logger, \
             print("=> codes=%s" % hcs)
             print("=> score=%s" % pred_score)
             query_hidden_codes(logger,code_pool,char_board,block,loc,config,hcs, \
-                               npts_spat_error, grid_size=grid_size)
+                               npts_spat_err, grid_size=grid_size)
 
     write_model_to_database(logger,code_pool, board,char_board)
 
