@@ -1,3 +1,5 @@
+import ops.generic_op as genoplib
+
 import hwlib.hcdc.llenums as llenums
 
 import hwlib.block as blocklib
@@ -148,6 +150,11 @@ class  ExpDeltaErrorModel:
     for idx in itertools.product(*vals):
       self._errors[tuple(idx)] = 0.0
 
+  def data_from_json(self,obj):
+    for idx,err in obj['errors']:
+      self.set_error(tuple(idx),err)
+
+
   @staticmethod
   def from_json(obj):
     mdl = ExpDeltaErrorModel(obj['n'])
@@ -197,12 +204,16 @@ class ExpDeltaModel:
     self.output = output
     self.config = cfg
     self._params = {}
-    self._model_error = ExpDeltaErrorModel(n)
 
     self._noise = 0.0
     self.calib_obj = calib_obj
 
-    rel = self.spec.get_model(self.params)
+    if self.spec.is_integration_op:
+      rel,_,_ = self.spec.get_integration_exprs()
+    else:
+      rel = self.spec.relation.copy()
+
+    self._model_error = ExpDeltaErrorModel(n)
     for name in filter(lambda v: self.block.inputs.has(v) , rel.vars()):
         ival = self.block.inputs[name].interval[self.config.mode]
         self._model_error.set_range(name, ival.lower,ival.upper)
@@ -257,6 +268,7 @@ class ExpDeltaModel:
 
   @property
   def is_integration_op(self):
+    return self.spec.is_integration_op
     rel = self.spec.get_model(self.params)
     return runtime_util.is_integration_op(rel)
 
@@ -320,29 +332,26 @@ class ExpDeltaModel:
   def get_subexpr(self,init_cond=False, \
                   correctable_only=False, \
                   concrete=True):
+    def conc(rel,pars):
+      return rel.substitute(dict(map(lambda tup: (tup[0],genoplib.Const(tup[1])), \
+                                     pars.items())))
+
     params = dict(self.params)
     if not concrete:
        params = {}
 
     if correctable_only:
-      rel = self.spec.get_correctable_model(params)
-    else:
-      rel = self.spec.get_model(params)
+      params = self.spec.get_correctable_params(params)
 
-    if self.is_integration_op and init_cond:
-      expr = llenums.ProfileOpType \
-                    .INTEG_INITIAL_COND.get_expr(self.block,rel)
-      return expr
-
-    elif self.is_integration_op and not init_cond:
-      return llenums.ProfileOpType \
-                    .INTEG_DERIVATIVE_GAIN.get_expr(self.block,rel), \
-             llenums.ProfileOpType \
-                    .INTEG_DERIVATIVE_BIAS.get_expr(self.block,rel)
+    if self.spec.is_integration_op:
+      ic,deriv_gain,deriv_offset = self.spec.get_integration_exprs()
+      if init_cond:
+        return conc(ic,params)
+      else:
+        return conc(deriv_gain,params),conc(deriv_offset,params)
 
     else:
-      return llenums.ProfileOpType \
-                    .INPUT_OUTPUT.get_expr(self.block,rel)
+      return conc(self.spec.relation,params)
 
 
   def predict(self,dataset, \
@@ -351,7 +360,7 @@ class ExpDeltaModel:
     inputs = dataset.get_inputs()
     params = dict(self.params)
 
-    if not init_cond and self.is_integration_op:
+    if not init_cond and self.spec.is_integration_op:
       # return gain
       rel, _ = self.get_subexpr(init_cond=init_cond, \
                                 correctable_only=correctable_only)
@@ -440,7 +449,11 @@ class ExpDeltaModel:
     output = blk.outputs[obj['output']]
     cfg = adplib.BlockConfig.from_json(dev,obj['config'])
     calib_obj = llenums.CalibrateObjective(obj['calib_obj'])
-    phys = ExpDeltaModel(blk,loc,output,cfg,calib_obj,0)
+
+    try:
+      phys = ExpDeltaModel(blk,loc,output,cfg,calib_obj,obj['model_error']['n'])
+    except:
+      phys = ExpDeltaModel(blk,loc,output,cfg,calib_obj,0)
 
     phys._params = obj['params']
     try:
@@ -449,12 +462,11 @@ class ExpDeltaModel:
       print("[warn] can't parse noise")
       pass
 
-
-    phys._model_error = ExpDeltaErrorModel.from_json(obj['model_error'])
+    phys._model_error.build()
     try:
-      phys._model_error = ExpDeltaErrorModel.from_json(obj['model_error'])
+      phys._model_error.data_from_json(obj['model_error'])
     except Exception as e:
-      print("[warn] can't parse model error")
+      print("[warn] can't load model errors <%s>" % e)
       pass
 
     return phys
@@ -570,7 +582,7 @@ def _derive_where_clause(clauses,block,loc,output,cfg,calib_obj):
 
     elif cls == ExpDeltaModelClause.CALIB_OBJ:
       test_if_null(calib_obj,"get_models: expected calibration objective")
-      assert(isinstance, llenums.CalibrateObjective)
+      assert(isinstance(calib_obj,llenums.CalibrateObjective))
       where_clause['calib_obj'] =calib_obj.value
     else:
       raise Exception("unknown??")

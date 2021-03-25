@@ -79,6 +79,7 @@ def find_error_model_functions(physical_model,models,num_generations=5,pop_size=
     assert(physical_model.model_error.n == repr_model.model_error.n)
     for index in repr_model.model_error.indices():
         if not physical_model.model_error.has_index(index):
+            print(physical_model.model_error.indices())
             raise Exception("spatial error model is missing index <%s> n=%d"  \
                             % (index,physical_model.model_error.n))
 

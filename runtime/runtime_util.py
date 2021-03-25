@@ -37,7 +37,7 @@ def make_block_test_adp(board,adp,block,cfg):
 
 def get_profiling_steps(output_port,cfg,grid_size,max_points=None):
 
-    if is_integration_op(output_port.relation[cfg.mode]):
+    if genoplib.is_integration_op(output_port.relation[cfg.mode]):
       if not max_points is None and  max_points < grid_size:
         grid_size = max_points
 
@@ -82,11 +82,13 @@ def decode_dict(data):
                .decode('utf-8')
   return json.loads(text)
 
+'''
 def is_integration_op(rel):
     for node in rel.nodes():
         if node.op == oplib.OpType.INTEG:
             return True
     return False
+'''
 
 
 def dict_to_identifier(dict_):

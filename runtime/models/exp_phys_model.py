@@ -60,6 +60,7 @@ class Param:
 class ErrorParam(Param):
 
   def __init__(self,block,index,expr,error):
+    assert(isinstance(expr,genoplib.Op))
     name = "%s(%s)" % (blocklib.MultiObjective.MODEL_ERROR,index)
     self.index = index
     Param.__init__(self,block,name,expr,error)
@@ -101,8 +102,9 @@ class ExpPhysErrorModel:
 
   def points(self,block):
     for index,expr in self._exprs.items():
-      par = ErrorParam(block,index,expr,self._errors[index])
-      yield index,par
+        if not expr is None:
+            par = ErrorParam(block,index,expr,self._errors[index])
+            yield index,par
 
   def set_expr(self,index,expr,error):
     assert(self._frozen)
@@ -128,6 +130,13 @@ class ExpPhysErrorModel:
     for idx in itertools.product(*vals):
       self._errors[tuple(idx)] = 0.0
       self._exprs[tuple(idx)] = None
+
+
+  def exprs_from_json(self,obj):
+      errs = dict(map(lambda tup: (tuple(tup[0]),tup[1]), obj['errors']))
+      for index,expr_json in obj['exprs']:
+          expr = genoplib.Op.from_json(expr_json)
+          self.set_expr(tuple(index),expr,errs[tuple(index)])
 
 
   @staticmethod
@@ -169,7 +178,11 @@ class ExpPhysModel:
     self._model_error = ExpPhysErrorModel(n)
     self._noise = None
 
-    rel = self.spec.get_model(self.params)
+    if self.spec.is_integration_op:
+        rel,_,_ = self.spec.get_integration_exprs()
+    else:
+        rel = self.spec.relation
+
     for name in filter(lambda v: self.block.inputs.has(v) , rel.vars()):
         ival = self.block.inputs[name].interval[self.config.mode]
         self._model_error.set_range(name, ival.lower,ival.upper)
@@ -180,12 +193,9 @@ class ExpPhysModel:
 
     self._model_error.build()
 
-
-
   @property
   def spec(self):
     return self.output.deltas[self.config.mode]
-
 
   @property
   def params(self):
@@ -271,13 +281,21 @@ class ExpPhysModel:
     cfg = adplib.BlockConfig.from_json(dev,obj['config'])
     out = blk.outputs[obj['output']]
     assert(not blk is None)
-    mdl = ExpPhysModel(blk,cfg,out)
+    try:
+        mdl = ExpPhysModel(blk,cfg,out,obj['model_error']['n'])
+    except Exception as e:
+        mdl = ExpPhysModel(blk,cfg,out,0)
 
-    mdl._model_error = ExpPhysErrorModel.from_json(obj['model_error'])
+    mdl._model_error.build()
+    mdl._model_error.exprs_from_json(obj['model_error'])
+    try:
+        mdl._model_error.exprs_from_json(obj['model_error'])
+    except Exception as e:
+        print("[warn] phys.from_json: can't load model error expressions from json <%s>" % e)
+
     for par,subobj in obj['params'].items():
       mdl._params[par] = Param.from_json(blk,subobj)
 
- 
     if "noise" in obj and not obj['noise'] is None:
         mdl._noise = Param.from_json(blk,obj['noise'])
 

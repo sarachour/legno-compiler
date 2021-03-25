@@ -1,6 +1,7 @@
 import runtime.models.exp_delta_model as exp_delta_model_lib
 import hwlib.adp as adplib
 import ops.interval as ivallib
+import ops.generic_op as genoplib
 from enum import Enum
 
 class ObjectiveFun(Enum):
@@ -143,7 +144,9 @@ class HardwareInfo:
         print(exp_models[0])
         raise Exception("experimental model must be complete")
 
-      expr = delta.get_correctable_model(exp_models[0].params,low_level=False)
+      pars = delta.get_correctable_params(exp_models[0].params,low_level=False)
+      expr = delta.relation.substitute(dict(map(lambda tup: (tup[0],genoplib.Const(tup[1])), \
+                                                    pars.items())))
       return expr
 
   def get_ideal_relation(self,instance,mode,port):

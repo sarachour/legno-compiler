@@ -68,7 +68,6 @@ def finalize_delta_model(dev,delta_model,dataset):
     else:
         raise Exception("unexpected")
 
-    print("sampling surface n=%d" % delta_model.model_error.n)
     surf = parsurflib.build_surface_for_expr(delta_model.block, \
                                              delta_model.config, \
                                              rel, \
@@ -170,6 +169,7 @@ def derive_delta_models_adp(args):
 
     for blk,loc,cfg in exp_profile_dataset_lib \
         .get_configured_block_instances(board):
+        print(cfg)
         update_delta_models_for_configured_block(board, \
                                                  blk, \
                                                  loc, \

@@ -463,3 +463,32 @@ def unpack_integ(expr):
                      )
     else:
         raise Exception("cannot unpack: %s" % expr)
+
+def get_initial_cond(expr):
+    integ_expr = unpack_integ(expr)
+    return integ_expr.init_cond
+
+def get_deriv_gain(expr, nonconst_vars):
+    integ_expr = unpack_integ(expr)
+    coeff,offset,exprs = unpack_linear_operator(integ_expr.deriv)
+    assert(all(map(lambda expr: expr.op == OpType.VAR, exprs)))
+    all_vars = list(map(lambda e: e.name, exprs))
+
+    model_terms = list(filter(lambda v: not v in nonconst_vars, all_vars))
+    block_terms = list(filter(lambda v: v in nonconst_vars, all_vars))
+    rel = product([Const(coeff)] + \
+                           list(map(lambda v: Var(v), \
+                                    model_terms)))
+    return rel
+
+def get_deriv_offset(expr):
+    integ_expr = unpack_integ(expr)
+    coeff,offset,exprs = unpack_linear_operator(integ_expr.deriv)
+    return Const(offset)
+
+def is_integration_op(rel):
+    for node in rel.nodes():
+        if node.op == OpType.INTEG:
+            return True
+    return False
+

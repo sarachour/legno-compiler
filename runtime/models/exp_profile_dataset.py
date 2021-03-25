@@ -90,7 +90,7 @@ class ExpProfileDataset:
 
   def relation(self):
       rel = self.output.relation[self.config.mode]
-      if runtime_util.is_integration_op(rel):
+      if genoplib.is_integration_op(rel):
           if self.method == llenums.ProfileOpType.INTEG_INITIAL_COND:
               integ_expr = genoplib.unpack_integ(rel)
               return integ_expr.init_cond
@@ -190,6 +190,7 @@ def __to_datasets(dev,matches):
       yield ExpProfileDataset.from_json(dev, \
                                         runtime_util.decode_dict(match['dataset']))
     except Exception as e:
+      print("dataset parse exception <%s>" % e)
       pass
 
 

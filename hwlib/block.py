@@ -818,6 +818,11 @@ class DeltaSpec:
 
         return spec
 
+
+    @property
+    def is_integration_op(self):
+        return oplib.is_integration_op(self.relation)
+
     def get_params_of_type(self,typ):
         return list(filter(lambda p: p.typ == typ, \
                            self._params.values()))
@@ -850,19 +855,28 @@ class DeltaSpec:
 
         return spec
 
+    def get_integration_exprs(self):
+        assert(self.is_integration_op)
+        rel = self.relation
 
-    def get_model(self,params):
-        repls = dict(map(lambda tup: (tup[0],oplib.Const(tup[1])), \
-                         params.items()))
-        return self.relation.substitute(repls)
+        block_vars = list(filter(lambda v: not v in self._params, rel.vars()))
 
-    def get_correctable_model(self,params,low_level=True):
+        ic_expr = oplib.get_initial_cond(rel)
+        deriv_gain = oplib.get_deriv_gain(rel,block_vars)
+        deriv_bias = oplib.get_deriv_offset(rel)
+        return ic_expr,deriv_gain,deriv_bias
+
+
+
+    def get_correctable_params(self,params,low_level=True):
         pdict = dict(params)
         for par in params.keys():
             if not self._params[par].typ.is_correctable(low_level):
                 pdict[par] = self._params[par].val
 
-        return lambdoplib.simplify(self.get_model(pdict))
+        #return lambdoplib.simplify(self.get_model(pdict))
+        return pdict
+
 
     @property
     def params(self):

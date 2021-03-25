@@ -103,10 +103,11 @@ def load_code_pool_from_database(char_board,predictor,objectives):
     return code_pool
 
 
-def update_model(logger,char_board,blk,loc,cfg):
-    #"python3 grendel.py mkphys --model-number {model} --max-depth 0 --num-leaves 1 --shrink" 
+def update_model(logger,char_board,blk,loc,cfg,npts_spat_error):
+    #"python3 grendel.py mkphys --model-number {model} --max-depth 0 --num-leaves 1 --shrink"
+    assert(isinstance(npts_spat_error,int))
     CMDS = [ \
-             "python3 grendel.py mkdeltas {model} --force > deltas.log" \
+             "python3 grendel.py mkdeltas {model} --force --num-points {npts} > deltas.log" \
     ]
 
 
@@ -115,7 +116,8 @@ def update_model(logger,char_board,blk,loc,cfg):
     runtime_sec = 0
     for CMD in CMDS:
         cmd = CMD.format(adp=adp_file, \
-                         model=char_board.full_model_number)
+                         model=char_board.full_model_number, \
+                         npts=npts_spat_error)
         print(">> %s" % cmd)
         runtime_sec += runtime_meta_util.run_command(cmd)
 
@@ -223,7 +225,7 @@ def write_model_to_database(logger,pool,board,char_board):
 This function takes a point and evaluates it in the hardware to identify
 the delta model parameters. These labels are attached.
 '''
-def query_hidden_codes(logger,pool,board,blk,loc,cfg,hidden_codes,grid_size=9):
+def query_hidden_codes(logger,pool,board,blk,loc,cfg,hidden_codes,npts,grid_size=9):
     new_cfg = cfg.copy()
     for var,value in hidden_codes.items():
         int_value = blk.state[var].nearest_value(value)
@@ -231,11 +233,12 @@ def query_hidden_codes(logger,pool,board,blk,loc,cfg,hidden_codes,grid_size=9):
 
     for out in blk.outputs:
         exp_model = exp_delta_model_lib.ExpDeltaModel(blk,loc,out,new_cfg, \
+                                                      n=npts, \
                                                       calib_obj=llenums.CalibrateObjective.NONE)
         exp_delta_model_lib.update(board,exp_model)
 
     profile_block(logger,board,blk,loc,new_cfg,grid_size)
-    update_model(logger,board,blk,loc,new_cfg)
+    update_model(logger,board,blk,loc,new_cfg,npts)
 
     mdls = exp_delta_model_lib.get_models(board, \
                                           ['block','loc','static_config','hidden_config'], \
@@ -270,9 +273,11 @@ and the block specification
 def build_predictor(xfer_board,block,loc,config):
     predictor = predlib.Predictor(block,loc,config)
     obj = predlib.MultiOutputObjective()
-
+    npts = None
     for output in block.outputs:
         phys_model = exp_phys_model_lib.load(xfer_board,block,config,output)
+        npts = phys_model.model_error.n if npts is None else npts
+        assert(npts == phys_model.model_error.n)
         if phys_model is None:
            raise Exception("no physical model for output <%s> of block <%s> under config <%s>" \
                            % (output.name,block.name,config.mode))
@@ -286,7 +291,7 @@ def build_predictor(xfer_board,block,loc,config):
             obj.add_error(output,index)
 
 
-    return obj,predictor
+    return npts,obj,predictor
 
 '''
 Update the predictor parameters with the characterization data
@@ -336,13 +341,13 @@ def calibrate_block(logger, \
 
     # get board with initial code pool
     char_model = runtime_meta_util.get_model(board,block,loc,config)
-    char_board = runtime_util.get_device("%s-active-cal/%s" % (board.model_number,char_model),layout=False)
-
+    char_board = runtime_util.get_device("%s-active-cal/%s"  \
+                                         % (board.model_number,char_model),layout=False)
     # load physical models for transfer learning. Compute the number of parameters
     phys_models = {}
 
     # build a calibration objective predictor with per-variable models.
-    objfun,predictor = build_predictor(xfer_board,block,loc,config)
+    npts_spat_err,objfun,predictor = build_predictor(xfer_board,block,loc,config)
     nsamps_reqd = predictor.min_samples() + 1
 
     max_samples += nsamps_reqd
@@ -355,7 +360,7 @@ def calibrate_block(logger, \
                     char_board,block,loc,config, \
                     grid_size=grid_size, \
                     num_samples=nsamps_reqd)
-    update_model(logger,char_board,block,loc,config)
+    update_model(logger,char_board,block,loc,config,npts_spat_err)
 
     # fit all of the parameters in the predictor.
     update_predictor(predictor,char_board)
@@ -383,7 +388,7 @@ def calibrate_block(logger, \
             print("=> codes=%s" % hcs)
             print("=> score=%s" % pred_score)
             query_hidden_codes(logger,code_pool,char_board,block,loc,config,hcs, \
-                     grid_size=grid_size)
+                               npts_spat_error, grid_size=grid_size)
 
     write_model_to_database(logger,code_pool, board,char_board)
 
