@@ -287,7 +287,6 @@ class ExpPhysModel:
         mdl = ExpPhysModel(blk,cfg,out,0)
 
     mdl._model_error.build()
-    mdl._model_error.exprs_from_json(obj['model_error'])
     try:
         mdl._model_error.exprs_from_json(obj['model_error'])
     except Exception as e:
