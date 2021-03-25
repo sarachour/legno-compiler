@@ -744,6 +744,7 @@ class PhysicalModelSpec:
                                                           self.relation)
 
 class MultiObjective:
+        MODEL_ERROR = "modelError"
 
         def __init__(self):
             self.objectives = []

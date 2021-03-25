@@ -73,20 +73,26 @@ def load_code_pool_from_database(char_board,predictor,objectives):
            continue
 
         codes = dict(mdls[0].hidden_codes())
-        pred_deltavars,_ = code_pool.predictor.predict(codes)
-        pred_obj = code_pool.objectives.compute(pred_deltavars)
-        vs = {}
+        pred_deltavars,pred_errors  = code_pool.predictor.predict(codes)
+        pred_obj = code_pool.objectives.compute(pred_deltavars,pred_errors)
+
+        actual_deltavars = {}
+        actual_errors = {}
         for mdl in mdls:
-            vs[mdl.output.name] = mdl.variables()
+            actual_deltavars[mdl.output.name] = mdl.variables()
+            actual_errors[mdl.output.name] = mdl.model_error.errors()
 
-        actual_obj = code_pool.objectives.compute(vs)
-
-        print("hist %s" % (codes))
-        for (_,expr),pred,act in zip(code_pool.objectives,pred_obj,actual_obj):
-            print("  obj=%s pred=%f meas=%f" % (expr,pred,act))
+        actual_obj = code_pool.objectives.compute(actual_deltavars,actual_errors)
+        for index in range(min(len(actual_obj),len(pred_obj))):
+            act_name,act_val,_,_ = actual_obj.get_by_index(index)
+            pred_name,pred_val,_,_ = actual_obj.get_by_index(index)
+            assert(act_name == pred_name)
+            print("  obj=%s pred=%f meas=%f" % (act_name, \
+                                                pred_val, \
+                                                act_val))
 
         if not code_pool.has_code(codes):
-           code_pool .add_labeled_code(codes,vs)
+           code_pool .add_labeled_code(codes,actual_deltavars,actual_errors)
 
     print("==== pool (best to worst) ====")
     print(predictor.config)
@@ -237,22 +243,24 @@ def query_hidden_codes(logger,pool,board,blk,loc,cfg,hidden_codes,grid_size=9):
                                           loc=loc,
                                           config=new_cfg)
     assert(len(mdls) > 0)
-    vs = {}
+    variables = {}
+    errors= {}
     for mdl in mdls:
-        vs[mdl.output.name] = mdl.variables()
+        variables[mdl.output.name] = mdl.variables()
+        errors[mdl.output.name] = mdl.model_error.errors()
 
     codes = dict(mdl.hidden_codes())
-    actual_obj = pool.objectives.compute(vs)
-    pred_deltavars,_ = pool.predictor.predict(codes)
-    pred_obj = pool.objectives.compute(pred_deltavars)
+    actual_obj = pool.objectives.compute(variables,errors)
+    pred_deltavars,pred_model_errors = pool.predictor.predict(codes)
+    pred_obj = pool.objectives.compute(pred_deltavars,pred_model_errors)
 
     print("samp %s" % (codes))
-    for expr,pred,act in zip(pool.objectives,pred_obj,actual_obj):
-        print("  obj=%s pred=%f meas=%f" % (expr,pred,act))
+    for i,(index,out,name,obj,tol,prio) in enumerate(pool.objectives):
+        print("  %s obj=%s pred=%f meas=%f" % (name,obj,pred_obj.values[i],actual_obj.values[i]))
 
 
     assert(pool.has_code(codes))
-    pool .affix_label_to_code(codes,vs)
+    pool .affix_label_to_code(codes,variables,errors)
 
 
 '''
@@ -271,7 +279,12 @@ def build_predictor(xfer_board,block,loc,config):
         for var,pmodel in phys_model.variables().items():
             predictor.set_variable(output,var,pmodel)
 
+        predictor.set_model_error(output,phys_model.model_error)
+
         obj.add(output, output.deltas[config.mode].objective)
+        for index,_ in phys_model.model_error.points(block):
+            obj.add_error(output,index)
+
 
     return obj,predictor
 
@@ -280,9 +293,13 @@ Update the predictor parameters with the characterization data
 '''
 def update_predictor(predictor,char_board):
      for model in exp_delta_model_lib.get_all(char_board):
+        hcs = dict(model.hidden_codes())
         for var,val in model.variables().items():
-            predictor.data.add_datapoint(model.output, var,  \
-                                         dict(model.hidden_codes()), val)
+            predictor.add_variable_datapoint(model.output, var,  hcs, val)
+
+        for index,input_values in model.model_error.points():
+            val = model.model_error.get_error(input_values)
+            predictor.add_error_datapoint(model.output, index,  hcs, val)
 
 
      predictor.fit()

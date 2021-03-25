@@ -12,6 +12,58 @@ import math
 from enum import Enum
 import itertools
 
+
+class Param:
+
+    def __init__(self,block,var_name,expr,error):
+        self._variable = var_name
+        self._hidden_codes = list(map(lambda st: st.name, \
+                                      runtime_util.get_hidden_codes(block)))
+        self._expr = expr
+        self._params = list(filter(lambda v: not v in self._hidden_codes, \
+                                    self._expr.vars()))
+        self._error = error
+
+    @property
+    def params(self):
+        return self._params
+
+    @property
+    def error(self):
+        return self._error
+
+    @property
+    def expr(self):
+        return self._expr
+
+    @staticmethod
+    def from_json(block,obj):
+        expr = baseoplib.Op.from_json(obj['expr'])
+        par = Param(block, \
+                                  obj['variable'],  \
+                                  expr=expr, \
+                                  error=obj['error'])
+        return par
+
+    def to_json(self):
+        return {
+            'variable': self._variable, \
+            'expr': self.expr.to_json(), \
+            'error': self.error
+        }
+
+    def __repr__(self):
+        return "var %s %s pars=%s score=%f" % (self._variable, \
+                                              self.expr,self._params,self.error)
+
+
+class ErrorParam(Param):
+
+  def __init__(self,block,index,expr,error):
+    name = "%s(%s)" % (blocklib.MultiObjective.MODEL_ERROR,index)
+    self.index = index
+    Param.__init__(self,block,name,expr,error)
+
 class ExpPhysErrorModel:
 
   def __init__(self,n):
@@ -36,6 +88,11 @@ class ExpPhysErrorModel:
     self._values[v] = list(np.linspace(l,u,self.n))
     self._variables.append(v)
 
+
+  def points(self,block):
+    for index,expr in self._exprs.items():
+      par = ErrorParam(block,index,expr,self._errors[index])
+      yield index,par
 
   def set_expr(self,index,expr,error):
     assert(self._frozen)
@@ -63,6 +120,19 @@ class ExpPhysErrorModel:
       self._exprs[tuple(idx)] = None
 
 
+  @staticmethod
+  def from_json(obj):
+    mdl = ExpPhysErrorModel(obj['n'])
+    mdl._frozen = obj['frozen']
+    mdl._ranges = obj['ranges']
+    mdl._values = obj['values']
+    mdl._errors = dict(map(lambda t: (tuple(t[0]),t[1]), obj['errors']))
+    mdl._exprs = dict(map(lambda t: (tuple(t[0]),baseoplib.Op.from_json(t[1])), \
+                          obj['exprs']))
+    mdl._variables = obj['variables']
+    return mdl
+
+
   def to_json(self):
     return {
       'frozen': self._frozen,
@@ -77,55 +147,9 @@ class ExpPhysErrorModel:
 
 
 
-
-
 class ExpPhysModel:
   #MODEL_ERROR = "modelError"
   NOISE= "noise"
-
-  class Param:
-
-      def __init__(self,block,var_name,expr,error):
-          self._variable = var_name
-          self._hidden_codes = list(map(lambda st: st.name, \
-                                        runtime_util.get_hidden_codes(block)))
-          self._expr = expr
-          self._params = list(filter(lambda v: not v in self._hidden_codes, \
-                                     self._expr.vars()))
-          self._error = error
-
-      @property
-      def params(self):
-          return self._params
-
-      @property
-      def error(self):
-         return self._error
-
-      @property
-      def expr(self):
-          return self._expr
-
-      @staticmethod
-      def from_json(block,obj):
-          expr = baseoplib.Op.from_json(obj['expr'])
-          par = ExpPhysModel.Param(block, \
-                                   obj['variable'],  \
-                                   expr=expr, \
-                                   error=obj['error'])
-          return par
-
-      def to_json(self):
-         return {
-             'variable': self._variable, \
-             'expr': self.expr.to_json(), \
-             'error': self.error
-         }
-
-      def __repr__(self):
-         return "var %s %s pars=%s score=%f" % (self._variable, \
-                                                self.expr,self._params,self.error)
-
 
   def __init__(self,blk,cfg,output,n=10):
     self.block = blk
@@ -240,14 +264,14 @@ class ExpPhysModel:
     out = blk.outputs[obj['output']]
     assert(not blk is None)
     mdl = ExpPhysModel(blk,cfg,out)
-    for par,subobj in obj['params'].items():
-      mdl._params[par] = ExpPhysModel.Param.from_json(blk,subobj)
 
-    if "model_error" in obj and not obj['model_error'] is None:
-        mdl._model_error = ExpPhysModel.Param.from_json(blk,obj['model_error'])
+    mdl._model_error = ExpPhysErrorModel.from_json(obj['model_error'])
+    for par,subobj in obj['params'].items():
+      mdl._params[par] = Param.from_json(blk,subobj)
+
  
     if "noise" in obj and not obj['noise'] is None:
-        mdl._noise = ExpPhysModel.Param.from_json(blk,obj['noise'])
+        mdl._noise = Param.from_json(blk,obj['noise'])
 
     return mdl
 

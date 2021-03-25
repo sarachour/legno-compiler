@@ -90,15 +90,15 @@ class HiddenCodePool:
 
         self.pool_keys.append(key)
 
-        pred_deltavars,_ = self.predictor.predict(codes)
-        pred_obj = self.objectives.compute(pred_deltavars)
+        pred_deltavars,pred_model_errors  = self.predictor.predict(codes)
+        pred_obj = self.objectives.compute(pred_deltavars,pred_model_errors)
         vals = list(map(lambda v: codes[v], self.variables))
         self.pool.append(vals)
         self.meas_view.add(None)
         self.pred_view.add(pred_obj)
 
 
-    def affix_label_to_code(self,codes,values):
+    def affix_label_to_code(self,codes,variables,errors):
         key = runtime_util.dict_to_identifier(codes)
         assert(key in self.pool_keys)
         idx = self.pool_keys.index(key)
@@ -106,20 +106,20 @@ class HiddenCodePool:
             print(self.meas_view.values[idx])
             raise Exception("there is already a label for this code <%s>" % (str(codes)))
 
-        meas = self.objectives.compute(values)
+        meas = self.objectives.compute(variables,errors)
         self.meas_view.values[idx] = meas
 
 
-    def add_labeled_code(self,codes,values):
+    def add_labeled_code(self,codes,actual_delta_vars,actual_model_errors):
         key = runtime_util.dict_to_identifier(codes)
         if key in self.pool_keys:
             raise Exception("code already tested: %s score=%f" % (codes,score))
 
         self.pool_keys.append(key)
 
-        meas_obj = self.objectives.compute(values)
-        pred_delta_vars,_ = self.predictor.predict(codes)
-        pred_obj = self.objectives.compute(pred_delta_vars)
+        meas_obj = self.objectives.compute(actual_delta_vars,actual_model_errors)
+        pred_delta_vars,pred_model_errors = self.predictor.predict(codes)
+        pred_obj = self.objectives.compute(pred_delta_vars,pred_model_errors)
 
         vals = list(map(lambda v: codes[v], self.variables))
         self.pool.append(vals)

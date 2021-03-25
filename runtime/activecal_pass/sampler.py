@@ -100,7 +100,7 @@ def sampler_iterate_over_samples(objectives,variables,values,scores,num_samples=
 
             # add the sample to the list of samples
             samples.append(samp)
-            sample_scores.add(domlib.Result.make(objectives,orig_score))
+            sample_scores.add(objectives.make_result(orig_score))
             keys.append(key)
             n_samps += 1
 
@@ -120,30 +120,22 @@ def get_sample(pool,num_samples=100,debug=True):
     solution_scores = []
     variables = []
     nobjs = len(list(pool.objectives))
-    for idx,(out,obj) in enumerate(pool.objectives):
-
+    for idx,(error_id,out,name,obj,tol,prio) in enumerate(pool.objectives):
         # first derive a concrete expression for the subobjective
         # mapping hidden codes to objective function values
         if debug:
             print("-> processing objective %d (%s)" % (idx,obj))
 
-        vdict = {}
-        for (out2,var),expr in pool.predictor.concrete_variables.items():
-            if out2 == out:
-                vdict[var] = expr
-
-        conc_obj = obj.substitute(vdict)
-
-        # next iterate over all possible combinations of hidden codes
-        # and score them according to how far they are over the limit
+        conc_obj = pool.predictor.substitute(out,error_id,obj)
         free_vars = list(conc_obj.vars())
         values = list(map(lambda v: pool.get_values(v), free_vars))
         options = list(itertools.product(*values))
         scores = []
         for vs in options:
-            vdict = dict(zip(free_vars,vs))
-            obj_val = conc_obj.compute(vdict)
-            scores.append(obj_val)
+                vdict = dict(zip(free_vars,vs))
+                obj_val = conc_obj.compute(vdict)
+                scores.append(obj_val)
+
 
         #write these data points to the collection of solutions
         indices = np.argsort(scores)

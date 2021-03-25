@@ -3,13 +3,22 @@ from enum import Enum
 class Result:
 
     def __init__(self):
+        self.names = []
         self.values = []
         self.tolerances = []
         self.priorities = []
         self.by_priority = {}
 
-    def add(self,value,tol,prio):
-        n = len(self.values)
+    def get_by_index(self,i):
+        return self.names[i],self.values[i],self.tolerances[i],self.priorities[i]
+
+    def add(self,name,value,tol,prio):
+        assert(isinstance(value,float))
+        assert(isinstance(name,str))
+        assert(isinstance(prio,int))
+        assert(isinstance(tol,float))
+
+        self.names.append(name)
         self.values.append(value)
         self.tolerances.append(tol)
         self.priorities.append(prio)
@@ -25,28 +34,18 @@ class Result:
 
         return True
 
-
-    @staticmethod
-    def make(multiobj,values):
-        objs = Result()
-        idx = 0
-        for out in multiobj.outputs:
-            subobj = multiobj.objective(out)
-            for obj,tol,prio in subobj:
-                objs.add(values[idx],tol,prio)
-                idx += 1
-        assert(idx == len(values))
-        return objs
-
     def distance(self):
         scores = []
         max_prio = max(self.priorities)
         for value,tol,prio in zip(self.values,self.tolerances,self.priorities):
             subscore = (10**(max_prio-prio))*value/tol
             scores.append(subscore)
-        
+ 
         score = sum(scores)
         return score
+
+    def __len__(self):
+        return len(self.values)
 
     # to make things sortable
     def __lt__(self,other):

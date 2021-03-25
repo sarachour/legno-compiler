@@ -37,6 +37,11 @@ class  ExpDeltaErrorModel:
     assert(index in self._errors)
     self._errors[index] = error
 
+  def errors(self):
+    assert(self._frozen)
+    return dict(self._errors)
+
+
   @property
   def avg_error(self):
     return np.mean(list(self._errors.values()))
@@ -103,7 +108,7 @@ class  ExpDeltaErrorModel:
 
 
   def clear(self):
-    for key in self.errors:
+    for key in self._errors:
       self._errors[key] = 0.0
 
   def build(self):
