@@ -70,14 +70,21 @@ class ExpPhysErrorModel:
     self._ranges = {}
     self._exprs = {}
     self._errors = {}
-    self.n = n
+    self._n = n
     self._variables = []
     self._values = {}
     self._frozen = False
 
   @property
+  def n(self):
+      return self._n
+
+  @property
   def variables(self):
     return list(self._variables)
+
+  def indices(self):
+     return list(self._exprs.keys())
 
   def set_range(self,v,l,u):
     assert(not self._frozen)
@@ -88,6 +95,9 @@ class ExpPhysErrorModel:
     self._values[v] = list(np.linspace(l,u,self.n))
     self._variables.append(v)
 
+
+  def has_index(self,idx):
+    return idx in self._errors
 
   def points(self,block):
     for index,expr in self._exprs.items():
@@ -207,15 +217,13 @@ class ExpPhysModel:
   def set_noise(self,expr,error):
       assert(isinstance(expr,baseoplib.Op))
       assert(isinstance(error,float))
-      self._noise = ExpPhysModel.Param(self.block, \
-                                              ExpPhysModel.NOISE, expr,error)
+      self._noise = Param(self.block,ExpPhysModel.NOISE, expr,error)
 
 
   def set_param(self,par,expr,error):
       assert(isinstance(expr,baseoplib.Op))
       assert(isinstance(error,float))
-      self._params[par] = ExpPhysModel.Param(self.block, \
-                                             par, expr, error)
+      self._params[par] = Param(self.block, par, expr, error)
 
   def min_samples(self):
       nsamps = []

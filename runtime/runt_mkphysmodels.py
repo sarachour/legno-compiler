@@ -76,6 +76,12 @@ def find_error_model_functions(physical_model,models,num_generations=5,pop_size=
 
     model_pool = {}
 
+    assert(physical_model.model_error.n == repr_model.model_error.n)
+    for index in repr_model.model_error.indices():
+        if not physical_model.model_error.has_index(index):
+            raise Exception("spatial error model is missing index <%s> n=%d"  \
+                            % (index,physical_model.model_error.n))
+
     print("############################")
     print(repr_model.config)
     print("############################")
@@ -112,6 +118,10 @@ def find_error_model_functions(physical_model,models,num_generations=5,pop_size=
                                                                 penalty=0.001, \
                                                                 max_params=4, \
                                                                 debug=False)
+
+        if not physical_model.model_error.has_index(index):
+            raise Exception("spatial error model is missing index <%s> n=%d"  \
+                            % (index,physical_model.model_error.n))
 
         physical_model.model_error.set_expr(index=index,expr=expr,error=score)
 

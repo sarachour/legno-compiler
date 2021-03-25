@@ -98,5 +98,5 @@ def build_surface(block,cfg,port,dataset,output,npts=10,normalize=1.0):
     surf = ParametricSurface()
 
     rel = block.outputs[port.name].relation[cfg.mode]
-    build_surface_for_expr(block,cfg,rel,dataset,output,npts,normalize)
- 
+    return build_surface_for_expr(block,cfg,rel,dataset,output,npts,normalize)
+

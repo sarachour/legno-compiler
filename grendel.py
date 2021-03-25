@@ -112,6 +112,8 @@ vis_subp.add_argument('--max-error',type=float, \
 delta_subp = subparsers.add_parser('mkdeltas', help='build delta models from profile information')
 delta_subp.add_argument('model_number',type=str,help='model number')
 delta_subp.add_argument('--force',action="store_true",help='force')
+delta_subp.add_argument('--num-points',type=int, default=5, \
+                        help='number of spatially distributed erorr points')
 delta_subp.add_argument('--no-orphans',action="store_true",help='don\'t add models that don\'t already exist')
 delta_subp.add_argument('--min-points',default=10,help='minimum number of points to fit model')
 args = parser.parse_args()

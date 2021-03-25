@@ -99,7 +99,7 @@ def integ_calib_obj(spec,in_scale,out_scale):
   # u : this has high error... don't fit this
   exprs = [
     ("abs((a-1.0))",2,0.02),
-    ("abs((b-1.0))",2,0.01),
+    ("abs((b-1.0))",2,0.02),
     ("abs(modelError)",2,0.001),
     ("abs(v)",2,0.001),
     ("abs(c)",2,0.005),

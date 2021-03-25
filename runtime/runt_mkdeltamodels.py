@@ -68,6 +68,7 @@ def finalize_delta_model(dev,delta_model,dataset):
     else:
         raise Exception("unexpected")
 
+    print("sampling surface n=%d" % delta_model.model_error.n)
     surf = parsurflib.build_surface_for_expr(delta_model.block, \
                                              delta_model.config, \
                                              rel, \
@@ -80,7 +81,7 @@ def finalize_delta_model(dev,delta_model,dataset):
 
     delta_model.set_noise(noise)
 
-def _get_delta_models(dev,blk,loc,output,config,orphans=True):
+def _get_delta_models(dev,blk,loc,output,config,num_points,orphans=True):
     delta_models = exp_delta_model_lib.get_models(dev, \
                                                   ['block','loc','output','static_config','hidden_config'],
                                                   block=blk, \
@@ -93,7 +94,8 @@ def _get_delta_models(dev,blk,loc,output,config,orphans=True):
                                                               loc, \
                                                               output, \
                                                               config, \
-                                                              llenums.CalibrateObjective.NONE)]
+                                                              llenums.CalibrateObjective.NONE,\
+                                                              num_points)]
         else:
             delta_models = []
 
@@ -135,16 +137,20 @@ def _update_delta_models_for_configured_block(dev,delta_models,blk,loc,output, \
     return True
 
 def update_delta_models_for_configured_block(dev,blk,loc,cfg, \
+                                             num_points, \
                                              force=False, \
                                              orphans=True):
     num_deltas = 0
 
     for output in blk.outputs:
-        delta_models = _get_delta_models(dev,blk,loc,output,cfg,orphans=orphans)
+        delta_models = _get_delta_models(dev,blk,loc,output,cfg, \
+                                         num_points=num_points, \
+                                         orphans=orphans)
         if all(map(lambda model: model.complete, delta_models)) and not force:
             continue
 
         for model in delta_models:
+            model.model_error.n = num_points
             model.clear()
 
         if _update_delta_models_for_configured_block(dev,delta_models,blk, \
@@ -155,7 +161,7 @@ def update_delta_models_for_configured_block(dev,blk,loc,cfg, \
 
 def derive_delta_models_adp(args):
     board = runtime_util.get_device(args.model_number)
- 
+
     if args.no_orphans:
        exp_delta_model_lib \
            .remove_models(board,['calib_obj'], \
@@ -169,4 +175,5 @@ def derive_delta_models_adp(args):
                                                  loc, \
                                                  cfg, \
                                                  force=args.force, \
+                                                 num_points=args.num_points, \
                                                  orphans=not args.no_orphans)
