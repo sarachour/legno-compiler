@@ -7,6 +7,7 @@ import runtime.activecal_pass.dominance as domlib
 import hwlib.block as blocklib
 import ops.base_op as baseoplib
 import ops.generic_op as genoplib
+import ops.lambda_op as lamboplib
 import math
 
 
@@ -53,11 +54,7 @@ class MultiOutputObjective:
     def make_result(self,values):
         result = domlib.Result()
         index = 0
-        for idx,out,name,obj,tol,prio in self:
-            if idx is None:
-                result.add(name,values[index],tol,prio)
-                index += 1
-            else:
+        for out,name,obj,tol,prio in self:
                 result.add(name,values[index],tol,prio)
                 index += 1
 
@@ -68,14 +65,15 @@ class MultiOutputObjective:
     def compute(self,delta_params,errors):
         var_dict = dict(delta_params)
         result = domlib.Result()
-        for idx,out,name,obj,tol,prio in self:
-            if idx is None:
-                val = obj.compute(var_dict[out])
-                result.add(name,val,tol,prio)
-            else:
-                var_dict[out][blocklib.MultiObjective.MODEL_ERROR] = errors[out][idx]
-                val = obj.compute(var_dict[out])
-                result.add(name,val,tol,prio)
+        for out,name,obj,tol,prio in self:
+            model_error = 0.0
+            for idx,value in errors[out].items():
+                assert(isinstance(value,float))
+                model_error += abs(value)
+
+            var_dict[out][blocklib.MultiObjective.MODEL_ERROR] = model_error
+            val = obj.compute(var_dict[out])
+            result.add(name,val,tol,prio)
 
 
         return result
@@ -85,13 +83,10 @@ class MultiOutputObjective:
             multi_obj = self.objective(out)
             for obj,tol,prio  in multi_obj:
                 if blocklib.MultiObjective.MODEL_ERROR in obj.vars():
-                    for idx in self._errors[out]:
-                        name = "%s.%s" % (idx,obj)
-                        yield idx,out,name,obj,tol,prio
-
+                    yield out,name,obj,tol,prio
                 else:
                     name = str(obj)
-                    yield None,out,name,obj,tol,prio
+                    yield out,name,obj,tol,prio
 
 '''
 A subclass for managing the data the predictor parameters are
@@ -223,6 +218,12 @@ class ErrorPredictionModel(VariablePredictionModel):
         VariablePredictionModel.__init__(self,block,output,blocklib.MultiObjective.MODEL_ERROR,expr)
 
     @staticmethod
+    def get_prefix(out):
+        output = out if isinstance(out,str) else out.name
+        prefix = "%s.%s" % (output,blocklib.MultiObjective.MODEL_ERROR)
+        return prefix
+
+    @staticmethod
     def get_key(out,var):
         output = out if isinstance(out,str) else out.name
         return "%s.%s(%s)" % (output,blocklib.MultiObjective.MODEL_ERROR,var)
@@ -265,20 +266,24 @@ class Predictor:
 
         return variables, model_errors
 
-    def substitute(self,output,index,expr):
+    def substitute(self,output,expr):
         assert(isinstance(expr, baseoplib.Op))
         vdict = {}
         for var_model in self.variables.values():
             assert(var_model.concrete)
             vdict[var_model.variable] = var_model.conc_expr
 
-        if blocklib.MultiObjective.MODEL_ERROR in expr.vars():
-            key = ErrorPredictionModel.get_key(output,index)
-            vdict[blocklib.MultiObjective.MODEL_ERROR] = self.error_models[key].conc_expr
-            return expr.substitute(vdict)
+        terms = []
+        prefix = ErrorPredictionModel.get_prefix(output)
+        for key in self.error_models.keys():
+            if prefix in key:
+                terms.append(lamboplib.Abs(self.error_models[key].conc_expr))
 
-        else:
-            return expr.substitute(vdict)
+        model_error_expr = genoplib.sum(terms)
+        vdict[blocklib.MultiObjective.MODEL_ERROR] = self.error_models[key].conc_expr
+
+        return expr.substitute(vdict)
+
 
     def add_variable_datapoint(self,output,var,hcs,val):
         assert(isinstance(val,float))

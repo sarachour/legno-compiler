@@ -120,13 +120,13 @@ def get_sample(pool,num_samples=100,debug=True):
     solution_scores = []
     variables = []
     nobjs = len(list(pool.objectives))
-    for idx,(error_id,out,name,obj,tol,prio) in enumerate(pool.objectives):
+    for idx,(out,name,obj,tol,prio) in enumerate(pool.objectives):
         # first derive a concrete expression for the subobjective
         # mapping hidden codes to objective function values
         if debug:
             print("-> processing objective %d (%s)" % (idx,obj))
 
-        conc_obj = pool.predictor.substitute(out,error_id,obj)
+        conc_obj = pool.predictor.substitute(out,obj)
         free_vars = list(conc_obj.vars())
         values = list(map(lambda v: pool.get_values(v), free_vars))
         options = list(itertools.product(*values))
