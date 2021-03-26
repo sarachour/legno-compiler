@@ -129,20 +129,13 @@ def get_sample(pool,num_samples=100,debug=True):
         conc_obj = pool.predictor.substitute(out,obj)
         free_vars = list(conc_obj.vars())
         values = list(map(lambda v: pool.get_values(v), free_vars))
-
-        thresh = tol*10.0
-        maxsamps = num_samples*10000
-        options = []
+        options = list(itertools.product(*values))
         scores = []
-        for vs in itertools.product(*values):
-                if len(options) >= maxsamps:
-                        break
-
+        for vs in options:
                 vdict = dict(zip(free_vars,vs))
                 obj_val = conc_obj.compute(vdict)
-                if obj_val <= thresh:
-                        scores.append(obj_val)
-                        options.append(list(vs))
+                scores.append(obj_val)
+
 
         #write these data points to the collection of solutions
         indices = np.argsort(scores)
