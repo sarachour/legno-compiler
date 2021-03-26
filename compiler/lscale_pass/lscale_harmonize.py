@@ -46,7 +46,6 @@ def do_harmonize(baseline,deviations,modes):
     new_gains = []
     new_modes = []
     gains = {}
-
     gain_var_name = gain_var(GAIN_ID)
     for mode,deviation in zip(modes,deviations):
         coeff_dev,expr_dev = genoplib \
@@ -55,7 +54,7 @@ def do_harmonize(baseline,deviations,modes):
             gain_value = coeff_dev/coeff
             gains[mode] = gain_value
         else:
-            raise NotHarmonizableError("expressions not equal")
+            raise NotHarmonizableError("expressions not equal: %s and %s" % (expr,expr_dev))
 
     master_expr = genoplib.Mult(genoplib.Var(gain_var_name),expr)
     return master_expr,[(gain_var_name,gains)]
@@ -64,7 +63,7 @@ def harmonizable(baseline,deviations,modes):
     try:
         master_expr,new_gains = do_harmonize(baseline,deviations,modes)
         return True
-    except NotHarmonizableError:
+    except NotHarmonizableError as e:
         return False
 
 def harmonize(baseline,deviations,modes):

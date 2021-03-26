@@ -444,7 +444,11 @@ def factor_coefficient(expr):
     elif expr.op == OpType.ADD:
         c1,e1 = factor_coefficient(expr.arg(0))
         c2,e2 = factor_coefficient(expr.arg(1))
-        if c1 == c2:
+        if c1 == 0.0:
+            return c2,e2
+        elif c2 == 0.0:
+            return c1,e1
+        elif c1 == c2:
             return c1,Add(e1,e2)
         else:
             return 1.0,expr

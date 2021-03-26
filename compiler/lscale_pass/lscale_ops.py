@@ -135,8 +135,8 @@ class HardwareInfo:
                                                  config=cfg, \
                                                  calib_obj=self.calib_obj)
       if len(exp_models) == 0:
-        print("[[WARN]] no experimental model %s (%s)" \
-              % (instance,mode))
+        #print("[[WARN]] no experimental model %s (%s)" \
+        #      % (instance,mode))
         return None
 
       if not exp_models[0].complete:

@@ -48,7 +48,7 @@ for port in [p_in,p_out0,p_out1,p_out2]:
 def fan_calib_obj(spec,idx,out):
   subobjs = [ \
               ("abs(modelError)",2,0.0001*out), \
-              ("abs(b{idx})",2,0.0001*out), \
+              ("abs(b{idx})",1,0.0001*out), \
              ("abs((1.0-a{idx}))",2,0.01), \
               ("abs(noise)",2,0.00001*out)]
 

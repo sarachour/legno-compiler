@@ -464,7 +464,6 @@ def generate_analog_port_constraints(hwinfo,dsinfo,inst, \
                                                    port):
     yield cstr
 
-
   for cstr in generate_port_oprange_constraints(hwinfo, \
                                                 dsinfo, \
                                                 inst, \
@@ -532,6 +531,7 @@ def generate_constraint_problem(dev,program,adp, \
       master_rel, modes, mode_assignments = harmlib.get_master_relation(baseline, \
                                                                         deviations, \
                                                                         deviation_modes)
+      print("baseline=%s deviations=%s valid_modes=%s" % (config.modes[0],deviation_modes,modes))
       modes_subset = list(set(modes_subset).intersection(set(modes)))
       cstrs,op_monom = generate_factor_constraints(config.inst,master_rel)
       for cstr in cstrs:
@@ -582,6 +582,7 @@ def generate_constraint_problem(dev,program,adp, \
                                                      is_dsvar=is_dsvar, \
                                                      is_obs=is_obs):
           yield cstr
+          pass
 
       if port.type == blocklib.BlockSignalType.DIGITAL:
         for cstr in generate_digital_port_constraints(hwinfo, \
