@@ -55,8 +55,8 @@ class MultiOutputObjective:
         result = domlib.Result()
         index = 0
         for out,name,obj,tol,prio in self:
-                result.add(name,values[index],tol,prio)
-                index += 1
+           result.add(name,values[index],tol,prio)
+           index += 1
 
         assert(index == len(values))
         return result
@@ -71,6 +71,7 @@ class MultiOutputObjective:
                 assert(isinstance(value,float))
                 model_error += abs(value)
 
+            model_error /= len(errors[out].keys())
             var_dict[out][blocklib.MultiObjective.MODEL_ERROR] = model_error
             val = obj.compute(var_dict[out])
             result.add(name,val,tol,prio)
@@ -82,11 +83,8 @@ class MultiOutputObjective:
         for out in self._outputs:
             multi_obj = self.objective(out)
             for obj,tol,prio  in multi_obj:
-                if blocklib.MultiObjective.MODEL_ERROR in obj.vars():
-                    yield out,name,obj,tol,prio
-                else:
-                    name = str(obj)
-                    yield out,name,obj,tol,prio
+               name = str(obj)
+               yield out,name,obj,tol,prio
 
 '''
 A subclass for managing the data the predictor parameters are
@@ -279,9 +277,9 @@ class Predictor:
             if prefix in key:
                 terms.append(lamboplib.Abs(self.error_models[key].conc_expr))
 
-        model_error_expr = genoplib.sum(terms)
-        vdict[blocklib.MultiObjective.MODEL_ERROR] = self.error_models[key].conc_expr
-
+        model_error_expr = genoplib.Mult(genoplib.Const(1.0/len(terms)), \
+                            genoplib.sum(terms))
+        vdict[blocklib.MultiObjective.MODEL_ERROR] = model_error_expr
         return expr.substitute(vdict)
 
 

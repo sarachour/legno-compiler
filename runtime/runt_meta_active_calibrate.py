@@ -258,7 +258,7 @@ def query_hidden_codes(logger,pool,board,blk,loc,cfg,hidden_codes,npts,grid_size
     pred_obj = pool.objectives.compute(pred_deltavars,pred_model_errors)
 
     print("samp %s" % (codes))
-    for i,(index,out,name,obj,tol,prio) in enumerate(pool.objectives):
+    for i,(out,name,obj,tol,prio) in enumerate(pool.objectives):
         print("  %s obj=%s pred=%f meas=%f" % (name,obj,pred_obj.values[i],actual_obj.values[i]))
 
 
