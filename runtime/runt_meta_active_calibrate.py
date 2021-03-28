@@ -309,6 +309,7 @@ def update_predictor(predictor,char_board):
 
      predictor.fit()
 
+
 def add_random_unlabelled_samples(pool,count,total=4000):
     npts = 0
     for constraint,score in samplelib.get_sample(pool,num_samples=2):
@@ -379,6 +380,7 @@ def calibrate_block(logger, \
         print("==== UPDATING PREDICTOR [%d/%d] ====" % (rnd+1,rounds))
         predictor.clear()
         update_predictor(predictor,char_board)
+        code_pool.update_predicted_labels()
 
         print("==== ADD UNLABELLED [%d/%d] ====" % (rnd+1, rounds))
         add_random_unlabelled_samples(code_pool,samples_per_round)

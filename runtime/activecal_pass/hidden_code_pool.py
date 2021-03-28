@@ -98,6 +98,21 @@ class HiddenCodePool:
         self.pred_view.add(pred_obj)
 
 
+    def update_predicted_label(self,codes):
+        key = runtime_util.dict_to_identifier(codes)
+        if not key in self.pool_keys:
+            raise Exception("cannot update code <%s> which doesn't belong to pool.")
+
+        idx = self.pool_keys.index(key)
+        pred_deltavars,pred_model_errors  = self.predictor.predict(codes)
+        pred_obj = self.objectives.compute(pred_deltavars,pred_model_errors)
+        self.pred_view.values[idx] = pred_obj 
+
+
+    def update_predicted_labels(self):
+        for code_values in self.pool:
+            self.update_predicted_label(dict(zip(self.variables,code_values)))
+
     def affix_label_to_code(self,codes,variables,errors):
         key = runtime_util.dict_to_identifier(codes)
         assert(key in self.pool_keys)
