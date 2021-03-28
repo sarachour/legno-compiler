@@ -91,6 +91,10 @@ def is_integration_op(rel):
 '''
 
 
+def list_to_identifier(lst_):
+  its = ",".join(map(lambda v: str(v), lst_))
+  return "[[%s]]" % its
+
 def dict_to_identifier(dict_):
   sorted_keys = sorted(dict_.keys())
   st = ""

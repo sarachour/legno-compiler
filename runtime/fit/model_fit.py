@@ -54,14 +54,14 @@ res = optimize.dual_annealing(func,bounds=bnds)
 assigns = dict(zip(lbls,res.x))
 '''
 
-def global_minimize_model(variables,expr,params,bounds={}):
+def global_minimize_model(variables,expr,params,initial,bounds={}):
   if len(variables) == 0:
     return {'values': {}, \
             'success': True, \
             'objective_val': expr.compute({})}
 
   fields = _prepare_minimize_model(variables,expr,params,bounds)
-  fields["x0"] = list(map(lambda v: 1, variables))
+  fields["x0"] = list(map(lambda v: initial[v], variables))
   #print(scipy.__version__)
   snippet = GLOBAL_MIN_PROG.format(**fields) \
                     .replace('math.','np.')

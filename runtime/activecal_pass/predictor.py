@@ -62,9 +62,15 @@ class MultiOutputObjective:
         return result
 
 
+    def make_distance_expr(self,objs):
+        vals = [0.0]*len(self)
+        res = self.make_result(vals)
+        return res.distance_expr(objs)
+
+
     def compute(self,delta_params,errors):
+        values = []
         var_dict = dict(delta_params)
-        result = domlib.Result()
         for out,name,obj,tol,prio in self:
             model_error = 0.0
             for idx,value in errors[out].items():
@@ -73,11 +79,9 @@ class MultiOutputObjective:
 
             model_error /= len(errors[out].keys())
             var_dict[out][blocklib.MultiObjective.MODEL_ERROR] = model_error
-            val = obj.compute(var_dict[out])
-            result.add(name,val,tol,prio)
+            values.append(obj.compute(var_dict[out]))
 
-
-        return result
+        return self.make_result(values)
 
     def __iter__(self):
         for out in self._outputs:
@@ -85,6 +89,12 @@ class MultiOutputObjective:
             for obj,tol,prio  in multi_obj:
                name = str(obj)
                yield out,name,obj,tol,prio
+
+    def __len__(self):
+        cnt = 0
+        for _ in self:
+            cnt += 1
+        return cnt
 
 '''
 A subclass for managing the data the predictor parameters are

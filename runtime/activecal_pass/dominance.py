@@ -1,5 +1,7 @@
 from enum import Enum
 
+import ops.generic_op as genoplib
+
 class Result:
 
     def __init__(self):
@@ -33,6 +35,16 @@ class Result:
                 return False
 
         return True
+
+    def distance_expr(self,objs):
+        max_prio = max(self.priorities)
+        terms = []
+        for idx,(tol,prio) in enumerate(zip(self.tolerances,self.priorities)):
+            coeff = 10**(max_prio-prio)/tol
+            term = genoplib.Mult(genoplib.Const(coeff), objs[idx])
+            terms.append(term)
+
+        return genoplib.sum(terms)
 
     def distance(self):
         scores = []
