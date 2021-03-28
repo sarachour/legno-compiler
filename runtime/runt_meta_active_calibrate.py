@@ -85,7 +85,7 @@ def load_code_pool_from_database(char_board,predictor,objectives):
         actual_obj = code_pool.objectives.compute(actual_deltavars,actual_errors)
         for index in range(min(len(actual_obj),len(pred_obj))):
             act_name,act_val,_,_ = actual_obj.get_by_index(index)
-            pred_name,pred_val,_,_ = actual_obj.get_by_index(index)
+            pred_name,pred_val,_,_ = pred_obj.get_by_index(index)
             assert(act_name == pred_name)
             print("  obj=%s pred=%f meas=%f" % (act_name, \
                                                 pred_val, \
@@ -387,10 +387,11 @@ def calibrate_block(logger, \
         print("")
         for pred_score, hcs in code_pool.get_unlabeled():
             print("=> codes=%s" % hcs)
-            print("=> predicted-score=%s" % pred_score)
             actual_score = query_hidden_codes(logger,code_pool,char_board,block,loc,config,hcs, \
                                npts_spat_err, grid_size=grid_size)
-            print("=> actual-score=%s" % actual_score)
+            print("-----------")
+            print("=> PRED   score=%s" % pred_score)
+            print("=> ACTUAL score=%s" % actual_score)
             print("")
 
     write_model_to_database(logger,code_pool, board,char_board)

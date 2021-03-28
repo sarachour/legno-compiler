@@ -47,10 +47,10 @@ for port in [p_in,p_out0,p_out1,p_out2]:
 
 def fan_calib_obj(spec,idx,out):
   subobjs = [ \
-              ("abs(modelError)",2,0.0001*out), \
-              ("abs(b{idx})",1,0.0001*out), \
-             ("abs((1.0-a{idx}))",2,0.01), \
-              ("abs(noise)",2,0.00001*out)]
+              ("abs(modelError)",2,0.001*out), \
+              ("abs(b{idx})",1,0.001*out), \
+              ("abs((1.0-a{idx}))",1,0.01), \
+              ("abs(noise)",2,0.001*out)]
 
   new_spec = spec.copy()
   new_spec.objective = MultiObjective()
@@ -70,7 +70,7 @@ for scale in ['m','h']:
     #spec.param('a{idx}'.format(idx=idx),DeltaParamType.CORRECTABLE,ideal=1.0)
     spec.param('a{idx}'.format(idx=idx),DeltaParamType.GENERAL,ideal=1.0)
     spec.param('b{idx}'.format(idx=idx),DeltaParamType.GENERAL,ideal=0.0)
-    new_spec = fan_calib_obj(spec,idx,1.0 if scale == 'm' else 10.0)
+    new_spec = fan_calib_obj(spec,idx,2.0 if scale == 'm' else 20.0)
     fan.outputs[port.name].deltas.bind(pat,new_spec)
 
     pat[idx] = '-'
@@ -79,7 +79,7 @@ for scale in ['m','h']:
     #spec.param('a{idx}'.format(idx=idx),DeltaParamType.CORRECTABLE,ideal=1.0)
     spec.param('a{idx}'.format(idx=idx),DeltaParamType.GENERAL,ideal=1.0)
     spec.param('b{idx}'.format(idx=idx),DeltaParamType.GENERAL,ideal=0.0)
-    new_spec = fan_calib_obj(spec,idx,1.0 if scale == 'm' else 10.0)
+    new_spec = fan_calib_obj(spec,idx,2.0 if scale == 'm' else 20.0)
     fan.outputs[port.name].deltas.bind(pat,new_spec)
 
 
