@@ -108,6 +108,7 @@ class HiddenCodePool:
 
         meas = self.objectives.compute(variables,errors)
         self.meas_view.values[idx] = meas
+        return meas
 
 
     def add_labeled_code(self,codes,actual_delta_vars,actual_model_errors):

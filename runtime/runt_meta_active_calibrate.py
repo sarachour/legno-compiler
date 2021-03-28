@@ -263,8 +263,8 @@ def query_hidden_codes(logger,pool,board,blk,loc,cfg,hidden_codes,npts,grid_size
 
 
     assert(pool.has_code(codes))
-    pool .affix_label_to_code(codes,variables,errors)
-
+    actual_score = pool .affix_label_to_code(codes,variables,errors)
+    return actual_score
 
 '''
 Build the symbolic predictor from the transfer learning data
@@ -384,11 +384,14 @@ def calibrate_block(logger, \
         add_random_unlabelled_samples(code_pool,samples_per_round)
 
         print("==== QUERY UNLABELLED [%d/%d] ====" % (rnd+1,rounds))
+        print("")
         for pred_score, hcs in code_pool.get_unlabeled():
             print("=> codes=%s" % hcs)
-            print("=> score=%s" % pred_score)
-            query_hidden_codes(logger,code_pool,char_board,block,loc,config,hcs, \
+            print("=> predicted-score=%s" % pred_score)
+            actual_score = query_hidden_codes(logger,code_pool,char_board,block,loc,config,hcs, \
                                npts_spat_err, grid_size=grid_size)
+            print("=> actual-score=%s" % actual_score)
+            print("")
 
     write_model_to_database(logger,code_pool, board,char_board)
 
