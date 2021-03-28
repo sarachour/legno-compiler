@@ -159,7 +159,7 @@ def get_sample(pool,num_samples=100,debug=True):
 
     free_vars,min_obj_fun = get_minimization_expr(pool)
     # compute how many points to consider per variable for this resolutions
-    max_points = 4096
+    max_points = 64000
     if len(free_vars) > 0:
             pts_per_level = max(2,math.ceil(max_points**(1/len(free_vars))))
     else:
