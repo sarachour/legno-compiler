@@ -68,17 +68,26 @@ def multires_sample(free_vars,obj,pool,bounds={},max_points=8,select_top=0.10):
                   yield score,vdict
 
 
-def get_minimization_expr(pool):
-        free_vars = []
-        subobjs = []
-        for idx,(out,name,obj,tol,prio) in enumerate(pool.objectives):
-                conc_obj = pool.predictor.substitute(out,obj)
-                free_vars += list(conc_obj.vars())
-                subobjs.append(conc_obj)
+def get_integer_codes(pool,opt,codes):
+        variables = []
+        options = []
+        for var_name,val in codes.items():
+                vals = pool.get_values(var_name)
+                opts = list(filter(lambda v: v in vals, \
+                                   [math.floor(val), math.ceil(val)]))
+                variables.append(var_name)
+                options.append(opts)
 
-        min_expr = pool.objectives.make_distance_expr(subobjs)
-        variables = list(set(free_vars))
-        return variables,min_expr
+        best_codes = None
+        best_score = None
+        for combo in itertools.product(*options):
+                vdict = dict(zip(variables,combo))
+                score = opt.compute(vdict)
+                if best_score is None or score < best_score:
+                        best_codes = vdict
+                        best_score = score
+
+        return best_score,best_codes
 
 def grid_sample(free_vars,obj,pool,max_points=8,select_top=0.10):
         values = {}
@@ -98,22 +107,35 @@ def grid_sample(free_vars,obj,pool,max_points=8,select_top=0.10):
         options = list(map(lambda v: values[v], free_vars))
         scores = []
         assigns = []
+        assign_keys = []
         for combo in itertools.product(*options):
                 vdict = dict(zip(free_vars,combo))
-                print(vdict)
-                print(free_vars)
                 result = fitlib.local_minimize_model(free_vars,obj,{},vdict,bounds=bounds)
-                codes = result['values']
-                score = result['objective_val']
-                scores.append(score)
-                assigns.append(codes)
-                print(codes,score)
+                score,codes = get_integer_codes(pool,obj,result['values'])
+                code_key = runtime_util.dict_to_identifier(codes)
+                if not code_key in assign_keys:
+                        scores.append(score)
+                        assigns.append(codes)
+                        assign_keys.append(code_key)
+                        print(codes,score)
 
 
         input("continue?")
         indices = np.argsort(scores)
         for idx in indices:
                 yield scores[idx],assigns[idx]
+
+def get_minimization_expr(pool):
+        free_vars = []
+        subobjs = []
+        for idx,(out,name,obj,tol,prio) in enumerate(pool.objectives):
+                conc_obj = pool.predictor.substitute(out,obj)
+                free_vars += list(conc_obj.vars())
+                subobjs.append(conc_obj)
+
+        min_expr = pool.objectives.make_distance_expr(subobjs)
+        variables = list(set(free_vars))
+        return variables,min_expr
 
 def get_sample(pool,num_samples=100,debug=True):
     # compute constraints over hidden codes
