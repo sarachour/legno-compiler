@@ -46,6 +46,7 @@ def multires_sample(free_vars,obj,pool,bounds={},max_points=8,select_top=0.10):
         for i in range(round(len(indices)*select_top+1)):
                 vdict = assigns[indices[i]]
                 score = scores[indices[i]]
+                print(vdict,score)
                 bounds = {}
                 has_higher_fidelity = False
                 # set up the bounds for the finer resolution search and determine
@@ -159,7 +160,7 @@ def get_sample(pool,num_samples=100,debug=True):
 
     free_vars,min_obj_fun = get_minimization_expr(pool)
     # compute how many points to consider per variable for this resolutions
-    max_points = 126000
+    max_points = 32000
     if len(free_vars) > 0:
             pts_per_level = max(2,math.ceil(max_points**(1/len(free_vars))))
     else:
@@ -168,7 +169,7 @@ def get_sample(pool,num_samples=100,debug=True):
     print("sampling pts=%d" % pts_per_level)
     for score,vdict in multires_sample(free_vars,min_obj_fun,pool, \
                                        max_points=pts_per_level, \
-                                       select_top=0.001):
+                                       select_top=0.01):
             scores.append(score)
             values.append(list(map(lambda fv: vdict[fv], free_vars)))
 

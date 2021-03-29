@@ -349,8 +349,8 @@ def calibrate_block(logger, \
 
     # build a calibration objective predictor with per-variable models.
     npts_spat_err,objfun,predictor = build_predictor(xfer_board,block,loc,config)
+    print("# spatial error points: %d" % npts_spat_err)
     nsamps_reqd = predictor.min_samples() + 1
-
     max_samples += nsamps_reqd
 
     # collect initial data for fitting the transfer model
