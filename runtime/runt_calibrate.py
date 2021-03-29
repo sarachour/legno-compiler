@@ -40,7 +40,7 @@ def calibrate_adp(args):
                              cfg.inst.loc, \
                              cfg, \
                              calib_obj):
-                print("-> already calibrated")
+                print("-> %s.%s (%s) already calibrated" % (blk.name,cfg.inst.loc,cfg.mode))
                 continue
 
             print("== calibrate %s (%s) ==" % (cfg.inst,calib_obj.value))
@@ -72,6 +72,7 @@ def calibrate_adp(args):
                                   .ExpDeltaModel(blk,cfg.inst.loc, \
                                                  output, \
                                                  upd_cfg, \
+                                                 n=0, \
                                                  calib_obj=calib_obj)
 
                 delta_model.calib_obj = calib_obj
