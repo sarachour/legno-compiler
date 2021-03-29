@@ -68,79 +68,6 @@ def multires_sample(free_vars,obj,pool,bounds={},max_points=8,select_top=0.10):
                   yield score,vdict
 
 
-def sampler_point_distance(normalization_info,vdict1,vdict2):
-        dist = 0
-        n = 0
-        for k in filter(lambda k: k in vdict1, vdict2.keys()):
-                dist += ((vdict1[k] - vdict2[k])/normalization_info[k])**2
-                n += 1
-
-        return math.sqrt(dist/n)
-
-
-def sampler_objective_distance(multiobj, indices,partial_values):
-        values = [1e-12]*len(multiobj)
-        for i in range(len(indices)):
-                values[indices[i]] = partial_values[i]
-
-        res = multiobj.make_result(values)
-        return res.distance()
-
-# glues disparate samples together
-def sampler_stitch_together(obj1,vdict1,obj2,vdict2,max_points=32):
-        common_vars = []
-        for k in filter(lambda k: k in vdict1, vdict2.keys()):
-                common_vars.append(k)
-
-        values = []
-        pts_per_var= max(2,math.ceil(max_points**(1/len(common_vars))))
-        for k in common_vars:
-                lower = min(vdict1[k],vdict2[k])
-                upper = max(vdict1[k],vdict2[k])
-                step = max(1,math.ceil((upper-lower)/pts_per_var))
-                values.append(list(range(lower,upper+1,step)))
-
-        if len(common_vars) == 0:
-                cdict = dict(list(vdict1.items()) + list(vdict2.items()))
-
-                score1 = []
-                for obj in obj1:
-                        sc = obj.compute(cdict)
-                        score1.append(sc)
-
-                score2 = []
-                for obj in obj2:
-                        sc = obj.compute(cdict)
-                        score2.append(sc)
-
-                yield cdict,score1,score2
-                return
-
-        for combo in itertools.product(*values):
-                cdict = dict(list(zip(common_vars,combo)) + \
-                             list(filter(lambda tup: not tup[0] in common_vars, vdict1.items())) + \
-                             list(filter(lambda tup: not tup[0] in common_vars, vdict2.items())) \
-                )
-                score1 = []
-                for obj in obj1:
-                        sc = obj.compute(cdict)
-                        score1.append(sc)
-
-                score2 = []
-                for obj in obj2:
-                        sc = obj.compute(cdict)
-                        score2.append(sc)
-
-                yield cdict,score1,score2
-
-def sampler_overlapping(l1,l2):
-        for it in l1:
-                if it in l2:
-                        return True
-
-        return False
-
-
 def get_minimization_expr(pool):
         free_vars = []
         subobjs = []
@@ -153,6 +80,41 @@ def get_minimization_expr(pool):
         variables = list(set(free_vars))
         return variables,min_expr
 
+def grid_sample(free_vars,obj,pool,max_points=8,select_top=0.10):
+        values = {}
+        bounds = {}
+
+        for var in free_vars:
+                vals = pool.get_values(var)
+                bounds[var] = (min(vals),max(vals))
+
+                # if there are more values for this variable than the maximum allowed, reduce the resolution.
+                if len(vals) > max_points:
+                        step = math.ceil(len(vals)/max_points)
+                        vals = list(map(lambda i: vals[i], range(0,len(vals),step)))
+
+                values[var] = vals
+
+        options = list(map(lambda v: values[v], free_vars))
+        scores = []
+        assigns = []
+        for combo in itertools.product(*options):
+                vdict = dict(zip(free_vars,combo))
+                print(vdict)
+                print(free_vars)
+                result = fitlib.local_minimize_model(free_vars,obj,{},vdict,bounds=bounds)
+                codes = result['values']
+                score = result['objective_val']
+                scores.append(score)
+                assigns.append(codes)
+                print(codes,score)
+
+
+        input("continue?")
+        indices = np.argsort(scores)
+        for idx in indices:
+                yield scores[idx],assigns[idx]
+
 def get_sample(pool,num_samples=100,debug=True):
     # compute constraints over hidden codes
     values = []
@@ -160,14 +122,14 @@ def get_sample(pool,num_samples=100,debug=True):
 
     free_vars,min_obj_fun = get_minimization_expr(pool)
     # compute how many points to consider per variable for this resolutions
-    max_points = 32000
+    max_points = 1600
     if len(free_vars) > 0:
             pts_per_level = max(2,math.ceil(max_points**(1/len(free_vars))))
     else:
             pts_per_level = max_points
 
     print("sampling pts=%d" % pts_per_level)
-    for score,vdict in multires_sample(free_vars,min_obj_fun,pool, \
+    for score,vdict in grid_sample(free_vars,min_obj_fun,pool, \
                                        max_points=pts_per_level, \
                                        select_top=0.01):
             scores.append(score)

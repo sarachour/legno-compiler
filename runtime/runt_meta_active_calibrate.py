@@ -352,7 +352,7 @@ def calibrate_block(logger, \
     print("# spatial error points: %d" % npts_spat_err)
     nsamps_reqd = predictor.min_samples() + 1
     max_samples += nsamps_reqd
-
+    print("bootstrap=%d max=%d" % (nsamps_reqd,max_samples))
     # collect initial data for fitting the transfer model
     # and fit all of the initial guesses for the parameters on the transfer model
     # this should give us an initial predictor

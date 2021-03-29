@@ -91,14 +91,15 @@ assigns = dict(zip(lbls,res.x))
 '''
 
 
-def local_minimize_model(variables,expr,params,bounds={}):
+def local_minimize_model(variables,expr,params,initial,bounds={}):
   if len(variables) == 0:
     return {'values': {}, \
             'success': True, \
             'objective_val': expr.compute({})}
 
   fields = _prepare_minimize_model(variables,expr,params,bounds)
-  fields["x0"] = list(map(lambda v: 1, variables))
+  #fields["x0"] = list(map(lambda v: 1, variables))
+  fields["x0"] = list(map(lambda v: initial[v],variables))
   snippet = LOCAL_MIN_PROG.format(**fields) \
                     .replace('math.','np.')
   loc = {}
