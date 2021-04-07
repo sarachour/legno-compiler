@@ -224,8 +224,10 @@ def exec_lsim(args):
         'REF',
         'na',
         'na',
-        'na')
-    lsim.simulate_reference(board,program,plot_file)
+        'na', \
+        per_variable=args.separate_figures)
+    lsim.simulate_reference(board,program,plot_file, \
+                            separate_figures=args.separate_figures)
 
 
 def exec_lemul(args):
@@ -259,7 +261,8 @@ def exec_lemul(args):
                             adp.metadata[ADPMetadata.Keys.LGRAPH_ID],
                             'na',
                             'na',
-                            'na')
+                            'na', \
+                            per_variable=args.separate_figures)
 
                     else:
                         plot_file = path_handler.adp_sim_plot(
@@ -268,7 +271,8 @@ def exec_lemul(args):
                             adp.metadata[ADPMetadata.Keys.LGRAPH_ID],
                             adp.metadata[ADPMetadata.Keys.LSCALE_ID],
                             adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD],
-                            adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE])
+                            adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE], \
+                            per_variable=args.separate_figures)
 
                     print(plot_file)
 
@@ -278,7 +282,8 @@ def exec_lemul(args):
                                       enable_quantization=not args.no_quantize, \
                                       enable_intervals=not args.no_operating_range, \
                                       enable_physical_model= not args.no_physdb, \
-                                      enable_model_error =not args.no_model_error)
+                                      enable_model_error =not args.no_model_error, \
+                                      separate_figures=args.separate_figures)
 
 def exec_wav(args,trials=1):
     import compiler.lwav_pass.waveform as wavelib

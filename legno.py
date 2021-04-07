@@ -82,23 +82,23 @@ lexec_subp.add_argument('--scope', action='store_true', \
 
 sim_subp = subparsers.add_parser('lsim', help='simulate circuit.')
 sim_subp.add_argument('program', help='program to simulate.')
+sim_subp.add_argument('--separate-figures', action='store_true', \
+                       help='separate figures.')
 
 
 
-sim_subp = subparsers.add_parser('lemul', help='simulate circuit.')
-sim_subp.add_argument('program', help='program to simulate.')
-sim_subp.add_argument('--unscaled', action='store_true', \
+emul_subp = subparsers.add_parser('lemul', help='simulate circuit.')
+emul_subp.add_argument('program', help='program to simulate.')
+emul_subp.add_argument('--unscaled', action='store_true', \
                        help='simulate unscaled circuit.')
-sim_subp.add_argument('--no-quantize', action='store_true', \
+emul_subp.add_argument('--no-quantize', action='store_true', \
                        help='don\'t quantize values.')
-sim_subp.add_argument('--no-operating-range', action='store_true', \
+emul_subp.add_argument('--no-operating-range', action='store_true', \
                        help='don\'t enforce operating range.')
-sim_subp.add_argument('--no-physdb', action='store_true', \
+emul_subp.add_argument('--no-physdb', action='store_true', \
                        help='disable physical database.')
-sim_subp.add_argument('--no-model-error', action='store_true', \
+emul_subp.add_argument('--no-model-error', action='store_true', \
                        help='disable physical database.')
-
-
 
 
 

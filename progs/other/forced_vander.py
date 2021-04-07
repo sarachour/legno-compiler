@@ -24,7 +24,7 @@ def dsprog(prog):
     'tc':1.0*rel_time
   }
   ampl,freq = 1.0,1.0
-  prog_util.build_oscillator(prog,freq,ampl,"DUMMY","W")
+  prog_util.build_oscillator(prog,freq,ampl,"VW","W")
 
   dY = '{tc}*W+Y*{mu}*(1.0+(-X)*X)+{tc}*(-X)'
   dX = '{tc}*Y'

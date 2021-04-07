@@ -130,19 +130,24 @@ class PathHandler:
         self.REF_SIM_DIR = self.PROG_DIR + "/sim/ref"
         self.ADP_SIM_DIR = self.PROG_DIR + "/sim/adp"
 
-    def adp_sim_plot(self,plot_type,prog,lgraph,lscale,opt,model):
+    def adp_sim_plot(self,plot_type,prog,lgraph,lscale,opt,model,per_variable=False):
         assert(isinstance(plot_type,PlotType))
         filepath = "{path}/{plot_type}"
         cdir = filepath.format(path=self.PLOT_DIR, \
                                plot_type=plot_type.value)
         util.mkdir_if_dne(cdir)
-        filepat = "{path}/{prog}_{lgraph}_{lscale}_{opt}_{model}.png"
+        if per_variable:
+            filepat = "{path}/{prog}_{lgraph}_{lscale}_{opt}_{model}_{variable}.png"
+        else:
+            filepat = "{path}/{prog}_{lgraph}_{lscale}_{opt}_{model}.png"
+
         cfilename = filepat.format(path=cdir, \
                                    prog=prog, \
                                    lgraph=lgraph, \
                                    lscale=lscale, \
                                    opt=opt, \
-                                   model=model)
+                                   model=model, \
+                                   variable="{variable}")
         return cfilename
 
     def time_file(self,name):
