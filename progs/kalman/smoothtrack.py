@@ -15,8 +15,8 @@ def dsinfo():
 
 def dsprog(prog):
   params = {
-    'meas_noise':0.05,
-    'proc_noise':0.2,
+    'meas_noise':0.3,
+    'proc_noise':2.0,
     'one':0.9999
   }
 
