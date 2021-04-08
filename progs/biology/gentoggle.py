@@ -38,9 +38,11 @@ def dsprog(prog):
   params['negNu'] = -params['nu']
   params['one'] = 0.999999
   params['halfK'] = K/2.0;
-  prog_util.build_oscillator(prog,params['halfK'],1.0,"dummy","AMPL")
+  ampl = params['halfK']
+  freq = 1.0
+  prog_util.build_oscillator(prog,ampl,freq,"VPERT","PERT")
 
-  prog.decl_var("IPTG", "{halfK} + AMPL",params)
+  prog.decl_var("IPTG", "{halfK} + PERT",params)
   #prog.decl_lambda("umod","(1+max(X,0)*{invK})^{negNu}",params)
   prog.decl_lambda("utf", "{a1}/(1+max(X,0)^{beta})",params)
   #prog.decl_lambda("vtf", "{a2}/(1+max(X,0)^{gamma})",params)

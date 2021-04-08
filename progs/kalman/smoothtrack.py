@@ -15,23 +15,22 @@ def dsinfo():
 
 def dsprog(prog):
   params = {
-    'meas_noise':0.1,
-    'proc_noise':2.0,
+    'meas_noise':0.05,
+    'proc_noise':0.2,
     'one':0.9999
   }
 
-  ampl = 0.8
+  ampl = 0.7
   freq = 0.2
   prog_util.build_oscillator(prog,ampl,freq,"VSIG","SIG")
 
-  ampl = 0.2
-  freq = 5.0
+  ampl = 0.3
+  freq = 3.0
   prog_util.build_oscillator(prog,ampl,freq,"VNZ","NZ")
 
 
 
   params['Rinv'] = 1.0/params['proc_noise']
-  params['nRinv'] = -1.0/params['proc_noise']
   params['X0'] = 0.0
   params['P0'] = 0.0
   params['Q'] = params['meas_noise']
@@ -52,6 +51,6 @@ def dsprog(prog):
   prog.interval("P",0,1.0)
 
 def dssim():
-  exp = DSSim('t50')
-  exp.set_sim_time(50)
+  exp = DSSim('t100')
+  exp.set_sim_time(100)
   return exp
