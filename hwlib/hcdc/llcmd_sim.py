@@ -90,6 +90,8 @@ def save_data_from_arduino(dataset,board,dsprog,adp,sim_time,trial=0):
                                              opt=adp.metadata[adplib.ADPMetadata.Keys.LSCALE_OBJECTIVE], \
                                              phys_db=adp.metadata[adplib.ADPMetadata.Keys.RUNTIME_PHYS_DB], \
                                              calib_obj=adp.metadata[adplib.ADPMetadata.Keys.RUNTIME_CALIB_OBJ], \
+                                             no_scale=adp.metadata[adplib.ADPMetadata.Keys.LSCALE_NO_SCALE], \
+                                             one_mode=adp.metadata[adplib.ADPMetadata.Keys.LSCALE_ONE_MODE], \
                                              variable=var, \
                                              trial=trial)
 
@@ -131,11 +133,11 @@ def save_data_from_oscilloscope(osc,board,dsprog,adp,sim_time,trial=0):
                                              opt=adp.metadata[adplib.ADPMetadata.Keys.LSCALE_OBJECTIVE], \
                                              phys_db=adp.metadata[adplib.ADPMetadata.Keys.RUNTIME_PHYS_DB], \
                                              calib_obj=adp.metadata[adplib.ADPMetadata.Keys.RUNTIME_CALIB_OBJ], \
+                                             no_scale=adp.metadata[adplib.ADPMetadata.Keys.LSCALE_NO_SCALE], \
+                                             one_mode=adp.metadata[adplib.ADPMetadata.Keys.LSCALE_ONE_MODE], \
                                              variable=var, \
                                              trial=trial, \
-                                             oscilloscope=True, \
-                                             no_scale=adp.metadata[adplib.ADPMetadata.Keys.LSCALE_NO_SCALE], \
-                                             one_mode=adp.metadata[adplib.ADPMetadata.Keys.LSCALE_ONE_MODE])
+                                             oscilloscope=True)
 
         with open(filename.format(variable=var),'w') as fh:
             print("-> compressing data")
