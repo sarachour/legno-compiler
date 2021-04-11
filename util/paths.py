@@ -274,7 +274,9 @@ class PathHandler:
                            calib_obj, phys_db, \
                            variable,trial, \
                            plot, \
-                           oscilloscope=False):
+                           oscilloscope=False, \
+                           no_scale=False, \
+                           one_mode=False,):
         filepath = "{path}/{plot_type}"
         cdir = filepath.format(path=self.PLOT_DIR, \
                                plot_type='wave')

@@ -80,14 +80,14 @@ def scale(dev, program, adp, \
                      scale_method.value)
     adp.metadata.set(adplib.ADPMetadata.Keys.LSCALE_OBJECTIVE, \
                            objective.value)
+    adp.metadata.set(adplib.ADPMetadata.Keys.LSCALE_NO_SCALE, \
+                     no_scale)
+    adp.metadata.set(adplib.ADPMetadata.Keys.LSCALE_ONE_MODE, \
+                     one_mode)
     adp.metadata.set(adplib.ADPMetadata.Keys.RUNTIME_CALIB_OBJ, \
                            calib_obj.value)
     adp.metadata.set(adplib.ADPMetadata.Keys.RUNTIME_PHYS_DB, \
                            dev.model_number)
-    adp.metadata.set(adplib.ADPMetadata.Keys.NO_SCALE, \
-                     no_scale)
-    adp.metadata.set(adplib.ADPMetadata.Keys.ONE_MODE, \
-                     one_mode)
 
 
   cstr_prob = []

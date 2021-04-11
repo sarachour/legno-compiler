@@ -72,8 +72,8 @@ def exec_lscale(args):
                         scale_adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE],
                         calib_tag,
                         scale_adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB], \
-                        no_scale=scale_adp.metadata[ADPMetadata.Keys.NO_SCALE], \
-                        one_mode=scale_adp.metadata[ADPMetadata.Keys.ONE_MODE] \
+                        no_scale=scale_adp.metadata[ADPMetadata.Keys.LSCALE_NO_SCALE], \
+                        one_mode=scale_adp.metadata[ADPMetadata.Keys.LSCALE_ONE_MODE] \
                     )
 
                     with open(filename,'w') as fh:
@@ -89,7 +89,7 @@ def exec_lscale(args):
                         calib_tag,
                         scale_adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB], \
                         no_scale=scale_adp.metadata[ADPMetadata.Keys.NO_SCALE], \
-                        one_mode=scale_adp.metadata[ADPMetadata.Keys.ONE_MODE] \
+                        one_mode=scale_adp.metadata[ADPMetadata.Keys.LSCALE_ONE_MODE] \
                     )
 
                     adprender.render(board,scale_adp,filename)
@@ -310,7 +310,9 @@ def exec_wav(args,trials=1):
         adp.metadata[ADPMetadata.Keys.RUNTIME_CALIB_OBJ], \
         adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD], \
         adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE], \
-        adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB])
+        adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB], \
+        adp.metadata[ADPMetadata.Keys.LSCALE_NO_SCALE], \
+        adp.metadata[ADPMetadata.Keys.LSCALE_ONE_MODE])
 
     def update_summary(adp,var,wave,has_scope=False):
         key = (summary_key(adp),var,has_scope)
@@ -354,7 +356,10 @@ def exec_wav(args,trials=1):
                                                                                      phys_db=adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB], \
                                                                                      variable=var, \
                                                                                      trial=trial, \
-                                                                                     oscilloscope=has_scope)
+                                                                                     oscilloscope=has_scope, \
+                                                                                     no_scale=adp.metadata[ADPMetadata.Keys.LSCALE_NO_SCALE], \
+                                                                                     one_mode=adp.metadata[ADPMetadata.Keys.LSCALE_ONE_MODE])
+
                                 if os.path.exists(waveform_file):
                                     with open(waveform_file,'r') as fh:
                                         obj = util.decompress_json(fh.read())
@@ -374,7 +379,9 @@ def exec_wav(args,trials=1):
                                                                                          variable=var, \
                                                                                          trial=trial, \
                                                                                          plot=vis.name, \
-                                                                                         oscilloscope=has_scope)
+                                                                                         oscilloscope=has_scope, \
+                                                                                         no_scale=adp.metadata[ADPMetadata.Keys.LSCALE_NO_SCALE], \
+                                                                                         one_mode=adp.metadata[ADPMetadata.Keys.LSCALE_ONE_MODE])
 
                                             vis.plot(plot_file)
 
@@ -392,6 +399,8 @@ def exec_wav(args,trials=1):
                                                                 phys_db=adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB], \
                                                                 variable=var, \
                                                                 plot=vis.name, \
-                                                                oscilloscope=has_scope)
+                                                                oscilloscope=has_scope, \
+                                                                no_scale=adp.metadata[ADPMetadata.Keys.LSCALE_NO_SCALE], \
+                                                                one_mode=adp.metadata[ADPMetadata.Keys.LSCALE_ONE_MODE])
                     vis.plot(plot_file)
 

@@ -533,8 +533,8 @@ class ADPMetadata:
     LSCALE_DQME = "dqme"
     DSNAME = "dsname"
     FEATURE_SUBSET = "subset"
-    NO_SCALE = "no_scale"
-    ONE_MODE = "one_mode"
+    LSCALE_NO_SCALE = "no_scale"
+    LSCALE_ONE_MODE = "one_mode"
 
   def __init__(self):
     self._meta = {}
