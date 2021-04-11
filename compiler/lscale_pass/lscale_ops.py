@@ -49,13 +49,21 @@ class HardwareInfo:
 
   def __init__(self,dev, \
                scale_method=ScaleMethod.IDEAL,  \
-               calib_obj=None):
+               calib_obj=None, \
+               one_mode=False, \
+               no_scale=False):
+
     self.dev = dev
     self.scale_method = scale_method
     self.calib_obj = calib_obj
     self.mode_mappings = {}
+    self.one_mode = one_mode
 
   def register_modes(self,blk,modes):
+    if self.one_mode and \
+       any(map(lambda m: "h" in str(m), modes)):
+      modes = list(filter(lambda m: "m" in str(m), modes))
+
     self.mode_mappings[blk.name] = modes
 
   def modes(self,blk_name):

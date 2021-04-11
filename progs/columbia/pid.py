@@ -19,12 +19,12 @@ def dsprog(prob):
 
   ampl = 1.0
   freq = 0.5
-  prog_util.build_oscillator(prob,ampl,freq,"SIG","TARG")
+  prog_util.build_oscillator(prob,ampl,freq,"VSIG","SIG")
 
   prob.max_time = 300
   #params['negTarget'] = -params['target']
   PLANT = "CTRL+{one}"
-  ERROR = "PLANT+{one}*(-TARG)"
+  ERROR = "PLANT+{one}*(-SIG)"
   CONTROL = "2.0*(-ERR)+8.0*(-INTEG)"
   INTEGRAL = "{one}*ERR+0.3*(-INTEG)"
 

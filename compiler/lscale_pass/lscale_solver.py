@@ -96,6 +96,9 @@ def scale_cstr_to_z3_cstr(smtenv,cstr):
 
   elif isinstance(cstr,scalelib.SCModeImplies):
     modes = list(cstr.mode_var.modes)
+    if not cstr.mode in modes:
+      return
+
     mode_index = modes.index(cstr.mode)
     logval = var_value_to_logval(cstr.dep_var,cstr.value)
     mode_eq = smtlib.SMTEq(smtlib.SMTVar(str(cstr.mode_var)), \

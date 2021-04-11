@@ -487,15 +487,39 @@ def generate_analog_port_constraints(hwinfo,dsinfo,inst, \
 
 
 
+def force_identity_scaling_transform(dev,adp):
 
+  for config in adp.configs:
+    block = dev.get_block(config.inst.block)
+    for out in block.outputs:
+      yield scalelib.SCEq(scalelib.PortScaleVar(config.inst,out.name), \
+                          scalelib.SCMonomial.make_const(1.0))
+
+    for inp in block.inputs:
+      yield scalelib.SCEq(scalelib.PortScaleVar(config.inst,inp.name), \
+                          scalelib.SCMonomial.make_const(1.0))
+
+    for data in block.data:
+      yield scalelib.SCEq(scalelib.PortScaleVar(config.inst,data.name), \
+                          scalelib.SCMonomial.make_const(1.0))
 
 def generate_constraint_problem(dev,program,adp, \
                                 scale_method=scalelib.ScaleMethod.IDEAL, \
-                                calib_obj=None):
+                                calib_obj=None, \
+                                one_mode=False, \
+                                no_scale=False):
+
   hwinfo = scalelib.HardwareInfo(dev, \
                                  scale_method=scale_method, \
-                                 calib_obj=calib_obj)
+                                 calib_obj=calib_obj, \
+                                 one_mode=one_mode)
+
   dsinfo = generate_dynamical_system_info(dev,program,adp)
+
+
+  if no_scale:
+    for cstr in force_identity_scaling_transform(dev,adp):
+      yield cstr
 
   for block in dev.blocks:
     hwinfo.register_modes(block,block.modes)

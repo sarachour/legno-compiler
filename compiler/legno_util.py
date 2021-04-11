@@ -46,12 +46,19 @@ def exec_lscale(args):
                 obj = scalelib.ObjectiveFun(args.objective)
                 scale_method = scalelib.ScaleMethod(args.scale_method)
                 calib_obj = get_calibrate_objective(args.calib_obj)
+
+
+                if args.no_scale and not scale_method is scalelib.ScaleMethod.IDEAL:
+                    raise Exception("cannot disable scaling transform if you're using the delta model database")
+
                 for idx,scale_adp in enumerate(lscale.scale(board, \
                                                             program, \
                                                             adp, \
                                                             objective=obj, \
                                                             scale_method=scale_method, \
-                                                            calib_obj=calib_obj)):
+                                                            calib_obj=calib_obj, \
+                                                            no_scale=args.no_scale, \
+                                                            one_mode=args.one_mode)):
 
                     print("<<< writing scaled circuit %d/%d>>>" % (idx,args.scale_adps))
                     scale_adp.metadata.set(ADPMetadata.Keys.LSCALE_ID,idx)
@@ -64,7 +71,9 @@ def exec_lscale(args):
                         scale_adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD],
                         scale_adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE],
                         calib_tag,
-                        scale_adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB]
+                        scale_adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB], \
+                        no_scale=scale_adp.metadata[ADPMetadata.Keys.NO_SCALE], \
+                        one_mode=scale_adp.metadata[ADPMetadata.Keys.ONE_MODE] \
                     )
 
                     with open(filename,'w') as fh:
@@ -78,7 +87,9 @@ def exec_lscale(args):
                         scale_adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD],
                         scale_adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE],
                         calib_tag,
-                        scale_adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB]
+                        scale_adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB], \
+                        no_scale=scale_adp.metadata[ADPMetadata.Keys.NO_SCALE], \
+                        one_mode=scale_adp.metadata[ADPMetadata.Keys.ONE_MODE] \
                     )
 
                     adprender.render(board,scale_adp,filename)

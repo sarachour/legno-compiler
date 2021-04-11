@@ -48,7 +48,7 @@ lscale_subp = subparsers.add_parser('lscale', \
                                    help='scale circuit parameters.')
 lscale_subp.add_argument('--scale-method', type=str,default="ideal", \
                        help='scaling method.')
-lscale_subp.add_argument('--calib-obj', type=str,default="fast", \
+lscale_subp.add_argument('--calib-obj', type=str,default="minimize_error", \
                        help='which calibrated block to use.')
 lscale_subp.add_argument('--objective', type=str,default="qty", \
                        help='number of scaled adps to generate per adp.')
@@ -57,6 +57,11 @@ lscale_subp.add_argument('--model-number', type=str, \
 lscale_subp.add_argument('--scale-adps', type=int,default=5, \
                        help='number of scaled adps to generate per adp.')
 lscale_subp.add_argument('program', type=str,help='benchmark to compile')
+lscale_subp.add_argument('--one-mode',action="store_true", \
+                         help="only use the medium mode")
+lscale_subp.add_argument('--no-scale',action="store_true", \
+                         help="don't scale the circuit")
+
 
 
 lcal_subp = subparsers.add_parser('lcal', help='execute circuit using grendel.')

@@ -171,21 +171,20 @@ class PathHandler:
                            lgraph=graph_index)
 
 
-    def lscale_adp_diagram_file(self,graph_index,scale_index,model,opt,calib_obj=None):
-        model_tag = model
-        if not calib_obj is None:
-            model_tag += "_%s" % calib_obj
-        path ="{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}.gv"
-        filepath = path.format(path=self.LSCALE_ADP_DIAG_DIR, \
-                               prog=self._prog, \
-                               lgraph=graph_index, \
-                               lscale=scale_index, \
-                               model=model_tag, \
-                               opt=opt)
+    @staticmethod
+    def _get_tag(no_scale,one_mode):
+        tag = ""
+        if no_scale:
+            tag = "_sc1"
+        if one_mode:
+            tag += "_mod1"
 
- 
-    def lscale_adp_file(self,graph_index,scale_index,model,opt,calib_obj,phys_db):
-        path ="{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}_{calib_obj}_{physdb}.adp"
+        return tag
+
+    def lscale_adp_file(self,graph_index,scale_index,model,opt,calib_obj,phys_db, \
+                        no_scale=False, one_mode=False):
+        tag = PathHandler._get_tag(no_scale,one_mode)
+        path ="{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}_{calib_obj}_{physdb}{tag}.adp"
         filepath = path.format(path=self.LSCALE_ADP_DIR, \
                                prog=self._prog, \
                                lgraph=graph_index, \
@@ -193,12 +192,15 @@ class PathHandler:
                                model=model, \
                                calib_obj=calib_obj, \
                                physdb=phys_db, \
-                               opt=opt)
+                               opt=opt, \
+                               tag=tag)
 
         return filepath
 
-    def lscale_adp_diagram_file(self,graph_index,scale_index,model,opt,calib_obj,phys_db):
-        path = "{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}_{calib_obj}_{physdb}.dot"
+    def lscale_adp_diagram_file(self,graph_index,scale_index,model,opt,calib_obj,phys_db, \
+                                no_scale=False, one_mode=False):
+        tag = PathHandler._get_tag(no_scale,one_mode)
+        path = "{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}_{calib_obj}_{physdb}{tag}.dot"
         return path.format(path=self.LSCALE_ADP_DIAG_DIR,
                            prog=self._prog, \
                            lgraph=graph_index, \
@@ -206,7 +208,8 @@ class PathHandler:
                            model=model, \
                            calib_obj=calib_obj, \
                            physdb=phys_db, \
-                           opt=opt)
+                           opt=opt, \
+                           tag=tag)
 
 
 
@@ -214,8 +217,11 @@ class PathHandler:
                                model,opt,\
                                calib_obj, phys_db, \
                                variable,trial, \
+                               no_scale=False, \
+                               one_mode=False, \
                                oscilloscope=False):
-        path = "{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}_{calib_obj}_{physdb}"
+        tag = PathHandler._get_tag(no_scale,one_mode)
+        path = "{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}_{calib_obj}_{physdb}{tag}"
         path += "_{var}_{trial}"
         if oscilloscope:
             path += "_scope"
@@ -228,6 +234,7 @@ class PathHandler:
                            model=model,
                            calib_obj=calib_obj, \
                            physdb=phys_db, \
+                           tag=tag, \
                            opt=opt,
                            var=variable,
                            trial=trial)
@@ -236,13 +243,16 @@ class PathHandler:
                            calib_obj, phys_db, \
                            variable, \
                            plot, \
+                          no_scale=False,\
+                          one_mode=False, \
                            oscilloscope=False):
         filepath = "{path}/{plot_type}"
         cdir = filepath.format(path=self.PLOT_DIR, \
                                plot_type='wave')
         util.mkdir_if_dne(cdir)
 
-        path = "{path}/{prog}_{model}_{opt}_{calib_obj}_{physdb}"
+        tag = PathHandler._get_tag(no_scale,one_mode)
+        path = "{path}/{prog}_{model}_{opt}_{calib_obj}_{physdb}{tag}"
         path += "_{var}_{plot}"
         if oscilloscope:
             path += "_scope"
@@ -253,8 +263,9 @@ class PathHandler:
                            model=model,
                            calib_obj=calib_obj, \
                            physdb=phys_db, \
-                           opt=opt,
-                           var=variable,
+                           opt=opt, \
+                           tag=tag, \
+                           var=variable, \
                            plot=plot)
 
 
@@ -269,7 +280,8 @@ class PathHandler:
                                plot_type='wave')
         util.mkdir_if_dne(cdir)
 
-        path = "{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}_{calib_obj}_{physdb}"
+        tag = PathHandler._get_tag(no_scale,one_mode)
+        path = "{path}/{prog}_g{lgraph}_s{lscale}_{model}_{opt}_{calib_obj}_{physdb}{tag}"
         path += "_{var}_{trial}_{plot}"
         if oscilloscope:
             path += "_scope"
@@ -282,7 +294,8 @@ class PathHandler:
                            model=model,
                            calib_obj=calib_obj, \
                            physdb=phys_db, \
-                           opt=opt,
+                           opt=opt, \
+                           tag=tag, \
                            var=variable,
                            trial=trial, \
                            plot=plot)

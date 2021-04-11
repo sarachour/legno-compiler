@@ -71,7 +71,9 @@ def adp_summary(adp):
 def scale(dev, program, adp, \
           objective=scalelib.ObjectiveFun.QUALITY, \
           scale_method=scalelib.ScaleMethod.IDEAL, \
-          calib_obj=None):
+          calib_obj=None, \
+          no_scale=False, \
+          one_mode=False):
 
   def set_metadata(adp):
     adp.metadata.set(adplib.ADPMetadata.Keys.LSCALE_SCALE_METHOD, \
@@ -82,13 +84,19 @@ def scale(dev, program, adp, \
                            calib_obj.value)
     adp.metadata.set(adplib.ADPMetadata.Keys.RUNTIME_PHYS_DB, \
                            dev.model_number)
+    adp.metadata.set(adplib.ADPMetadata.Keys.NO_SCALE, \
+                     no_scale)
+    adp.metadata.set(adplib.ADPMetadata.Keys.ONE_MODE, \
+                     one_mode)
 
 
   cstr_prob = []
   for stmt in lscaleprob. \
       generate_constraint_problem(dev,program,adp, \
                                   scale_method=scale_method, \
-                                  calib_obj=calib_obj):
+                                  calib_obj=calib_obj, \
+                                  one_mode=one_mode, \
+                                  no_scale=no_scale):
     cstr_prob.append(stmt)
 
   obj = get_objective(objective,cstr_prob)
