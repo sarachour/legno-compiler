@@ -63,14 +63,14 @@ def exec_lscale(args):
                     print("<<< writing scaled circuit %d/%d>>>" % (idx,args.scale_adps))
                     scale_adp.metadata.set(ADPMetadata.Keys.LSCALE_ID,idx)
 
-                    calib_tag = llenums.CalibrateObjective(scale_adp \
-                                                       .metadata[ADPMetadata.Keys.RUNTIME_CALIB_OBJ]).tag()
+                    calib_obj = llenums.CalibrateObjective(scale_adp \
+                                                       .metadata[ADPMetadata.Keys.RUNTIME_CALIB_OBJ])
                     filename = path_handler.lscale_adp_file(
                         scale_adp.metadata[ADPMetadata.Keys.LGRAPH_ID],
                         scale_adp.metadata[ADPMetadata.Keys.LSCALE_ID],
                         scale_adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD],
                         scale_adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE],
-                        calib_tag,
+                        calib_obj,
                         scale_adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB], \
                         no_scale=scale_adp.metadata[ADPMetadata.Keys.LSCALE_NO_SCALE], \
                         one_mode=scale_adp.metadata[ADPMetadata.Keys.LSCALE_ONE_MODE] \
@@ -86,9 +86,9 @@ def exec_lscale(args):
                         scale_adp.metadata[ADPMetadata.Keys.LSCALE_ID],
                         scale_adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD],
                         scale_adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE],
-                        calib_tag,
+                        calib_obj,
                         scale_adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB], \
-                        no_scale=scale_adp.metadata[ADPMetadata.Keys.NO_SCALE], \
+                        no_scale=scale_adp.metadata[ADPMetadata.Keys.LSCALE_NO_SCALE], \
                         one_mode=scale_adp.metadata[ADPMetadata.Keys.LSCALE_ONE_MODE] \
                     )
 
@@ -176,13 +176,18 @@ def exec_lcal(args):
 
 
 def _lexec_already_ran(ph,board,adp,trial=0,scope=False):
+    calib_obj = llenums.CalibrateObjective(adp \
+                            .metadata[ADPMetadata.Keys.RUNTIME_CALIB_OBJ])
+
     for var,scf,chans in adp.observable_ports(board):
         filename = ph.measured_waveform_file(graph_index=adp.metadata[ADPMetadata.Keys.LGRAPH_ID], \
                                              scale_index=adp.metadata[ADPMetadata.Keys.LSCALE_ID], \
                                              model=adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD], \
                                              opt=adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE], \
+                                             no_scale=adp.metadata[ADPMetadata.Keys.LSCALE_NO_SCALE], \
+                                             one_mode=adp.metadata[ADPMetadata.Keys.LSCALE_ONE_MODE], \
                                              phys_db=adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB], \
-                                             calib_obj=adp.metadata[ADPMetadata.Keys.RUNTIME_CALIB_OBJ], \
+                                             calib_obj=calib_obj, \
                                              variable=var, \
                                              trial=trial, \
                                              oscilloscope=scope)

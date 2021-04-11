@@ -60,6 +60,7 @@ def save_data_from_arduino(dataset,board,dsprog,adp,sim_time,trial=0):
     ph = pathlib.PathHandler(adp.metadata[adplib.ADPMetadata.Keys.FEATURE_SUBSET], \
                              dsprog.name)
 
+    calib_obj = llenums.CalibrateObjective(adp.metadata[adplib.ADPMetadata.Keys.RUNTIME_CALIB_OBJ])
 
     times,voltages_by_chan = unpack_arduino_waveform(dataset)
     # seconds per time unit
@@ -89,12 +90,12 @@ def save_data_from_arduino(dataset,board,dsprog,adp,sim_time,trial=0):
                                              model=adp.metadata[adplib.ADPMetadata.Keys.LSCALE_SCALE_METHOD], \
                                              opt=adp.metadata[adplib.ADPMetadata.Keys.LSCALE_OBJECTIVE], \
                                              phys_db=adp.metadata[adplib.ADPMetadata.Keys.RUNTIME_PHYS_DB], \
-                                             calib_obj=adp.metadata[adplib.ADPMetadata.Keys.RUNTIME_CALIB_OBJ], \
+                                             calib_obj=calib_obj, \
                                              no_scale=adp.metadata[adplib.ADPMetadata.Keys.LSCALE_NO_SCALE], \
                                              one_mode=adp.metadata[adplib.ADPMetadata.Keys.LSCALE_ONE_MODE], \
                                              variable=var, \
                                              trial=trial)
-
+        print(filename)
         with open(filename.format(variable=var),'w') as fh:
             print("-> compressing data")
             strdata = util.compress_json(json_data)
@@ -107,6 +108,7 @@ def save_data_from_oscilloscope(osc,board,dsprog,adp,sim_time,trial=0):
 
     ph = pathlib.PathHandler(adp.metadata[adplib.ADPMetadata.Keys.FEATURE_SUBSET], \
                              dsprog.name)
+    calib_obj = llenums.CalibrateObjective(adp.metadata[adplib.ADPMetadata.Keys.RUNTIME_CALIB_OBJ])
 
     wc_time = get_wall_clock_time(board,dsprog,adp,sim_time)
     for var,scf,chans in adp.observable_ports(board):
@@ -132,12 +134,13 @@ def save_data_from_oscilloscope(osc,board,dsprog,adp,sim_time,trial=0):
                                              model=adp.metadata[adplib.ADPMetadata.Keys.LSCALE_SCALE_METHOD], \
                                              opt=adp.metadata[adplib.ADPMetadata.Keys.LSCALE_OBJECTIVE], \
                                              phys_db=adp.metadata[adplib.ADPMetadata.Keys.RUNTIME_PHYS_DB], \
-                                             calib_obj=adp.metadata[adplib.ADPMetadata.Keys.RUNTIME_CALIB_OBJ], \
+                                             calib_obj=calib_obj, \
                                              no_scale=adp.metadata[adplib.ADPMetadata.Keys.LSCALE_NO_SCALE], \
                                              one_mode=adp.metadata[adplib.ADPMetadata.Keys.LSCALE_ONE_MODE], \
                                              variable=var, \
                                              trial=trial, \
                                              oscilloscope=True)
+        print(filename)
 
         with open(filename.format(variable=var),'w') as fh:
             print("-> compressing data")

@@ -190,7 +190,7 @@ class PathHandler:
                                lgraph=graph_index, \
                                lscale=scale_index, \
                                model=model, \
-                               calib_obj=calib_obj, \
+                               calib_obj=calib_obj.tag(), \
                                physdb=phys_db, \
                                opt=opt, \
                                tag=tag)
@@ -206,7 +206,7 @@ class PathHandler:
                            lgraph=graph_index, \
                            lscale=scale_index, \
                            model=model, \
-                           calib_obj=calib_obj, \
+                           calib_obj=calib_obj.tag(), \
                            physdb=phys_db, \
                            opt=opt, \
                            tag=tag)
@@ -232,7 +232,7 @@ class PathHandler:
                            lgraph=graph_index,
                            lscale=scale_index,
                            model=model,
-                           calib_obj=calib_obj, \
+                           calib_obj=calib_obj.tag(), \
                            physdb=phys_db, \
                            tag=tag, \
                            opt=opt,
@@ -261,7 +261,7 @@ class PathHandler:
         return path.format(path=cdir,
                            prog=self._prog,
                            model=model,
-                           calib_obj=calib_obj, \
+                           calib_obj=calib_obj.tag(), \
                            physdb=phys_db, \
                            opt=opt, \
                            tag=tag, \
@@ -294,7 +294,7 @@ class PathHandler:
                            lgraph=graph_index,
                            lscale=scale_index,
                            model=model,
-                           calib_obj=calib_obj, \
+                           calib_obj=calib_obj.tag(), \
                            physdb=phys_db, \
                            opt=opt, \
                            tag=tag, \
