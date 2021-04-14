@@ -47,8 +47,8 @@ bmark_dir = "{tmp}/bmarks/".format(tmp=tmpdir)
 dest_dir = "outputs/legno/unrestricted"
 subdirs = ['lgraph-adp/*.adp', \
            'lgraph-diag/*.gv*', \
-           'lscale-adp/*{model_number}.adp', \
-           'lscale-diag/*{model_number}.dot*', \
+           'lscale-adp/*{model_number}*.adp', \
+           'lscale-diag/*{model_number}*.dot*', \
            'out-waveform/*_{model_number}_*.json', \
            'plots/wave/*_{model_number}_*.pdf']
 
@@ -60,7 +60,6 @@ for subdir in subdirs:
 
 for this_bmark_dir in glob.glob(bmark_dir+"*",recursive=False):
     for subpath in subdirs:
-    
         full_src_glob = "{bmark_dir}/{glob}".format( \
                                                  bmark_dir=this_bmark_dir,  \
                                                  glob=subpath.format(model_number=model))

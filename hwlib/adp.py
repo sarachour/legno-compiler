@@ -526,6 +526,8 @@ class ADPMetadata:
     LSCALE_OBJECTIVE = "lscale_objective"
     RUNTIME_CALIB_OBJ = "runt_calib_obj"
     RUNTIME_PHYS_DB = "runt_phys_db"
+    LSCALE_AVGAQM = "avg_aqm"
+    LSCALE_AVGDQM = "avg_dqm"
     LSCALE_AQM = "aqm"
     LSCALE_AQMST = "aqmst"
     LSCALE_AQMOBS  = "aqmobs"

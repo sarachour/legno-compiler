@@ -199,6 +199,10 @@ class LScaleSolutionGenerator:
           adp.metadata.set(adplib.ADPMetadata.Keys.LSCALE_AQM, val)
         elif quality == scalelib.QualityMeasure.AQMST:
           adp.metadata.set(adplib.ADPMetadata.Keys.LSCALE_AQMST, val)
+        elif quality == scalelib.QualityMeasure.AVGAQM:
+          adp.metadata.set(adplib.ADPMetadata.Keys.LSCALE_AVGAQM, val)
+        elif quality == scalelib.QualityMeasure.AVGDQM:
+          adp.metadata.set(adplib.ADPMetadata.Keys.LSCALE_AVGDQM, val)
         elif quality == scalelib.QualityMeasure.AQMOBS:
           adp.metadata.set(adplib.ADPMetadata.Keys.LSCALE_AQMOBS, val)
         elif quality == scalelib.QualityMeasure.DQM:

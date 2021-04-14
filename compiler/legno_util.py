@@ -348,6 +348,7 @@ def exec_wav(args,trials=1):
 
                     board = get_device(metadata.get(ADPMetadata.Keys.RUNTIME_PHYS_DB))
                     adp = ADP.from_json(board, adp_obj)
+                    calib_obj = llenums.CalibrateObjective(adp.metadata[ADPMetadata.Keys.RUNTIME_CALIB_OBJ])
                     for trial in range(trials):
                         for var,_,_ in adp.observable_ports(board):
                             for has_scope in scope_options:
@@ -356,14 +357,14 @@ def exec_wav(args,trials=1):
                                                                                      graph_index=adp.metadata[ADPMetadata.Keys.LGRAPH_ID],
                                                                                      scale_index=adp.metadata[ADPMetadata.Keys.LSCALE_ID],
                                                                                      model=adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD],
-                                                                                     calib_obj=adp.metadata[ADPMetadata.Keys.RUNTIME_CALIB_OBJ], \
+                                                                                     calib_obj=calib_obj, \
                                                                                      opt=adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE], \
-                                                                                     phys_db=adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB], \
+                                                                                     phys_db=adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB] , \
+                                                                                     no_scale=adp.metadata[ADPMetadata.Keys.LSCALE_NO_SCALE], \
+                                                                                     one_mode=adp.metadata[ADPMetadata.Keys.LSCALE_ONE_MODE], \
                                                                                      variable=var, \
                                                                                      trial=trial, \
-                                                                                     oscilloscope=has_scope, \
-                                                                                     no_scale=adp.metadata[ADPMetadata.Keys.LSCALE_NO_SCALE], \
-                                                                                     one_mode=adp.metadata[ADPMetadata.Keys.LSCALE_ONE_MODE])
+                                                                                     oscilloscope=has_scope)
 
                                 if os.path.exists(waveform_file):
                                     with open(waveform_file,'r') as fh:
@@ -378,15 +379,15 @@ def exec_wav(args,trials=1):
                                                                                          graph_index=adp.metadata[ADPMetadata.Keys.LGRAPH_ID],
                                                                                          scale_index=adp.metadata[ADPMetadata.Keys.LSCALE_ID],
                                                                                          model=adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD],
-                                                                                         calib_obj=adp.metadata[ADPMetadata.Keys.RUNTIME_CALIB_OBJ], \
+                                                                                         calib_obj=calib_obj, \
                                                                                          opt=adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE], \
-                                                                                         phys_db=adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB], \
+                                                                                         phys_db=adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB],  \
+                                                                                         no_scale=adp.metadata[ADPMetadata.Keys.LSCALE_NO_SCALE], \
+                                                                                         one_mode=adp.metadata[ADPMetadata.Keys.LSCALE_ONE_MODE], \
                                                                                          variable=var, \
                                                                                          trial=trial, \
                                                                                          plot=vis.name, \
-                                                                                         oscilloscope=has_scope, \
-                                                                                         no_scale=adp.metadata[ADPMetadata.Keys.LSCALE_NO_SCALE], \
-                                                                                         one_mode=adp.metadata[ADPMetadata.Keys.LSCALE_ONE_MODE])
+                                                                                         oscilloscope=has_scope)
 
                                             vis.plot(plot_file)
 
@@ -397,9 +398,10 @@ def exec_wav(args,trials=1):
                 board = get_device(adps[0].metadata.get(ADPMetadata.Keys.RUNTIME_PHYS_DB))
                 for vis in analyzelib.plot_waveform_summaries(board,adps,waveforms):
                     adp = data[0][0]
+                    calib_obj = llenums.CalibrateObjective(adp.metadata[ADPMetadata.Keys.RUNTIME_CALIB_OBJ])
                     plot_file = path_handler.summary_plot_file( \
                                                                 model=adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD],
-                                                                calib_obj=adp.metadata[ADPMetadata.Keys.RUNTIME_CALIB_OBJ], \
+                                                                calib_obj=calib_obj, \
                                                                 opt=adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE], \
                                                                 phys_db=adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB], \
                                                                 variable=var, \

@@ -9,21 +9,27 @@ def get_objective(objective,cstr_prob):
   dqme= scalelib.QualityVar(scalelib.QualityMeasure.DQME)
   aqmst= scalelib.QualityVar(scalelib.QualityMeasure.AQMST)
   aqmobs = scalelib.QualityVar(scalelib.QualityMeasure.AQMOBS)
+  avgaqm = scalelib.QualityVar(scalelib.QualityMeasure.AVGAQM)
+  avgdqm = scalelib.QualityVar(scalelib.QualityMeasure.AVGDQM)
   timescale = scalelib.TimeScaleVar()
   expos = {}
   expos[aqm] = 1.0
   expos[dqm] = 1.0
   expos[dqme] = 1.0
   expos[aqmst] = 1.0
+  expos[avgaqm] = 1.0
+  expos[avgdqm] = 1.0
   expos[aqmobs] = 1.0
-  
+
 
   all_vars = []
   for cstr in cstr_prob:
     all_vars += list(map(lambda v: str(v), cstr.vars()))
 
+  all_quality_vars = [avgaqm,avgdqm,aqm,dqm,dqme,aqmst,aqmobs]
+  #all_quality_vars = [avgaqm,avgdqm,dqme,aqmst,aqmobs]
   quality_vars = list(filter(lambda v: str(v) in all_vars, \
-                             [aqm,dqm,dqme,aqmst,aqmobs]))
+                             all_quality_vars))
 
   if scalelib.ObjectiveFun.QUALITY == objective:
     monom = scalelib.SCMonomial()
@@ -51,15 +57,21 @@ def adp_summary(adp):
            "Method: {method}", \
            "Objective: {objective}", \
            "AQM:   {aqm}", \
+           "AVG AQM: {avg_aqm}", \
+           "DQM:   {dqm}", \
+           "AVG DQM: {avg_dqm}", \
            "AQMST: {aqmst}", \
            "AQMOBS: {aqmobs}", \
-           "DQM:   {dqm}", \
            "DQME:  {dqme}", \
            "TAU:   {tau}"]
 
   args = {
     'tau':adp.tau,
     'aqm':adp.metadata.get(adplib.ADPMetadata.Keys.LSCALE_AQM),
+    'avg_aqm':adp.metadata.get(adplib.ADPMetadata.Keys.LSCALE_AVGAQM)
+    if adp.metadata.has(adplib.ADPMetadata.Keys.LSCALE_AVGAQM) else "<don't care>",
+    'avg_dqm':adp.metadata.get(adplib.ADPMetadata.Keys.LSCALE_AVGDQM)
+    if adp.metadata.has(adplib.ADPMetadata.Keys.LSCALE_AVGDQM) else "<don't care>",
     'aqmobs':adp.metadata.get(adplib.ADPMetadata.Keys.LSCALE_AQMOBS) \
     if adp.metadata.has(adplib.ADPMetadata.Keys.LSCALE_AQMOBS) else "<don't care>",
     'aqmst':adp.metadata.get(adplib.ADPMetadata.Keys.LSCALE_AQMST) \
@@ -116,6 +128,7 @@ def scale(dev, program, adp, \
     yield adp
     return
 
+  print("<<< solving >>>")
   for adp in lscale_solver.solve(dev,adp,cstr_prob,obj):
     set_metadata(adp)
     for cfg in adp.configs:
@@ -123,4 +136,5 @@ def scale(dev, program, adp, \
 
     print(adp_summary(adp))
     yield adp
+    print("<<< solving >>>")
 

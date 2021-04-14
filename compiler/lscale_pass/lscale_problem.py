@@ -324,6 +324,10 @@ def generate_port_quantize_constraints(hwinfo, dsinfo,inst,  \
     qual = scalelib.QualityVar(scalelib.QualityMeasure.DQME)
   else:
     qual = scalelib.QualityVar(scalelib.QualityMeasure.DQM)
+    qmeas = scalelib.SCMonomial()
+    qmeas.add_term(v_scalevar)
+    qmeas.add_term(v_quantize,-1)
+    hwinfo.add_quality_term(scalelib.QualityMeasure.DQM,qmeas)
 
   cstr = scalelib.SCLTE(qual, \
                         snr_term)
@@ -358,11 +362,18 @@ def generate_port_noise_constraints(hwinfo, dsinfo,inst,  \
   snr_term.add_term(v_scalevar)
   snr_term.add_term(v_noise,-1)
 
-  
+
   qual = scalelib.QualityVar(scalelib.QualityMeasure.AQM)
   cstr = scalelib.SCLTE(qual, \
                         snr_term)
+
+ 
   yield cstr
+
+  qmeas = scalelib.SCMonomial()
+  qmeas.add_term(v_scalevar)
+  qmeas.add_term(v_noise,-1)
+  hwinfo.add_quality_term(scalelib.QualityMeasure.AQM,qmeas)
 
   if is_dsvar:
     qual = scalelib.QualityVar(scalelib.QualityMeasure.AQMST)
@@ -376,6 +387,7 @@ def generate_port_noise_constraints(hwinfo, dsinfo,inst,  \
                         snr_term)
     yield cstr
 
+  
 
 def generate_const_data_field_constraints(hwinfo,dsinfo,inst, \
                                           baseline_mode,modes,datafield):
@@ -486,6 +498,20 @@ def generate_analog_port_constraints(hwinfo,dsinfo,inst, \
       yield cstr
 
 
+def add_average_quality_terms(hwinfo):
+  monom = scalelib.SCMonomial.make_const(1.0)
+  for term in hwinfo.get_quality_terms(scalelib.QualityMeasure.AQM):
+    monom.product(term)
+
+  if len(monom) >= 1:
+    yield scalelib.SCEq(scalelib.QualityVar(scalelib.QualityMeasure.AVGAQM), monom)
+
+  monom = scalelib.SCMonomial.make_const(1.0)
+  for term in hwinfo.get_quality_terms(scalelib.QualityMeasure.DQM):
+    monom.product(term)
+
+  if len(monom) >= 1:
+    yield scalelib.SCEq(scalelib.QualityVar(scalelib.QualityMeasure.AVGDQM), monom)
 
 
 def force_identity_scaling_transform(dev,adp):
@@ -593,7 +619,7 @@ def generate_constraint_problem(dev,program,adp, \
       if config.has(port.name) and \
          not config[port.name].source is None:
         is_dsvar = True
-      
+
       if port.extern:
         is_obs = True
 
@@ -634,4 +660,7 @@ def generate_constraint_problem(dev,program,adp, \
         else:
           raise NotImplementedError
 
-  
+  for cstr in add_average_quality_terms(hwinfo):
+    yield cstr
+
+

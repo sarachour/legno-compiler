@@ -14,6 +14,8 @@ class QualityMeasure(Enum):
   DQME = "DQME"
   AQMST = "AQMST"
   AQMOBS  = "AQMOBS"
+  AVGAQM = "AVGAQM"
+  AVGDQM = "AVGDQM"
 
 
 class ScaleMethod(Enum):
@@ -58,6 +60,17 @@ class HardwareInfo:
     self.calib_obj = calib_obj
     self.mode_mappings = {}
     self.one_mode = one_mode
+    self.quality_terms = {}
+    for meas in QualityMeasure:
+      self.quality_terms[meas] = []
+
+  def get_quality_terms(self,qual):
+    for term in self.quality_terms[qual]:
+      yield term
+
+  def add_quality_term(self,qual,term):
+    assert(qual in self.quality_terms)
+    self.quality_terms[qual].append(term)
 
   def register_modes(self,blk,modes):
     if self.one_mode and \
@@ -263,6 +276,9 @@ class SCMonomial:
     self._coeff =  1.0
     self._terms = []
     self._expos = []
+
+  def __len__(self):
+    return len(self._terms)
 
   def vars(self):
     for t in self._terms:
