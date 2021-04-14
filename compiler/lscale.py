@@ -10,6 +10,13 @@ def get_objective(objective,cstr_prob):
   aqmst= scalelib.QualityVar(scalelib.QualityMeasure.AQMST)
   aqmobs = scalelib.QualityVar(scalelib.QualityMeasure.AQMOBS)
   timescale = scalelib.TimeScaleVar()
+  expos = {}
+  expos[aqm] = 1.0
+  expos[dqm] = 1.0
+  expos[dqme] = 1.0
+  expos[aqmst] = 1.0
+  expos[aqmobs] = 1.0
+  
 
   all_vars = []
   for cstr in cstr_prob:
@@ -21,13 +28,13 @@ def get_objective(objective,cstr_prob):
   if scalelib.ObjectiveFun.QUALITY == objective:
     monom = scalelib.SCMonomial()
     for qv in quality_vars:
-      monom.add_term(qv,-1.0)
+      monom.add_term(qv,-expos[qv])
     return monom
 
   elif scalelib.ObjectiveFun.QUALITY_SPEED == objective:
     monom = scalelib.SCMonomial()
     for qv in quality_vars:
-      monom.add_term(qv,-0.5)
+      monom.add_term(qv,-expos[qv])
     monom.add_term(timescale,-1)
     return monom
 

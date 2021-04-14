@@ -78,6 +78,11 @@ mult.outputs['z'] \
      .noise.bind(['_','_','h'],HIGH_NOISE)
 
 
+MAX_FREQ = 40000.0
+mult.outputs['z'] \
+  .freq_limit.bind(['m','_','_'], MAX_FREQ)
+mult.outputs['z'] \
+  .freq_limit.bind(['h','_','_'], MAX_FREQ)
 
 
 mult.data.add(BlockData('c',BlockDataType.CONST))

@@ -25,9 +25,9 @@ lut.inputs['x'] \
 lut.outputs['z'] \
     .interval.bind(['*'],interval.Interval(-1,0.9921875))
 lut.inputs['x'] \
-    .quantize.bind(['*'],Quantize(256,QuantizeType.LINEAR))
+    .quantize.bind(['*'],Quantize(256,QuantizeType.LINEAR,scale=1.0))
 lut.outputs['z'] \
-    .quantize.bind(['*'],Quantize(256,QuantizeType.LINEAR))
+    .quantize.bind(['*'],Quantize(256,QuantizeType.LINEAR,scale=1.0))
 
 lut.state.add(BlockState('source', BlockStateType.CONNECTION, \
                         values=enums.LUTSourceType))

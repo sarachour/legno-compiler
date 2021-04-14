@@ -28,6 +28,13 @@ adc.inputs['x'] \
 
 
 
+MAX_FREQ = 40000.0
+adc.outputs['z'] \
+  .freq_limit.bind(['_'], MAX_FREQ)
+
+
+
+
 adc.inputs['x'] \
     .interval.bind(['h'],interval.Interval(-20,20))
 

@@ -37,7 +37,6 @@ path1 = "{base}/{model_number}*".format(base=base,model_number=model)
 path2 = "{base}/*/{model_number}*".format(base=base,model_number=model)
 for path in [path1,path2]:
    for filename in glob.glob(path,recursive=True):
-    print(filename)
     basefile = filename.split(base)[1]
     dest = "{tmp}/{basefile}".format(tmp=devstate_dir, \
                                      basefile=basefile)
@@ -60,8 +59,8 @@ bmark_dir = "{tmp}/bmarks".format(tmp=tmpdir)
 path = 'outputs/legno/unrestricted/'
 subdirs = ['lgraph-adp/*.adp', \
            'lgraph-diag/*.gv*', \
-           'lscale-adp/*{model_number}.adp', \
-           'lscale-diag/*{model_number}.dot*', \
+           'lscale-adp/*_{model_number}*.adp', \
+           'lscale-diag/*_{model_number}*.dot*', \
            'out-waveform/*_{model_number}_*.json', \
            'plots/wave/*_{model_number}_*.pdf']
 
@@ -79,7 +78,7 @@ for this_bmark_dir in glob.glob(path+"*",recursive=False):
             if not os.path.exists(dest_dir):
                 os.makedirs(dest_dir)
             shutil.copy(filename,dest_file)
-
+            print(filename)
 
 print("---- archiving data ----")
 archive_dir('{model_number}-devstate.zip'.format(model_number=model), \

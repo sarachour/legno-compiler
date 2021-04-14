@@ -13,6 +13,7 @@ def write_lut(runtime,board,blk,loc,adp):
     do_compensate = adp.metadata[adplib.ADPMetadata.Keys.LSCALE_SCALE_METHOD]  \
         != lscalelib.ScaleMethod.IDEAL
 
+    do_compensate = False
     llcmdcomp.compute_expression_fields(board, \
                                         adp, \
                                         cfg, \
@@ -51,6 +52,7 @@ def set_state(runtime,board,blk,loc,adp):
     do_compensate = adp.metadata[adplib.ADPMetadata.Keys.LSCALE_SCALE_METHOD]  \
         != lscalelib.ScaleMethod.IDEAL
 
+    do_compensate = False
     llcmdcomp.compute_constant_fields(board,adp,cfg, \
                                       compensate=do_compensate, \
                                       debug=True)

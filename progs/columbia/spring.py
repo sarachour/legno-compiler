@@ -45,10 +45,10 @@ def dsprog(prog):
   prog.decl_stvar("PB",dPB,"{PB0}",params)
 
   prog.emit("{one}*PA","PosA",params)
-  prog.interval("PA",-2.5,2.5)
-  prog.interval("PB",-2.5,2.5)
-  prog.interval("VA",-2.5,2.5)
-  prog.interval("VB",-2.5,2.5)
+  prog.interval("PA",-1.2,2.2)
+  prog.interval("PB",-1.5,1.5)
+  prog.interval("VA",-1.5,1.5)
+  prog.interval("VB",-1.5,1.5)
   prog.check()
 
 def dssim():

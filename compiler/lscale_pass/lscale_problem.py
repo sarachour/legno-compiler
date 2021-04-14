@@ -327,8 +327,9 @@ def generate_port_quantize_constraints(hwinfo, dsinfo,inst,  \
 
   cstr = scalelib.SCLTE(qual, \
                         snr_term)
-  yield cstr
 
+  yield cstr
+ 
 
 def generate_port_noise_constraints(hwinfo, dsinfo,inst,  \
                                     baseline_mode, modes, \
