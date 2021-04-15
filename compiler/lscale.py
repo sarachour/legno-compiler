@@ -9,16 +9,16 @@ def get_objective(objective,cstr_prob):
   dqme= scalelib.QualityVar(scalelib.QualityMeasure.DQME)
   aqmst= scalelib.QualityVar(scalelib.QualityMeasure.AQMST)
   aqmobs = scalelib.QualityVar(scalelib.QualityMeasure.AQMOBS)
-  avgaqm = scalelib.QualityVar(scalelib.QualityMeasure.AVGAQM)
-  avgdqm = scalelib.QualityVar(scalelib.QualityMeasure.AVGDQM)
+  #avgaqm = scalelib.QualityVar(scalelib.QualityMeasure.AVGAQM)
+  #avgdqm = scalelib.QualityVar(scalelib.QualityMeasure.AVGDQM)
   timescale = scalelib.TimeScaleVar()
   expos = {}
   expos[aqm] = 1.0
   expos[dqm] = 1.0
   expos[dqme] = 1.0
   expos[aqmst] = 1.0
-  expos[avgaqm] = 1.0
-  expos[avgdqm] = 1.0
+  #expos[avgaqm] = 1.0
+  #expos[avgdqm] = 1.0
   expos[aqmobs] = 1.0
 
 
@@ -26,8 +26,8 @@ def get_objective(objective,cstr_prob):
   for cstr in cstr_prob:
     all_vars += list(map(lambda v: str(v), cstr.vars()))
 
-  all_quality_vars = [avgaqm,avgdqm,aqm,dqm,dqme,aqmst,aqmobs]
-  #all_quality_vars = [avgaqm,avgdqm,dqme,aqmst,aqmobs]
+  #all_quality_vars = [avgaqm,avgdqm,aqm,dqm,dqme,aqmst,aqmobs]
+  all_quality_vars = [aqm,dqm,dqme,aqmst,aqmobs]
   quality_vars = list(filter(lambda v: str(v) in all_vars, \
                              all_quality_vars))
 
