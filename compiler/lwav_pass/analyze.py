@@ -8,7 +8,6 @@ import math
 
 def get_emulated_waveforms(board,program,adp,dssim,recover=False):
     en_phys,en_err,en_ival,en_quant = True,True,False,True
-    en_phys,en_err,en_ival,en_quant = True,True,False,True
 
     times,value_dict = lsimlib.run_adp_simulation(board, \
                                                   adp, \

@@ -168,9 +168,34 @@ class ExprDataConfig(ConfigStmt):
     self.scfs = {}
     self.injs = {}
     self.expr = expr
+
     for key in args + [field]:
       self.scfs[key] = 1.0
       self.injs[key] = 1.0
+
+    self.input_ports = []
+    self.inputs = {}
+    self.output = None
+
+  def set_input(self,input_port,values):
+    assert(not input_port in self.input_ports)
+    self.inputs[input_port.name] = values
+    self.input_ports.append(input_port.name)
+
+  def set_output(self,inputs,value):
+    assert(len(self.input_ports) == 1)
+    var = self.input_ports[0]
+    if self.output is None:
+      self.output = [0.0]*len(self.inputs[var])
+
+    idx = self.inputs[var].index(inputs[var])
+    self.output[idx] = value
+
+  def data(self):
+    for idx,out in enumerate(self.output):
+      inps = dict(map(lambda po: (po,self.inputs[po][idx]),  \
+                      self.input_ports))
+      yield idx,inps,out
 
   def copy(self):
     cfg = ExprDataConfig(self.name,self.args,expr=self.expr)

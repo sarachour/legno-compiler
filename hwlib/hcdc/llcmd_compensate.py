@@ -109,7 +109,7 @@ def compute_expression_fields(board,adp,cfg,compensate=True, debug=False):
             gain,offset = 1.0,0.0
 
         inj = data_expr_field.injs[func_arg]
-       
+
         repls[func_arg] = genoplib.Mult(genoplib.Const(inj), \
                                         genoplib.Add( \
                                                       genoplib.Var(func_arg), \
@@ -160,16 +160,15 @@ def compute_expression_fields(board,adp,cfg,compensate=True, debug=False):
     input_values = input_port.quantize[cfg.mode] \
                              .get_values(input_port \
                                          .interval[cfg.mode])
+    cfg[data_expr_field.name].set_input(input_port,input_values)
+
     lut_outs = []
     for val in input_values:
         out = final_expr.compute({input_port.name:val})
-        lut_outs.append(max(min(1.0,out),-1.0))
+        out = max(min(1.0-1.0/128.0,out),-1.0)
+        cfg[data_expr_field.name].set_output({input_port.name:val},out)
 
-
-    cfg[data_expr_field.name].outputs= lut_outs
-    cfg[data_expr_field.name].inputs = input_values
-    cfg[data_expr_field.name].input_port = input_port.name
-    return lut_outs
+    cfg[data_expr_field.name].concrete_expr = final_expr
 
 
 def set_calibration_codes(board,adp,cfg):

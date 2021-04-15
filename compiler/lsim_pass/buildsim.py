@@ -27,11 +27,11 @@ import util.util as util
 # quantize -- model quantization of digital values
 
 SETTINGS = {
-  'physdb': True,
-  'model_error': True,
-  'interval': True,
-  'quantize': True,
-  'compensate':True
+  'physdb': False,
+  'model_error': False,
+  'interval': False,
+  'quantize': False,
+  'compensate':False
 }
 
 class ADPSim:
@@ -265,13 +265,17 @@ class ADPEmulBlock:
 
         values[stmt.name] = dig_val
 
-      if stmt.type == adplib.ConfigStmtType.EXPR:
-        assert(hasattr(stmt,'outputs'))
-        assert(hasattr(stmt,'inputs'))
-        assert(hasattr(stmt,'input_port'))
-        self.user_defined = (stmt.input_port, \
-                             stmt.inputs, \
-                             stmt.outputs)
+      '''
+    for stmt in self.cfg.stmts:
+      if stmt.type == adplib.ConfigStmtType.EXPR and self.enable_quantize:
+        assert(not stmt.output is None)
+        assert(len(stmt.input_ports) == 1)
+        self.user_defined = (stmt.input_ports[0], \
+                             stmt.inputs[stmt.input_ports[0]], \
+                             stmt.output)
+      elif stmt.type == adplib.ConfigStmtType.EXPR:
+        values[stmt.name] = stmt.concrete_expr
+     '''
 
     return values.items()
 
@@ -299,6 +303,9 @@ class ADPEmulBlock:
     for var,val in self.get_digital_config():
         sub_dict[var] = genoplib.Const(val)
 
+    for stmt in self.cfg.stmts:
+      if stmt.type == adplib.ConfigStmtType.EXPR:
+        sub_dict[stmt.name] = stmt.concrete_expr
 
 
     conc_expr = expr.substitute(sub_dict)
@@ -359,21 +366,6 @@ class ADPEmulBlock:
 
 
       else:
-        '''
-        print("-----------------")
-        print(model.config)
-        print("output: %s" % out.name)
-        print("calib_obj: %s" % self.calib_obj.value)
-        print("-----------------")
-        for row in proflib.get_datasets_by_configured_block_instance(self.board, \
-                                                                     self.block, \
-                                                                     self.loc, \
-                                                                     out, \
-                                                                     model.config, \
-                                                                     hidden=False):
-          print(row)
-        '''
-
         print("[warn] no dataset for %s %s" \
               % (self.block.name,self.loc))
 
@@ -484,8 +476,9 @@ class ADPStatefulEmulBlock(ADPEmulBlock):
                                  config=self.cfg, \
                                  calib_obj=self.calib_obj)
 
+    set_to_ideal_expr()
+
     if not self.enable_phys:
-      set_to_ideal_expr()
       return
 
     if len(models) == 0:
@@ -512,7 +505,7 @@ class ADPStatefulEmulBlock(ADPEmulBlock):
 
       spec = self.block.outputs[self.port.name].deltas[self.cfg.mode]
       expr = spec.get_model(model.params)
-      if(not dataset is None):
+      if not dataset is None and self.enable_model_error:
         errors = model.errors(dataset,init_cond=True)
         surf = parsurflib.build_surface(block=self.block, \
                                         cfg=self.cfg, \
@@ -529,11 +522,9 @@ class ADPStatefulEmulBlock(ADPEmulBlock):
 
       integ_expr = mathutils.canonicalize_integration_operation(expr)
       self._init_cond = self._concretize(integ_expr.init_cond)
-      self._deriv = self._concretize(integ_expr.deriv)
+      #self._deriv = self._concretize(integ_expr.deriv)
       self.error_model = None
 
-    else:
-      set_to_ideal_expr()
 
 
 
@@ -598,7 +589,6 @@ def build_diffeqs(dev,adp):
         sim.set_function(source_var, emul_block)
 
 
-  #input()
   return sim
 
 def next_state(sim,values):
