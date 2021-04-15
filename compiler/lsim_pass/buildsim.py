@@ -527,6 +527,10 @@ class ADPStatefulEmulBlock(ADPEmulBlock):
         print("[warn] no dataset for %s %s" \
               % (self.block.name,self.loc))
 
+      integ_expr = mathutils.canonicalize_integration_operation(expr)
+      self._init_cond = self._concretize(integ_expr.init_cond)
+      self._deriv = self._concretize(integ_expr.deriv)
+      self.error_model = None
 
     else:
       set_to_ideal_expr()
