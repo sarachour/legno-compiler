@@ -206,7 +206,8 @@ integ.outputs['z'].deltas.bind(['m','h','-'],new_spec)
 
 
 spec = DeltaSpec(parser.parse_expr('integ((0.1*a*x),(2.0*(b*z0+c)))'))
-spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
+#spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
+spec.param('a',DeltaParamType.GENERAL,ideal=1.0)
 spec.param('b',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('c',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
 #spec.param('c',DeltaParamType.GENERAL,ideal=0.0)
