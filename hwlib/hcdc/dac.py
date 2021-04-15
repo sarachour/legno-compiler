@@ -83,30 +83,30 @@ def dac_calib_obj(spec,out_scale):
 
 spec = DeltaSpec(parser.parse_expr('2.0*(a*c+b)'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
-#spec.param('b',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
-spec.param('b',DeltaParamType.GENERAL,ideal=0.0)
+spec.param('b',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
+#spec.param('b',DeltaParamType.GENERAL,ideal=0.0)
 new_spec = dac_calib_obj(spec, 2.0)
 dac.outputs['z'].deltas.bind(['const','m'],new_spec)
 
 spec = DeltaSpec(parser.parse_expr('20.0*(a*c+b)'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
-#spec.param('b',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
-spec.param('b',DeltaParamType.GENERAL,ideal=0.0)
+spec.param('b',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
+#spec.param('b',DeltaParamType.GENERAL,ideal=0.0)
 new_spec = dac_calib_obj(spec, 20.0)
 dac.outputs['z'].deltas.bind(['const','h'],new_spec)
 
 
 spec = DeltaSpec(parser.parse_expr('a*2.0*x+b'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
-#spec.param('b',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
-spec.param('b',DeltaParamType.GENERAL,ideal=0.0)
+spec.param('b',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
+#spec.param('b',DeltaParamType.GENERAL,ideal=0.0)
 new_spec = dac_calib_obj(spec, 2.0)
 dac.outputs['z'].deltas.bind(['dyn','m'],new_spec)
 
 spec = DeltaSpec(parser.parse_expr('a*20.0*x+b'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
-#spec.param('b',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
-spec.param('b',DeltaParamType.GENERAL,ideal=0.0)
+spec.param('b',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
+#spec.param('b',DeltaParamType.GENERAL,ideal=0.0)
 new_spec = dac_calib_obj(spec, 20.0)
 dac.outputs['z'].deltas.bind(['dyn','h'],new_spec)
 

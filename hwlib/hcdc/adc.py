@@ -88,15 +88,15 @@ def adc_calib_obj(spec):
 
 spec = DeltaSpec(parser.parse_expr('a*0.5*x+b'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
-#spec.param('b',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
-spec.param('b',DeltaParamType.GENERAL,ideal=0.0)
+spec.param('b',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
+#spec.param('b',DeltaParamType.GENERAL,ideal=0.0)
 new_spec = adc_calib_obj(spec)
 adc.outputs['z'].deltas.bind(['m'],new_spec)
 
 spec = DeltaSpec(parser.parse_expr('a*0.05*x+b'))
 spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
-#spec.param('b',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
-spec.param('b',DeltaParamType.GENERAL,ideal=0.0)
+spec.param('b',DeltaParamType.LL_CORRECTABLE,ideal=0.0)
+#spec.param('b',DeltaParamType.GENERAL,ideal=0.0)
 new_spec = adc_calib_obj(spec)
 adc.outputs['z'].deltas.bind(['h'],new_spec)
 
