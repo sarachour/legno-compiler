@@ -34,6 +34,9 @@ MODES = [
 
 
 
+LOW_RANGE = 2.0
+HIGH_RANGE = 20.0
+
 mult.modes.add_all(MODES)
 LOW_NOISE = 0.02
 HIGH_NOISE = 0.2
@@ -42,9 +45,9 @@ HIGH_NOISE = 0.2
 mult.inputs.add(BlockInput('x',BlockSignalType.ANALOG, \
                            ll_identifier=enums.PortType.IN0))
 mult.inputs['x'] \
-    .interval.bind(['_','m','_'],interval.Interval(-2,2))
+    .interval.bind(['_','m','_'],interval.Interval(-LOW_RANGE,LOW_RANGE))
 mult.inputs['x'] \
-    .interval.bind(['_','h','_'],interval.Interval(-20,20))
+    .interval.bind(['_','h','_'],interval.Interval(-HIGH_RANGE,HIGH_RANGE))
 mult.inputs['x'] \
      .noise.bind(['_','m','_'],LOW_NOISE)
 mult.inputs['x'] \
@@ -54,11 +57,11 @@ mult.inputs['x'] \
 mult.inputs.add(BlockInput('y',BlockSignalType.ANALOG, \
                            ll_identifier=enums.PortType.IN1))
 mult.inputs['y'] \
-    .interval.bind(['m','_','_'],interval.Interval(-2,2))
+    .interval.bind(['m','_','_'],interval.Interval(-LOW_RANGE,LOW_RANGE))
 mult.inputs['y'] \
-    .interval.bind(['x','_','_'],interval.Interval(-2,2))
+    .interval.bind(['x','_','_'],interval.Interval(-LOW_RANGE,LOW_RANGE))
 mult.inputs['y'] \
-    .interval.bind(['h','_','_'],interval.Interval(-20,20))
+    .interval.bind(['h','_','_'],interval.Interval(-HIGH_RANGE,HIGH_RANGE))
 mult.inputs['y'] \
      .noise.bind(['m','_','_'],LOW_NOISE)
 mult.inputs['y'] \
@@ -69,9 +72,9 @@ mult.inputs['y'] \
 mult.outputs.add(BlockOutput('z',BlockSignalType.ANALOG, \
                              ll_identifier=enums.PortType.OUT0))
 mult.outputs['z'] \
-    .interval.bind(['_','_','m'],interval.Interval(-2,2))
+    .interval.bind(['_','_','m'],interval.Interval(-LOW_RANGE,LOW_RANGE))
 mult.outputs['z'] \
-    .interval.bind(['_','_','h'],interval.Interval(-20,20))
+    .interval.bind(['_','_','h'],interval.Interval(-HIGH_RANGE,HIGH_RANGE))
 mult.outputs['z'] \
      .noise.bind(['_','_','m'],LOW_NOISE)
 mult.outputs['z'] \
@@ -87,10 +90,13 @@ mult.outputs['z'] \
 
 mult.data.add(BlockData('c',BlockDataType.CONST))
 DLT = 1/128.0
+DIGITAL_RANGE_LOWER = 128
+DIGITAL_RANGE_UPPER = 127
+DIGITAL_QUANTIZE = 256
 mult.data['c'] \
-    .interval.bind(['_','_','_'],interval.Interval(-128*DLT,127*DLT))
+    .interval.bind(['_','_','_'],interval.Interval(-DIGITAL_RANGE_LOWER*DLT,DIGITAL_RANGE_UPPER*DLT))
 mult.data['c'] \
-    .quantize.bind(['_','_','_'],Quantize(256,QuantizeType.LINEAR))
+    .quantize.bind(['_','_','_'],Quantize(DIGITAL_QUANTIZE,QuantizeType.LINEAR))
 
 mult.outputs['z'].relation \
                  .bind(['x','m','m'],parser.parse_expr('c*x'))

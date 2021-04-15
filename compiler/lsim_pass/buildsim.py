@@ -31,7 +31,8 @@ SETTINGS = {
   'model_error': False,
   'interval': False,
   'quantize': False,
-  'compensate':False
+  'compensate':True,
+  'correctable':True
 }
 
 class ADPSim:
@@ -238,6 +239,7 @@ class ADPEmulBlock:
     self.enable_intervals = SETTINGS['interval']
     self.enable_quantize = SETTINGS['quantize']
     self.enable_model_error = SETTINGS['model_error']
+    self.correctable = SETTINGS['correctable']
 
     self._build_model(adp)
 
@@ -349,9 +351,11 @@ class ADPEmulBlock:
                              out, \
                              cfg=model.config, \
                              method=llenums.ProfileOpType.INPUT_OUTPUT)
+
       spec = self.block.outputs[self.port.name].deltas[self.cfg.mode]
-      expr = spec.get_model(model.params)
- 
+      expr = spec.get_model(model.params) if \
+        not self.correctable else spec.get_correctable_model(model.params)
+
       if not dataset is None:
         errors = model.errors(dataset,init_cond=False)
         surf = parsurflib.build_surface(block=self.block, \
@@ -504,7 +508,10 @@ class ADPStatefulEmulBlock(ADPEmulBlock):
                            method=llenums.ProfileOpType.INTEG_INITIAL_COND)
 
       spec = self.block.outputs[self.port.name].deltas[self.cfg.mode]
-      expr = spec.get_model(model.params)
+      expr = spec.get_model(model.params) \
+        if not self.correctable else spec.get_correctable_model(model.params, \
+                                                                low_level=True)
+ 
       if not dataset is None and self.enable_model_error:
         errors = model.errors(dataset,init_cond=True)
         surf = parsurflib.build_surface(block=self.block, \

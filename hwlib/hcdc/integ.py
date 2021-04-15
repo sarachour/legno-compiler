@@ -31,29 +31,32 @@ integ.modes.add_all(MODES)
 LOW_NOISE = 0.01
 HIGH_NOISE = 0.1
 
+LOW_RANGE = 2.0
+HIGH_RANGE = 20.0
+
 MAX_FREQ = 80000.0
 
 integ.inputs.add(BlockInput('x',BlockSignalType.ANALOG, \
                            ll_identifier=enums.PortType.IN0))
 integ.inputs['x'] \
-    .interval.bind(['m','_','_'],interval.Interval(-2,2))
+    .interval.bind(['m','_','_'],interval.Interval(-LOW_RANGE,LOW_RANGE))
 integ.inputs['x'] \
      .noise.bind(['m','_','_'],LOW_NOISE)
 
 integ.inputs['x'] \
-    .interval.bind(['h','_','_'],interval.Interval(-20,20))
+    .interval.bind(['h','_','_'],interval.Interval(-HIGH_RANGE,HIGH_RANGE))
 integ.inputs['x'] \
      .noise.bind(['h','_','_'],HIGH_NOISE)
 
 integ.outputs.add(BlockOutput('z',BlockSignalType.ANALOG, \
                              ll_identifier=enums.PortType.OUT0))
 integ.outputs['z'] \
-    .interval.bind(['_','m','_'],interval.Interval(-2,2))
+    .interval.bind(['_','m','_'],interval.Interval(-LOW_RANGE,LOW_RANGE))
 integ.outputs['z'] \
      .noise.bind(['_','m','_'],LOW_NOISE)
 
 integ.outputs['z'] \
-    .interval.bind(['_','h','_'],interval.Interval(-20,20))
+    .interval.bind(['_','h','_'],interval.Interval(-HIGH_RANGE,HIGH_RANGE))
 integ.outputs['z'] \
      .noise.bind(['_','h','_'],HIGH_NOISE)
 
@@ -64,24 +67,24 @@ integ.outputs['z'] \
 integ.data.add(BlockData('z0',BlockDataType.CONST))
 
 DEL = 1.0/128
+DIGITAL_RANGE_LOWER = 128
+DIGITAL_RANGE_UPPER = 127
+DIGITAL_QUANTIZE = 256
 integ.data['z0'] \
-    .interval.bind(['_','_','_'],interval.Interval(-DEL*128,DEL*127))
+    .interval.bind(['_','_','_'],interval.Interval(-DEL*DIGITAL_RANGE_LOWER,DEL*DIGITAL_RANGE_UPPER))
 integ.data['z0'] \
-    .quantize.bind(['_','_','_'],Quantize(256,QuantizeType.LINEAR))
+    .quantize.bind(['_','_','_'],Quantize(DIGITAL_QUANTIZE,QuantizeType.LINEAR))
 
 
 integ.outputs['z'].relation \
                  .bind(['m','m','+'],parser.parse_expr('integ(x,(2.0*z0))'))
-
 integ.outputs['z'].relation \
                  .bind(['h','h','+'],parser.parse_expr('integ(x,(20.0*z0))'))
-
-
 integ.outputs['z'].relation \
                  .bind(['m','h','+'],parser.parse_expr('integ((10.0*x),(20.0*z0))'))
-
 integ.outputs['z'].relation \
                  .bind(['h','m','+'],parser.parse_expr('integ((0.1*x),(2.0*z0))'))
+
 integ.outputs['z'].relation \
                  .bind(['m','m','-'],parser.parse_expr('-integ(x,(2.0*z0))'))
 
@@ -115,7 +118,7 @@ def integ_calib_obj(spec,in_scale,out_scale):
   return new_spec
 
 
-spec = DeltaSpec(parser.parse_expr('integ((a*x+v),(2.0*(b*z0+c)))'))
+spec = DeltaSpec(parser.parse_expr('integ((a*x+v),(2.0*b*(z0+c)))'))
 #spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('a',DeltaParamType.GENERAL,ideal=1.0)
 spec.param('b',DeltaParamType.CORRECTABLE,ideal=1.0)
@@ -129,7 +132,7 @@ spec.param('v',DeltaParamType.GENERAL,ideal=0.0, \
 new_spec = integ_calib_obj(spec,2.0,2.0)
 integ.outputs['z'].deltas.bind(['m','m','+'],new_spec)
 
-spec = DeltaSpec(parser.parse_expr('integ((-1*a*x+v),(-2.0*(b*z0+c)))'))
+spec = DeltaSpec(parser.parse_expr('integ((-1*a*x+v),(-2.0*b*(z0+c)))'))
 #spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('a',DeltaParamType.GENERAL,ideal=1.0)
 spec.param('b',DeltaParamType.CORRECTABLE,ideal=1.0)
@@ -144,7 +147,7 @@ new_spec = integ_calib_obj(spec,2.0,2.0)
 integ.outputs['z'].deltas.bind(['m','m','-'],new_spec)
 
 
-spec = DeltaSpec(parser.parse_expr('integ((a*x),(20.0*(b*z0+c)))'))
+spec = DeltaSpec(parser.parse_expr('integ((a*x),(20.0*b*(z0+c)))'))
 #spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('a',DeltaParamType.GENERAL,ideal=1.0)
 spec.param('b',DeltaParamType.CORRECTABLE,ideal=1.0)
@@ -159,7 +162,7 @@ new_spec = integ_calib_obj(spec,20.0,20.0)
 integ.outputs['z'].deltas.bind(['h','h','+'],new_spec)
 
 
-spec = DeltaSpec(parser.parse_expr('integ((-1*a*x),(-20.0*(b*z0+c)))'))
+spec = DeltaSpec(parser.parse_expr('integ((-1*a*x),(-20.0*b*(z0+c)))'))
 #spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('a',DeltaParamType.GENERAL,ideal=1.0)
 spec.param('b',DeltaParamType.CORRECTABLE,ideal=1.0)
@@ -175,7 +178,7 @@ integ.outputs['z'].deltas.bind(['h','h','-'],new_spec)
 
 
 
-spec = DeltaSpec(parser.parse_expr('integ((10.0*a*x),(20.0*(b*z0+c)))'))
+spec = DeltaSpec(parser.parse_expr('integ((10.0*a*x),(20.0*b*(z0+c)))'))
 #spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('a',DeltaParamType.GENERAL,ideal=1.0)
 spec.param('b',DeltaParamType.CORRECTABLE,ideal=1.0)
@@ -189,7 +192,7 @@ spec.param('v',DeltaParamType.GENERAL,ideal=0.0, \
 new_spec = integ_calib_obj(spec,2.0,20.0)
 integ.outputs['z'].deltas.bind(['m','h','+'],new_spec)
 
-spec = DeltaSpec(parser.parse_expr('integ((-10.0*a*x),(-20.0*(b*z0+c)))'))
+spec = DeltaSpec(parser.parse_expr('integ((-10.0*a*x),(-20.0*b*(z0+c)))'))
 #spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('a',DeltaParamType.GENERAL,ideal=1.0)
 spec.param('b',DeltaParamType.CORRECTABLE,ideal=1.0)
@@ -205,7 +208,7 @@ integ.outputs['z'].deltas.bind(['m','h','-'],new_spec)
 
 
 
-spec = DeltaSpec(parser.parse_expr('integ((0.1*a*x),(2.0*(b*z0+c)))'))
+spec = DeltaSpec(parser.parse_expr('integ((0.1*a*x),(2.0*b*(z0+c)))'))
 #spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('a',DeltaParamType.GENERAL,ideal=1.0)
 spec.param('b',DeltaParamType.CORRECTABLE,ideal=1.0)
@@ -220,7 +223,7 @@ new_spec = integ_calib_obj(spec,20.0,2.0)
 integ.outputs['z'].deltas.bind(['h','m','+'],new_spec)
 
 
-spec = DeltaSpec(parser.parse_expr('integ((-0.1*a*x),(-2.0*(b*z0+c)))'))
+spec = DeltaSpec(parser.parse_expr('integ((-0.1*a*x),(-2.0*b*(z0+c)))'))
 #spec.param('a',DeltaParamType.CORRECTABLE,ideal=1.0)
 spec.param('a',DeltaParamType.GENERAL,ideal=1.0)
 spec.param('b',DeltaParamType.CORRECTABLE,ideal=1.0)

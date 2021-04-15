@@ -136,7 +136,9 @@ class HardwareInfo:
     if ival is None:
       raise Exception("specification error: %s.%s has no operating range for mode %s" \
                       % (instance,port_name,mode))
-    return ival
+
+    safe_ival = ival.scale(0.95)
+    return safe_ival
 
   def get_empirical_relation(self,instance,mode,port):
     block = self.dev.get_block(instance.block)
