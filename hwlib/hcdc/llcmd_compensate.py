@@ -109,6 +109,7 @@ def compute_expression_fields(board,adp,cfg,compensate=True, debug=False):
             gain,offset = 1.0,0.0
 
         inj = data_expr_field.injs[func_arg]
+       
         repls[func_arg] = genoplib.Mult(genoplib.Const(inj), \
                                         genoplib.Add( \
                                                       genoplib.Var(func_arg), \
@@ -142,10 +143,13 @@ def compute_expression_fields(board,adp,cfg,compensate=True, debug=False):
                               data_expr_field.expr.substitute(repls))
     if debug:
         print("func-expr: %s" % func_impl)
-    rel_impl = genoplib.Add( \
-                        rel.substitute({data_expr_field.name:func_impl}), \
-                        genoplib.Const(-offset/gain) \
-                       )
+    
+    rel_impl = rel.substitute({data_expr_field.name:func_impl})
+
+    #rel_impl = genoplib.Add( \
+    #                    rel.substitute({data_expr_field.name:func_impl}), \
+    #                    genoplib.Const(-offset/gain) \
+    #                   )
     output_port = blk.outputs.singleton()
     input_port = blk.inputs.singleton()
     final_expr = rel_impl.concretize()
@@ -215,14 +219,12 @@ def compute_constant_fields(board,adp,cfg,compensate=True,debug=False):
         gain,offset = 1.0,0.0
     
     orig_val = cfg[data_field.name].value
-    delta = -offset/(gain*cfg[data_field.name].scf)
-    cfg[data_field.name].value = orig_val + delta
-    cfg[data_field.name].value *= cfg[data_field.name].scf
+    new_val = orig_val*cfg[data_field.name].scf - offset
+    cfg[data_field.name].value = new_val
     if debug:
         print("=== field %s ===" % data_field)
         print("old-val=%f" % orig_val);
         print("scf=%f" % cfg[data_field.name].scf)
-        print("delta=%f" % delta)
         print("gain=%f" % gain)
         print("offset=%f" % offset)
         print("new-val=%f" % cfg[data_field.name].value);
