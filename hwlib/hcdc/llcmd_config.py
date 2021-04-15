@@ -22,7 +22,7 @@ def write_lut(runtime,board,blk,loc,adp):
     expr_data_field = 'e'
     expr_cfg = cfg[expr_data_field]
     data = blk.data[expr_data_field]
-    lut_outs = expr_cfg.outputs
+    lut_outs = expr_cfg.output
 
     assert(len(lut_outs) == 256)
     loc_t,loc_d = make_block_loc_t(blk,loc)
