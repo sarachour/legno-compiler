@@ -100,7 +100,11 @@ def simulate_adp(dev,adp,plot_file, \
                                     enable_model_error=enable_model_error, \
                                     enable_physical_model=enable_physical_model, \
                                     enable_quantization=enable_quantization)
-  plot_simulation(times,values,plot_file,separate=separate_figures)
+  if separate_figures:
+    plot_separate_simulations(times,values,plot_file)
+  else:
+    plot_simulation(times,values,plot_file)
+
 
 
 

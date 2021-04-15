@@ -17,6 +17,7 @@ class SymbolTable:
         self.smtenv.decl(str(v),smtlib.SMTEnv.Type.INT)
       elif isinstance(v,scalelib.PortScaleVar) or \
          isinstance(v,scalelib.TimeScaleVar) or\
+         isinstance(v,scalelib.FuncArgScaleVar) or\
          isinstance(v,scalelib.ConstCoeffVar) or \
          isinstance(v,scalelib.PropertyVar) or \
          isinstance(v,scalelib.InjectVar) or \
@@ -169,6 +170,7 @@ class LScaleSolutionGenerator:
     model_to_negate = {}
     for var_name,value in result.items():
       var = symtbl.get(var_name)
+
       if isinstance(var,scalelib.ModeVar):
         blkcfg = adp.configs.get(var.inst.block,var.inst.loc)
         blk = self.dev.get_block(var.inst.block)
@@ -177,6 +179,16 @@ class LScaleSolutionGenerator:
         blkcfg.modes = [mode]
         if len(blk.modes) > 1:
           model_to_negate[var_name] = value
+
+      elif isinstance(var,scalelib.FuncArgScaleVar):
+        if not value is None:
+          blkcfg = adp.configs.get(var.inst.block,var.inst.loc)
+          blkcfg[var.datafield].scf = undo_log(value)
+          if var.arg is None:
+            blkcfg[var.datafield].scfs[var.datafield] = undo_log(value)
+          else:
+            blkcfg[var.datafield].scfs[var.arg] = undo_log(value)
+
 
       elif isinstance(var,scalelib.PortScaleVar):
         if not value is None:

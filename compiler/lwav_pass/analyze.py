@@ -75,9 +75,9 @@ def align_waveform(adp,reference,measured, \
     print("time: [%f,%f]" % (min(measured.times), \
           max(measured.times)))
 
-    scale_error = max(timing_error/measured.runtime, \
-                      min_scaling_error)
+    scale_error = max(timing_error/measured.runtime, min_scaling_error)
     abs_offset_error = offset_error*(reference.runtime)
+    print("errors scale=%s offset=%s" % (scale_error,abs_offset_error) )
 
     rec_exp_aligned = reference.align(measured, \
                                       scale_slack=scale_error, \
@@ -85,6 +85,12 @@ def align_waveform(adp,reference,measured, \
     rec_exp_aligned.trim(reference.min_time, reference.max_time)
 
     return rec_exp_aligned
+
+def get_alignment_params():
+    return { \
+             'min_scaling_error':0.02, \
+             'offset_error':0.2, \
+    }
 
 def plot_waveform(dev,adp,waveform,emulate=True,measured=True):
     program,dsinfo,dssim,reference = reference_waveform(adp,waveform)
@@ -106,8 +112,11 @@ def plot_waveform(dev,adp,waveform,emulate=True,measured=True):
         yield vis
 
     print("==== Align with Reference ====")
+    pars = get_alignment_params()
     rec_exp_aligned = align_waveform(adp,reference, \
-                                     waveform.start_from_zero().recover())
+                                     waveform.start_from_zero().recover(), \
+                                     min_scaling_error=pars['min_scaling_error'],
+                                     offset_error=pars['offset_error'])
     error = reference.error(rec_exp_aligned)
     print("error: %s" % error)
 
@@ -121,7 +130,9 @@ def plot_waveform(dev,adp,waveform,emulate=True,measured=True):
     if emulate:
         print("==== Align with Emulated ====")
         emul_exp_aligned = align_waveform(adp,emulated.start_from_zero(), \
-                                          waveform.start_from_zero())
+                                          waveform.start_from_zero(), \
+                                          min_scaling_error=pars['min_scaling_error'], \
+                                          offset_error=pars['offset_error'])
         error = emulated.error(emul_exp_aligned)
         print("error: %s" % error)
 
@@ -147,9 +158,12 @@ def plot_waveform_summaries(dev,adps,waveforms):
     errors = []
 
     print("==== Collating Summaries ====")
+    pars = get_alignment_params()
     for adp,wf in zip(adps,waveforms):
         awf = align_waveform(adp,reference, \
-                             wf.start_from_zero().recover())
+                             wf.start_from_zero().recover(), \
+                             min_scaling_error=pars['min_scaling_error'], \
+                             offset_error=pars['offset_error'])
         error = reference.error(awf)
         align_wfs.append(awf)
         errors.append(error)

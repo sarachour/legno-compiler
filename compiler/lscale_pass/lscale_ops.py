@@ -206,9 +206,9 @@ class ModeVar(SCVar):
 
 class InjectVar(SCVar):
 
-  def __init__(self,instance,field,arg):
+  def __init__(self,inst,field,arg):
     SCVar.__init__(self)
-    self.inst = instance
+    self.inst = inst
     self.field = field
     self.arg = arg
 
@@ -216,6 +216,21 @@ class InjectVar(SCVar):
   def __repr__(self):
     return "inj(%s,%s,%s)" \
       % (self.inst,self.field,self.arg)
+
+
+
+
+class FuncArgScaleVar(SCVar):
+
+  def __init__(self,inst,datafield,arg):
+    SCVar.__init__(self)
+    self.inst = inst
+    self.datafield = datafield
+    self.arg = arg
+
+  def __repr__(self):
+    return "arg(%s,%s,%s)" \
+      % (self.inst,self.datafield,self.arg)
 
 
 class PortScaleVar(SCVar):
@@ -299,6 +314,11 @@ class SCMonomial:
   def coeff(self,c):
     assert(c > 0)
     self._coeff = c
+
+  def exponentiate(self,expo):
+    self._expos = list(map(lambda e: e*expo, self._expos))
+    self._coeff = self._coeff**(expo)
+    return self
 
   def product(self,mono):
     assert(isinstance(mono,SCMonomial))

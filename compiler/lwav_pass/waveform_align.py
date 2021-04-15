@@ -45,7 +45,7 @@ def _compute_loss(tscaff, xscaff, tsig,xsig,xform_spec,xform):
 
 def align(scaffold,sig,xform_spec):
   import compiler.lwav_pass.waveform as wavelib
-  n = 50
+  n = 100
   def objfun(x):
       return _compute_loss(tscaff=np.array(scaffold.times), \
                            xscaff=np.array(scaffold.values), \

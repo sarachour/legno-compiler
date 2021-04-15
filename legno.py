@@ -104,6 +104,8 @@ emul_subp.add_argument('--no-physdb', action='store_true', \
                        help='disable physical database.')
 emul_subp.add_argument('--no-model-error', action='store_true', \
                        help='disable physical database.')
+emul_subp.add_argument('--separate-figures', action='store_true', \
+                       help='separate figures.')
 
 
 

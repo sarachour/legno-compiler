@@ -186,19 +186,26 @@ def generate_factor_constraints(inst,rel):
     # make sure each constraint is
     assert(len(rel.func.func_args) == len(rel.values))
     for arg_name,value in zip(rel.func.func_args,rel.values):
-      arg_inj = scalelib.InjectVar(inst,data_field_name,arg_name)
+      func_arg = scalelib.FuncArgScaleVar(inst,rel.func.expr.name,arg_name)
       subcstrs,arg_scexpr = generate_factor_constraints(inst,value)
+
+      cstrs.append(scalelib.SCEq(scalelib.SCMonomial.make_var(func_arg), \
+                        arg_scexpr))
+
+      func_arg_inj = scalelib.InjectVar(inst,data_field_name,arg_name)
       monom = scalelib.SCMonomial()
-      monom.product(arg_scexpr)
-      monom.add_term(arg_inj)
+      monom.add_term(func_arg)
+      monom.add_term(func_arg_inj)
       cstrs.append(scalelib.SCEq(monom,  \
                                  scalelib.SCMonomial.make_const(1.0)))
       cstrs += subcstrs
 
     out_inj = scalelib.InjectVar(inst,data_field_name,None)
-    monom = scalelib.SCMonomial()
-    monom.add_term(out_inj)
-    return cstrs,monom
+    out_var = scalelib.FuncArgScaleVar(inst,rel.func.expr.name,None)
+    cstrs.append(scalelib.SCEq(scalelib.SCMonomial.make_var(out_inj),  \
+                 scalelib.SCMonomial.make_var(out_var)))
+
+    return cstrs,scalelib.SCMonomial.make_var(out_var)
 
   else:
     raise Exception(rel)
@@ -500,15 +507,17 @@ def generate_analog_port_constraints(hwinfo,dsinfo,inst, \
 
 def add_average_quality_terms(hwinfo):
   monom = scalelib.SCMonomial.make_const(1.0)
+  n_terms = len(list(hwinfo.get_quality_terms(scalelib.QualityMeasure.AQM)))
   for term in hwinfo.get_quality_terms(scalelib.QualityMeasure.AQM):
-    monom.product(term)
+    monom.product(term.copy().exponentiate(1.0/n_terms))
 
   if len(monom) >= 1:
     yield scalelib.SCEq(scalelib.QualityVar(scalelib.QualityMeasure.AVGAQM), monom)
 
   monom = scalelib.SCMonomial.make_const(1.0)
+  n_terms = len(list(hwinfo.get_quality_terms(scalelib.QualityMeasure.DQM)))
   for term in hwinfo.get_quality_terms(scalelib.QualityMeasure.DQM):
-    monom.product(term)
+    monom.product(term.copy().exponentiate(1.0/n_terms))
 
   if len(monom) >= 1:
     yield scalelib.SCEq(scalelib.QualityVar(scalelib.QualityMeasure.AVGDQM), monom)

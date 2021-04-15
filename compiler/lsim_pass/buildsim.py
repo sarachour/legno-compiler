@@ -466,6 +466,14 @@ class ADPStatefulEmulBlock(ADPEmulBlock):
 
 
   def _build_model(self,adp):
+    def set_to_ideal_expr():
+      expr = self.block.outputs[self.port.name].relation[self.cfg.mode]
+      integ_expr = mathutils.canonicalize_integration_operation(expr)
+      self._init_cond = self._concretize(integ_expr.init_cond)
+      self._deriv = self._concretize(integ_expr.deriv)
+      self.error_model = None
+      self.ic_error_model = None
+
     #expr = blk.outputs[port.name].relation[cfg.mode]
     out = self.block.outputs[self.port.name]
     models = deltalib.get_models(self.board, \
@@ -475,6 +483,10 @@ class ADPStatefulEmulBlock(ADPEmulBlock):
                                  output=out, \
                                  config=self.cfg, \
                                  calib_obj=self.calib_obj)
+
+    if not self.enable_phys:
+      set_to_ideal_expr()
+      return
 
     if len(models) == 0:
       print(self.cfg)
@@ -490,8 +502,6 @@ class ADPStatefulEmulBlock(ADPEmulBlock):
                                       self.cfg, \
                                       compensate=self.enable_compensate)
 
-    self.error_model = None
-    self.ic_error_model = None
     if not model is None and self.enable_phys:
       dataset = proflib.load(self.board, \
                            self.block, \
@@ -519,11 +529,7 @@ class ADPStatefulEmulBlock(ADPEmulBlock):
 
 
     else:
-      expr = self.block.outputs[self.port.name].relation[self.cfg.mode]
-
-    integ_expr = mathutils.canonicalize_integration_operation(expr)
-    self._init_cond = self._concretize(integ_expr.init_cond)
-    self._deriv = self._concretize(integ_expr.deriv)
+      set_to_ideal_expr()
 
 
 
