@@ -81,7 +81,10 @@ mult.outputs['z'] \
      .noise.bind(['_','_','h'],HIGH_NOISE)
 
 
+UNCONST_FREQ = 1280000.0
 MAX_FREQ = 40000.0
+mult.outputs['z'] \
+  .freq_limit.bind(['x','_','_'], UNCONST_FREQ)
 mult.outputs['z'] \
   .freq_limit.bind(['m','_','_'], MAX_FREQ)
 mult.outputs['z'] \

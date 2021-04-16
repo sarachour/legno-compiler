@@ -15,7 +15,7 @@ def dsinfo():
 
 def dsprog(prog):
   params = {
-    'meas_noise':0.3,
+    'meas_noise':0.6,
     'proc_noise':2.0,
     'one':0.9999
   }
@@ -26,7 +26,7 @@ def dsprog(prog):
 
   ampl = 0.3
   freq = 3.0
-  prog_util.build_oscillator(prog,ampl,freq,"VNZ","NZ")
+  #prog_util.build_oscillator(prog,ampl,freq,"VNZ","NZ")
 
 
 
@@ -35,9 +35,10 @@ def dsprog(prog):
   params['P0'] = 0.0
   params['Q'] = params['meas_noise']
 
-  #E = "SIG+{one}*(-X)"
-  prog.decl_var("INP", "SIG+NZ")
-  E = "INP+(-X)"
+  #prog.decl_var("INP", "SIG+NZ")
+  #E = "INP+(-X)"
+
+  E = "SIG+(-X)"
   dX = "{one}*RP*E"
   dP = "{Q}+(-RP)*P"
 

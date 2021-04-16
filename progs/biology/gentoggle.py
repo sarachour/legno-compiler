@@ -39,7 +39,7 @@ def dsprog(prog):
   params['one'] = 0.999999
   params['halfK'] = K/2.0;
   ampl = params['halfK']
-  freq = 1.0
+  freq = 0.9999999
   prog_util.build_oscillator(prog,ampl,freq,"VPERT","PERT")
 
   prog.decl_var("IPTG", "{halfK} + PERT",params)
