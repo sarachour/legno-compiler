@@ -33,7 +33,8 @@ def get_osc_chan_for_pin(pin):
 def get_wall_clock_time(board,dsprog,adp,sim_time):
     tc = board.time_constant/adp.tau
     time_sec = sim_time*tc
-    print("wall tc=%e sim=%f wc=%f" % (tc,sim_time,time_sec))
+    print("wall tc=%e tau=%f adp-tc=%e sim=%f wc=%f" \
+          % (board.time_constant,adp.tau,tc,sim_time,time_sec))
     return time_sec
 
 def unpack_arduino_waveform(dataset):
@@ -181,7 +182,7 @@ def execute_simulation(runtime,board,dsprog,adp,sim_time=None,osc=None,manual=Fa
         sim_time = dsprog.max_time
 
     if dsprog.max_time < sim_time:
-        raise Exception("cannot execute simulation: maximum runtime is %s" % dsprog.max_time)
+        raise Exception("cannot execute simulation for %f: maximum runtime is %s" % (sim_time,dsprog.max_time))
 
     noargs = {'ints':[0,0,0]}
     print("=== enabling flags ===")
