@@ -193,18 +193,19 @@ def execute_simulation(runtime,board,dsprog,adp,sim_time=None,osc=None,manual=Fa
         configure_oscilloscope(osc,board,dsprog,adp,sim_time)
 
     print("=== writing simulation time ===")
-    time_sec = get_wall_clock_time(board,dsprog,adp,sim_time)
-    simargs = {'floats':[time_sec,0.0,0.0]}
+    SLACK = 2.0
+    exec_hw_time = get_wall_clock_time(board,dsprog,adp,sim_time)*SLACK
+    exec_sim_time = sim_time*SLACK
+    simargs = {'floats':[exec_hw_time,0.0,0.0]}
     dispatch(llenums.ExpCmdType.SET_SIM_TIME,simargs,0)
 
 
     if manual:
         input("waiting for input:")
 
-    SLACK = 2.0
     resp = dispatch(llenums.ExpCmdType.RUN,noargs,0)
-    save_data_from_arduino(resp,board,dsprog,adp,sim_time*SLACK)
+    save_data_from_arduino(resp,board,dsprog,adp,exec_sim_time)
 
     if not osc is None:
         print("=== retrieving data ===")
-        save_data_from_oscilloscope(osc,board,dsprog,adp,sim_time)
+        save_data_from_oscilloscope(osc,board,dsprog,adp,exec_sim_time)

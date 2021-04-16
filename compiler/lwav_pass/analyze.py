@@ -118,8 +118,10 @@ def plot_waveform(dev,adp,waveform,emulate=True,measured=True):
                                      min_scaling_error=pars['min_scaling_error'],
                                      offset_error=pars['offset_error'])
     error = reference.error(rec_exp_aligned)
-    print("error: %s" % error)
-
+    time = min(rec_exp_aligned.max_time, reference.max_time)
+    print("align error: %s" % error)
+    print("times exp=%s ref=%s" % (rec_exp_aligned.max_time, reference.max_time))
+    input()
     vis = wavelib.WaveformVis("vsref",ylabel,program.name)
     vis.set_style('ref',ref_color,'-')
     vis.set_style('meas',meas_color,'--')
