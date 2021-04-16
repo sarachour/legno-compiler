@@ -29,10 +29,11 @@ import util.util as util
 SETTINGS = {
   'physdb': False,
   'model_error': False,
-  'interval': False,
-  'quantize': False,
+  'interval': True,
+  'quantize': True,
   'compensate':True,
-  'correctable':True
+  'correctable':False,
+  'll_correctable':False
 }
 
 class ADPSim:
@@ -240,6 +241,7 @@ class ADPEmulBlock:
     self.enable_quantize = SETTINGS['quantize']
     self.enable_model_error = SETTINGS['model_error']
     self.correctable = SETTINGS['correctable']
+    self.ll_correctable = SETTINGS['ll_correctable']
 
     self._build_model(adp)
 
@@ -354,7 +356,8 @@ class ADPEmulBlock:
 
       spec = self.block.outputs[self.port.name].deltas[self.cfg.mode]
       expr = spec.get_model(model.params) if \
-        not self.correctable else spec.get_correctable_model(model.params)
+        not self.correctable else spec.get_correctable_model(model.params, \
+                                                             low_level=self.ll_correctable)
 
       if not dataset is None:
         errors = model.errors(dataset,init_cond=False)
@@ -510,7 +513,7 @@ class ADPStatefulEmulBlock(ADPEmulBlock):
       spec = self.block.outputs[self.port.name].deltas[self.cfg.mode]
       expr = spec.get_model(model.params) \
         if not self.correctable else spec.get_correctable_model(model.params, \
-                                                                low_level=True)
+                                                                low_level=self.ll_correctable)
  
       if not dataset is None and self.enable_model_error:
         errors = model.errors(dataset,init_cond=True)

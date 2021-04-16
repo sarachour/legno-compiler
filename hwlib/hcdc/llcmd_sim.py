@@ -201,8 +201,9 @@ def execute_simulation(runtime,board,dsprog,adp,sim_time=None,osc=None,manual=Fa
     if manual:
         input("waiting for input:")
 
+    SLACK = 2.0
     resp = dispatch(llenums.ExpCmdType.RUN,noargs,0)
-    save_data_from_arduino(resp,board,dsprog,adp,sim_time)
+    save_data_from_arduino(resp,board,dsprog,adp,sim_time*SLACK)
 
     if not osc is None:
         print("=== retrieving data ===")

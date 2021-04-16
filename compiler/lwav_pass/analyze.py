@@ -8,6 +8,7 @@ import math
 
 def get_emulated_waveforms(board,program,adp,dssim,recover=False):
     en_phys,en_err,en_ival,en_quant = True,True,False,True
+    #en_phys,en_err,en_ival,en_quant = True,False,False,False
 
     times,value_dict = lsimlib.run_adp_simulation(board, \
                                                   adp, \
@@ -87,7 +88,7 @@ def align_waveform(adp,reference,measured, \
 
 def get_alignment_params():
     return { \
-             'min_scaling_error':0.02, \
+             'min_scaling_error':0.04, \
              'offset_error':0.2, \
     }
 
