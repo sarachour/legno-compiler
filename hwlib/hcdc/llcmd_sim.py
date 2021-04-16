@@ -194,8 +194,8 @@ def execute_simulation(runtime,board,dsprog,adp,sim_time=None,osc=None,manual=Fa
 
     print("=== writing simulation time ===")
     SLACK = 2.0
-    exec_hw_time = get_wall_clock_time(board,dsprog,adp,sim_time)*SLACK
     exec_sim_time = sim_time*SLACK
+    exec_hw_time = get_wall_clock_time(board,dsprog,adp,exec_sim_time)
     simargs = {'floats':[exec_hw_time,0.0,0.0]}
     dispatch(llenums.ExpCmdType.SET_SIM_TIME,simargs,0)
 
