@@ -175,12 +175,19 @@ def print_summary(dev,adp,rmse):
     print(adp.metadata)
     print("------------ lgraph ----------------")
     by_block = {'adc':[],'dac':[],'mult':[],'integ':[],'extout':[]}
+    total_blocks = 0
     for cfg in adp.configs:
         if cfg.inst.block in by_block:
             by_block[cfg.inst.block].append(cfg.mode)
+        total_blocks +=1
+
+    total_conns = len(list(adp.conns))
 
     for block_name,modes in by_block.items():
-        print("%s = %d modes=%d" % (block_name,len(modes), len(set(modes))))
+        print("%s = %d modes=%s" % (block_name,len(modes), set(modes)))
+
+    print("total blocks = %d" % total_blocks)
+    print("total conns = %d" % total_conns)
 
     print("------------ lscale  ----------------")
     scale_factors = []

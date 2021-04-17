@@ -51,6 +51,7 @@ def exec_lscale(args):
                 if args.no_scale and not scale_method is scalelib.ScaleMethod.IDEAL:
                     raise Exception("cannot disable scaling transform if you're using the delta model database")
 
+                timer.start()
                 for idx,scale_adp in enumerate(lscale.scale(board, \
                                                             program, \
                                                             adp, \
@@ -59,6 +60,7 @@ def exec_lscale(args):
                                                             calib_obj=calib_obj, \
                                                             no_scale=args.no_scale, \
                                                             one_mode=args.one_mode)):
+                    timer.end()
 
                     print("<<< writing scaled circuit %d/%d>>>" % (idx,args.scale_adps))
                     scale_adp.metadata.set(ADPMetadata.Keys.LSCALE_ID,idx)
@@ -222,11 +224,16 @@ def exec_lexec(args):
                     if not _lexec_already_ran(path_handler,board,adp,trial=0, \
                                               scope=args.scope) or \
                        args.force:
+                        timer.start()
                         cmd = EXEC_CMD.format(**kwargs)
                         code = os.system(cmd)
+                        timer.end()
                         #input("continue")
                         if code == signal.SIGINT or code != 0:
                             raise Exception("User terminated process")
+
+        print(timer)
+        timer.save()
 
 def exec_lsim(args):
     from compiler import lsim
@@ -301,6 +308,15 @@ def exec_lemul(args):
                                       enable_model_error =not args.no_model_error, \
                                       separate_figures=args.separate_figures)
 
+def print_runtime_stats(path_handler):
+    lgraph = util.Timer.load('lgraph',path_handler)
+    lscale = util.Timer.load('lscale',path_handler)
+    lexec = util.Timer.load('lexec',path_handler)
+    print("----- runtime statistics -----")
+    print(lgraph)
+    print(lscale)
+    print(lexec)
+
 def exec_stats(args,trials=1):
     import compiler.lwav_pass.waveform as wavelib
     import compiler.lwav_pass.analyze as analyzelib
@@ -360,6 +376,8 @@ def exec_stats(args,trials=1):
     print(best_adp_name)
     print("----------------------------------------------------------------------------")
     analyzelib.print_summary(board,best_adp,error)
+    print("------------ runtime ----------------")
+    print_runtime_stats(path_handler)
 
 def exec_wav(args,trials=1):
     import compiler.lwav_pass.waveform as wavelib
