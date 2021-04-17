@@ -50,6 +50,7 @@ subdirs = ['lgraph-adp/*.adp', \
            'lscale-adp/*{model_number}*.adp', \
            'lscale-diag/*{model_number}*.dot*', \
            'out-waveform/*_{model_number}_*.json', \
+           'times/*.txt', \
            'plots/wave/*_{model_number}_*.pdf']
 
 for subdir in subdirs:

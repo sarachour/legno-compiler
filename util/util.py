@@ -151,6 +151,9 @@ class Timer:
         self._name = name
         self._paths = ph
 
+    def runs(self):
+        return list(self._runs)
+
     def start(self):
         self._start = time.time()
 
@@ -176,6 +179,30 @@ class Timer:
             fh.write("%s\n" % self._name)
             for run in self._runs:
                 fh.write("%f\n" % run)
+
+    def __repr__(self):
+        if len(self._runs) == 0:
+            return "%s npts=0" % (self._name)
+        else:
+            mean = np.mean(self._runs)
+            std = np.std(self._runs)
+            return "%s npts=%d mean=%s std=%s" % (self._name,len(self._runs),mean,std)
+
+
+    @staticmethod
+    def load(name,ph):
+        filename = ph.time_file(name)
+        timer = Timer(name,ph)
+        if not os.path.exists(filename):
+            return timer
+
+        with open(filename,'r') as fh:
+            fh.readline()
+            for line in fh:
+                timer._runs.append(float(line))
+
+        return timer
+
 
 def flatten(dictionary, level = []):
     tmp_dict = {}

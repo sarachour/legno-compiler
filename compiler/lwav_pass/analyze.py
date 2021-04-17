@@ -1,6 +1,8 @@
 from hwlib.adp import ADP,ADPMetadata
+import hwlib.hcdc.energy_model as energymodel
 from dslang.dsprog import DSProgDB
 
+import hwlib.adp as adplib
 import compiler.lwav_pass.waveform as wavelib
 import compiler.lsim as lsimlib
 import numpy as np
@@ -88,8 +90,10 @@ def align_waveform(adp,reference,measured, \
 
 def get_alignment_params():
     return { \
-             'min_scaling_error':0.04, \
-             'offset_error':0.2, \
+             'min_scaling_error':0.02, \
+             'offset_error':0.3, \
+             'timing_error':8e-4
+
     }
 
 def plot_waveform(dev,adp,waveform,emulate=True,measured=True):
@@ -116,12 +120,16 @@ def plot_waveform(dev,adp,waveform,emulate=True,measured=True):
     rec_exp_aligned = align_waveform(adp,reference, \
                                      waveform.start_from_zero().recover(), \
                                      min_scaling_error=pars['min_scaling_error'],
-                                     offset_error=pars['offset_error'])
-    error = reference.error(rec_exp_aligned)
+                                     offset_error=pars['offset_error'], \
+                                     timing_error=pars['timing_error'])
+    try:
+        error = reference.error(rec_exp_aligned)
+    except Exception as e:
+        return
+
     time = min(rec_exp_aligned.max_time, reference.max_time)
     print("align error: %s" % error)
     print("times exp=%s ref=%s" % (rec_exp_aligned.max_time, reference.max_time))
-    input()
     vis = wavelib.WaveformVis("vsref",ylabel,program.name)
     vis.set_style('ref',ref_color,'-')
     vis.set_style('meas',meas_color,'--')
@@ -146,8 +154,77 @@ def plot_waveform(dev,adp,waveform,emulate=True,measured=True):
         yield vis
 
 
+def print_summary(dev,adp,rmse):
+    program = DSProgDB.get_prog(adp.metadata[ADPMetadata.Keys.DSNAME])
+    dssim = DSProgDB.get_sim(program.name)
+    dsinfo = DSProgDB.get_info(program.name)
+
+ 
+    runtime = dev.time_constant/adp.tau*dssim.sim_time
+    bandwidth = (1.0/dev.time_constant)*adp.tau
+    power = energymodel.compute_power(adp,bandwidth)
+    energy = runtime*power
+
+    print("--------    general -------------")
+    print("runtime = %f ms" % (runtime*1000))
+    print("power    = %f mW" % (power*1e3))
+    print("energy  = %f uJ" % (energy*1e6))
+    print("quality = %f %%" % rmse)
+
+    print("------------ metadata ----------------")
+    print(adp.metadata)
+    print("------------ lgraph ----------------")
+    by_block = {'adc':[],'dac':[],'mult':[],'integ':[],'extout':[]}
+    total_blocks = 0
+    for cfg in adp.configs:
+        if cfg.inst.block in by_block:
+            by_block[cfg.inst.block].append(cfg.mode)
+        total_blocks +=1
+
+    total_conns = len(list(adp.conns))
+
+    for block_name,modes in by_block.items():
+        print("%s = %d modes=%s" % (block_name,len(modes), set(modes)))
+
+    print("total blocks = %d" % total_blocks)
+    print("total conns = %d" % total_conns)
+
+    print("------------ lscale  ----------------")
+    scale_factors = []
+    injected_vars = []
+    for cfg in adp.configs:
+        for stmt in cfg.stmts:
+            if stmt.type == adplib.ConfigStmtType.CONSTANT:
+                scale_factors.append(stmt.scf)
+            if stmt.type == adplib.ConfigStmtType.PORT:
+                scale_factors.append(stmt.scf)
+            if stmt.type == adplib.ConfigStmtType.EXPR:
+                for scf in stmt.scfs:
+                    scale_factors.append(scf)
+                for inj in stmt.injs:
+                    injected_vars.append(inj)
+
+    print("tau=%f" % (adp.tau))
+    print("scf total = %d" % len(scale_factors))
+    print("scf uniq = %d" % len(set(scale_factors)))
+    print("inj total = %d" % len(injected_vars))
+    print("inj uniq = %d" % len(set(injected_vars)))
 
 
+
+def get_waveform_error(dev,adp,waveform):
+    program,dsinfo,dssim,reference = reference_waveform(adp,waveform)
+    pars = get_alignment_params()
+    rec_exp_aligned = align_waveform(adp,reference, \
+                                     waveform.start_from_zero().recover(), \
+                                     min_scaling_error=pars['min_scaling_error'],
+                                     offset_error=pars['offset_error'], \
+                                     timing_error=pars['timing_error'])
+    try:
+        error = reference.error(rec_exp_aligned)
+        return error
+    except Exception as e:
+        return None
 
 
 def plot_waveform_summaries(dev,adps,waveforms):
@@ -165,8 +242,13 @@ def plot_waveform_summaries(dev,adps,waveforms):
         awf = align_waveform(adp,reference, \
                              wf.start_from_zero().recover(), \
                              min_scaling_error=pars['min_scaling_error'], \
-                             offset_error=pars['offset_error'])
-        error = reference.error(awf)
+                             offset_error=pars['offset_error'], \
+                             timing_error=pars['timing_error'])
+        try:
+            error = reference.error(awf)
+        except Exception as e:
+            continue
+
         align_wfs.append(awf)
         errors.append(error)
 
