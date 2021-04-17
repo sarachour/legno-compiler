@@ -59,6 +59,7 @@ bmark_dir = "{tmp}/bmarks".format(tmp=tmpdir)
 path = 'outputs/legno/unrestricted/'
 subdirs = ['lgraph-adp/*.adp', \
            'lgraph-diag/*.gv*', \
+           'times/*.txt', \
            'lscale-adp/*_{model_number}*.adp', \
            'lscale-diag/*_{model_number}*.dot*', \
            'out-waveform/*_{model_number}_*.json', \

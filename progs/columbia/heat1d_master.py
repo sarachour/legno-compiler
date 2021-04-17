@@ -41,14 +41,14 @@ def make_dsprog(prog,N,I):
     params["N"] = "D%d" % (i+1) if i+1 < N else None
 
     if params['N'] is None:
-        #dPt = "{tc}*((-{C})+(-{C})+{P})"
-        dPt = "((-{C})+(-{C})+{P})"
+        dPt = "{tc}*((-{C})+(-{C})+{P})"
+        #dPt = "((-{C})+(-{C})+{P})"
     elif params['P'] is None:
-        #dPt = "{tc}*({N} + (-{C}) + (-{C}) + {init_heat})"
-        dPt = "({N} + (-{C}) + (-{C}) + {init_heat})"
+        dPt = "{tc}*({N} + (-{C}) + (-{C}) + {init_heat})"
+        #dPt = "({N} + (-{C}) + (-{C}) + {init_heat})"
     else:
-        #dPt = "{tc}*({P} + (-{C}) + (-{C}) + {N})"
-        dPt = "({P} + (-{C}) + (-{C}) + {N})"
+        dPt = "{tc}*({P} + (-{C}) + (-{C}) + {N})"
+        #dPt = "({P} + (-{C}) + (-{C}) + {N})"
 
     prog.decl_stvar("D%d" % i, dPt, "0.0", params)
     prog.interval("D%d" % i, \
@@ -57,6 +57,7 @@ def make_dsprog(prog,N,I):
 
   assert(I >= 1 and I <= N);
   prog.emit("{one}*D%d" % (I-1), "POINT",params)
+  prog.max_time = 200
   prog.check()
 
 def make_dssim():

@@ -37,8 +37,8 @@ def dsprog(prob):
 
   # reparametrization
   K = 0.70
-  #scale = 1.1
-  scale = 5.1
+  scale = 1.1
+  #scale = 5.1
   params = {
     'LacLm0':0.5,
     'clm0':0.25,
@@ -111,7 +111,8 @@ def dsprog(prob):
   prob.interval("ATetR",0,act_bnd)
   prob.interval("Aclp",0,act_bnd)
   prob.emit("{one}*LacLp","LacLProt",params)
-
+ 
+  prob.max_time = 300
 
 def dssim():
   sim = DSSim("t200")
