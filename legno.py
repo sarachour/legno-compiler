@@ -110,6 +110,10 @@ emul_subp.add_argument('--separate-figures', action='store_true', \
 
 
 
+plot_subp = subparsers.add_parser('lstats', help='analyze waveforms.')
+plot_subp.add_argument('program', help='program to analyze.')
+
+
 plot_subp = subparsers.add_parser('lwav', help='analyze waveforms.')
 plot_subp.add_argument('program', help='program to analyze.')
 plot_subp.add_argument('--summary-plots', action='store_true', \
@@ -158,6 +162,10 @@ elif args.subparser_name == "lemul":
 
 elif args.subparser_name == "lwav":
    legno_util.exec_wav(args)
+
+elif args.subparser_name == "lstats":
+   legno_util.exec_stats(args)
+
 
 else:
     raise Exception("legno.py: unknown subcommand: <%s>" % args.subparser_name)

@@ -301,6 +301,66 @@ def exec_lemul(args):
                                       enable_model_error =not args.no_model_error, \
                                       separate_figures=args.separate_figures)
 
+def exec_stats(args,trials=1):
+    import compiler.lwav_pass.waveform as wavelib
+    import compiler.lwav_pass.analyze as analyzelib
+
+    path_handler = paths.PathHandler(args.subset, \
+                                     args.program)
+    program = DSProgDB.get_prog(args.program)
+    scope_options = [True,False]
+
+    error = None
+    best_adp = None
+    best_adp_name = None
+    for dirname, subdirlist, filelist in \
+        os.walk(path_handler.lscale_adp_dir()):
+        for adp_file in filelist:
+            if adp_file.endswith('.adp'):
+                with open(dirname+"/"+adp_file,'r') as fh:
+                    print("===== %s =====" % (adp_file))
+                    adp_obj = json.loads(fh.read())
+                    metadata = ADPMetadata.from_json(adp_obj['metadata'])
+                    if not metadata.has(ADPMetadata.Keys.RUNTIME_PHYS_DB) or \
+                       not metadata.has(ADPMetadata.Keys.RUNTIME_CALIB_OBJ):
+                        continue
+
+                    board = get_device(metadata.get(ADPMetadata.Keys.RUNTIME_PHYS_DB))
+                    adp = ADP.from_json(board, adp_obj)
+                    calib_obj = llenums.CalibrateObjective(adp.metadata[ADPMetadata.Keys.RUNTIME_CALIB_OBJ])
+                    for trial in range(trials):
+                        for var,_,_ in adp.observable_ports(board):
+                            for has_scope in scope_options:
+                                print("------- %s [has_scope=%s] ----" % (adp_file,has_scope))
+                                waveform_file = path_handler.measured_waveform_file( \
+                                                                                     graph_index=adp.metadata[ADPMetadata.Keys.LGRAPH_ID],
+                                                                                     scale_index=adp.metadata[ADPMetadata.Keys.LSCALE_ID],
+                                                                                     model=adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD],
+                                                                                     calib_obj=calib_obj, \
+                                                                                     opt=adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE], \
+                                                                                     phys_db=adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB] , \
+                                                                                     no_scale=adp.metadata[ADPMetadata.Keys.LSCALE_NO_SCALE], \
+                                                                                     one_mode=adp.metadata[ADPMetadata.Keys.LSCALE_ONE_MODE], \
+                                                                                     variable=var, \
+                                                                                     trial=trial, \
+                                                                                     oscilloscope=has_scope)
+
+                                if os.path.exists(waveform_file):
+                                    with open(waveform_file,'r') as fh:
+                                        obj = util.decompress_json(fh.read())
+                                        wave = wavelib.Waveform.from_json(obj)
+                                        this_error = analyzelib.get_waveform_error(board,adp,wave)
+                                        if error is None or this_error < error:
+                                            error = this_error
+                                            best_adp = adp
+                                            best_adp_name = adp_file
+
+
+    print("============ BEST EXECUTION SUMMARY ========")
+    print(best_adp_name)
+    print("----------------------------------------------------------------------------")
+    analyzelib.print_summary(board,best_adp,error)
+
 def exec_wav(args,trials=1):
     import compiler.lwav_pass.waveform as wavelib
     import compiler.lwav_pass.analyze as analyzelib
