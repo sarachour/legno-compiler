@@ -174,7 +174,9 @@ def print_summary(dev,adp,rmse):
     print("------------ metadata ----------------")
     print(adp.metadata)
     print("------------ lgraph ----------------")
-    by_block = {'adc':[],'dac':[],'mult':[],'integ':[],'extout':[]}
+    by_block = {'fanout':[],'adc':[],'dac':[],'mult':[], 'integ':[], \
+                'extout':[],'extin':[],'cin':[],'cout':[],'tin':[],'tout':[]}
+
     total_blocks = 0
     for cfg in adp.configs:
         if cfg.inst.block in by_block:
@@ -184,7 +186,8 @@ def print_summary(dev,adp,rmse):
     total_conns = len(list(adp.conns))
 
     for block_name,modes in by_block.items():
-        print("%s = %d modes=%s" % (block_name,len(modes), set(modes)))
+        if len(modes) > 0:
+            print("%s = %d modes=%s" % (block_name,len(modes), set(modes)))
 
     print("total blocks = %d" % total_blocks)
     print("total conns = %d" % total_conns)

@@ -321,14 +321,38 @@ def exec_stats(args,trials=1):
     import compiler.lwav_pass.waveform as wavelib
     import compiler.lwav_pass.analyze as analyzelib
 
+    error_key = lambda adp : (
+        adp.metadata[ADPMetadata.Keys.RUNTIME_CALIB_OBJ], \
+        adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD], \
+        adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE], \
+        adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB], \
+        adp.metadata[ADPMetadata.Keys.LSCALE_NO_SCALE], \
+        adp.metadata[ADPMetadata.Keys.LSCALE_ONE_MODE])
+
+    error_summary = {}
+    def update_error(adp,error):
+        key = error_key(adp)
+        if not key in error_summary:
+            error_summary[key] = []
+
+        error_summary[key].append(error)
+
+
     path_handler = paths.PathHandler(args.subset, \
                                      args.program)
     program = DSProgDB.get_prog(args.program)
     scope_options = [True,False]
 
+    if args.runtimes_only:
+        print("------------ runtime ----------------")
+        print_runtime_stats(path_handler)
+        return
+
     error = None
     best_adp = None
     best_adp_name = None
+
+
     for dirname, subdirlist, filelist in \
         os.walk(path_handler.lscale_adp_dir()):
         for adp_file in filelist:
@@ -366,6 +390,10 @@ def exec_stats(args,trials=1):
                                         obj = util.decompress_json(fh.read())
                                         wave = wavelib.Waveform.from_json(obj)
                                         this_error = analyzelib.get_waveform_error(board,adp,wave)
+                                        if this_error is None:
+                                            continue
+
+                                        update_error(adp,this_error)
                                         if error is None or this_error < error:
                                             error = this_error
                                             best_adp = adp
@@ -378,6 +406,17 @@ def exec_stats(args,trials=1):
     analyzelib.print_summary(board,best_adp,error)
     print("------------ runtime ----------------")
     print_runtime_stats(path_handler)
+
+    print("============ AVERAGE EXECUTION SUMMARY ========")
+    for key,errors in error_summary.items():
+        median = np.median(errors)
+        q1 = np.percentile(errors,25)
+        med = np.percentile(errors,50)
+        q3 = np.percentile(errors,75)
+        min_err = min(errors)
+        max_err = max(errors)
+
+        print("%s min=%f q1=%f med=%f q3=%f max=%f n=%d" % (key,min_err,q1,med,q3,max_err,len(errors)))
 
 def exec_wav(args,trials=1):
     import compiler.lwav_pass.waveform as wavelib

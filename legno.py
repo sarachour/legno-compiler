@@ -112,6 +112,8 @@ emul_subp.add_argument('--separate-figures', action='store_true', \
 
 plot_subp = subparsers.add_parser('lstats', help='analyze waveforms.')
 plot_subp.add_argument('program', help='program to analyze.')
+plot_subp.add_argument('--runtimes-only', action='store_true', \
+                       help='only print out runtime summary.')
 
 
 plot_subp = subparsers.add_parser('lwav', help='analyze waveforms.')
