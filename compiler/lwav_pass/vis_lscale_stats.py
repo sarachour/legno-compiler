@@ -141,7 +141,7 @@ def interval_usage_analysis(dev,dsprog,adps):
                     ratio = ival.bound/oprng.bound
                     if(ratio > 1.01):
                         expr = dsinfo.get_expr(cfg.inst, stmt.name)
-                        raise Exception("%s.%s out of bounds expr=%s ival=%s oprng=%s scf=%s"  \
+                        print("[warn] %s.%s out of bounds expr=%s ival=%s oprng=%s scf=%s"  \
                                         % (cfg.inst,stmt.name,expr,ival,oprng,stmt.scf))
                     adp_signal_usage_map.append(ratio)
 

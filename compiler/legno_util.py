@@ -511,6 +511,10 @@ def exec_wav(args,trials=1):
 
                                         nrmse = adp.metadata.get(ADPMetadata.Keys.LWAV_NRMSE)
                                         nrmses.append(nrmse)
+
+                                        # all of the waveforms should have roughly the same alignment
+                                        alignment = adp.metadata.get(ADPMetadata.Keys.LWAV_ALIGN)
+                                        master_adp.metadata.set(ADPMetadata.Keys.LWAV_ALIGN,alignment)
                             else:
                                 print("[warn] no waveform file found")
 

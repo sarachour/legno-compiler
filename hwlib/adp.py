@@ -563,7 +563,8 @@ class ADPMetadata:
     FEATURE_SUBSET = "subset"
     LSCALE_NO_SCALE = "no_scale"
     LSCALE_ONE_MODE = "one_mode"
-    LWAV_NRMSE = "rmse"
+    LWAV_NRMSE = "lwav_rmse"
+    LWAV_ALIGN= "lwav_align"
 
   def __init__(self):
     self._meta = {}

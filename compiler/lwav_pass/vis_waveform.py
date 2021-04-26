@@ -6,6 +6,7 @@ from hwlib.adp import ADP,ADPMetadata
 import compiler.lsim as lsimlib
 import numpy as np
 import math
+import json
 
 def get_emulated_waveforms(board,program,adp,dssim,recover=False):
     en_phys,en_err,en_ival,en_quant = True,True,False,True
@@ -73,18 +74,24 @@ def align_waveform(adp,reference,measured, \
                    timing_error=2e-5, \
                    min_scaling_error=0.02, \
                    offset_error=0.15):
-    print("time: [%f,%f]" % (min(measured.times), \
-          max(measured.times)))
 
-    scale_error = max(timing_error/measured.runtime, min_scaling_error)
-    abs_offset_error = offset_error*(reference.runtime)
-    print("errors scale=%s offset=%s" % (scale_error,abs_offset_error) )
+    if adp.metadata.has(ADPMetadata.Keys.LWAV_ALIGN):
+        xform = json.loads(adp.metadata.get(ADPMetadata.Keys.LWAV_ALIGN))
+        rec_exp_aligned = measured.apply_time_transform(xform['scale'],xform['offset'])
+    else:
+        print("time: [%f,%f]" % (min(measured.times), \
+            max(measured.times)))
 
-    rec_exp_aligned = reference.align(measured, \
-                                      scale_slack=scale_error, \
-                                      offset_slack=abs_offset_error)
+        scale_error = max(timing_error/measured.runtime, min_scaling_error)
+        abs_offset_error = offset_error*(reference.runtime)
+        print("errors scale=%s offset=%s" % (scale_error,abs_offset_error) )
+
+        xform,rec_exp_aligned = reference.align(measured, \
+                                        scale_slack=scale_error, \
+                                        offset_slack=abs_offset_error)
+        adp.metadata.set(ADPMetadata.Keys.LWAV_ALIGN,json.dumps(xform))
+
     rec_exp_aligned.trim(reference.min_time, reference.max_time)
-
     return rec_exp_aligned
 
 def get_alignment_params():

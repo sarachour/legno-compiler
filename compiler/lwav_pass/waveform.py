@@ -150,6 +150,17 @@ class Waveform:
 
         return sumsq
 
+    def apply_time_transform(self,scale,offset):
+        xformed_times=list(map(lambda t: scale*t + offset, self.times))
+
+        return Waveform(self.variable, \
+                              times=xformed_times, \
+                              values=self.values, \
+                              ampl_units=self.ampl_units, \
+                              time_units=self.time_units, \
+                              mag_scale=self.mag_scale)
+
+
     def align(self,other,scale_slack=0.02, offset_slack=0.0001):
         if not (self.time_units == other.time_units):
             raise Exception("time unit mismatch: %s != %s"  \
@@ -172,18 +183,11 @@ class Waveform:
               % (min(other.times),max(other.times)))
         xform,_ = alignutil.align(self.resample(npts), \
                                   other.resample(npts),xform_spec)
+        xform['offset'] = -xform['offset']
         print(xform)
         print("limits: scale=%s offset=%s" % (xform_spec[0], xform_spec[1]))
-        xformed_times=list(map(lambda t: xform['scale']*t - xform['offset'], other.times))
-
-        return Waveform(other.variable, \
-                        times=xformed_times, \
-                        values=other.values, \
-                        ampl_units=other.ampl_units, \
-                        time_units=other.time_units, \
-                        mag_scale=other.mag_scale)
-
-
+        return xform,other.apply_time_transform(xform['scale'],xform['offset'])
+ 
 
     def __len__(self):
         return len(self.times)
