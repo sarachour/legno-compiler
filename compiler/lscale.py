@@ -86,11 +86,13 @@ def random_objectives(cstr_prob,count):
   var_map = {}
   for cstr in cstr_prob:
     for var in cstr.vars():
-      var_map[str(var)] = var
+      if isinstance(var,scalelib.PortScaleVar) or \
+         isinstance(var,scalelib.TimeScaleVar):
+         var_map[str(var)] = var
 
   for idx in range(count):
     monom = scalelib.SCMonomial()
-    variables = random.sample(list(var_map.values()),4)
+    variables = random.sample(list(var_map.values()),2)
     for var in variables:
       flip = random.randint(0,1)
       if flip == 0:
