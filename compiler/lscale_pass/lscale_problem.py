@@ -412,6 +412,10 @@ def force_identity_scaling_transform(dev,adp):
       yield scalelib.SCEq(scalelib.PortScaleVar(config.inst,data.name), \
                           scalelib.SCMonomial.make_const(1.0))
 
+def restrict_modes_to_lgraph_only(hwinfo,inst,mode_subset):
+  v_mode = scalelib.ModeVar(inst,hwinfo.modes(inst.block))
+  yield scalelib.SCSubsetOfModes(v_mode,mode_subset)
+
 def generate_constraint_problem(dev,program,adp, \
                                 scale_method=scalelib.ScaleMethod.IDEAL, \
                                 calib_obj=None, \
@@ -420,8 +424,7 @@ def generate_constraint_problem(dev,program,adp, \
 
   hwinfo = scalelib.HardwareInfo(dev, \
                                  scale_method=scale_method, \
-                                 calib_obj=calib_obj, \
-                                 one_mode=one_mode)
+                                 calib_obj=calib_obj)
 
   dsinfo = scaledslib.generate_dynamical_system_info(dev,program,adp)
 
@@ -440,6 +443,10 @@ def generate_constraint_problem(dev,program,adp, \
   for config in adp.configs:
     block = dev.get_block(config.inst.block)
     mode_var = scalelib.ModeVar(config.inst,hwinfo.modes(block.name))
+
+    if one_mode:
+      for cstr in restrict_modes_to_lgraph_only(hwinfo,config.inst,config.modes):
+        yield cstr
 
     modes_subset = set(hwinfo.modes(block.name))
     for out in block.outputs:

@@ -94,11 +94,6 @@ class HardwareInfo:
     self.quality_terms[qual].append(term)
 
   def register_modes(self,blk,modes):
-    if self.one_mode and \
-       any(map(lambda m: "h" in str(m), modes)):
-      modes = list(filter(lambda m: not "h" in str(m), modes))
-      print(modes)
-
     self.mode_mappings[blk.name] = modes
 
   def modes(self,blk_name):
