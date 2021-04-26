@@ -511,6 +511,8 @@ def exec_wav(args,trials=1):
                                         nrmse = adp.metadata.get(ADPMetadata.Keys.LWAV_NRMSE)
                                         nrmses.append(nrmse)
 
+                        if len(nrmses) == 0:
+                            continue
                         master_adp.metadata.set(ADPMetadata.Keys.LWAV_NRMSE, min(nrmses))
                         with open(adp_path,'w') as fh:
                             jsondata = master_adp.to_json()

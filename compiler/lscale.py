@@ -117,7 +117,7 @@ def get_objective(objective,cstr_prob,relevent_scale_factors=[]):
       monom.add_term(qv,-expos[qv])
     monom.add_term(timescale,-1)
     for sign,scf in relevent_scale_factors:
-      monom.add_term(scf,sign*-2.0)
+      monom.add_term(scf,sign*-1.0)
 
     return monom
 
