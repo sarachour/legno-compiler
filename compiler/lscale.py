@@ -5,6 +5,7 @@ import hwlib.adp as adplib
 import util.paths as paths
 import numpy as np
 import math
+import random
 
 import os
 import json
@@ -80,6 +81,24 @@ def get_relevent_scaling_factors(dev,adp,top=5):
       yield sign,variables[varname]
 
 
+def random_objectives(cstr_prob,count):
+  all_vars = []
+  var_map = {}
+  for cstr in cstr_prob:
+    for var in cstr.vars():
+      var_map[str(var)] = var
+
+  for idx in range(count):
+    monom = scalelib.SCMonomial()
+    variables = random.sample(list(var_map.values()),4)
+    for var in variables:
+      flip = random.randint(0,1)
+      if flip == 0:
+        monom.add_term(var,1.0)
+      else:
+        monom.add_term(var,-1.0)
+
+    yield monom
 
 
 
@@ -101,7 +120,6 @@ def get_objective(objective,cstr_prob,relevent_scale_factors=[]):
   #expos[avgdqm] = 1.0
   expos[aqmobs] = 1.0
 
-
   all_vars = []
   for cstr in cstr_prob:
     all_vars += list(map(lambda v: str(v), cstr.vars()))
@@ -115,10 +133,10 @@ def get_objective(objective,cstr_prob,relevent_scale_factors=[]):
     monom = scalelib.SCMonomial()
     for qv in quality_vars:
       monom.add_term(qv,-expos[qv])
-    return monom
+    return [monom]
 
   elif scalelib.ObjectiveFun.RANDOM == objective:
-    return None
+    return list(random_objectives(cstr_prob,50))
 
   elif scalelib.ObjectiveFun.ANALOG_QUALITY_ONLY == objective:
     all_quality_vars = [aqm,dqme,aqmobs]
@@ -128,7 +146,7 @@ def get_objective(objective,cstr_prob,relevent_scale_factors=[]):
     monom = scalelib.SCMonomial()
     for qv in quality_vars:
       monom.add_term(qv,-expos[qv])
-    return monom
+    return [monom]
 
 
   elif scalelib.ObjectiveFun.EMPIRICAL == objective:
@@ -139,21 +157,19 @@ def get_objective(objective,cstr_prob,relevent_scale_factors=[]):
     for sign,scf in relevent_scale_factors:
       monom.add_term(scf,sign*-1.0)
 
-    return monom
+    return [monom]
 
-
-    raise Exception("not implemented error")
   elif scalelib.ObjectiveFun.QUALITY_SPEED == objective:
     monom = scalelib.SCMonomial()
     for qv in quality_vars:
       monom.add_term(qv,-expos[qv])
     monom.add_term(timescale,-1)
-    return monom
+    return [monom]
 
   elif scalelib.ObjectiveFun.SPEED == objective:
     monom = scalelib.SCMonomial()
     monom.add_term(timescale,-1)
-    return monom
+    return [monom]
 
   else:
     raise Exception("unknown objective: %s" % objective)

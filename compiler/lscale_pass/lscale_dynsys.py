@@ -27,8 +27,8 @@ def _get_exprs(dev,dsinfo,cfg):
 
 
 def __construct_expression_data_fields(cfg,apply_scale_transform=False):
-    fn_bodies = {}
-    for stmt in cfg.stmts_of_type(adplib.ConfigStmtType.EXPR):
+  fn_bodies = {}
+  for stmt in cfg.stmts_of_type(adplib.ConfigStmtType.EXPR):
         if apply_scale_transform:
             args = {}
             for v in stmt.expr.vars():
@@ -42,7 +42,7 @@ def __construct_expression_data_fields(cfg,apply_scale_transform=False):
         else:
             fn_bodies[stmt.name] = stmt.expr
 
-    return fn_bodies
+  return fn_bodies
 
 def _generate_dsinfo_expr_recurse(dev,dsinfo,adp,apply_scale_transform=False):
   count = 0
@@ -131,7 +131,8 @@ def generate_dynamical_system_interval_info(dsinfo,dev,program,adp):
         for datum in config.stmts_of_type(adplib.ConfigStmtType.CONSTANT):
             expr = dsinfo.get_expr(config.inst, datum.name)
             value = expr.compute()
-            dsinfo.set_interval(config.inst,datum.name,ivallib.Interval.type_infer(value,value))
+            dsinfo.set_interval(config.inst,datum.name, \
+                                ivallib.Interval.type_infer(value,value))
 
 
 def generate_dynamical_system_info(dev,program,adp,apply_scale_transform=False):

@@ -426,7 +426,8 @@ def generate_constraint_problem(dev,program,adp, \
                                  scale_method=scale_method, \
                                  calib_obj=calib_obj)
 
-  dsinfo = scaledslib.generate_dynamical_system_info(dev,program,adp)
+  dsinfo = scaledslib.generate_dynamical_system_info(dev,program,adp, \
+                                                     apply_scale_transform=False)
 
 
   if no_scale:

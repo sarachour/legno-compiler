@@ -190,24 +190,20 @@ class SMTEnv:
     self._cstrs.append(SMTAssert(c))
 
   def to_z3(self,optimize=None):
-    do_optimize = True if not optimize is None else False
+    do_optimize = True if len(optimize) > 0 else False
     ctx = Z3Ctx(self,optimize=do_optimize)
 
     for decl in self._decls:
       decl.to_z3(ctx)
 
-    if not optimize is None:
-      ctx.set_objective(optimize.to_z3(ctx))
-
     for cstr in self._cstrs:
       cstr.to_z3(ctx)
 
-    if not optimize is None:
-      z3opt = optimize.to_z3(ctx)
-    else:
-      z3opt = None
+    z3opts = []
+    for opt in optimize:
+      z3opts.append(opt.to_z3(ctx))
 
-    return ctx,z3opt
+    return ctx,z3opts
 
   def to_smtlib2(self):
     prog = ""

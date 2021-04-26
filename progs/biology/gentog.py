@@ -48,7 +48,7 @@ def dsprog(prog):
   prog.decl_lambda("vtf", "{a2}/(1+max(X,0)^{gamma})",params)
   prog.decl_lambda("umod","(1+max(X,0)*{invK})^{negNu}",params)
 
-  prog.decl_lambda("umodvtf", "{a2}/(1+max(((1+max(X,0)*{invK})^{negNu}),0)^{gamma})",params)
+  #prog.decl_lambda("umodvtf", "{a2}/(1+max(((1+max(X,0)*{invK})^{negNu}),0)^{gamma})",params)
 
 
   #prog.decl_var("FNUMOD", "umod(IPTG)",params)

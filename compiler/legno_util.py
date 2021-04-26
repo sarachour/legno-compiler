@@ -361,7 +361,8 @@ def exec_stats(args,trials=1):
                     adp_obj = json.loads(fh.read())
                     metadata = ADPMetadata.from_json(adp_obj['metadata'])
                     if not metadata.has(ADPMetadata.Keys.RUNTIME_PHYS_DB) or \
-                       not metadata.has(ADPMetadata.Keys.RUNTIME_CALIB_OBJ):
+                       not metadata.has(ADPMetadata.Keys.RUNTIME_CALIB_OBJ) or \
+                       not metadata.has(ADPMetadata.Keys.LWAV_NRMSE):
                         continue
 
                     board = get_device(metadata.get(ADPMetadata.Keys.RUNTIME_PHYS_DB))
@@ -510,6 +511,8 @@ def exec_wav(args,trials=1):
 
                                         nrmse = adp.metadata.get(ADPMetadata.Keys.LWAV_NRMSE)
                                         nrmses.append(nrmse)
+                            else:
+                                print("[warn] no waveform file found")
 
                         if len(nrmses) == 0:
                             continue

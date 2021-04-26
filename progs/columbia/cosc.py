@@ -7,8 +7,8 @@ def dsname():
 def dsinfo():
   info = DSInfo(dsname(), \
                 'dampened oscillator simulation',
-                "oscillator amplitude",
-                "amplitude")
+                "ampl",
+                "units")
   info.nonlinear = False
   return info
 

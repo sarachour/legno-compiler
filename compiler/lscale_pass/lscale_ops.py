@@ -9,6 +9,7 @@ class ObjectiveFun(Enum):
   QUALITY_SPEED = "qtytau"
   ANALOG_QUALITY_ONLY = "aqmo"
   EMPIRICAL = "emp"
+  RANDOM = "rand"
   SPEED = "tau"
 
 class QualityMeasure(Enum):
