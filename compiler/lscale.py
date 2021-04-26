@@ -112,7 +112,10 @@ def get_objective(objective,cstr_prob,relevent_scale_factors=[]):
     return monom
 
   elif scalelib.ObjectiveFun.ANALOG_QUALITY_ONLY == objective:
-    quality_vars = [aqm,aqmobs]
+    all_quality_vars = [aqm,dqme,aqmobs]
+    quality_vars = list(filter(lambda v: str(v) in all_vars, \
+                             all_quality_vars))
+
     monom = scalelib.SCMonomial()
     for qv in quality_vars:
       monom.add_term(qv,-expos[qv])
