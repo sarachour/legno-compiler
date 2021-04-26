@@ -77,6 +77,9 @@ def get_relevent_scaling_factors(dev,adp,top=5):
       yield sign,variables[varname]
 
 
+
+
+
 def get_objective(objective,cstr_prob,relevent_scale_factors=[]):
   aqm= scalelib.QualityVar(scalelib.QualityMeasure.AQM)
   dqm= scalelib.QualityVar(scalelib.QualityMeasure.DQM)
@@ -110,6 +113,9 @@ def get_objective(objective,cstr_prob,relevent_scale_factors=[]):
     for qv in quality_vars:
       monom.add_term(qv,-expos[qv])
     return monom
+
+  elif scalelib.ObjectiveFun.RANDOM == objective:
+    return None
 
   elif scalelib.ObjectiveFun.ANALOG_QUALITY_ONLY == objective:
     all_quality_vars = [aqm,dqme,aqmobs]
