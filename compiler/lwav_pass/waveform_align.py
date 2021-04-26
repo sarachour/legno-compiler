@@ -4,12 +4,15 @@ import math
 
 def _compute_pct_nrmsd(ref_t,ref_x,meas_t,meas_x,debug=False):
   meas_x_reflow = np.interp(ref_t, meas_t, meas_x, left=0, right=0)
-  MSE = np.sum((meas_x_reflow-ref_x)**2)/len(ref_t)
+  npts = len(ref_x)
+  MSE = np.sum((meas_x_reflow-ref_x)**2)/npts
   RMSD = math.sqrt(MSE)
   # root mean squared error relative to full scale
+  q1 = np.percentile(ref_x,25)
+  q3 = np.percentile(ref_x,75)
   FS = float(max(ref_x) - min(ref_x))
   if FS == 0:
-    FS = max(abs(ref_x))
+    raise Exception("flat signal..")
 
   NRMSD = RMSD/FS
   PCT_NRMSD = NRMSD*100.0

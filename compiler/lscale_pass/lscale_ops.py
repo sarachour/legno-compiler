@@ -1,11 +1,13 @@
 import runtime.models.exp_delta_model as exp_delta_model_lib
 import hwlib.adp as adplib
 import ops.interval as ivallib
+import ops.generic_op as genoplib
 from enum import Enum
 
 class ObjectiveFun(Enum):
   QUALITY = "qty"
   QUALITY_SPEED = "qtytau"
+  EMPIRICAL = "emp"
   SPEED = "tau"
 
 class QualityMeasure(Enum):
@@ -21,13 +23,13 @@ class QualityMeasure(Enum):
 class ScaleMethod(Enum):
   IDEAL = "ideal"
   PHYSICAL = "phys"
-  NOSCALE = "noscale"
 
 
 class DynamicalSystemInfo:
 
   def __init__(self):
     self.intervals = {}
+    self.exprs = {}
 
   def set_interval(self,inst,port,ival):
     assert(isinstance(ival,ivallib.Interval))
@@ -41,10 +43,29 @@ class DynamicalSystemInfo:
       raise Exception("no interval <%s,%s>" % (inst,port))
     return self.intervals[(str(inst),port)]
 
+  def has_expr(self,inst,port):
+    return (str(inst),port) in self.exprs
+
+  def get_expr(self,inst,port):
+    if not self.has_expr(inst,port):
+      print(self.exprs)
+      raise Exception("no expr <%s,%s>" % (inst,port))
+    return self.exprs[(str(inst),port)]
+
+
+  def set_expr(self,inst,port,expr):
+    assert(isinstance(expr,genoplib.Op))
+    self.exprs[(str(inst),port)] = expr
+
   def __repr__(self):
     st = ""
     for ((inst,port),ival) in self.intervals.items():
-      st += "%s.%s = %s\n" % (inst,port,ival)
+      if (inst,port) in self.exprs:
+        expr = "(%s)" % self.exprs[(inst,port)]
+      else:
+        expr = ""
+
+    st += "%s.%s = %s %s\n" % (inst,port,ival,expr)
     return st
 
 class HardwareInfo:

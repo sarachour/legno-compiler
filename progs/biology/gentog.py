@@ -9,8 +9,8 @@ def dsname():
 def dsinfo():
   info = DSInfo(dsname(), \
                 'genetic toggle switch',
-                "concentration of V",
-                "concentration")
+                "[V]",
+                "conc")
   info.nonlinear = True
   return info
 

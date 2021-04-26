@@ -2,8 +2,78 @@ import compiler.lscale_pass.lscale_problem as lscaleprob
 import compiler.lscale_pass.lscale_ops as scalelib
 import compiler.lscale_pass.lscale_solver as lscale_solver
 import hwlib.adp as adplib
+import util.paths as paths
+import numpy as np
+import math
 
-def get_objective(objective,cstr_prob):
+import os
+import json
+# return top 
+def metadata_matches(adp1,adp2,keys):
+  for key in keys:
+    if adp1.metadata.get(key) != adp2.metadata.get(key):
+      return False
+  return True
+
+# get the relevent scaling factors if there have already been executiosn
+def get_relevent_scaling_factors(dev,adp,top=5):
+    ph = paths.PathHandler('unrestricted', \
+                                     adp.metadata.get(adplib.ADPMetadata.Keys.DSNAME))
+
+    rmses = []
+    variables = {}
+    scfs = {}
+    for dirname, subdirlist, filelist in \
+        os.walk(ph.lscale_adp_dir()):
+      for adp_file in filelist:
+        if adp_file.endswith('.adp'):
+          with open(dirname+"/"+adp_file,'r') as fh:
+            curr_adp_json = json.loads(fh.read())
+            curr_adp = adplib.ADP.from_json(dev, curr_adp_json)
+            if metadata_matches(curr_adp,adp,[ \
+                                               adplib.ADPMetadata.Keys.LGRAPH_ID, \
+                                               adplib.ADPMetadata.Keys.RUNTIME_CALIB_OBJ, \
+                                               adplib.ADPMetadata.Keys.LSCALE_ONE_MODE, \
+                                               adplib.ADPMetadata.Keys.LSCALE_NO_SCALE, \
+                                               adplib.ADPMetadata.Keys.RUNTIME_PHYS_DB
+            ]):
+              if not curr_adp.metadata.has(adplib.ADPMetadata.Keys.LWAV_NRMSE):
+                continue
+
+              rmses.append(curr_adp.metadata.get(adplib.ADPMetadata.Keys.LWAV_NRMSE))
+              for cfg in curr_adp.configs:
+                blk = dev.get_block(cfg.inst.block)
+                for stmt in cfg.stmts:
+                  if stmt.type == adplib.ConfigStmtType.CONSTANT or \
+                     stmt.type == adplib.ConfigStmtType.PORT:
+                   varb =  scalelib.PortScaleVar(cfg.inst, stmt.name)
+                   if not str(varb) in variables:
+                     variables[str(varb)] = varb
+                     scfs[str(varb)] = []
+                   scfs[str(varb)].append(stmt.scf)
+
+
+              print(adp_file)
+
+    correlations = []
+    variable_names = list(variables.keys())
+    for var_name in variable_names:
+      coeff = np.corrcoef(rmses,scfs[var_name])[0][1]
+      if math.isnan(coeff):
+        coeff = 0.0
+
+      correlations.append(coeff)
+
+    scores = list(-1.0*np.abs(np.array(correlations)))
+    indices = np.argsort(scores)
+    for idx in indices[0:min(top,len(indices))]:
+      print(correlations[idx])
+      sign = 1.0 if correlations[idx] >= 0.0 else -1.0
+      varname = variable_names[idx]
+      yield sign,variables[varname]
+
+
+def get_objective(objective,cstr_prob,relevent_scale_factors=[]):
   aqm= scalelib.QualityVar(scalelib.QualityMeasure.AQM)
   dqm= scalelib.QualityVar(scalelib.QualityMeasure.DQM)
   dqme= scalelib.QualityVar(scalelib.QualityMeasure.DQME)
@@ -37,6 +107,18 @@ def get_objective(objective,cstr_prob):
       monom.add_term(qv,-expos[qv])
     return monom
 
+  elif scalelib.ObjectiveFun.EMPIRICAL == objective:
+    monom = scalelib.SCMonomial()
+    for qv in quality_vars:
+      monom.add_term(qv,-expos[qv])
+    monom.add_term(timescale,-1)
+    for sign,scf in relevent_scale_factors:
+      monom.add_term(scf,sign*-2.0)
+
+    return monom
+
+
+    raise Exception("not implemented error")
   elif scalelib.ObjectiveFun.QUALITY_SPEED == objective:
     monom = scalelib.SCMonomial()
     for qv in quality_vars:
@@ -109,6 +191,8 @@ def scale(dev, program, adp, \
                            dev.model_number)
 
 
+  set_metadata(adp)
+  scfs = list(get_relevent_scaling_factors(dev,adp))
   cstr_prob = []
   for stmt in lscaleprob. \
       generate_constraint_problem(dev,program,adp, \
@@ -118,15 +202,7 @@ def scale(dev, program, adp, \
                                   no_scale=no_scale):
     cstr_prob.append(stmt)
 
-  obj = get_objective(objective,cstr_prob)
-
-  if scale_method == scalelib.ScaleMethod.NOSCALE:
-    for cfg in adp.configs:
-      cfg.modes = [cfg.modes[0]]
-
-    set_metadata(adp)
-    yield adp
-    return
+  obj = get_objective(objective,cstr_prob,scfs)
 
   print("<<< solving >>>")
   for adp in lscale_solver.solve(dev,adp,cstr_prob,obj):

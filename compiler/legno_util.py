@@ -9,9 +9,8 @@ import itertools
 
 import util.util as util
 import util.paths as paths
-from hwlib.adp import ADP,ADPMetadata
 from dslang.dsprog import DSProgDB
-import json
+from hwlib.adp import ADP,ADPMetadata
 import hwlib.adp_renderer as adprender
 import hwlib.hcdc.llenums as llenums
 
@@ -319,7 +318,9 @@ def print_runtime_stats(path_handler):
 
 def exec_stats(args,trials=1):
     import compiler.lwav_pass.waveform as wavelib
-    import compiler.lwav_pass.analyze as analyzelib
+    import compiler.lwav_pass.vis_lscale_stats as  lscale_vizlib
+    import compiler.lwav_pass.vis_lgraph_stats as  lgraph_vizlib
+    import compiler.lwav_pass.vis_general_stats as  general_vizlib
 
     error_key = lambda adp : (
         adp.metadata[ADPMetadata.Keys.RUNTIME_CALIB_OBJ], \
@@ -329,14 +330,17 @@ def exec_stats(args,trials=1):
         adp.metadata[ADPMetadata.Keys.LSCALE_NO_SCALE], \
         adp.metadata[ADPMetadata.Keys.LSCALE_ONE_MODE])
 
-    error_summary = {}
-    def update_error(adp,error):
+    pretty_print_key = lambda key : "%s %s-%s-%s %s %s" % (key[3],key[0],key[1],key[2], \
+                                                        ":noscale" if key[4] else "", \
+                                                        ":onemode" if key[5] else "")
+
+    adps_by_category = {}
+    def update_adp_info(adp_name,adp):
         key = error_key(adp)
-        if not key in error_summary:
-            error_summary[key] = []
+        if not key in adps_by_category:
+            adps_by_category[key] = []
 
-        error_summary[key].append(error)
-
+        adps_by_category[key].append(adp)
 
     path_handler = paths.PathHandler(args.subset, \
                                      args.program)
@@ -347,11 +351,6 @@ def exec_stats(args,trials=1):
         print("------------ runtime ----------------")
         print_runtime_stats(path_handler)
         return
-
-    error = None
-    best_adp = None
-    best_adp_name = None
-
 
     for dirname, subdirlist, filelist in \
         os.walk(path_handler.lscale_adp_dir()):
@@ -367,60 +366,57 @@ def exec_stats(args,trials=1):
 
                     board = get_device(metadata.get(ADPMetadata.Keys.RUNTIME_PHYS_DB))
                     adp = ADP.from_json(board, adp_obj)
-                    calib_obj = llenums.CalibrateObjective(adp.metadata[ADPMetadata.Keys.RUNTIME_CALIB_OBJ])
-                    for trial in range(trials):
-                        for var,_,_ in adp.observable_ports(board):
-                            for has_scope in scope_options:
-                                print("------- %s [has_scope=%s] ----" % (adp_file,has_scope))
-                                waveform_file = path_handler.measured_waveform_file( \
-                                                                                     graph_index=adp.metadata[ADPMetadata.Keys.LGRAPH_ID],
-                                                                                     scale_index=adp.metadata[ADPMetadata.Keys.LSCALE_ID],
-                                                                                     model=adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD],
-                                                                                     calib_obj=calib_obj, \
-                                                                                     opt=adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE], \
-                                                                                     phys_db=adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB] , \
-                                                                                     no_scale=adp.metadata[ADPMetadata.Keys.LSCALE_NO_SCALE], \
-                                                                                     one_mode=adp.metadata[ADPMetadata.Keys.LSCALE_ONE_MODE], \
-                                                                                     variable=var, \
-                                                                                     trial=trial, \
-                                                                                     oscilloscope=has_scope)
-
-                                if os.path.exists(waveform_file):
-                                    with open(waveform_file,'r') as fh:
-                                        obj = util.decompress_json(fh.read())
-                                        wave = wavelib.Waveform.from_json(obj)
-                                        this_error = analyzelib.get_waveform_error(board,adp,wave)
-                                        if this_error is None:
-                                            continue
-
-                                        update_error(adp,this_error)
-                                        if error is None or this_error < error:
-                                            error = this_error
-                                            best_adp = adp
-                                            best_adp_name = adp_file
+                    update_adp_info(adp_file,adp)
 
 
-    print("============ BEST EXECUTION SUMMARY ========")
-    print(best_adp_name)
-    print("----------------------------------------------------------------------------")
-    analyzelib.print_summary(board,best_adp,error)
-    print("------------ runtime ----------------")
+    print("=========== RUNTIME INFO ======")
     print_runtime_stats(path_handler)
 
-    print("============ AVERAGE EXECUTION SUMMARY ========")
-    for key,errors in error_summary.items():
-        median = np.median(errors)
-        q1 = np.percentile(errors,25)
-        med = np.percentile(errors,50)
-        q3 = np.percentile(errors,75)
-        min_err = min(errors)
-        max_err = max(errors)
+    categories = list(adps_by_category.keys())
+    sorted_inds = np.argsort(list(map(lambda key: pretty_print_key(key),  \
+                                      categories)))
 
-        print("%s min=%f q1=%f med=%f q3=%f max=%f n=%d" % (key,min_err,q1,med,q3,max_err,len(errors)))
+    overall_best_adp = None
+    overall_best_execution = None
+    for idx  in sorted_inds:
+        adps = adps_by_category[categories[idx]]
+        rmses = list(map(lambda adp: adp.metadata[ADPMetadata.Keys.LWAV_NRMSE], adps))
+        b2w_inds = np.argsort(rmses)
+        category_name = pretty_print_key(categories[idx])
+        best_adp = adps[b2w_inds[0]]
+        if overall_best_adp is None \
+           or rmses[b2w_inds[0]] < overall_best_adp.metadata[ADPMetadata.Keys.LWAV_NRMSE]:
+            overall_best_adp = best_adp
+            overall_best_execution = categories[idx]
+
+        for vizlib in [general_vizlib, lgraph_vizlib,lscale_vizlib]:
+            vises = vizlib.print_summary(board,adp)
+            vises += vizlib.print_aggregate_summaries(board,adps)
+            for vis in vises:
+                calib_obj = llenums.CalibrateObjective(best_adp.metadata[ADPMetadata.Keys.RUNTIME_CALIB_OBJ])
+                plot_file = path_handler.summary_plot_file( \
+                                                model=best_adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD],
+                                                calib_obj=calib_obj, \
+                                                opt=best_adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE], \
+                                                phys_db=best_adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB], \
+                                                variable="", \
+                                                plot=vis.name, \
+                                                no_scale=best_adp.metadata[ADPMetadata.Keys.LSCALE_NO_SCALE], \
+                                                one_mode=best_adp.metadata[ADPMetadata.Keys.LSCALE_ONE_MODE])
+                vis.plot(plot_file)
+
+
+
+    print("BEST EXECUTION: %s" % pretty_print_key(overall_best_execution))
+
+
+
+
+
 
 def exec_wav(args,trials=1):
     import compiler.lwav_pass.waveform as wavelib
-    import compiler.lwav_pass.analyze as analyzelib
+    import compiler.lwav_pass.vis_waveform as  vizlib
 
     path_handler = paths.PathHandler(args.subset, \
                                      args.program)
@@ -455,7 +451,8 @@ def exec_wav(args,trials=1):
         os.walk(path_handler.lscale_adp_dir()):
         for adp_file in filelist:
             if adp_file.endswith('.adp'):
-                with open(dirname+"/"+adp_file,'r') as fh:
+                adp_path = dirname+"/"+adp_file
+                with open(adp_path,'r') as fh:
                     print("===== %s =====" % (adp_file))
                     adp_obj = json.loads(fh.read())
                     metadata = ADPMetadata.from_json(adp_obj['metadata'])
@@ -464,21 +461,24 @@ def exec_wav(args,trials=1):
                         continue
 
                     board = get_device(metadata.get(ADPMetadata.Keys.RUNTIME_PHYS_DB))
-                    adp = ADP.from_json(board, adp_obj)
-                    calib_obj = llenums.CalibrateObjective(adp.metadata[ADPMetadata.Keys.RUNTIME_CALIB_OBJ])
+                    master_adp = ADP.from_json(board, adp_obj)
+                    calib_obj = llenums.CalibrateObjective(master_adp.metadata[ADPMetadata.Keys.RUNTIME_CALIB_OBJ])
+
+                    # Analyze waveforms
+                    nrmses = []
                     for trial in range(trials):
-                        for var,_,_ in adp.observable_ports(board):
+                        for var,_,_ in master_adp.observable_ports(board):
                             for has_scope in scope_options:
                                 print("------- %s [has_scope=%s] ----" % (adp_file,has_scope))
                                 waveform_file = path_handler.measured_waveform_file( \
-                                                                                     graph_index=adp.metadata[ADPMetadata.Keys.LGRAPH_ID],
-                                                                                     scale_index=adp.metadata[ADPMetadata.Keys.LSCALE_ID],
-                                                                                     model=adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD],
+                                                                                     graph_index=master_adp.metadata[ADPMetadata.Keys.LGRAPH_ID],
+                                                                                     scale_index=master_adp.metadata[ADPMetadata.Keys.LSCALE_ID],
+                                                                                     model=master_adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD],
                                                                                      calib_obj=calib_obj, \
-                                                                                     opt=adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE], \
-                                                                                     phys_db=adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB] , \
-                                                                                     no_scale=adp.metadata[ADPMetadata.Keys.LSCALE_NO_SCALE], \
-                                                                                     one_mode=adp.metadata[ADPMetadata.Keys.LSCALE_ONE_MODE], \
+                                                                                     opt=master_adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE], \
+                                                                                     phys_db=master_adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB] , \
+                                                                                     no_scale=master_adp.metadata[ADPMetadata.Keys.LSCALE_NO_SCALE], \
+                                                                                     one_mode=master_adp.metadata[ADPMetadata.Keys.LSCALE_ONE_MODE], \
                                                                                      variable=var, \
                                                                                      trial=trial, \
                                                                                      oscilloscope=has_scope)
@@ -489,7 +489,7 @@ def exec_wav(args,trials=1):
                                         wave = wavelib.Waveform.from_json(obj)
                                         adp = ADP.from_json(board, adp_obj)
                                         update_summary(adp,var,wave,has_scope=has_scope)
-                                        for vis in analyzelib.plot_waveform(board,adp,wave, \
+                                        for vis in vizlib.plot_waveform(board,adp,wave, \
                                                                             emulate=args.emulate, \
                                                                             measured=args.measured):
                                             plot_file = path_handler.waveform_plot_file( \
@@ -508,12 +508,20 @@ def exec_wav(args,trials=1):
 
                                             vis.plot(plot_file)
 
+                                        nrmse = adp.metadata.get(ADPMetadata.Keys.LWAV_NRMSE)
+                                        nrmses.append(nrmse)
+
+                        master_adp.metadata.set(ADPMetadata.Keys.LWAV_NRMSE, min(nrmses))
+                        with open(adp_path,'w') as fh:
+                            jsondata = master_adp.to_json()
+                            fh.write(json.dumps(jsondata,indent=4))
+
         if args.summary_plots:
             for (fields,var,has_scope),data in summary.items():
                 adps = list(map(lambda d: d[0], data))
                 waveforms = list(map(lambda d: d[1], data))
                 board = get_device(adps[0].metadata.get(ADPMetadata.Keys.RUNTIME_PHYS_DB))
-                for vis in analyzelib.plot_waveform_summaries(board,adps,waveforms):
+                for vis in vizlib.plot_waveform_summaries(board,adps,waveforms):
                     adp = data[0][0]
                     calib_obj = llenums.CalibrateObjective(adp.metadata[ADPMetadata.Keys.RUNTIME_CALIB_OBJ])
                     plot_file = path_handler.summary_plot_file( \

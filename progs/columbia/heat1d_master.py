@@ -13,7 +13,7 @@ def make_dsname(N,I):
 def make_dsinfo(N,I):
   return DSInfo(make_dsname(N,I), \
                 "movement of heat through %d point lattice" % N,
-                "heat at point %d" % I,
+                "heat",
                 "units")
   info.nonlinear = False
   return info

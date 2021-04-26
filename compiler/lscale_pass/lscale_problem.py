@@ -6,138 +6,10 @@ import ops.opparse as opparse
 import numpy as np
 import compiler.lscale_pass.lscale_ops as scalelib
 import compiler.lscale_pass.lscale_harmonize as harmlib
+import compiler.lscale_pass.lscale_dynsys as scaledslib
 import compiler.math_utils as mathutils
 
 import ops.interval as ivallib
-
-def _get_intervals(dev,dsinfo,cfg):
-  blk = dev.get_block(cfg.inst.block)
-  bl_mode = list(cfg.modes)[0]
-  intervals = {}
-
-  for port in blk.inputs.field_names() + blk.outputs.field_names():
-    if dsinfo.has_interval(cfg.inst,port):
-      intervals[port] = dsinfo.get_interval(cfg.inst,port)
-
-  for datum in cfg.stmts_of_type(adplib.ConfigStmtType.CONSTANT):
-    intervals[datum.name] = dsinfo.get_interval(cfg.inst,datum.name)
-
-  return intervals
-
-def _generate_dsinfo_backprop(dev,dsinfo,adp):
-  count = 0
-  for conn in adp.conns:
-    if len(list(filter(lambda c: c.same_dest(conn), adp.conns))) > 1:
-        continue
-
-    if not dsinfo.has_interval(conn.source_inst,conn.source_port):
-      if dsinfo.has_interval(conn.dest_inst, \
-                             conn.dest_port):
-          source_ival = dsinfo.get_interval(conn.dest_inst, \
-                                            conn.dest_port)
-          dsinfo.set_interval(conn.source_inst,conn.source_port,source_ival)
-          count += 1
-
-  for cfg in adp.configs:
-    blk = dev.get_block(cfg.inst.block)
-    bl_mode = list(cfg.modes)[0]
-
-    for out in blk.outputs:
-      intervals = _get_intervals(dev,dsinfo,cfg)
-      fxns = dict(map(lambda st: (st.name,st.expr), \
-                 filter(lambda st: isinstance(st, adplib.ExprDataConfig), cfg.stmts)))
-      rel = out.relation[bl_mode].substitute(fxns).concretize()
-      all_inputs_bound = all(map(lambda v: v in intervals,rel.vars()))
-
-      if all_inputs_bound and not out.name in intervals:
-          try:
-             out_interval = ivallib.propagate_intervals(rel,intervals)
-             dsinfo.set_interval(cfg.inst,out.name,out_interval)
-             print("%s:%s : %s" % (cfg.inst, out.name,out_interval))
-             count += 1
-          except ivallib.UnknownIntervalError as e:
-             continue
-
-      elif not all_inputs_bound and out.name in intervals:
-           try:
-             inp_intervals = ivallib.backpropagate_intervals(rel,intervals[out.name], \
-                                                             intervals)
-           except ivallib.UnknownIntervalError as e:
-             continue
-           except ivallib.BackpropFailedError as e:
-             continue
-
-           for port_name,ival in inp_intervals.items():
-             if not port_name in intervals:
-                dsinfo.set_interval(cfg.inst,port_name,ival)
-                print("%s:%s : %s" % (cfg.inst, port_name,ival))
-                count += 1
-
-  return count
-
-def _generate_dsinfo_recurse(dev,dsinfo,adp):
-  count = 0
-  for conn in adp.conns:
-    if not dsinfo.has_interval(conn.dest_inst,conn.dest_port):
-      ival = ivallib.Interval.type_infer(0,0)
-      for src_conn in \
-          list(filter(lambda c: c.same_dest(conn), adp.conns)):
-        if dsinfo.has_interval(src_conn.source_inst, \
-                               src_conn.source_port):
-          src_ival = dsinfo.get_interval(src_conn.source_inst, \
-                                         src_conn.source_port)
-          ival = ival.add(src_ival)
-        else:
-          ival = None
-          break
-
-      if not ival is None:
-        dsinfo.set_interval(conn.dest_inst,conn.dest_port,ival)
-        count += 1
-
-  for cfg in adp.configs:
-    blk = dev.get_block(cfg.inst.block)
-    bl_mode = list(cfg.modes)[0]
-    intervals = _get_intervals(dev,dsinfo,cfg)
-
-    for out in blk.outputs:
-      if dsinfo.has_interval(cfg.inst,out.name):
-        continue
-
-      rel = out.relation[bl_mode]
-      subs = dict(map(lambda stmt: (stmt.name,stmt.expr), \
-                      cfg.stmts_of_type(adplib.ConfigStmtType.EXPR)))
-      rel = rel.substitute(subs)
-      try:
-        out_interval = ivallib.propagate_intervals(rel,intervals)
-        dsinfo.set_interval(cfg.inst,out.name,out_interval)
-        count += 1
-      except ivallib.UnknownIntervalError as e:
-        continue
-
-  return count
-
-def generate_dynamical_system_info(dev,program,adp):
-  dsinfo = scalelib.DynamicalSystemInfo()
-  ds_ivals = dict(program.intervals())
-  for config in adp.configs:
-    for stmt in config.stmts_of_type(adplib.ConfigStmtType.PORT):
-      if not stmt.source is None:
-        ival = ivallib.propagate_intervals(stmt.source,ds_ivals)
-        dsinfo.set_interval(config.inst,stmt.name,ival)
-
-    for datum in config.stmts_of_type(adplib.ConfigStmtType.CONSTANT):
-      ival = ivallib.Interval.type_infer(datum.value,datum.value)
-      dsinfo.set_interval(config.inst,datum.name,ival)
-
-  while _generate_dsinfo_backprop(dev,dsinfo,adp) > 0:
-    pass
-
-  while _generate_dsinfo_recurse(dev,dsinfo,adp) > 0:
-    pass
-
-  return dsinfo
-
 
 
 def generate_factor_constraints(inst,rel):
@@ -240,6 +112,7 @@ def generate_port_properties(hwinfo,dsinfo,inst, \
     lv,uv = mode_oprange.ratio(oprange)
     yield scalelib.SCModeImplies(v_mode,mode,v_lower,lv)
     yield scalelib.SCModeImplies(v_mode,mode,v_upper,uv)
+
     if not quantize is None:
       mode_quantize= hwinfo.get_quantize(inst,mode,port)
       quant_ratio = mode_quantize.error(mode_oprange)/quantize.error(oprange)
@@ -550,7 +423,7 @@ def generate_constraint_problem(dev,program,adp, \
                                  calib_obj=calib_obj, \
                                  one_mode=one_mode)
 
-  dsinfo = generate_dynamical_system_info(dev,program,adp)
+  dsinfo = scaledslib.generate_dynamical_system_info(dev,program,adp)
 
 
   if no_scale:

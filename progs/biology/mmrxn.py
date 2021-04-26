@@ -9,8 +9,8 @@ def dsname():
 def dsinfo():
   info = DSInfo(dsname(), \
                 "michaelis menten reaction",
-                "complex",
-                "concentration")
+                "[ES]",
+                "conc")
   info.nonlinear = True
   return info
 

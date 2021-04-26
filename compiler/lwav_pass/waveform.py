@@ -229,10 +229,10 @@ class WaveformVis:
         palette = sns.color_palette()
         ax = plt.subplot(1, 1, 1)
         title = self.title
-        ax.tick_params(labelsize=16);
-        ax.set_xlabel('simulation time',fontsize=32)
-        ax.set_ylabel(self.units,fontsize=32)
-
+        ax.tick_params(labelsize=24);
+        ax.set_xlabel('time',fontsize=28)
+        ax.set_ylabel(self.units,fontsize=28)
+        ax.set_title(title,fontsize=32)
         ax.grid(False)
 
         ymax = ymin = 0.0
@@ -248,7 +248,7 @@ class WaveformVis:
 
         ax.set_ylim(ymin=ymin*1.1,ymax=ymax*1.1)
 
-        #plt.tight_layout()
+        plt.tight_layout()
         plt.savefig(filepath)
         plt.clf()
 
