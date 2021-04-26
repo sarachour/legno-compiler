@@ -148,9 +148,11 @@ class LScaleSolutionGenerator:
     self.dev = dev
 
   def solutions(self):
+    curr_index = self.index
     adp = self.get_solution()
     while not adp is None:
-      yield adp
+      yield curr_index,adp
+      curr_index = self.index
       adp = self.get_solution()
 
   def get_solution(self):
@@ -253,7 +255,7 @@ def solve(dev,adp,cstrs,objective_funs):
 
   generator = LScaleSolutionGenerator(dev,adp,symtbl,smtenv, \
                                       opt=z3_obj_funs)
-  for scaled_adp in generator.solutions():
-    yield scaled_adp
+  for obj_index, scaled_adp in generator.solutions():
+    yield objective_funs[obj_index],scaled_adp
 
 

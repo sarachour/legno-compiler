@@ -7,8 +7,6 @@ from enum import Enum
 class ObjectiveFun(Enum):
   QUALITY = "qty"
   QUALITY_SPEED = "qtytau"
-  ANALOG_QUALITY_ONLY = "aqmo"
-  EMPIRICAL = "emp"
   RANDOM = "rand"
   SPEED = "tau"
 

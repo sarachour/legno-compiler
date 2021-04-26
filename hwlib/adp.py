@@ -549,6 +549,7 @@ class ADPMetadata:
     LSCALE_ID = "lscale_id"
     LSCALE_SCALE_METHOD = "lscale_method"
     LSCALE_OBJECTIVE = "lscale_objective"
+    LSCALE_OBJECTIVE_EXPR = "lscale_objective_expr"
     RUNTIME_CALIB_OBJ = "runt_calib_obj"
     RUNTIME_PHYS_DB = "runt_phys_db"
     LSCALE_AVGAQM = "avg_aqm"

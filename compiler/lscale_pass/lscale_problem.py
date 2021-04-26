@@ -184,7 +184,14 @@ def generate_port_quantize_constraints(hwinfo, dsinfo,inst,  \
                                  inst,port)
 
   interval = dsinfo.get_interval(inst,port)
- 
+
+  # one-sided
+  if lower and interval.lower >= 0:
+    return
+  if not lower and interval.upper <= 0:
+    return
+
+
   ampl_val = abs(interval.lower) if lower else abs(interval.upper)
 
   oprange = hwinfo.get_op_range(inst,baseline_mode,port)
@@ -226,6 +233,13 @@ def generate_port_noise_constraints(hwinfo, dsinfo,inst,  \
 
   interval = dsinfo.get_interval(inst,port)
   ampl_val = abs(interval.lower) if lower else abs(interval.upper)
+
+  # one-sided
+  if lower and interval.lower >= 0:
+    return
+  if not lower and interval.upper <= 0:
+    return
+
 
   if ampl_val == 0.0:
     return

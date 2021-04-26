@@ -104,7 +104,7 @@ def random_objectives(cstr_prob,count):
 
 
 
-def get_objective(objective,cstr_prob,relevent_scale_factors=[]):
+def get_objective(objective,cstr_prob):
   aqm= scalelib.QualityVar(scalelib.QualityMeasure.AQM)
   dqm= scalelib.QualityVar(scalelib.QualityMeasure.DQM)
   dqme= scalelib.QualityVar(scalelib.QualityMeasure.DQME)
@@ -198,11 +198,13 @@ def scale(dev, program, adp, \
           no_scale=False, \
           one_mode=False):
 
-  def set_metadata(adp):
+  def set_metadata(adp,obj):
     adp.metadata.set(adplib.ADPMetadata.Keys.LSCALE_SCALE_METHOD, \
                      scale_method.value)
     adp.metadata.set(adplib.ADPMetadata.Keys.LSCALE_OBJECTIVE, \
                            objective.value)
+    adp.metadata.set(adplib.ADPMetadata.Keys.LSCALE_OBJECTIVE_EXPR, \
+                           str(obj))
     adp.metadata.set(adplib.ADPMetadata.Keys.LSCALE_NO_SCALE, \
                      no_scale)
     adp.metadata.set(adplib.ADPMetadata.Keys.LSCALE_ONE_MODE, \
@@ -213,8 +215,8 @@ def scale(dev, program, adp, \
                            dev.model_number)
 
 
-  set_metadata(adp)
-  scfs = list(get_relevent_scaling_factors(dev,adp))
+  set_metadata(adp,"")
+  #scfs = list(get_relevent_scaling_factors(dev,adp))
   cstr_prob = []
   for stmt in lscaleprob. \
       generate_constraint_problem(dev,program,adp, \
@@ -224,11 +226,11 @@ def scale(dev, program, adp, \
                                   no_scale=no_scale):
     cstr_prob.append(stmt)
 
-  obj = get_objective(objective,cstr_prob,scfs)
+  obj = get_objective(objective,cstr_prob)
 
   print("<<< solving >>>")
-  for adp in lscale_solver.solve(dev,adp,cstr_prob,obj):
-    set_metadata(adp)
+  for objfun,adp in lscale_solver.solve(dev,adp,cstr_prob,obj):
+    set_metadata(adp,objfun)
     for cfg in adp.configs:
       assert(cfg.complete())
 
