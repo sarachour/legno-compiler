@@ -17,6 +17,9 @@ def metadata_matches(adp1,adp2,keys):
 
 # get the relevent scaling factors if there have already been executiosn
 def get_relevent_scaling_factors(dev,adp,top=5):
+    if adp.metadata.get(adplib.ADPMetadata.Keys.LSCALE_OBJECTIVE) != scalelib.ObjectiveFun.EMPIRICAL.value:
+       return
+
     ph = paths.PathHandler('unrestricted', \
                                      adp.metadata.get(adplib.ADPMetadata.Keys.DSNAME))
 
