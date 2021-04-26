@@ -157,6 +157,7 @@ class LScaleSolutionGenerator:
     if len(self.z3opts) == 0:
       result = self.z3ctx.solve()
     else:
+      print(self.z3opts[self.index])
       self.z3ctx.set_objective(self.z3opts[self.index])
       result = self.z3ctx.optimize()
     if result is None:
