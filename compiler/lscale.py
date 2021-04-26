@@ -138,26 +138,6 @@ def get_objective(objective,cstr_prob,relevent_scale_factors=[]):
   elif scalelib.ObjectiveFun.RANDOM == objective:
     return list(random_objectives(cstr_prob,50))
 
-  elif scalelib.ObjectiveFun.ANALOG_QUALITY_ONLY == objective:
-    all_quality_vars = [aqm,dqme,aqmobs]
-    quality_vars = list(filter(lambda v: str(v) in all_vars, \
-                             all_quality_vars))
-
-    monom = scalelib.SCMonomial()
-    for qv in quality_vars:
-      monom.add_term(qv,-expos[qv])
-    return [monom]
-
-
-  elif scalelib.ObjectiveFun.EMPIRICAL == objective:
-    monom = scalelib.SCMonomial()
-    for qv in quality_vars:
-      monom.add_term(qv,-expos[qv])
-    monom.add_term(timescale,-1)
-    for sign,scf in relevent_scale_factors:
-      monom.add_term(scf,sign*-1.0)
-
-    return [monom]
 
   elif scalelib.ObjectiveFun.QUALITY_SPEED == objective:
     monom = scalelib.SCMonomial()
