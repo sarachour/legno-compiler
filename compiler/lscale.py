@@ -57,12 +57,16 @@ def get_relevent_scaling_factors(dev,adp,top=5):
 
     correlations = []
     variable_names = list(variables.keys())
+    if len(variable_names) == 0:
+      raise Exception("cannot use empirical scale objective. None of the existing executions have been analyzed.")
+
     for var_name in variable_names:
       coeff = np.corrcoef(rmses,scfs[var_name])[0][1]
       if math.isnan(coeff):
         coeff = 0.0
 
       correlations.append(coeff)
+
 
     scores = list(-1.0*np.abs(np.array(correlations)))
     indices = np.argsort(scores)
