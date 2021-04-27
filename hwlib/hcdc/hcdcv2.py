@@ -28,7 +28,6 @@ def get_device(model_number,layout=False,model_subdir=""):
 
     # hwtime/wall clock time
     hcdcv2.time_constant = 1.0/126000
-    hcdcv2.min_speed = 0.001*1.0/126000
 
     # profiling operations
     hcdcv2.profile_status_type = llenums.ProfileStatus
