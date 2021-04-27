@@ -86,14 +86,16 @@ def get_relevent_scaling_factors(dev,adp,top=5):
 def random_objectives(cstr_prob,count):
   all_vars = []
   var_map = {}
+  skipped_blocks = ['fanout','tin','tout']
   for cstr in cstr_prob:
     for var in cstr.vars():
-      if isinstance(var,scalelib.PortScaleVar) or \
-         isinstance(var,scalelib.TimeScaleVar):
+      if isinstance(var,scalelib.PortScaleVar) and \
+         not var.inst.block in skipped_blocks:
+         var_map[str(var)] = var
+      elif isinstance(var,scalelib.TimeScaleVar):
          var_map[str(var)] = var
 
   all_vars = list(var_map.values())
-
   for idx in range(min(count,len(all_vars))):
     monom = scalelib.SCMonomial()
     #variables = random.sample(list(var_map.values()),1)
