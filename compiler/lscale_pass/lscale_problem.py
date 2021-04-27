@@ -153,9 +153,10 @@ def generate_port_freq_limit_constraints(hwinfo,dsinfo,inst, \
   max_freq.add_term(v_freq_limit)
   yield scalelib.SCLTE(curr_freq,max_freq)
 
-def generate_metric_floor_constraints(min_aqm,min_dqm, min_tau):
+def generate_metric_floor_constraints(min_aqm,min_dqm, min_dqme,min_tau):
   v_tau = scalelib.TimeScaleVar()
   v_dqm = scalelib.QualityVar(scalelib.QualityMeasure.DQM)
+  v_dqme = scalelib.QualityVar(scalelib.QualityMeasure.DQME)
   v_aqm = scalelib.QualityVar(scalelib.QualityMeasure.AQM)
 
   if not min_aqm is None:
@@ -163,6 +164,9 @@ def generate_metric_floor_constraints(min_aqm,min_dqm, min_tau):
 
   if not min_dqm is None:
     yield scalelib.SCLTE(scalelib.SCMonomial.make_const(min_dqm), v_dqm)
+
+  if not min_dqme is None:
+    yield scalelib.SCLTE(scalelib.SCMonomial.make_const(min_dqme), v_dqme)
 
   if not min_tau is None:
     yield scalelib.SCLTE(scalelib.SCMonomial.make_const(min_tau), v_tau)
@@ -454,6 +458,7 @@ def generate_constraint_problem(dev,program,adp, \
                                 no_scale=False, \
                                 min_aqm=None, \
                                 min_dqm=None, \
+                                min_dqme=None, \
                                 min_tau=None):
 
   hwinfo = scalelib.HardwareInfo(dev, \
@@ -464,7 +469,10 @@ def generate_constraint_problem(dev,program,adp, \
                                                      apply_scale_transform=False)
 
 
-  for cstr in generate_metric_floor_constraints(min_aqm,min_dqm, min_tau):
+  for cstr in generate_metric_floor_constraints(min_aqm, \
+                                                min_dqm, \
+                                                min_dqme, \
+                                                min_tau):
     yield cstr
 
   if no_scale:

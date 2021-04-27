@@ -81,6 +81,8 @@ def get_relevent_scaling_factors(dev,adp,top=5):
       yield sign,variables[varname]
 
 
+
+
 def random_objectives(cstr_prob,count):
   all_vars = []
   var_map = {}
@@ -90,15 +92,14 @@ def random_objectives(cstr_prob,count):
          isinstance(var,scalelib.TimeScaleVar):
          var_map[str(var)] = var
 
-  for idx in range(count):
+  all_vars = list(var_map.values())
+
+  for idx in range(min(count,len(all_vars))):
     monom = scalelib.SCMonomial()
-    variables = random.sample(list(var_map.values()),2)
+    #variables = random.sample(list(var_map.values()),1)
+    variables = [all_vars[idx]]
     for var in variables:
-      flip = random.randint(0,1)
-      if flip == 0:
-        monom.add_term(var,1.0)
-      else:
-        monom.add_term(var,-1.0)
+      monom.add_term(var,-10.0)
 
     yield monom
 
@@ -199,6 +200,7 @@ def scale(dev, program, adp, \
           one_mode=False, \
           min_aqm=None, \
           min_dqm=None, \
+          min_dqme=None, \
           min_tau=None):
 
   def set_metadata(adp,obj):
@@ -229,6 +231,7 @@ def scale(dev, program, adp, \
                                   no_scale=no_scale, \
                                   min_aqm=min_aqm, \
                                   min_dqm=min_dqm, \
+                                  min_dqme=min_dqme, \
                                   min_tau=min_tau):
     cstr_prob.append(stmt)
 

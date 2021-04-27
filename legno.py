@@ -46,6 +46,7 @@ lgraph_subp.add_argument('program', type=str,help='benchmark to compile')
 # lscale arguments
 lscale_subp = subparsers.add_parser('lscale', \
                                    help='scale circuit parameters.')
+lscale_subp.add_argument('program', type=str,help='benchmark to compile')
 lscale_subp.add_argument('--scale-method', type=str,default="ideal", \
                        help='scaling method.')
 lscale_subp.add_argument('--calib-obj', type=str,default="minimize_error", \
@@ -60,13 +61,10 @@ lscale_subp.add_argument('--min-aqm', type=float, \
                        help='minimum aqm.')
 lscale_subp.add_argument('--min-dqm', type=float, \
                        help='minimum dqm.')
+lscale_subp.add_argument('--min-dqme', type=float, \
+                       help='minimum dqme.')
 lscale_subp.add_argument('--min-tau', type=float, \
                        help='minimum tau.')
-
-
-
-
-lscale_subp.add_argument('program', type=str,help='benchmark to compile')
 lscale_subp.add_argument('--one-mode',action="store_true", \
                          help="only use the medium mode")
 lscale_subp.add_argument('--no-scale',action="store_true", \

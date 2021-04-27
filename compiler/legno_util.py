@@ -61,6 +61,7 @@ def exec_lscale(args):
                                                             one_mode=args.one_mode, \
                                                             min_aqm=args.min_aqm, \
                                                             min_dqm=args.min_dqm, \
+                                                            min_dqme=args.min_dqme, \
                                                             min_tau=args.min_tau)):
                     timer.end()
 
