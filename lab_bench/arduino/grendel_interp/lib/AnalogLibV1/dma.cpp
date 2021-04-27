@@ -30,11 +30,13 @@ namespace dma {
     while ((ADC->ADC_ISR & 0x1000000) == 0);
   }
 
+#define MAX_TRIES 1000
   uint32_t find_prescalar(float runtime, uint32_t bufsiz, uint32_t& samples, uint32_t& clock_freq){
     const uint32_t sys_core_clock = SystemCoreClock;
     const float adc_clock_to_sample_freq = 1.0/39;
     uint32_t presc = 0;
     uint32_t clk;
+    uint32_t tries = 0;
     float n_samples;
     sprintf(FMTBUF,"runtime=%f buffer-size=%d\n",runtime,bufsiz);
     print_info(FMTBUF);
@@ -45,12 +47,16 @@ namespace dma {
       ADC->ADC_MR |= ADC_MR_PRESCAL(presc);// set prescaler to fastest
       clk = adc_get_actual_adc_clock(ADC,sys_core_clock)*adc_clock_to_sample_freq;
       n_samples = runtime*clk;
-      sprintf(FMTBUF,"  prescalar=%d clk=%d khz samps=%f\n", presc, clk/1000,n_samples);
+      sprintf(FMTBUF,"idx=%d prescalar=%d clk=%d khz samps=%f\n", tries, presc, clk/1000,n_samples);
       print_info(FMTBUF);
       presc += 1;
-    } while(n_samples > bufsiz || clk > ADC_FREQ_MAX);
+      tries += 1;
+    } while(tries < MAX_TRIES && (n_samples > bufsiz || clk > ADC_FREQ_MAX));
     samples = floor(n_samples);
     clock_freq = clk;
+    if(tries >= MAX_TRIES){
+       samples = 15;
+    }
     return presc;
   }
   void track_adc_0(){
