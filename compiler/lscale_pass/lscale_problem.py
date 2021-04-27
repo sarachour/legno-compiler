@@ -153,6 +153,23 @@ def generate_port_freq_limit_constraints(hwinfo,dsinfo,inst, \
   max_freq.add_term(v_freq_limit)
   yield scalelib.SCLTE(curr_freq,max_freq)
 
+def generate_metric_floor_constraints(min_aqm,min_dqm, min_tau):
+  v_tau = scalelib.TimeScaleVar()
+  v_dqm = scalelib.QualityVar(scalelib.QualityMeasure.DQM)
+  v_aqm = scalelib.QualityVar(scalelib.QualityMeasure.AQM)
+
+  if not min_aqm is None:
+    yield scalelib.SCLTE(scalelib.SCMonomial.make_const(min_aqm), v_aqm)
+
+  if not min_dqm is None:
+    yield scalelib.SCLTE(scalelib.SCMonomial.make_const(min_dqm), v_dqm)
+
+  if not min_tau is None:
+    yield scalelib.SCLTE(scalelib.SCMonomial.make_const(min_tau), v_tau)
+
+
+
+
 def generate_port_oprange_constraints(hwinfo,dsinfo,inst,  \
                                       baseline_mode,modes, \
                                       port):
@@ -434,7 +451,10 @@ def generate_constraint_problem(dev,program,adp, \
                                 scale_method=scalelib.ScaleMethod.IDEAL, \
                                 calib_obj=None, \
                                 one_mode=False, \
-                                no_scale=False):
+                                no_scale=False, \
+                                min_aqm=None, \
+                                min_dqm=None, \
+                                min_tau=None):
 
   hwinfo = scalelib.HardwareInfo(dev, \
                                  scale_method=scale_method, \
@@ -443,6 +463,9 @@ def generate_constraint_problem(dev,program,adp, \
   dsinfo = scaledslib.generate_dynamical_system_info(dev,program,adp, \
                                                      apply_scale_transform=False)
 
+
+  for cstr in generate_metric_floor_constraints(min_aqm,min_dqm, min_tau):
+    yield cstr
 
   if no_scale:
     for cstr in force_identity_scaling_transform(dev,adp):

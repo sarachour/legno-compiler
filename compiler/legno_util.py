@@ -58,7 +58,10 @@ def exec_lscale(args):
                                                             scale_method=scale_method, \
                                                             calib_obj=calib_obj, \
                                                             no_scale=args.no_scale, \
-                                                            one_mode=args.one_mode)):
+                                                            one_mode=args.one_mode, \
+                                                            min_aqm=args.min_aqm, \
+                                                            min_dqm=args.min_dqm, \
+                                                            min_tau=args.min_tau)):
                     timer.end()
 
                     print("<<< writing scaled circuit %d/%d>>>" % (idx,args.scale_adps))

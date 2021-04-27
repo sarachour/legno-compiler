@@ -108,7 +108,6 @@ def correlation_analysis(dev,dsprog,all_adps):
             print("   ival=%s expr=%s\n" % (ival,expr))
 
 
-        input("continue?")
 
 def interval_usage_analysis(dev,dsprog,adps):
     usages = []

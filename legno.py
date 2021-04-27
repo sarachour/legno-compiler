@@ -56,6 +56,16 @@ lscale_subp.add_argument('--model-number', type=str, \
                        help='identifier for board.')
 lscale_subp.add_argument('--scale-adps', type=int,default=5, \
                        help='number of scaled adps to generate per adp.')
+lscale_subp.add_argument('--min-aqm', type=float, \
+                       help='minimum aqm.')
+lscale_subp.add_argument('--min-dqm', type=float, \
+                       help='minimum dqm.')
+lscale_subp.add_argument('--min-tau', type=float, \
+                       help='minimum tau.')
+
+
+
+
 lscale_subp.add_argument('program', type=str,help='benchmark to compile')
 lscale_subp.add_argument('--one-mode',action="store_true", \
                          help="only use the medium mode")

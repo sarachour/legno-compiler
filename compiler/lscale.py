@@ -196,7 +196,10 @@ def scale(dev, program, adp, \
           scale_method=scalelib.ScaleMethod.IDEAL, \
           calib_obj=None, \
           no_scale=False, \
-          one_mode=False):
+          one_mode=False, \
+          min_aqm=None, \
+          min_dqm=None, \
+          min_tau=None):
 
   def set_metadata(adp,obj):
     adp.metadata.set(adplib.ADPMetadata.Keys.LSCALE_SCALE_METHOD, \
@@ -223,7 +226,10 @@ def scale(dev, program, adp, \
                                   scale_method=scale_method, \
                                   calib_obj=calib_obj, \
                                   one_mode=one_mode, \
-                                  no_scale=no_scale):
+                                  no_scale=no_scale, \
+                                  min_aqm=min_aqm, \
+                                  min_dqm=min_dqm, \
+                                  min_tau=min_tau):
     cstr_prob.append(stmt)
 
   obj = get_objective(objective,cstr_prob)
