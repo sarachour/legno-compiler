@@ -63,10 +63,11 @@ def exec_lscale(args):
                                                             min_dqm=args.min_dqm, \
                                                             min_dqme=args.min_dqme, \
                                                             min_tau=args.min_tau)):
-                    timer.end()
+                    elapsed = timer.end()
 
                     print("<<< writing scaled circuit %d/%d>>>" % (idx,args.scale_adps))
                     scale_adp.metadata.set(ADPMetadata.Keys.LSCALE_ID,idx)
+                    scale_adp.metadata.set(ADPMetadata.Keys.LSCALE_RUNTIME,elapsed)
 
                     calib_obj = llenums.CalibrateObjective(scale_adp \
                                                        .metadata[ADPMetadata.Keys.RUNTIME_CALIB_OBJ])
@@ -127,12 +128,13 @@ def exec_lgraph(args):
                                  vadps=args.vadps,
                                  adps=args.adps, \
                                  routes=args.routes)):
-        timer.end()
+        elapsed = timer.end()
         adp.metadata.set(ADPMetadata.Keys.DSNAME, \
                          args.program)
         adp.metadata.set(ADPMetadata.Keys.FEATURE_SUBSET, \
                          args.subset)
-
+        adp.metadata.set(ADPMetadata.Keys.LGRAPH_RUNTIME, \
+                         elapsed)
         adp.metadata.set(ADPMetadata.Keys.LGRAPH_ID, \
                          int(index))
         print("<<< writing circuit>>>")
@@ -230,10 +232,17 @@ def exec_lexec(args):
                         timer.start()
                         cmd = EXEC_CMD.format(**kwargs)
                         code = os.system(cmd)
-                        timer.end()
+                        elapsed = timer.end()
+                        adp.metadata.set(ADPMetadata.Keys.LEXEC_RUNTIME, \
+                                         elapsed)
                         #input("continue")
                         if code == signal.SIGINT or code != 0:
                             raise Exception("User terminated process")
+
+            with open(adp_file,'w') as fh:
+                jsondata = adp.to_json()
+                fh.write(json.dumps(jsondata,indent=4))
+
 
         print(timer)
         timer.save()

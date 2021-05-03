@@ -550,13 +550,17 @@ class ADPConnection:
 
 class ADPMetadata:
   class Keys(Enum):
+    DSNAME = "dsname"
+    FEATURE_SUBSET = "subset"
+
     LGRAPH_ID = "lgraph_id"
+    LGRAPH_RUNTIME = "lgraph_runtime"
+
     LSCALE_ID = "lscale_id"
+    LSCALE_RUNTIME = "lscale_runtime"
     LSCALE_SCALE_METHOD = "lscale_method"
     LSCALE_OBJECTIVE = "lscale_objective"
     LSCALE_OBJECTIVE_EXPR = "lscale_objective_expr"
-    RUNTIME_CALIB_OBJ = "runt_calib_obj"
-    RUNTIME_PHYS_DB = "runt_phys_db"
     LSCALE_AVGAQM = "avg_aqm"
     LSCALE_AVGDQM = "avg_dqm"
     LSCALE_AQM = "aqm"
@@ -564,10 +568,13 @@ class ADPMetadata:
     LSCALE_AQMOBS  = "aqmobs"
     LSCALE_DQM = "dqm"
     LSCALE_DQME = "dqme"
-    DSNAME = "dsname"
-    FEATURE_SUBSET = "subset"
     LSCALE_NO_SCALE = "no_scale"
     LSCALE_ONE_MODE = "one_mode"
+
+    LEXEC_RUNTIME = "lexec_runtime"
+    RUNTIME_CALIB_OBJ = "runt_calib_obj"
+    RUNTIME_PHYS_DB = "runt_phys_db"
+
     LWAV_NRMSE = "lwav_rmse"
     LWAV_ALIGN= "lwav_align"
 

@@ -162,8 +162,10 @@ class Timer:
 
     def end(self):
         end = time.time()
-        self._runs.append(end-self._start)
+        elapsed = end - seld._start
+        self._runs.append(elapsed)
         self._start = None
+        return elapsed
 
     def __repr__(self):
         if len(self._runs) == 0:
