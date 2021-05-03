@@ -41,7 +41,7 @@ def make_dsprog(prog,N,I):
     params["N"] = "D%d" % (i+1) if i+1 < N else None
 
     if params['N'] is None:
-        dPt = "{tc}*((-{C})+(-{C})+{P})"
+        dPt = "((-{C})+(-{C})+{P})"
         #dPt = "((-{C})+(-{C})+{P})"
     elif params['P'] is None:
         dPt = "{N} + (-{C}) + (-{C}) + {init_heat}"
@@ -52,7 +52,9 @@ def make_dsprog(prog,N,I):
 
 
     #prog.decl_stvar("D%d" % i, dPt, "0.0", params)
-    prog.decl_stvar("D%d" % i, dPt, "0.0", params)
+    prog.decl_var("fD%d" % i, dPt, params)
+    fdPt = "{tc}*fD%d" % i
+    prog.decl_stvar("D%d" % i, fdPt, "0.0", params)
     prog.interval("D%d" % i, \
                   0, params['init_heat'])
 
