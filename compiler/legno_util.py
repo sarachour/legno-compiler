@@ -326,24 +326,20 @@ def exec_stats(args,trials=1):
     import compiler.lwav_pass.vis_lgraph_stats as  lgraph_vizlib
     import compiler.lwav_pass.vis_general_stats as  general_vizlib
 
-    error_key = lambda adp : (
-        adp.metadata[ADPMetadata.Keys.RUNTIME_CALIB_OBJ], \
-        adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD], \
-        adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE], \
-        adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB], \
-        adp.metadata[ADPMetadata.Keys.LSCALE_NO_SCALE], \
-        adp.metadata[ADPMetadata.Keys.LSCALE_ONE_MODE])
+    error_key = lambda adp : (adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB],)
 
     pretty_print_key = lambda key : "%s %s-%s-%s %s %s" % (key[3],key[0],key[1],key[2], \
                                                         ":noscale" if key[4] else "", \
                                                         ":onemode" if key[5] else "")
 
     adps_by_category = {}
+    all_adps = []
     def update_adp_info(adp_name,adp):
         key = error_key(adp)
         if not key in adps_by_category:
             adps_by_category[key] = []
 
+        all_adps.append(adp)
         adps_by_category[key].append(adp)
 
     path_handler = paths.PathHandler(args.subset, \
@@ -374,45 +370,21 @@ def exec_stats(args,trials=1):
                     update_adp_info(adp_file,adp)
 
 
+    for adps in adps_by_category.values():
+        for vizlib in [general_vizlib,lgraph_vizlib,lscale_vizlib]:
+                vises = vizlib.print_aggregate_summaries(board,adps)
+                input("continue...")
+                for kwargs,vis in vises:
+                    plot_file = path_handler.summary_plot_file( \
+                                                    phys_db=adps[0].metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB], \
+                                                                plot=vis.name,  \
+                                                                **kwargs)
+                    vis.plot(plot_file)
+
+
     print("=========== RUNTIME INFO ======")
     print_runtime_stats(path_handler)
-
-    categories = list(adps_by_category.keys())
-    sorted_inds = np.argsort(list(map(lambda key: pretty_print_key(key),  \
-                                      categories)))
-
-    overall_best_adp = None
-    overall_best_execution = None
-    for idx  in sorted_inds:
-        adps = adps_by_category[categories[idx]]
-        rmses = list(map(lambda adp: adp.metadata[ADPMetadata.Keys.LWAV_NRMSE], adps))
-        b2w_inds = np.argsort(rmses)
-        category_name = pretty_print_key(categories[idx])
-        best_adp = adps[b2w_inds[0]]
-        if overall_best_adp is None \
-           or rmses[b2w_inds[0]] < overall_best_adp.metadata[ADPMetadata.Keys.LWAV_NRMSE]:
-            overall_best_adp = best_adp
-            overall_best_execution = categories[idx]
-
-        for vizlib in [general_vizlib, lgraph_vizlib,lscale_vizlib]:
-            vises = vizlib.print_summary(board,adp)
-            vises += vizlib.print_aggregate_summaries(board,adps)
-            for vis in vises:
-                calib_obj = llenums.CalibrateObjective(best_adp.metadata[ADPMetadata.Keys.RUNTIME_CALIB_OBJ])
-                plot_file = path_handler.summary_plot_file( \
-                                                model=best_adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD],
-                                                calib_obj=calib_obj, \
-                                                opt=best_adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE], \
-                                                phys_db=best_adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB], \
-                                                variable="", \
-                                                plot=vis.name, \
-                                                no_scale=best_adp.metadata[ADPMetadata.Keys.LSCALE_NO_SCALE], \
-                                                one_mode=best_adp.metadata[ADPMetadata.Keys.LSCALE_ONE_MODE])
-                vis.plot(plot_file)
-
-
-
-    print("BEST EXECUTION: %s" % pretty_print_key(overall_best_execution))
+    input("continue...")
 
 
 

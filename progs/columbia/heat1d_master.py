@@ -44,16 +44,17 @@ def make_dsprog(prog,N,I):
         dPt = "{tc}*((-{C})+(-{C})+{P})"
         #dPt = "((-{C})+(-{C})+{P})"
     elif params['P'] is None:
-        dPt = "{tc}*({N} + (-{C}) + (-{C}) + {init_heat})"
+        dPt = "{N} + (-{C}) + (-{C}) + {init_heat}"
         #dPt = "({N} + (-{C}) + (-{C}) + {init_heat})"
     else:
-        dPt = "{tc}*({P} + (-{C}) + (-{C}) + {N})"
+        dPt = "{P} + (-{C}) + (-{C}) + {N}"
         #dPt = "({P} + (-{C}) + (-{C}) + {N})"
 
+
+    #prog.decl_stvar("D%d" % i, dPt, "0.0", params)
     prog.decl_stvar("D%d" % i, dPt, "0.0", params)
     prog.interval("D%d" % i, \
-                  0, \
-                  params['init_heat'])
+                  0, params['init_heat'])
 
   assert(I >= 1 and I <= N);
   prog.emit("{one}*D%d" % (I-1), "POINT",params)

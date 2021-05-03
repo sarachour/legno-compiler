@@ -207,6 +207,12 @@ class Max(Op):
         return "max(%s,%s)" % (self.arg(0), \
                                self.arg(1))
 
+    def pretty_print(self):
+        return "max(%s,%s)" % (self.arg(0).pretty_print(), \
+                               self.arg(1).pretty_print())
+
+
+
 class Min(Op):
 
     def __init__(self,arg0,arg1):
@@ -232,6 +238,12 @@ class Min(Op):
     def __repr__(self):
         return "min(%s,%s)" % (self.arg(0), \
                                self.arg(1))
+
+    def pretty_print(self):
+        return "min(%s,%s)" % (self.arg(0).pretty_print(), \
+                               self.arg(1).pretty_print())
+
+
 
 class Clamp(Op):
 
@@ -349,6 +361,11 @@ class Abs(Op):
     def substitute(self,args):
         return Abs(self.arg(0).substitute(args))
 
+    def __repr__(self):
+        return "abs(%s)" % self.arg(0)
+
+    def pretty_print(self):
+        return "|%s|" % self.arg(0).pretty_print()
 
 class Sgn(Op):
 
@@ -365,6 +382,14 @@ class Sgn(Op):
 
     def compute(self,bindings):
         return math.copysign(1.0,self.arg(0).compute(bindings).real)
+
+
+    def __repr__(self):
+        return "sgn(%s)" % self.arg(0)
+
+    def pretty_print(self):
+        return "sgn(%s)" % self.arg(0).pretty_print()
+
 
 
 class Ln(Op):
@@ -397,6 +422,12 @@ class Sin(Op):
     @staticmethod
     def from_json(obj):
         return Sin(Op.from_json(obj['args'][0]))
+
+    def repr(self):
+        return "sin(%s)" % str(self.arg(0))
+
+    def pretty_print(self):
+        return "sin(%s)" % self.arg(0).pretty_print()
 
 class Cos(Op):
 
@@ -447,6 +478,14 @@ class Pow(Op):
 
     def compute(self,bindings):
         return self.arg(0).compute(bindings)**self.arg(1).compute(bindings)
+
+
+    def pretty_print(self):
+        if self.arg2.compute() == 1.0:
+            return self.arg(0).pretty_print()
+        else:
+            return "pow(%s,%s)" % (self.arg(0).pretty_print(), \
+                                self.arg(1).pretty_print())
 
 
 

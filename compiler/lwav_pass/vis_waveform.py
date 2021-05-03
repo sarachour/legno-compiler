@@ -116,7 +116,7 @@ def plot_waveform(dev,adp,waveform,emulate=True,measured=True):
     ylabel = "%s (%s)" % (dsinfo.observation,dsinfo.units)
 
     if measured:
-        vis = wavelib.WaveformVis("meas",ylabel,program.name)
+        vis = wavelib.WaveformVis("meas",ylabel,dsinfo.name)
         vis.set_style('meas',meas_color,'--')
         vis.add_waveform("meas",waveform.start_from_zero().resample(npts))
         yield vis
@@ -138,7 +138,8 @@ def plot_waveform(dev,adp,waveform,emulate=True,measured=True):
     time = min(rec_exp_aligned.max_time, reference.max_time)
     print("align error: %s" % error)
     print("times exp=%s ref=%s" % (rec_exp_aligned.max_time, reference.max_time))
-    vis = wavelib.WaveformVis("vsref",ylabel,program.name)
+
+    vis = wavelib.WaveformVis("vsref",ylabel,dsinfo.name)
     vis.set_style('ref',ref_color,'-')
     vis.set_style('meas',meas_color,'--')
     vis.add_waveform("ref",reference)
@@ -154,7 +155,7 @@ def plot_waveform(dev,adp,waveform,emulate=True,measured=True):
         error = emulated.error(emul_exp_aligned)
         print("error: %s" % error)
 
-        vis = wavelib.WaveformVis("vsemul",ylabel,program.name)
+        vis = wavelib.WaveformVis("vsemul",ylabel,dsinfo.name)
         vis.set_style('emul',emul_color,'-')
         vis.set_style('meas',meas_color,'--')
         vis.add_waveform("emul",emulated)
@@ -190,7 +191,7 @@ def plot_waveform_summaries(dev,adps,waveforms):
     ref_color = "#B53471"
     meas_color = "#006266"
     ylabel = "%s (%s)" % (dsinfo.observation,dsinfo.units)
-    vis = wavelib.WaveformVis("wfs",ylabel,program.name)
+    vis = wavelib.WaveformVis("wfs",ylabel,dsinfo.name)
     vis.add_waveform("ref",reference)
     vis.set_style('ref',ref_color,'-')
 
@@ -206,7 +207,7 @@ def plot_waveform_summaries(dev,adps,waveforms):
 
     print("==== Best Waveform ====")
     best_idx = np.argmin(errors)
-    vis = wavelib.WaveformVis("bestwf",ylabel,program.name)
+    vis = wavelib.WaveformVis("bestwf",ylabel,dsinfo.name)
     vis.add_waveform("ref",reference)
     vis.set_style('ref',ref_color,'-')
     vis.set_style('meas',meas_color,'--')

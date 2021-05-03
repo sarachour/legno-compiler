@@ -1,7 +1,9 @@
 import hwlib.block as blocklib
 import hwlib.device as devlib
 import ops.base_op as baseoplib
+import ops.lambda_op as lamboplib
 from enum import Enum
+
 
 class BlockInst:
 
@@ -21,6 +23,9 @@ class BlockInst:
       'block': self.block,
       'loc': self.loc.to_json()
     }
+
+  def __hash__(self):
+    return hash(str(self))
 
   def __repr__(self):
     return "%s_%s" % (self.block,"_".join(map(lambda a: str(a), \
@@ -742,6 +747,16 @@ class ADP:
       adp.configs.add(cfg)
 
     return adp
+
+  def get_by_source(self,expr):
+    ports = []
+    for cfg in self.configs:
+      for stmt in cfg.stmts:
+        if isinstance(stmt,PortConfig) and \
+           not stmt.source is None:
+          if lamboplib.equivalent(stmt.source,expr):
+            ports.append((cfg.inst,stmt.name))
+    return ports
 
   def to_json(self):
     return {

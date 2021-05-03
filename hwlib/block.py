@@ -250,6 +250,9 @@ class BlockFieldCollection:
   def has(self,key):
     return key in self._collection
 
+  def get(self,key):
+      return self._collection[key]
+
   def __getitem__(self,key):
     return self._collection[key]
 
@@ -326,6 +329,11 @@ class ModeDependentProperty:
     for mode in self._modes.matches(mode_pattern):
         assert(self._fields[mode.key] is None)
         self._fields[mode.key] = field
+
+  def get(self,mode):
+    assert(isinstance(mode,BlockMode))
+    return self._fields[mode.key]
+
 
   def __getitem__(self,mode):
     assert(isinstance(mode,BlockMode))

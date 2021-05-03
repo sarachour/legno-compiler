@@ -239,21 +239,33 @@ class PathHandler:
                            var=variable,
                            trial=trial)
 
-    def summary_plot_file(self,model,opt,\
-                           calib_obj, phys_db, \
-                           variable, \
-                           plot, \
+    def summary_plot_file(self,graph_index=None, \
+                          scale_index=None, \
+                          model=None,opt=None,\
+                          calib_obj=None, phys_db=None, \
+                          variable=None, \
+                          plot=None, \
                           no_scale=False,\
                           one_mode=False, \
-                           oscilloscope=False):
+                          oscilloscope=False):
         filepath = "{path}/{plot_type}"
         cdir = filepath.format(path=self.PLOT_DIR, \
                                plot_type='wave')
         util.mkdir_if_dne(cdir)
 
+        if plot is None:
+            raise Exception("plot must be name")
+
+        variable = "" if variable is None else "_%s" % variable
+        graph_index = "" if graph_index is None else "_g%s" % graph_index
+        scale_index = "" if scale_index is None else "_s%s" % scale_index
+        model = "" if model is None else "_%s" % model
+        calib_obj = "" if calib_obj is None else "_%s" % calib_obj.tag()
+        phys_db = "" if phys_db is None else "_%s" % phys_db
+        opt = "" if opt is None else "_%s" % opt
         tag = PathHandler._get_tag(no_scale,one_mode)
-        path = "{path}/{prog}_{model}_{opt}_{calib_obj}_{physdb}{tag}"
-        path += "_{var}_{plot}"
+        path = "{path}/{prog}{graph_index}{scale_index}{model}{opt}{calib_obj}{physdb}{tag}"
+        path += "{var}_{plot}"
         if oscilloscope:
             path += "_scope"
         path += ".pdf"
@@ -261,7 +273,9 @@ class PathHandler:
         return path.format(path=cdir,
                            prog=self._prog,
                            model=model,
-                           calib_obj=calib_obj.tag(), \
+                           graph_index=graph_index,
+                           scale_index=scale_index,
+                           calib_obj=calib_obj, \
                            physdb=phys_db, \
                            opt=opt, \
                            tag=tag, \

@@ -40,7 +40,7 @@ def render(vadp, filename):
                            graph_attr={
                                "overlap":'scale', \
                                "nodesep":'1', \
-                               "splines":'curved', \
+                               "splines":'spline', \
                            },
                            node_attr={'shape':'record'})
     for idx,stmt in enumerate(vadp):

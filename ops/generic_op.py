@@ -29,6 +29,12 @@ class Integ(GenericOp2):
         return Integ(Op.from_json(obj['args'][0]), \
                      Op.from_json(obj['args'][1]))
 
+    def pretty_print(self):
+        return "integ(%s,%s)" % (self.deriv.pretty_print(), \
+                                 self.init_cond.pretty_print())
+
+
+
 class ExtVar(GenericOp):
 
     def __init__(self,name,loc=None):
@@ -70,6 +76,10 @@ class ExtVar(GenericOp):
       obj['name'] = self._name
       obj['physical'] = self._physical
       return obj
+
+    def pretty_print(self):
+        return "extvar(%s)" % (self.args[0].pretty_print())
+
 
 class Var(Op):
 
@@ -114,6 +124,10 @@ class Var(Op):
     def vars(self):
         return [self._name]
 
+    def pretty_print(self):
+        return "%s" % self.name
+
+
 
 
 class Const(GenericOp):
@@ -150,6 +164,13 @@ class Const(GenericOp):
             (self._op.value,self._value)
 
 
+    def pretty_print(self):
+        if self.value < 0:
+            return "(%.2f)" % self.value
+        else:
+            return "%.2f" % self.value
+
+
 class Emit(Op):
 
     def __init__(self,node,loc=None):
@@ -170,6 +191,10 @@ class Emit(Op):
         return self.arg(0).compute(bindings)
 
 
+    def pretty_print(self):
+        return "emit(%s)" % (self.args[0].pretty_print())
+
+
 
 
 class Paren(Op):
@@ -188,6 +213,9 @@ class Paren(Op):
 
     def substitute(self,args):
         return Paren(self.arg(0).substitute(args))
+
+    def pretty_print(self):
+        return "(%s)" % (self.args[0].pretty_print())
 
 
 
@@ -220,6 +248,12 @@ class Mult(GenericOp2):
     def compute_op2(self,arg1,arg2):
         return arg1*arg2
 
+    def pretty_print(self):
+        coeff,base_expr = factor_coefficient(self.args[1])
+        return "(%s*%s)" % (self.args[0].pretty_print(), \
+                          self.args[1].pretty_print())
+
+
 
 class Add(GenericOp2):
 
@@ -244,6 +278,11 @@ class Add(GenericOp2):
 
     def compute_op2(self,arg1,arg2):
         return arg1+arg2
+
+    def pretty_print(self):
+        return "(%s)+(%s)" % (self.args[0].pretty_print(), \
+                              self.args[1].pretty_print())
+
 
 
 class Call(GenericOp):
@@ -449,9 +488,8 @@ def factor_coefficient(expr):
         else:
             return 1.0,expr
 
-
     else:
-        raise Exception("unimpl: %s" % expr)
+            return 1.0,expr
 
 def unpack_integ(expr):
     coeff,exprs = unpack_product(expr)

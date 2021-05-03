@@ -4,9 +4,13 @@ from hwlib.adp import ADP,ADPMetadata
 import compiler.lwav_pass.waveform as wavelib
 import compiler.lwav_pass.histogram as histlib
 import compiler.lwav_pass.heatgrid as heatlib
+import compiler.lwav_pass.vis_util as visutil
+import compiler.lwav_pass.table as tbllib
 
 import compiler.lscale_pass.lscale_dynsys as lscaleprob
 import compiler.lscale_pass.lscale_ops as lscalelib
+
+import hwlib.block as blocklib
 
 from dslang.dsprog import DSProgDB
 import numpy as np
@@ -41,7 +45,6 @@ def print_summary(dev,adp):
 
 
 def correlation_analysis(dev,dsprog,all_adps):
-
     def get_corr(x,y):
         return np.corrcoef(x,y)[0][1]
 
@@ -173,6 +176,264 @@ def interval_usage_analysis(dev,dsprog,adps):
     yield port_hg
     yield datafield_hg
 
+def insert_value(dic,key,val):
+    if not key in dic:
+        dic[key] = []
+    dic[key].append(val)
+
+def get_adp_properties(dev,adp):
+    scale_factors = {}
+    modes = {}
+    for cfg in adp.configs:
+        block = dev.get_block(cfg.inst.block)
+        key = (cfg.inst)
+        modes[key] = cfg.mode
+
+        for stmt in cfg.stmts:
+            if stmt.type == adplib.ConfigStmtType.CONSTANT or \
+            stmt.type == adplib.ConfigStmtType.PORT:
+                key = (cfg.inst,stmt.name)
+                scale_factors[key] = stmt.scf
+
+    return scale_factors,modes
+
+def get_coverages(dev,dsprog,adp,  \
+                  per_instance=False):
+    dsinfo = lscaleprob.generate_dynamical_system_info(dev,dsprog,adp, \
+                                                       apply_scale_transform=True)
+    signal_coverages = {}
+    quality_measures = {}
+    max_freq = 1.0/dev.time_constant
+    freq_limits = []
+    for cfg in adp.configs:
+        block = dev.get_block(cfg.inst.block)
+        for stmt in cfg.stmts:
+            if stmt.type == adplib.ConfigStmtType.CONSTANT or \
+            stmt.type == adplib.ConfigStmtType.PORT:
+                spec = block.inputs.get(stmt.name) if block.inputs.has(stmt.name) else \
+                    (block.outputs.get(stmt.name) if block.outputs.has(stmt.name) else \
+                        block.data.get(stmt.name))
+
+                if stmt.type == adplib.ConfigStmtType.PORT:
+                    freq_limit = spec.freq_limit.get(cfg.mode)
+                    if not freq_limit is None:
+                        freq_limits.append(freq_limit)
+
+                if not dsinfo.has_interval(cfg.inst,stmt.name):
+                    continue
+
+                ival = dsinfo.get_interval(cfg.inst, stmt.name)
+                oprng = spec.interval.get(cfg.mode)
+                error = spec.quantize.get(cfg.mode).error(oprng) \
+                    if spec.type == blocklib.BlockSignalType.DIGITAL or \
+                       isinstance(spec,blocklib.BlockData) else \
+                       spec.noise.get(cfg.mode)
+
+                if not per_instance:
+                    key = (cfg.inst.block,stmt.name)
+                else:
+                    key = (cfg.inst,stmt.name)
+
+                if ival.bound > 0:
+                    ratio = ival.bound/oprng.bound
+                    if not key in signal_coverages:
+                        signal_coverages[key] = []
+
+                    signal_coverages[key].append(ratio)
+
+                    if not error is None and error > 0:
+                        qm = ival.bound/error
+                        if not key in quality_measures:
+                            quality_measures[key] = []
+
+                        quality_measures[key].append(qm)
+
+    max_time_scf = min(freq_limits)/max_freq
+    time_coverage = (adp.tau)/max_time_scf
+    return quality_measures,signal_coverages,time_coverage
+
+def interval_coverage_summary(dev,program,adps):
+      def make_new_plot(block,port):
+          name = "%s.%s" % (block,port)
+          title = "%s %s" % (block,port)
+          plt = heatlib.HeatGrid(name=name,title=title,  \
+                                 xlabel="% utilization", \
+                                 ylabel="% rmse", \
+                                 resolution=20)
+          plt.numerical_rows = True
+          return plt
+
+      for (lgraph_id,no_scale,one_mode,scale_method,scale_objective,calib_obj),adp_group in  \
+        visutil.adps_groupby(adps,[ADPMetadata.Keys.LGRAPH_ID, \
+                                   ADPMetadata.Keys.LSCALE_NO_SCALE, \
+                                   ADPMetadata.Keys.LSCALE_ONE_MODE, \
+                                   ADPMetadata.Keys.LSCALE_SCALE_METHOD, \
+                                   ADPMetadata.Keys.LSCALE_OBJECTIVE, \
+                                   ADPMetadata.Keys.RUNTIME_CALIB_OBJ]):
+
+        kwargs = visutil.make_plot_kwargs(lgraph_id=lgraph_id, \
+                                          no_scale=no_scale, \
+                                          one_mode=one_mode, \
+                                          scale_method=scale_method, \
+                                          scale_objective=scale_objective, \
+                                          calib_objective=calib_obj)
+
+        if no_scale or one_mode or len(adp_group) <= 30:
+            continue
+
+        #remove outliers
+        nadps = len(adp_group)
+        rmses =np.array(visutil.adps_get_values(adp_group, ADPMetadata.Keys.LWAV_NRMSE))
+        indices = list(range(nadps))
+        indices.sort(key=lambda idx:rmses[idx])
+        heatmap_plots = {}
+        all_heatmap = make_new_plot("all","")
+
+        time_coverages = []
+        for idx in indices:
+            qual_meas,sig_covs,time_cov= get_coverages(dev,program,adp_group[idx])
+            time_coverages.append(time_cov)
+            data = []
+            for (block,port),coverages in sig_covs.items():
+                if block == "fanout" or block == "extin" or block == "extout" or block == "tin" or \
+                   block == "tout":
+                    continue
+
+                if not (block,port) in heatmap_plots:
+                    heatmap_plots[(block,port)] = make_new_plot(block,port)
+
+                heatmap_plots[(block,port)].add_row(sig_covs[(block,port)],value=rmses[idx])
+                data += sig_covs[(block,port)]
+
+            all_heatmap.add_row(data,value=rmses[idx])
+
+        tbl = tbllib.Tabular(["metric","min","max","median"], \
+                             ["%s","%.2f","%.2f","%.2f"])
+        tbl.add(['time coverage',min(time_coverages),max(time_coverages),np.median(time_coverages)])
+        print(tbl.render())
+        print("\n")
+
+
+        multi_heatmap = heatlib.MultiHeatGrid("magcov","utilization","% rmse")
+        multi_heatmap.add(all_heatmap)
+        for (block,port),plot in heatmap_plots.items():
+            multi_heatmap.add(plot)
+
+        multi_heatmap.bounds = [0.0,1.0]
+        yield kwargs,multi_heatmap
+
+def get_correlation(x,y):
+    return np.corrcoef(x,y)[0][1]
+
+def group_by_category(cats,ys):
+    by_cat = {}
+    for cat,y in zip(cats,ys):
+        insert_value(by_cat,cat,y)
+
+    return by_cat
+
+
+def get_correlation_ratio(cats,ys):
+    by_cat = group_by_category(cats,ys)
+
+    mu_pop = np.mean(ys)
+    mu_std_cats = []
+    std_cats = []
+    for cat,y in by_cat.items():
+        mu_cat = np.mean(y)
+        mu_std_cat = len(y)*(mu_cat - mu_pop)**2
+        std_cats += list(map(lambda yi: (yi-mu_pop)**2, y))
+        mu_std_cats.append(mu_std_cat)
+
+    variance1 = sum(mu_std_cats)/sum(ys)
+    variance2 = sum(std_cats)/sum(ys)
+    eta = math.sqrt(variance1/variance2)
+    return eta
+
+def covariance_summary(dev,adps,bounds=None):
+      for (lgraph_id,no_scale,one_mode,scale_method,scale_objective,calib_obj),adp_group in  \
+        visutil.adps_groupby(adps,[ADPMetadata.Keys.LGRAPH_ID, \
+                                   ADPMetadata.Keys.LSCALE_NO_SCALE, \
+                                   ADPMetadata.Keys.LSCALE_ONE_MODE, \
+                                   ADPMetadata.Keys.LSCALE_SCALE_METHOD, \
+                                   ADPMetadata.Keys.LSCALE_OBJECTIVE, \
+                                   ADPMetadata.Keys.RUNTIME_CALIB_OBJ]):
+
+        kwargs = visutil.make_plot_kwargs(lgraph_id=lgraph_id, \
+                                          no_scale=no_scale, \
+                                          one_mode=one_mode, \
+                                          scale_method=scale_method, \
+                                          scale_objective=scale_objective, \
+                                          calib_objective=calib_obj)
+
+        if no_scale or one_mode or len(adp_group) <= 30:
+            continue
+
+        dsprog = DSProgDB.get_prog(adps[0].metadata[ADPMetadata.Keys.DSNAME])
+        rmses =visutil.adps_get_values(adp_group, ADPMetadata.Keys.LWAV_NRMSE)
+        aqms =visutil.adps_get_values(adp_group, ADPMetadata.Keys.LSCALE_AQM)
+        dqms =visutil.adps_get_values(adp_group, ADPMetadata.Keys.LSCALE_DQM)
+        tcs = list(map(lambda adp: adp.tau, adp_group))
+
+        print("--- time constants ---")
+        tbl = tbllib.Tabular(["metric","min","max","median","correlation (with rmse)"], \
+                             ["%s","%.2f","%.2f","%.2f","%.3f"])
+        corr = get_correlation(aqms,rmses)
+        tbl.add(['aqm',min(aqms),max(aqms),np.median(aqms),corr])
+        corr = get_correlation(dqms,rmses)
+        tbl.add(['dqm',min(dqms),max(dqms),np.median(dqms),corr])
+        corr = get_correlation(tcs,rmses)
+        tbl.add(['tc',min(tcs),max(tcs),np.median(tcs),corr])
+        print(tbl.render())
+        print("\n")
+
+
+        all_scfs = {}
+        all_qms = {}
+        all_exprs = {}
+        all_modes = {}
+
+
+        for adp in adp_group:
+            dsexprs = lscaleprob.generate_dynamical_system_info(dev, \
+                                                                dsprog,adp, \
+                                                                apply_scale_transform=False)
+            qual_meas,sig_covs,_= get_coverages(dev,dsprog,adp,per_instance=True)
+
+            scfs,modes = get_adp_properties(dev,adp)
+            for key,scf in scfs.items():
+                insert_value(all_scfs,key,scf)
+                if key in qual_meas:
+                    assert(len(qual_meas[key]) == 1)
+                    insert_value(all_qms,key,qual_meas[key][0])
+
+                if dsexprs.has_expr(*key):
+                    insert_value(all_exprs,key,dsexprs.get_expr(*key))
+
+            for key,mode in modes.items():
+                insert_value(all_modes,key,mode)
+
+        tbl = tbllib.Tabular(["block","port","expr","scale factor corr.","quality measure corr."], \
+                             ["%s","%s","%s","%.2f", "%.2f"])
+
+        tbl.sort_by('expr')
+        for key in all_exprs.keys():
+            scfs = all_scfs[key]
+            inst,port = key
+            scf_corr = get_correlation(scfs,rmses)
+            expr = all_exprs[(key[0],key[1])][0]
+            if key in all_qms:
+                qms = all_qms[key]
+                qm_corr = get_correlation(qms,rmses)
+                tbl.add([inst,port,expr.pretty_print(), scf_corr,qm_corr])
+
+
+        print(tbl.render())
+        print("\n")
+
+        return []
+
+
 def print_aggregate_summaries(dev,adps,bounds=None):
     adp = adps[0]
     program = DSProgDB.get_prog(adp.metadata[ADPMetadata.Keys.DSNAME])
@@ -183,21 +444,8 @@ def print_aggregate_summaries(dev,adps,bounds=None):
     rmses = list(map(lambda adp: adp.metadata[ADPMetadata.Keys.LWAV_NRMSE], adps)) 
     vises = []
 
-    #correlation_analysis(dev,program,adps)
-    for vis in interval_usage_analysis(dev,program,adps):
-        vises.append(vis)
+    for kwargs,vis in interval_coverage_summary(dev,program,adps):
+        vises.append((kwargs,vis))
 
-    correlation_analysis(dev,program,adps)
-
-    meas_color = "#E74C3C"
-
-    vis = histlib.HistogramVis("aqm","aqm",program.name,bins)
-    vis.add_data('count',aqms)
-    vis.set_style('count',meas_color)
-    vises.append(vis)
-
-    vis = histlib.HistogramVis("dqm","dqm",program.name,bins)
-    vis.add_data('count',dqms)
-    vis.set_style('count',meas_color)
-    vises.append(vis)
+    covariance_summary(dev,adps)
     return vises

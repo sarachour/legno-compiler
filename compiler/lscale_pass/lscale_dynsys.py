@@ -90,7 +90,8 @@ def _generate_dsinfo_expr_recurse(dev,dsinfo,adp,apply_scale_transform=False):
 
 
 
-def generate_dynamical_system_expr_info(dsinfo,dev,program,adp,apply_scale_transform=False):
+def generate_dynamical_system_expr_info(dsinfo,dev,program,adp,apply_scale_transform=False, \
+                                        label_integrators_only=False):
   ds_ivals = dict(program.intervals())
   for config in adp.configs:
     for stmt in config.stmts_of_type(adplib.ConfigStmtType.PORT):
@@ -99,7 +100,8 @@ def generate_dynamical_system_expr_info(dsinfo,dev,program,adp,apply_scale_trans
           if(apply_scale_transform):
               expr = genoplib.Mult(genoplib.Const(stmt.scf),expr)
 
-          dsinfo.set_expr(config.inst,stmt.name,expr)
+          if not label_integrators_only or config.inst.block == "integ":
+            dsinfo.set_expr(config.inst,stmt.name,expr)
 
     for datum in config.stmts_of_type(adplib.ConfigStmtType.CONSTANT):
         value = genoplib.Const(datum.value)
@@ -135,9 +137,11 @@ def generate_dynamical_system_interval_info(dsinfo,dev,program,adp):
                                 ivallib.Interval.type_infer(value,value))
 
 
-def generate_dynamical_system_info(dev,program,adp,apply_scale_transform=False):
+def generate_dynamical_system_info(dev,program,adp,apply_scale_transform=False, \
+                                   label_integrators_only=False):
   dsinfo = scalelib.DynamicalSystemInfo()
   generate_dynamical_system_expr_info(dsinfo,dev,program,adp, \
-                                      apply_scale_transform=apply_scale_transform)
+                                      apply_scale_transform=apply_scale_transform, \
+                                      label_integrators_only=label_integrators_only)
   generate_dynamical_system_interval_info(dsinfo,dev,program,adp)
   return dsinfo
