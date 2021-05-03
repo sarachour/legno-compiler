@@ -550,8 +550,8 @@ class ADPConnection:
 
 class ADPMetadata:
   class Keys(Enum):
-    DSNAME = "dsname"
-    FEATURE_SUBSET = "subset"
+    DSNAME = "general_dsname"
+    FEATURE_SUBSET = "general_subset"
 
     LGRAPH_ID = "lgraph_id"
     LGRAPH_RUNTIME = "lgraph_runtime"
@@ -561,17 +561,17 @@ class ADPMetadata:
     LSCALE_SCALE_METHOD = "lscale_method"
     LSCALE_OBJECTIVE = "lscale_objective"
     LSCALE_OBJECTIVE_EXPR = "lscale_objective_expr"
-    LSCALE_AVGAQM = "avg_aqm"
-    LSCALE_AVGDQM = "avg_dqm"
-    LSCALE_AQM = "aqm"
-    LSCALE_AQMST = "aqmst"
-    LSCALE_AQMOBS  = "aqmobs"
-    LSCALE_DQM = "dqm"
-    LSCALE_DQME = "dqme"
-    LSCALE_NO_SCALE = "no_scale"
-    LSCALE_ONE_MODE = "one_mode"
+    LSCALE_AVGAQM = "lscale_avg_aqm"
+    LSCALE_AVGDQM = "lscale_avg_dqm"
+    LSCALE_AQM = "lscale_aqm"
+    LSCALE_AQMST = "lscale_aqmst"
+    LSCALE_AQMOBS  = "lscale_aqmobs"
+    LSCALE_DQM = "lscale_dqm"
+    LSCALE_DQME = "lscale_dqme"
+    LSCALE_NO_SCALE = "lscale_no_scale"
+    LSCALE_ONE_MODE = "lscale_one_mode"
 
-    LEXEC_RUNTIME = "lexec_runtime"
+    RUNTIME_RUNTIME = "runt_runtime"
     RUNTIME_CALIB_OBJ = "runt_calib_obj"
     RUNTIME_PHYS_DB = "runt_phys_db"
 

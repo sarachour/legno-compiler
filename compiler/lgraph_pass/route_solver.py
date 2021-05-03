@@ -146,7 +146,7 @@ def solve(prob):
       total_assigns = len(neg)
       assign_clause = sum(map(lambda ident: ident.ilpvar, neg)) + 1
       print(assign_clause <= total_assigns)
-      ilp += assign_clause <= total_assigns,"negate-model-%d" % idx
+      ilp += (assign_clause <= total_assigns-1),"negate-model-%d" % idx
 
 
   ilp.solve()

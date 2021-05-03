@@ -233,7 +233,7 @@ def exec_lexec(args):
                         cmd = EXEC_CMD.format(**kwargs)
                         code = os.system(cmd)
                         elapsed = timer.end()
-                        adp.metadata.set(ADPMetadata.Keys.LEXEC_RUNTIME, \
+                        adp.metadata.set(ADPMetadata.Keys.RUNTIME_RUNTIME, \
                                          elapsed)
                         #input("continue")
                         if code == signal.SIGINT or code != 0:
