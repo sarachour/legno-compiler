@@ -478,21 +478,22 @@ def exec_wav(args,trials=1):
                                         for vis in vizlib.plot_waveform(board,adp,wave, \
                                                                             emulate=args.emulate, \
                                                                             measured=args.measured):
-                                            plot_file = path_handler.waveform_plot_file( \
-                                                                                         graph_index=adp.metadata[ADPMetadata.Keys.LGRAPH_ID],
-                                                                                         scale_index=adp.metadata[ADPMetadata.Keys.LSCALE_ID],
-                                                                                         model=adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD],
-                                                                                         calib_obj=calib_obj, \
-                                                                                         opt=adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE], \
-                                                                                         phys_db=adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB],  \
-                                                                                         no_scale=adp.metadata[ADPMetadata.Keys.LSCALE_NO_SCALE], \
-                                                                                         one_mode=adp.metadata[ADPMetadata.Keys.LSCALE_ONE_MODE], \
-                                                                                         variable=var, \
-                                                                                         trial=trial, \
-                                                                                         plot=vis.name, \
-                                                                                         oscilloscope=has_scope)
+                                            if args.individual_plots:
+                                                plot_file = path_handler.waveform_plot_file( \
+                                                                                            graph_index=adp.metadata[ADPMetadata.Keys.LGRAPH_ID],
+                                                                                            scale_index=adp.metadata[ADPMetadata.Keys.LSCALE_ID],
+                                                                                            model=adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD],
+                                                                                            calib_obj=calib_obj, \
+                                                                                            opt=adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE], \
+                                                                                            phys_db=adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB],  \
+                                                                                            no_scale=adp.metadata[ADPMetadata.Keys.LSCALE_NO_SCALE], \
+                                                                                            one_mode=adp.metadata[ADPMetadata.Keys.LSCALE_ONE_MODE], \
+                                                                                            variable=var, \
+                                                                                            trial=trial, \
+                                                                                            plot=vis.name, \
+                                                                                            oscilloscope=has_scope)
 
-                                            vis.plot(plot_file)
+                                                vis.plot(plot_file)
 
                                         nrmse = adp.metadata.get(ADPMetadata.Keys.LWAV_NRMSE)
                                         nrmses.append(nrmse)

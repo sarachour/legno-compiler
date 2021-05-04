@@ -50,6 +50,7 @@ def print_compensation_comparison(adps):
         ("phys","maximize_fit"): "maxfit"
     }
     program = DSProgDB.get_prog(adps[0].metadata[ADPMetadata.Keys.DSNAME])
+    dsinfo = DSProgDB.get_info(program.name)
     for (lgraph_id,no_scale,one_mode,scale_objective),adp_group in  \
         visutil.adps_groupby(adps,[ADPMetadata.Keys.LGRAPH_ID,  \
                            ADPMetadata.Keys.LSCALE_NO_SCALE, \
@@ -75,9 +76,9 @@ def print_compensation_comparison(adps):
             continue
 
         boxwhisk = boxlib.BoxAndWhiskerVis('compensate', \
-                                       xaxis='compensation method',
-                                       yaxis='% rmse',
-                                       title='%s' % program)
+                                           xaxis='compensation method',
+                                           yaxis='% rmse',
+                                           title='%s' % dsinfo.name)
 
         for ser in series_order:
             boxwhisk.add_data(ser,dataset[ser])
@@ -90,6 +91,7 @@ def print_random_comparison(adps):
 
     series = {
         'qtytau': 'balanced',
+        'qty': 'quality',
         'rand':'random'
     }
     for (lgraph_id,no_scale,one_mode,scale_method,calib_obj),adp_group in  \

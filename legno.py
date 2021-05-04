@@ -128,6 +128,8 @@ plot_subp = subparsers.add_parser('lwav', help='analyze waveforms.')
 plot_subp.add_argument('program', help='program to analyze.')
 plot_subp.add_argument('--summary-plots', action='store_true', \
                        help='generate summary plots.')
+plot_subp.add_argument('--individual-plots', action='store_true', \
+                       help='generate summary plots.')
 plot_subp.add_argument('--emulate', action='store_true', \
                        help='compare to emulated result.')
 plot_subp.add_argument('--scope-only', action='store_true', \
