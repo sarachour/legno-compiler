@@ -7,14 +7,16 @@ class Tabular():
         self.fields = fields
         self.fmt = fmt
         self.rows = []
+        self.emphasis = []
 
     def sort_by(self,field):
         assert(field in self.fields)
         self.sorting_field = field
 
-    def add(self,values):
+    def add(self,values,emph=None):
         assert(len(values) == len(self.fields))
         self.rows.append(values)
+        self.emphasis.append(emph)
 
     def render(self):
         st = " & ".join(map(lambda f: str(f), self.fields))
@@ -28,8 +30,15 @@ class Tabular():
             indices = list(range(len(self.rows)))
 
         for i in indices:
-            st += " & ".join(map(lambda f: f[0] % f[1] if not f[1] is None else "", \
-                                zip(self.fmt,self.rows[i])))
+            fields = []
+            for j,cell in enumerate(self.rows[i]):
+                value =  self.fmt[j] % cell if not cell is None else ""
+                if not self.emphasis[i] is None and self.emphasis[i][j]:
+                    value = "\\textbf{%s}" % value
+                fields.append(value)
+
+
+            st += " & ".join(fields)
             st += "\\\\\n"
         return st
 
