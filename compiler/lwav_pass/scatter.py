@@ -14,7 +14,8 @@ class ScatterVis:
         self.title = title
         self.points = {}
         self.styles = {}
- 
+        self.show_legend = False
+
     @property
     def time_units(self):
         for wf in self.waveforms.values():
@@ -49,15 +50,21 @@ class ScatterVis:
         ax.grid(False)
 
         for name,(xs,ys) in self.points.items():
-            color,pointstyle,opacity = self.styles[name]
-            ax.scatter(xs,ys,label=name,
-                       marker=pointstyle, \
-                       s=100,\
-                       color=color, \
-                       alpha=opacity)
+            if not name in self.styles:
+                ax.scatter(xs,ys,label=name,
+                           s=100)
+            else:
+                color,pointstyle,opacity = self.styles[name]
+                ax.scatter(xs,ys,label=name,
+                           marker=pointstyle, \
+                           s=100,\
+                           color=color, \
+                           alpha=opacity)
 
         #ax.set_ylim(ymin=ymin*1.1,ymax=ymax*1.1)
         #ax.set_xlim(xmin=xmin*1.1,xmax=xmax*1.1)
+        if self.show_legend:
+            ax.legend()
 
         plt.tight_layout()
         plt.savefig(filepath)

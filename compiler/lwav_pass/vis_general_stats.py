@@ -19,131 +19,153 @@ import hwlib.hcdc.energy_model as energymodel
 import runtime.runtime_meta_util as runt_meta_util
 
 import compiler.lwav_pass.boxandwhisker as boxlib
+import compiler.lwav_pass.scatter as  scatterlib
 import compiler.lwav_pass.vis_util as visutil
+import compiler.lwav_pass.table as tbllib
 
-
-def print_summary(dev,adp):
-    program = DSProgDB.get_prog(adp.metadata[ADPMetadata.Keys.DSNAME])
+def compute_power_quality_runtime(dev,adps):
+    program = DSProgDB.get_prog(adps[0].metadata[ADPMetadata.Keys.DSNAME])
     dssim = DSProgDB.get_sim(program.name)
     dsinfo = DSProgDB.get_info(program.name)
-    rmse = adp.metadata.get(ADPMetadata.Keys.LWAV_NRMSE)
+    rmses = visutil.adps_get_values(adps,ADPMetadata.Keys.LWAV_NRMSE)
+    runtimes = list(map(lambda adp: dev.time_constant/adp.tau*dssim.sim_time, adps))
+    bandwidths = list(map(lambda adp: 1.0/dev.time_constant*adp.tau, adps))
+    powers = list(map(lambda tup: energymodel.compute_power(tup[0],tup[1]), \
+                        zip(adps, bandwidths)))
+    energies = list(map(lambda tup: tup[0]*tup[1], \
+                        zip(runtimes, powers)))
 
-    print("------------ metadata ----------------")
-    print(adp.metadata)
+    return np.array(rmses),np.array(runtimes),np.array(powers),np.array(energies)
 
-    runtime = dev.time_constant/adp.tau*dssim.sim_time
-    bandwidth = (1.0/dev.time_constant)*adp.tau
-    power = energymodel.compute_power(adp,bandwidth)
-    energy = runtime*power
+def print_performance_summary(dev,adps):
+    def fancy_name(adp):
+        names = {
+            ("minimize_error","ideal"): "ideal",
+            ("maximize_fit","phys"):"maxfit",
+            ("minimize_error","phys"):"minerr"
+        }
+        fmt = "{calib_obj}/{scale_method}"
+        key = (adp.metadata.get(ADPMetadata.Keys.RUNTIME_CALIB_OBJ), \
+        adp.metadata.get(ADPMetadata.Keys.LSCALE_SCALE_METHOD))
+        name = names[key]
 
-    print("--------    general -------------")
-    print("runtime = %f ms" % (runtime*1000))
-    print("power    = %f mW" % (power*1e3))
-    print("energy  = %f uJ" % (energy*1e6))
-    print("quality = %f %%" % rmse)
-    return []
+        objective = adp.metadata.get(ADPMetadata.Keys.LSCALE_OBJECTIVE) 
+        if objective != "qtytau":
+            name += "/" + objective
+        if adp.metadata.get(ADPMetadata.Keys.LSCALE_ONE_MODE):
+            name += " (one mode)"
+        if adp.metadata.get(ADPMetadata.Keys.LSCALE_NO_SCALE):
+            name += "(no scale)"
 
-def print_compensation_comparison(adps):
-    series = {
-        ("ideal","minimize_error"): "ideal",
-        ("phys","minimize_error"): "minerr",
-        ("phys","maximize_fit"): "maxfit"
-    }
+        return name
     program = DSProgDB.get_prog(adps[0].metadata[ADPMetadata.Keys.DSNAME])
+    dssim = DSProgDB.get_sim(program.name)
     dsinfo = DSProgDB.get_info(program.name)
-    for (lgraph_id,no_scale,one_mode,scale_objective),adp_group in  \
-        visutil.adps_groupby(adps,[ADPMetadata.Keys.LGRAPH_ID,  \
-                           ADPMetadata.Keys.LSCALE_NO_SCALE, \
-                           ADPMetadata.Keys.LSCALE_ONE_MODE, \
-                           ADPMetadata.Keys.LSCALE_OBJECTIVE]):
 
-        kwargs = visutil.make_plot_kwargs(lgraph_id=lgraph_id, \
-                                  no_scale=no_scale, one_mode=one_mode, \
-                                  scale_objective=scale_objective) 
+    pr_vis = scatterlib.ScatterVis("powerVruntime",
+                          title="% power v.s. runtime",
+                          xlabel="runtime (ms)", \
+                          ylabel="power (mW)")
+    pr_vis.show_legend = True
 
-        dataset = {}
-        for (scale_method,calib_obj), plot_adps in visutil.adps_groupby(adp_group, \
-                                                     [ADPMetadata.Keys.LSCALE_SCALE_METHOD, \
-                                                      ADPMetadata.Keys.RUNTIME_CALIB_OBJ]):
+    qr_vis = scatterlib.ScatterVis("rmseVruntime",
+                          title="% rmse v.s. runtime",
+                          xlabel="runtime (ms)", \
+                          ylabel="% rmse")
+    qr_vis.show_legend = True
 
-            values = visutil.adps_get_values(plot_adps, ADPMetadata.Keys.LWAV_NRMSE)
-            series_name = series[(scale_method,calib_obj)]
-            dataset[series_name] = values
+    qe_vis = scatterlib.ScatterVis("rmseVenergy",
+                          title="% rmse v.s. runtime",
+                          xlabel="energy (uJ)", \
+                          ylabel="% rmse")
+    qr_vis.show_legend = True
 
 
-        series_order = ["ideal","minerr","maxfit"]
-        if any(map(lambda ser: not ser in dataset, series_order)):
+    valid_scale_methods = ['phys']
+    valid_scale_objectives = ['qtytau']
+
+
+    energy_scale = 1e6
+    power_scale= 1e3
+    runtime_scale = 1e3
+
+    legend = {'minimize_error':'minerr','maximize_fit':'maxfit'}
+    valid_adps = []
+    for (no_scale,one_mode,scale_method,scale_objective,calib_obj),adp_group in  \
+        visutil.adps_groupby(adps,[ADPMetadata.Keys.LSCALE_NO_SCALE, \
+                                   ADPMetadata.Keys.LSCALE_ONE_MODE, \
+                                   ADPMetadata.Keys.LSCALE_SCALE_METHOD, \
+                                   ADPMetadata.Keys.LSCALE_OBJECTIVE, \
+                                   ADPMetadata.Keys.RUNTIME_CALIB_OBJ]):
+        if one_mode or no_scale:
             continue
 
-        boxwhisk = boxlib.BoxAndWhiskerVis('compensate', \
-                                           xaxis='compensation method',
-                                           yaxis='% rmse',
-                                           title='%s' % dsinfo.name)
 
-        for ser in series_order:
-            boxwhisk.add_data(ser,dataset[ser])
-
-        yield kwargs,boxwhisk
-
-def print_random_comparison(adps):
-    adp = adps[0]
-    program = DSProgDB.get_prog(adp.metadata[ADPMetadata.Keys.DSNAME])
-
-    series = {
-        'qtytau': 'balanced',
-        'qty': 'quality',
-        'rand':'random'
-    }
-    for (lgraph_id,no_scale,one_mode,scale_method,calib_obj),adp_group in  \
-        visutil.adps_groupby(adps,[ADPMetadata.Keys.LGRAPH_ID,  \
-                           ADPMetadata.Keys.LSCALE_NO_SCALE, \
-                           ADPMetadata.Keys.LSCALE_ONE_MODE, \
-                           ADPMetadata.Keys.LSCALE_SCALE_METHOD, \
-                           ADPMetadata.Keys.RUNTIME_CALIB_OBJ]):
-
-        kwargs = visutil.make_plot_kwargs(lgraph_id=lgraph_id, \
-                                  no_scale=no_scale, one_mode=one_mode, \
-                                  scale_method=scale_method, \
-                                  calib_objective=calib_obj)
-
-
-        dataset = {}
-        for (scale_objective,), plot_adps in visutil.adps_groupby(adp_group, \
-                                                     [ADPMetadata.Keys.LSCALE_OBJECTIVE]):
-            values = visutil.adps_get_values(plot_adps, ADPMetadata.Keys.LWAV_NRMSE)
-            series_name = series[scale_objective]
-            dataset[series_name] = values
-
-
-        series_order = ["balanced","random"]
-        if any(map(lambda ser: not ser in dataset, series_order)):
+        if not scale_method in valid_scale_methods or \
+           not scale_objective in valid_scale_objectives:
             continue
 
-        boxwhisk = boxlib.BoxAndWhiskerVis('rand', \
-                                           xaxis='calibration objective',\
-                                           yaxis='% rmse',
-                                           title='%s' % program)
+        valid_adps += list(adp_group)
 
-        boxwhisk.draw_minimum = True
-        boxwhisk.show_outliers = False
-        for ser in series_order:
-            boxwhisk.add_data(ser,dataset[ser])
-        yield kwargs, boxwhisk
+        rmses,runtimes,powers,energies = compute_power_quality_runtime(dev,adp_group)
+        pr_vis.add_series(legend[calib_obj], runtimes*runtime_scale, powers*power_scale)
+        qr_vis.add_series( legend[calib_obj], runtimes*runtime_scale, rmses)
+        qe_vis.add_series( legend[calib_obj], energies*energy_scale, rmses)
 
 
+    kwargs = visutil.make_plot_kwargs()
+    yield kwargs,pr_vis
+    yield kwargs,qr_vis
+    yield kwargs,qe_vis
 
+    rmses,runtimes,powers,energies = compute_power_quality_runtime(dev,valid_adps)
+    tbl = tbllib.Tabular(["benchmark","criteria","\\%rmse","runtime (ms)","power (mW)","energy (uJ)","best adp","circuit \\#"], \
+                         ["%s","%s","%.2f","%.2f","%.2f", "%.2f", "%s", "%d"])
+
+    idx = np.argmin(rmses)
+    circuit_number = adps[idx].metadata.get(ADPMetadata.Keys.LGRAPH_ID)
+    tbl.add([dsinfo.name, "\\% rmse", rmses[idx], runtimes[idx]*runtime_scale,  \
+             powers[idx]*power_scale, energies[idx]*energy_scale,  fancy_name(valid_adps[idx]),circuit_number], \
+            emph=[False,False,True,False,False,False,False,False])
+
+    idx = np.argmin(runtimes)
+    circuit_number = adps[idx].metadata.get(ADPMetadata.Keys.LGRAPH_ID)
+    tbl.add([dsinfo.name, "runtime", rmses[idx], runtimes[idx]*runtime_scale,  \
+             powers[idx]*power_scale, energies[idx]*energy_scale,  fancy_name(valid_adps[idx]),circuit_number], \
+            emph=[False,False,False,True,False,False,False,False])
+
+
+    idx = np.argmin(powers)
+    circuit_number = adps[idx].metadata.get(ADPMetadata.Keys.LGRAPH_ID)
+    tbl.add([dsinfo.name, "power", rmses[idx], runtimes[idx]*runtime_scale,  \
+             powers[idx]*power_scale, energies[idx]*energy_scale,  fancy_name(valid_adps[idx]),circuit_number], \
+            emph=[False,False,False,False,True,False,False,False])
+
+
+    idx = np.argmin(powers)
+    circuit_number = adps[idx].metadata.get(ADPMetadata.Keys.LGRAPH_ID)
+    tbl.add([dsinfo.name, "energy", rmses[idx], runtimes[idx]*runtime_scale,  \
+             powers[idx]*power_scale, energies[idx]*energy_scale,  fancy_name(valid_adps[idx]),circuit_number], \
+            emph=[False,False,False,False,False,True,False,False])
+
+
+
+    print("----- power, energy, quality, runtime -----")
+    print(tbl.render())
+    print("\n")
+    idx = np.argmin(rmses)
+
+
+
+def print_compile_time_summary(dev,adps):
+    raise NotImplementedError
 
 def print_aggregate_summaries(dev,adps):
     print("------------ metadata ----------------")
     print(adps[0].metadata)
 
     vises = []
-
-    for kwargs,vis in print_compensation_comparison(adps):
-        vises.append((kwargs,vis))
-
-    for kwargs,vis in print_random_comparison(adps):
-        vises.append((kwargs,vis))
-
+    for vis in print_performance_summary(dev,adps):
+        yield vis
 
     return vises
