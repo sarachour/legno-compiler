@@ -21,22 +21,13 @@ import math
 import util.paths as paths
 import json
 
-def get_lgraph_adp(dev,adp):
-    path_handler = paths.PathHandler( \
-                                      adp.metadata.get(ADPMetadata.Keys.FEATURE_SUBSET), \
-                                     adp.metadata.get(ADPMetadata.Keys.DSNAME))
-    filename = path_handler.lgraph_adp_file(adp.metadata.get(ADPMetadata.Keys.LGRAPH_ID))
-
-    with open(filename,'r') as fh:
-        adp_obj = json.loads(fh.read())
-        adp = ADP.from_json(dev, adp_obj)
-
-    return adp
-
 def print_lgraph_comparison(adps):
     adp = adps[0]
     program = DSProgDB.get_prog(adp.metadata[ADPMetadata.Keys.DSNAME])
     dsinfo = DSProgDB.get_info(program.name)
+
+    if not vislib.has_waveforms(adps):
+        return
 
     # compute upper bound for all plots
     for (no_scale,one_mode,scale_method,scale_objective),adp_super_group in  \
@@ -177,10 +168,13 @@ def circuit_block_equation_summary(dev,adps):
         else:
             return dsinfo.get_expr(inst,port)
 
+    if not vislib.has_waveforms(adps):
+        return
+
     rmses = vislib.adps_get_values(adps,ADPMetadata.Keys.LWAV_NRMSE)
     idx = np.argmin(rmses)
 
-    adp = get_lgraph_adp(dev,adps[idx])
+    adp = vislib.get_unscaled_adp(dev,adps[idx])
 
     program = DSProgDB.get_prog(adp.metadata[ADPMetadata.Keys.DSNAME])
     dssim = DSProgDB.get_sim(program.name)
@@ -204,6 +198,50 @@ def circuit_block_equation_summary(dev,adps):
 
 
 
+def runtime_summary(adps):
+    program = DSProgDB.get_prog(adps[0].metadata[ADPMetadata.Keys.DSNAME])
+    dsinfo = DSProgDB.get_info(program.name)
+
+    if not adps[0].metadata.has(adplib.ADPMetadata.Keys.LGRAPH_SYNTH_RUNTIME):
+        return
+
+    synth_time = adps[0].metadata.get(adplib.ADPMetadata.Keys.LGRAPH_SYNTH_RUNTIME)
+    asm_runtimes = vislib.adps_get_values(adps, ADPMetadata.Keys.LGRAPH_ASM_RUNTIME)
+    route_runtimes = vislib.adps_get_values(adps, ADPMetadata.Keys.LGRAPH_ROUTE_RUNTIME)
+
+    header = ["benchmark","time", "median","iqr","min","max", "median","iqr","min","max"]
+    tbl = tbllib.Tabular(header, \
+                         ["%s"]+ ["%.2f"]*(len(header)-1))
+
+    row = []
+    row.append(dsinfo.name)
+    row.append(synth_time)
+    median,iqr,min_val,max_val = vislib.get_statistics(asm_runtimes)
+    row += [median,iqr,min_val,max_val]
+    median,iqr,min_val,max_val = vislib.get_statistics(route_runtimes)
+    row += [median,iqr,min_val,max_val]
+    tbl.add(row)
+
+    print(tbl.render())
+    print("\n")
+
+    print("----- fragment synthesis breakdown ----")
+    synth_times_by_variable = adps[0].metadata.get(adplib.ADPMetadata.Keys.LGRAPH_SYNTH_RUNTIME_BY_VAR)
+    by_variable = json.loads(synth_times_by_variable)
+
+    header = [dsinfo.name] + ['median','iqr','min','max']
+    tbl = tbllib.Tabular(header, \
+                         ["%s"]+ ["%.4f"]*(len(header)))
+    for variable,runts in by_variable.items():
+        median,iqr,min_val,max_val = vislib.get_statistics(runts)
+        tbl.add([variable]+[median,iqr,min_val,max_val])
+
+    tbl_trans = tbl.transpose()
+    print("----- lgraph runtime breakdown -----")
+    print(tbl_trans.render())
+    print("\n")
+
+
 
 def print_aggregate_summaries(dev,adps):
     vises = []
@@ -213,4 +251,5 @@ def print_aggregate_summaries(dev,adps):
 
     circuit_block_equation_summary(dev,adps)
     circuit_block_distribution_summary(dev,adps)
+    runtime_summary(adps)
     return vises

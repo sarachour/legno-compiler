@@ -58,6 +58,18 @@ def print_performance_summary(dev,adps):
             name += "(no scale)"
 
         return name
+
+    def get_joint_minimum(primary,secondary):
+        tol = 1e-6
+        idx = np.argmin(primary)
+        subinds = list(filter(lambda i: abs(primary[i] - primary[idx] ) < tol , \
+                           range(len(primary))))
+        best_idx = min(subinds, key=lambda i: secondary[i])
+        return best_idx
+
+    if not visutil.has_waveforms(adps):
+        return
+
     program = DSProgDB.get_prog(adps[0].metadata[ADPMetadata.Keys.DSNAME])
     dssim = DSProgDB.get_sim(program.name)
     dsinfo = DSProgDB.get_info(program.name)
@@ -120,7 +132,7 @@ def print_performance_summary(dev,adps):
 
     rmses,runtimes,powers,energies = compute_power_quality_runtime(dev,valid_adps)
     tbl = tbllib.Tabular(["benchmark","criteria","\\%rmse","runtime (ms)","power (mW)","energy (uJ)","best adp","circuit \\#"], \
-                         ["%s","%s","%.2f","%.2f","%.2f", "%.2f", "%s", "%d"])
+                         ["%s","%s","%.3e","%.2f","%.2f", "%.2f", "%s", "%d"])
 
     idx = np.argmin(rmses)
     circuit_number = adps[idx].metadata.get(ADPMetadata.Keys.LGRAPH_ID)
@@ -129,20 +141,21 @@ def print_performance_summary(dev,adps):
             emph=[False,False,True,False,False,False,False,False])
 
     idx = np.argmin(runtimes)
+    idx = get_joint_minimum(runtimes,rmses)
     circuit_number = adps[idx].metadata.get(ADPMetadata.Keys.LGRAPH_ID)
     tbl.add([dsinfo.name, "runtime", rmses[idx], runtimes[idx]*runtime_scale,  \
              powers[idx]*power_scale, energies[idx]*energy_scale,  fancy_name(valid_adps[idx]),circuit_number], \
             emph=[False,False,False,True,False,False,False,False])
 
 
-    idx = np.argmin(powers)
+    idx = get_joint_minimum(powers,rmses)
     circuit_number = adps[idx].metadata.get(ADPMetadata.Keys.LGRAPH_ID)
     tbl.add([dsinfo.name, "power", rmses[idx], runtimes[idx]*runtime_scale,  \
              powers[idx]*power_scale, energies[idx]*energy_scale,  fancy_name(valid_adps[idx]),circuit_number], \
             emph=[False,False,False,False,True,False,False,False])
 
 
-    idx = np.argmin(powers)
+    idx = get_joint_minimum(energies,rmses)
     circuit_number = adps[idx].metadata.get(ADPMetadata.Keys.LGRAPH_ID)
     tbl.add([dsinfo.name, "energy", rmses[idx], runtimes[idx]*runtime_scale,  \
              powers[idx]*power_scale, energies[idx]*energy_scale,  fancy_name(valid_adps[idx]),circuit_number], \
@@ -158,7 +171,36 @@ def print_performance_summary(dev,adps):
 
 
 def print_compile_time_summary(dev,adps):
-    raise NotImplementedError
+    program = DSProgDB.get_prog(adps[0].metadata[ADPMetadata.Keys.DSNAME])
+    dsinfo = DSProgDB.get_info(program.name)
+
+    for (no_scale,one_mode),adp_group in  \
+        visutil.adps_groupby(adps,[ADPMetadata.Keys.LSCALE_NO_SCALE, \
+                                   ADPMetadata.Keys.LSCALE_ONE_MODE]):
+
+        header = ["benchmark","median","iqr","min","max","median","iqr","min","max"]
+
+        tbl = tbllib.Tabular(header, \
+                             ["%s"]+["%.2f"]*(len(header)-1))
+
+
+        lgraph_times = visutil.adps_get_values(adps,ADPMetadata.Keys.LGRAPH_RUNTIME)
+        lg_med, lg_iqr, lg_min,lg_max = visutil.get_statistics(lgraph_times)
+        lscale_times = visutil.adps_get_values(adps,ADPMetadata.Keys.LSCALE_RUNTIME)
+        ls_med, ls_iqr, ls_min,ls_max = visutil.get_statistics(lscale_times)
+        tbl.add([dsinfo.name,lg_med,lg_iqr,lg_min,lg_max,ls_med,ls_iqr,ls_min,ls_max])
+
+        flags = ""
+        if no_scale:
+            flags += "(no scale)"
+        if one_mode:
+            flags += "(one mode)"
+
+        print("------ runtime statistics %s -----" % flags)
+        print(tbl.render())
+        print("\n")
+
+    return []
 
 def print_aggregate_summaries(dev,adps):
     print("------------ metadata ----------------")
@@ -166,6 +208,11 @@ def print_aggregate_summaries(dev,adps):
 
     vises = []
     for vis in print_performance_summary(dev,adps):
+        yield vis
+
+    for vis in print_compile_time_summary(dev,adps):
+        yield vis
+
         yield vis
 
     return vises

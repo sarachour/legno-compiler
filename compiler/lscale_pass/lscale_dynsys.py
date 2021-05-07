@@ -90,7 +90,8 @@ def _generate_dsinfo_expr_recurse(dev,dsinfo,adp,apply_scale_transform=False):
 
 
 
-def generate_dynamical_system_expr_info(dsinfo,dev,program,adp,apply_scale_transform=False, \
+def generate_dynamical_system_expr_info(dsinfo,dev,program,adp, \
+                                        apply_scale_transform=False, \
                                         label_integrators_only=False):
   ds_ivals = dict(program.intervals())
   for config in adp.configs:
@@ -137,7 +138,8 @@ def generate_dynamical_system_interval_info(dsinfo,dev,program,adp):
                                 ivallib.Interval.type_infer(value,value))
 
 
-def generate_dynamical_system_info(dev,program,adp,apply_scale_transform=False, \
+def generate_dynamical_system_info(dev,program,adp, \
+                                   apply_scale_transform=False, \
                                    label_integrators_only=False):
   dsinfo = scalelib.DynamicalSystemInfo()
   generate_dynamical_system_expr_info(dsinfo,dev,program,adp, \
