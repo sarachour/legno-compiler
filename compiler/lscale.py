@@ -16,72 +16,6 @@ def metadata_matches(adp1,adp2,keys):
       return False
   return True
 
-# get the relevent scaling factors if there have already been executiosn
-def get_relevent_scaling_factors(dev,adp,top=5):
-    if adp.metadata.get(adplib.ADPMetadata.Keys.LSCALE_OBJECTIVE) != scalelib.ObjectiveFun.EMPIRICAL.value:
-       return
-
-    ph = paths.PathHandler('unrestricted', \
-                                     adp.metadata.get(adplib.ADPMetadata.Keys.DSNAME))
-
-    rmses = []
-    variables = {}
-    scfs = {}
-    for dirname, subdirlist, filelist in \
-        os.walk(ph.lscale_adp_dir()):
-      for adp_file in filelist:
-        if adp_file.endswith('.adp'):
-          with open(dirname+"/"+adp_file,'r') as fh:
-            curr_adp_json = json.loads(fh.read())
-            curr_adp = adplib.ADP.from_json(dev, curr_adp_json)
-            if metadata_matches(curr_adp,adp,[ \
-                                               adplib.ADPMetadata.Keys.LGRAPH_ID, \
-                                               adplib.ADPMetadata.Keys.RUNTIME_CALIB_OBJ, \
-                                               adplib.ADPMetadata.Keys.LSCALE_ONE_MODE, \
-                                               adplib.ADPMetadata.Keys.LSCALE_NO_SCALE, \
-                                               adplib.ADPMetadata.Keys.RUNTIME_PHYS_DB
-            ]):
-              if not curr_adp.metadata.has(adplib.ADPMetadata.Keys.LWAV_NRMSE):
-                continue
-
-              rmses.append(curr_adp.metadata.get(adplib.ADPMetadata.Keys.LWAV_NRMSE))
-              for cfg in curr_adp.configs:
-                blk = dev.get_block(cfg.inst.block)
-                for stmt in cfg.stmts:
-                  if stmt.type == adplib.ConfigStmtType.CONSTANT or \
-                     stmt.type == adplib.ConfigStmtType.PORT:
-                   varb =  scalelib.PortScaleVar(cfg.inst, stmt.name)
-                   if not str(varb) in variables:
-                     variables[str(varb)] = varb
-                     scfs[str(varb)] = []
-                   scfs[str(varb)].append(stmt.scf)
-
-
-              print(adp_file)
-
-    correlations = []
-    variable_names = list(variables.keys())
-    if len(variable_names) == 0:
-      raise Exception("cannot use empirical scale objective. None of the existing executions have been analyzed.")
-
-    for var_name in variable_names:
-      coeff = np.corrcoef(rmses,scfs[var_name])[0][1]
-      if math.isnan(coeff):
-        coeff = 0.0
-
-      correlations.append(coeff)
-
-
-    scores = list(-1.0*np.abs(np.array(correlations)))
-    indices = np.argsort(scores)
-    for idx in indices[0:min(top,len(indices))]:
-      print(correlations[idx])
-      sign = 1.0 if correlations[idx] >= 0.0 else -1.0
-      varname = variable_names[idx]
-      yield sign,variables[varname]
-
-
-
 
 def random_objectives(cstr_prob,count):
   all_vars = []
@@ -91,18 +25,21 @@ def random_objectives(cstr_prob,count):
     for var in cstr.vars():
       if isinstance(var,scalelib.PortScaleVar) and \
          not var.inst.block in skipped_blocks:
-         var_map[str(var)] = var
+         var_map[(var.inst,var.port)] = var
       elif isinstance(var,scalelib.TimeScaleVar):
-         var_map[str(var)] = var
+         var_map["speed"] = var
 
   all_vars = list(var_map.values())
+  print("===========================")
+  print("TOTAL_VARIABLES: %d" % len(all_vars))
+  print("===========================")
   for idx in range(min(count,len(all_vars))):
     monom = scalelib.SCMonomial()
-    #variables = random.sample(list(var_map.values()),1)
     variables = [all_vars[idx]]
     for var in variables:
       monom.add_term(var,-10.0)
 
+    print("<<< Variable %d/%d (%s) >>>" % (idx,len(all_vars),var))
     yield monom
 
 
@@ -138,10 +75,10 @@ def get_objective(objective,cstr_prob):
     monom = scalelib.SCMonomial()
     for qv in quality_vars:
       monom.add_term(qv,-expos[qv])
-    return [monom]
+    return None,[monom]
 
   elif scalelib.ObjectiveFun.RANDOM == objective:
-    return list(random_objectives(cstr_prob,50))
+    return 1,list(random_objectives(cstr_prob,1e6))
 
 
   elif scalelib.ObjectiveFun.QUALITY_SPEED == objective:
@@ -149,12 +86,12 @@ def get_objective(objective,cstr_prob):
     for qv in quality_vars:
       monom.add_term(qv,-expos[qv])
     monom.add_term(timescale,-1)
-    return [monom]
+    return None,[monom]
 
   elif scalelib.ObjectiveFun.SPEED == objective:
     monom = scalelib.SCMonomial()
     monom.add_term(timescale,-1)
-    return [monom]
+    return None,[monom]
 
   else:
     raise Exception("unknown objective: %s" % objective)
@@ -223,7 +160,6 @@ def scale(dev, program, adp, \
 
 
   set_metadata(adp,"")
-  #scfs = list(get_relevent_scaling_factors(dev,adp))
   cstr_prob = []
   for stmt in lscaleprob. \
       generate_constraint_problem(dev,program,adp, \
@@ -237,10 +173,10 @@ def scale(dev, program, adp, \
                                   min_tau=min_tau):
     cstr_prob.append(stmt)
 
-  obj = get_objective(objective,cstr_prob)
+  max_solutions,obj = get_objective(objective,cstr_prob)
 
   print("<<< solving >>>")
-  for objfun,adp in lscale_solver.solve(dev,adp,cstr_prob,obj):
+  for objfun,adp in lscale_solver.solve(dev,adp,cstr_prob,obj,max_solutions=max_solutions):
     set_metadata(adp,objfun)
     for cfg in adp.configs:
       assert(cfg.complete())

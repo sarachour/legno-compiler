@@ -135,7 +135,7 @@ def scale_objective_fun_to_z3_objective_fun(objfun):
 
 class LScaleSolutionGenerator:
 
-  def __init__(self,dev,adp,symtbl,smtenv,opt=None):
+  def __init__(self,dev,adp,symtbl,smtenv,opt=None,max_solutions=None):
     assert(isinstance(symtbl,SymbolTable))
     assert(isinstance(smtenv,smtlib.SMTEnv))
     ctx,opts = smtenv.to_z3(optimize=opt)
@@ -144,6 +144,8 @@ class LScaleSolutionGenerator:
     self.z3ctx = ctx
     self.z3opts = opts
     self.index= 0
+    self.count = 0
+    self.max_solutions = max_solutions
     self.adp = adp
     self.dev = dev
 
@@ -156,6 +158,9 @@ class LScaleSolutionGenerator:
       adp = self.get_solution()
 
   def get_solution(self):
+    if not self.max_solutions is None and self.max_solutions <= self.count:
+      return None
+
     if len(self.z3opts) == 0:
       result = self.z3ctx.solve()
     else:
@@ -169,6 +174,9 @@ class LScaleSolutionGenerator:
       print("found solution!")
 
     self.index = (self.index+1) % len(self.z3opts)
+    if self.index == 0:
+       self.count += 1
+
     symtbl = self.symtbl
     adp = self.adp.copy(self.dev)
     quality = None
@@ -240,7 +248,7 @@ class LScaleSolutionGenerator:
 
 
 
-def solve(dev,adp,cstrs,objective_funs):
+def solve(dev,adp,cstrs,objective_funs,max_solutions=None):
   smtenv = smtlib.SMTEnv()
   symtbl = SymbolTable(smtenv)
   for cstr in cstrs:
@@ -254,7 +262,8 @@ def solve(dev,adp,cstrs,objective_funs):
                          objective_funs))
 
   generator = LScaleSolutionGenerator(dev,adp,symtbl,smtenv, \
-                                      opt=z3_obj_funs)
+                                      opt=z3_obj_funs, \
+                                      max_solutions=max_solutions)
   for obj_index, scaled_adp in generator.solutions():
     yield objective_funs[obj_index],scaled_adp
 
