@@ -151,6 +151,9 @@ class Timer:
         self._name = name
         self._paths = ph
 
+    def get_values(self):
+        return list(self._runs)
+
     def runs(self):
         return list(self._runs)
 

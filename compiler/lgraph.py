@@ -4,18 +4,10 @@ import ops.opparse as parser
 import random
 import math
 import logging
-#import compiler.lgraph_pass.route as lgraph_route
-#from compiler.lgraph_pass.rules import get_rules
-#import compiler.lgraph_pass.to_abs_op as lgraphlib_aop
-#import compiler.lgraph_pass.to_abs_circ as lgraphlib_acirc
-#import compiler.lgraph_pass.make_fanouts as lgraphlib_mkfan
-#import compiler.lgraph_pass.util as lgraphlib_util
-#import hwlib.abs as acirc
-#import hwlib.props as prop
-#from hwlib.config import Labels
-#import ops.aop as aop
 
 import hwlib.block as blocklib
+import hwlib.adp as adplib
+
 import compiler.lgraph_pass.route as routelib
 import compiler.lgraph_pass.assemble as asmlib
 import compiler.lgraph_pass.synth as synthlib
@@ -25,6 +17,8 @@ from compiler.lgraph_pass.rules.kirch import KirchhoffRule
 from compiler.lgraph_pass.rules.lutfuse import FuseLUTRule
 from compiler.lgraph_pass.rules.flip import FlipSignRule
 import numpy as np
+import util.util as util
+import json
 
 
 def get_laws(dev):
@@ -43,21 +37,26 @@ def score_fragment(frag):
 def combine_fragments(frags):
     def mkfrag(fs,indices):
         # make a set of fragment selections from the selected indices
-        print(indices)
-        return dict(map(lambda tup: (tup[0], tup[1][indices[tup[0]]]), \
-                 fs.items()))
+        fragments = dict(map(lambda tup: (tup[0], tup[1][indices[tup[0]]]), \
+                            fs.items()))
+        fragment_ids = dict(map(lambda tup: (tup[0], indices[tup[0]]), \
+                            fs.items()))
+        return fragment_ids, fragments
 
     variables = list(frags.keys())
+    fragment_ids = {}
+
     sorted_frags = {}
     curr_frags = {}
     for v,frags in frags.items():
         indices = np.argsort(list(map(lambda f: score_fragment(f), frags)))
-        sorted_frags[v] = list(map(lambda idx: frags[idx], indices)) 
+        sorted_frags[v] = list(map(lambda idx: frags[idx], indices))
         curr_frags[v] = 0
 
     has_frag = True
     while has_frag:
         yield mkfrag(sorted_frags,curr_frags)
+
         best_score_diff = None
         best_frag = None
         for v,idx in curr_frags.items():
@@ -95,21 +94,32 @@ def compile(board,prob,
     # perform synthesis
     laws = get_laws(board)
     fragments = {}
+    all_synth_runtimes = {}
+
     for variable in prob.variables():
         fragments[variable] = []
         expr = prob.binding(variable)
         print("> SYNTH %s = %s" % (variable,expr))
+
+        var_timer = util.Timer("synth-%s" % variable,None)
+        var_timer.start()
         for vadp in synthlib.search(board, \
                                     compute_blocks,laws,variable,expr, \
                                     depth=synth_depth):
+            var_timer.end()
             if len(fragments[variable]) >= vadp_fragments:
                 break
             fragments[variable].append(vadp)
+            var_timer.start()
+
+        all_synth_runtimes[variable] = var_timer.get_values()
 
         print("VAR %s: %d fragments"  \
               % (variable,len(fragments[variable])))
         if len(fragments[variable]) == 0:
             raise Exception("could not synthesize any fragments for <%s>" % variable)
+
+    synth_time = sum(map(lambda runts: sum(runts), all_synth_runtimes.values()))
 
     print("> assembling circuit")
     # insert copier blocks when necessary
@@ -121,23 +131,46 @@ def compile(board,prob,
     block_counts = {}
     vadp_circuits = []
 
-    for circuit in combine_fragments(fragments):
+    timer = util.Timer("asm",None)
+    synth_runtimes = []
+    for fragment_ids,circuit in combine_fragments(fragments):
         if len(vadp_circuits) >= vadps:
             break
 
+        timer.start()
         for circ in asmlib.assemble(assemble_blocks,circuit, \
                                     n_asm_frags=asm_frags):
+            runtime = timer.end()
             vadp_circuits.append(circ)
+
             if len(vadp_circuits) >= vadps:
                 break
 
+            synth_runtime = {}
+            for variable,runts in all_synth_runtimes.items():
+                synth_runtime[variable] = runts[fragment_ids[variable]]
+
+            synth_runtimes.append(synth_runtime)
+            timer.start()
+
+    asm_runtimes = timer.get_values()
 
     print("> routing circuit")
     adp_circuits = []
-    for circ in vadp_circuits:
+    timer = util.Timer("route",None)
+    for idx,circ in enumerate(vadp_circuits):
+        timer.start()
         for vadp in routelib.route(board,circ):
             adp = vadplib.to_adp(vadp)
+            runtime = timer.end()
+
+            adp.metadata.set(adplib.ADPMetadata.Keys.LGRAPH_SYNTH_RUNTIME_BY_VAR,  \
+                             json.dumps(all_synth_runtimes))
+            adp.metadata.set(adplib.ADPMetadata.Keys.LGRAPH_SYNTH_RUNTIME, synth_time)
+            adp.metadata.set(adplib.ADPMetadata.Keys.LGRAPH_ASM_RUNTIME, asm_runtimes[idx])
+            adp.metadata.set(adplib.ADPMetadata.Keys.LGRAPH_ROUTE_RUNTIME, runtime)
             adp_circuits.append(adp)
             yield adp
             if len(adp_circuits) > adps:
                 break
+            timer.start()

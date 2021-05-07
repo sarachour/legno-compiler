@@ -86,7 +86,7 @@ def get_relevent_scaling_factors(dev,adp,top=5):
 def random_objectives(cstr_prob,count):
   all_vars = []
   var_map = {}
-  skipped_blocks = ['fanout','tin','tout']
+  skipped_blocks = ['tin','tout']
   for cstr in cstr_prob:
     for var in cstr.vars():
       if isinstance(var,scalelib.PortScaleVar) and \

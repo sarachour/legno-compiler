@@ -40,7 +40,6 @@ def dsprog(prob):
   for v in ['PLANT','CTRL','ERR','INTEG']:
     prob.interval(v,-2.0,2.0)
 
-  print(prob)
   prob.check()
 
 def dssim():

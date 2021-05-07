@@ -320,14 +320,8 @@ def exec_lemul(args):
                                       enable_model_error =not args.no_model_error, \
                                       separate_figures=args.separate_figures)
 
-def print_runtime_stats(path_handler):
-    lgraph = util.Timer.load('lgraph',path_handler)
-    lscale = util.Timer.load('lscale',path_handler)
-    lexec = util.Timer.load('lexec',path_handler)
-    print("----- runtime statistics -----")
-    print(lgraph)
-    print(lscale)
-    print(lexec)
+
+
 
 def exec_stats(args,trials=1):
     import compiler.lwav_pass.waveform as wavelib
@@ -356,11 +350,6 @@ def exec_stats(args,trials=1):
     program = DSProgDB.get_prog(args.program)
     scope_options = [True,False]
 
-    if args.runtimes_only:
-        print("------------ runtime ----------------")
-        print_runtime_stats(path_handler)
-        return
-
     for dirname, subdirlist, filelist in \
         os.walk(path_handler.lscale_adp_dir()):
         for adp_file in filelist:
@@ -370,8 +359,7 @@ def exec_stats(args,trials=1):
                     adp_obj = json.loads(fh.read())
                     metadata = ADPMetadata.from_json(adp_obj['metadata'])
                     if not metadata.has(ADPMetadata.Keys.RUNTIME_PHYS_DB) or \
-                       not metadata.has(ADPMetadata.Keys.RUNTIME_CALIB_OBJ) or \
-                       not metadata.has(ADPMetadata.Keys.LWAV_NRMSE):
+                       not metadata.has(ADPMetadata.Keys.RUNTIME_CALIB_OBJ):
                         continue
 
                     board = get_device(metadata.get(ADPMetadata.Keys.RUNTIME_PHYS_DB))
@@ -380,6 +368,9 @@ def exec_stats(args,trials=1):
 
 
     for adps in adps_by_category.values():
+        if len(adps) == 0:
+            continue
+
         for vizlib in [general_vizlib,lgraph_vizlib,lscale_vizlib]:
                 vises = vizlib.print_aggregate_summaries(board,adps)
                 input("continue...")
@@ -390,10 +381,6 @@ def exec_stats(args,trials=1):
                                                                 **kwargs)
                     vis.plot(plot_file)
 
-
-    print("=========== RUNTIME INFO ======")
-    print_runtime_stats(path_handler)
-    input("continue...")
 
 
 

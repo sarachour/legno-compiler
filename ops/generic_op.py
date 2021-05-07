@@ -165,10 +165,16 @@ class Const(GenericOp):
 
 
     def pretty_print(self):
-        if self.value < 0:
-            return "(%.2f)" % self.value
+        if abs(self.value) < 0.01 and abs(self.value) > 0.0:
+            fmtstr = "%.3e"
         else:
-            return "%.2f" % self.value
+            fmtstr = "%.2f"
+
+        if self.value < 0:
+            fmtstr = "(%s)" % fmtstr
+            return fmtstr % self.value
+        else:
+            return fmtstr % self.value
 
 
 class Emit(Op):

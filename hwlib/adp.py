@@ -24,6 +24,10 @@ class BlockInst:
       'loc': self.loc.to_json()
     }
 
+  def pretty_print(self):
+    addr = ",".join(map(lambda l: str(l), self.loc.address))
+    return "%s(%s)" % (self.block,addr)
+
   def __hash__(self):
     return hash(str(self))
 
@@ -555,6 +559,10 @@ class ADPMetadata:
 
     LGRAPH_ID = "lgraph_id"
     LGRAPH_RUNTIME = "lgraph_runtime"
+    LGRAPH_SYNTH_RUNTIME = "lscale_synth_runtime"
+    LGRAPH_SYNTH_RUNTIME_BY_VAR = "lscale_synth_runtime_by_var"
+    LGRAPH_ASM_RUNTIME = "lscale_asm_runtime"
+    LGRAPH_ROUTE_RUNTIME = "lscale_route_runtime"
 
     LSCALE_ID = "lscale_id"
     LSCALE_RUNTIME = "lscale_runtime"
