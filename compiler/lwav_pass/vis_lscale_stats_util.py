@@ -40,8 +40,13 @@ def get_coverages(dev,dsprog,adp,  \
     quality_measures = {}
     max_freq = 1.0/dev.time_constant
     freq_limits = []
+    ignored_blocks = ["tin","tout","cin","cout"]
     for cfg in adp.configs:
         block = dev.get_block(cfg.inst.block)
+
+        if block.name in ignored_blocks:
+            continue
+
         for stmt in cfg.stmts:
             if stmt.type == adplib.ConfigStmtType.CONSTANT or \
             stmt.type == adplib.ConfigStmtType.PORT:
@@ -88,7 +93,7 @@ def get_coverages(dev,dsprog,adp,  \
                         insert_value(quality_measures,key,qm)
 
     max_time_scf = min(freq_limits)/max_freq
-    time_coverage = (adp.tau)/max_time_scf
+    time_coverage = (adp.tau)/max_time_scf if apply_scale_transform else 1.0/max_time_scf
     return quality_measures,signal_coverages,value_coverages,time_coverage
 
 

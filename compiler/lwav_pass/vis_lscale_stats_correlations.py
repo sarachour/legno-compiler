@@ -52,12 +52,6 @@ def quality_correlation_summary(dev,adps):
             continue
 
         dqms,aqms,dqmes,aqmes,aqm_sts,aqm_derivs,aqm_obses = [],[],[],[],[],[],[]
-        aqms = []
-        dqmes = []
-        aqmes = []
-        aqm_sts = []
-        aqm_derivs= []
-        aqm_obses = []
         speeds = []
         print("-> deriving quality measures")
         for adp in adp_group:

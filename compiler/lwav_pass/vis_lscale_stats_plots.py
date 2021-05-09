@@ -74,6 +74,7 @@ def print_compensation_comparison(adps):
 def print_random_comparison(adps):
     adp = adps[0]
     program = DSProgDB.get_prog(adp.metadata[ADPMetadata.Keys.DSNAME])
+    dsinfo = DSProgDB.get_info(program.name)
 
     series = {
         'qtytau': 'balanced',
@@ -114,7 +115,7 @@ def print_random_comparison(adps):
         boxwhisk = boxlib.BoxAndWhiskerVis('rand', \
                                            xaxis='calibration objective',\
                                            yaxis='% rmse',
-                                           title='%s' % program)
+                                           title='%s' % dsinfo.name)
 
         boxwhisk.draw_minimum = True
         boxwhisk.show_outliers = False

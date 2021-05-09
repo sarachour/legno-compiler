@@ -28,6 +28,10 @@ def get_unscaled_adp(dev,adp):
         raise Exception("could not find unscaled ADP")
 
 def get_statistics(times):
+        if len(times) == 0 or \
+           any(map(lambda t: t is None, times)):
+                return None,None,None,None
+
         med = np.median(times)
         q3 = np.percentile(times,75)
         q1 = np.percentile(times,25)
