@@ -322,7 +322,56 @@ def exec_lemul(args):
 
 
 
+def exec_render(args,trials=1):
+    import hwlib.adp_renderer as renderer
+    path_handler = paths.PathHandler(args.subset, \
+                                     args.program)
+    program = DSProgDB.get_prog(args.program)
 
+
+
+    for dirname, subdirlist, filelist in \
+        os.walk(path_handler.lgraph_adp_dir()):
+        for adp_file in filelist:
+            if adp_file.endswith('.adp'):
+                filepath = dirname+"/"+adp_file
+                with open(filepath,'r') as fh:
+                    adp_obj = json.loads(fh.read())
+                    metadata = ADPMetadata.from_json(adp_obj['metadata'])
+                    board = get_device(None)
+                    adp = ADP.from_json(board, adp_obj)
+                    filename = path_handler.lgraph_adp_diagram_file(adp.metadata[ADPMetadata.Keys.LGRAPH_ID])
+                    print(filename)
+                    renderer.render(board,adp,filename)
+
+    return
+    for dirname, subdirlist, filelist in \
+        os.walk(path_handler.lscale_adp_dir()):
+        for adp_file in filelist:
+            if adp_file.endswith('.adp'):
+                filepath = dirname+"/"+adp_file
+                with open(filepath,'r') as fh:
+                    adp_obj = json.loads(fh.read())
+                    metadata = ADPMetadata.from_json(adp_obj['metadata'])
+                    board = get_device(metadata.get(ADPMetadata.Keys.RUNTIME_PHYS_DB))
+                    adp = ADP.from_json(board, adp_obj)
+
+                    calib_obj = llenums.CalibrateObjective(adp \
+                                                    .metadata[ADPMetadata.Keys.RUNTIME_CALIB_OBJ])
+                    filename = path_handler.lscale_adp_diagram_file(
+                        adp.metadata[ADPMetadata.Keys.LGRAPH_ID],
+                        adp.metadata[ADPMetadata.Keys.LSCALE_ID],
+                        adp.metadata[ADPMetadata.Keys.LSCALE_SCALE_METHOD],
+                        adp.metadata[ADPMetadata.Keys.LSCALE_OBJECTIVE],
+                        calib_obj,
+                        adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB], \
+                        no_scale=adp.metadata[ADPMetadata.Keys.LSCALE_NO_SCALE], \
+                        one_mode=adp.metadata[ADPMetadata.Keys.LSCALE_ONE_MODE] \
+                    )
+                    print(filename)
+                    renderer.render(board,adp,filename)
+
+                        
 def exec_stats(args,trials=1):
     import compiler.lwav_pass.waveform as wavelib
     import compiler.lwav_pass.vis_lscale_stats as  lscale_vizlib

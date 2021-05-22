@@ -117,6 +117,8 @@ emul_subp.add_argument('--separate-figures', action='store_true', \
 
 
 
+rend_subp = subparsers.add_parser('lrender', help='re-render circuit diagrams.')
+rend_subp.add_argument('program', help='program to analyze.')
 
 plot_subp = subparsers.add_parser('lstats', help='analyze waveforms.')
 plot_subp.add_argument('program', help='program to analyze.')
@@ -204,6 +206,10 @@ elif args.subparser_name == "lwav":
 
 elif args.subparser_name == "lstats":
    legno_util.exec_stats(args)
+
+elif args.subparser_name == "lrender":
+   legno_util.exec_render(args)
+
 
 
 else:
