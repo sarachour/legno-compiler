@@ -156,23 +156,34 @@ class HardwareInfo:
     safe_ival = ival.scale(0.95)
     return safe_ival
 
-  def get_empirical_relation(self,instance,mode,port):
-    block = self.dev.get_block(instance.block)
-    if self.scale_method == ScaleMethod.IDEAL or \
+  @staticmethod
+  def get_ideal_relation_helper(dev,instance,mode,port):
+    out = dev.get_block(instance.block) \
+                  .outputs[port]
+    assert(out.relation.has(mode))
+    return out.relation[mode]
+
+
+  @staticmethod
+  def get_empirical_relation_helper(dev,instance,mode,port, \
+                                    scale_method=ScaleMethod.PHYSICAL, \
+                                    calib_obj=None):
+    block = dev.get_block(instance.block)
+    if scale_method == ScaleMethod.IDEAL or \
        not block.requires_calibration():
-      return self.get_ideal_relation(instance,mode,port)
+      return HardwareInfo.get_ideal_relation_helper(dev,instance,mode,port)
     else:
       out = block.outputs[port]
       delta = out.deltas[mode]
       cfg = adplib.BlockConfig(instance)
       cfg.modes = [mode]
-      exp_models = exp_delta_model_lib.get_models(self.dev,  \
+      exp_models = exp_delta_model_lib.get_models(dev,  \
                                                  ['block','loc','output','static_config','calib_obj'],
                                                  block=block, \
                                                  loc=instance.loc, \
                                                  output=out, \
                                                  config=cfg, \
-                                                 calib_obj=self.calib_obj)
+                                                 calib_obj=calib_obj)
       if len(exp_models) == 0:
         print("[[WARN]] no experimental model %s (%s)" \
               % (instance,mode))
@@ -186,11 +197,13 @@ class HardwareInfo:
       expr = delta.get_correctable_model(exp_models[0].params,low_level=False)
       return expr
 
+  def get_empirical_relation(self,instance,mode,port):
+    return HardwareInfo.get_empirical_relation_helper(self.dev,instance,mode,port, \
+                                                      scale_method=self.scale_method, \
+                                                      calib_obj=self.calib_obj)
+
   def get_ideal_relation(self,instance,mode,port):
-    out = self.dev.get_block(instance.block) \
-                  .outputs[port]
-    assert(out.relation.has(mode))
-    return out.relation[mode]
+    return HardwareInfo.get_ideal_relation_helper(self,dev,instance,mode,port)
 
 class SCVar:
 

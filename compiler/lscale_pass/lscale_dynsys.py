@@ -1,5 +1,6 @@
 import hwlib.adp as adplib
 import hwlib.block as blocklib
+import hwlib.hcdc.llenums as llenums
 import ops.base_op as baseoplib
 import ops.generic_op as genoplib
 import ops.opparse as opparse
@@ -9,7 +10,10 @@ import compiler.lscale_pass.lscale_harmonize as harmlib
 import compiler.math_utils as mathutils
 
 import ops.interval as ivallib
+import util.paths as paths
+import json
 
+ADP_CACHE = {}
 
 def _get_exprs(dev,dsinfo,cfg):
   blk = dev.get_block(cfg.inst.block)
@@ -33,18 +37,114 @@ def __construct_expression_data_fields(cfg,apply_scale_transform=False):
             args = {}
             for v in stmt.expr.vars():
                 inj = stmt.injs[v]
-                args[v] = genoplib.Mult(genoplib.Const(inj), genoplib.Var(v))
+                args[v] = genoplib.Mult(genoplib.Const(inj, latex_style="\\rinj{%s}"),\
+                                        genoplib.Var(v))
 
             inj = stmt.injs[stmt.name]
-            expr = genoplib.Mult(genoplib.Const(inj), \
-                                 stmt.expr.substitute(args))
+            # eliminate coefficient
+            expr = genoplib.Mult(genoplib.Const(inj, latex_style="\\rinj{%s}"), \
+                                               stmt.expr.substitute(args))
             fn_bodies[stmt.name] = expr
         else:
             fn_bodies[stmt.name] = stmt.expr
 
   return fn_bodies
 
-def _generate_dsinfo_expr_recurse(dev,dsinfo,adp,apply_scale_transform=False):
+
+def get_unscaled_adp(dev,adp):
+        path_handler = paths.PathHandler( \
+                                      adp.metadata.get(adplib.ADPMetadata.Keys.FEATURE_SUBSET), \
+                                     adp.metadata.get(adplib.ADPMetadata.Keys.DSNAME))
+        filename = path_handler.lgraph_adp_file(adp.metadata.get(adplib.ADPMetadata.Keys.LGRAPH_ID))
+        if not filename in ADP_CACHE:
+          with open(filename,'r') as fh:
+                  unsc_adp_obj = json.loads(fh.read())
+                  unsc_adp = adplib.ADP.from_json(dev, unsc_adp_obj)
+                  ADP_CACHE[filename] = unsc_adp
+                  return unsc_adp
+          raise Exception("could not find unscaled ADP")
+
+        else:
+          return ADP_CACHE[filename]
+
+def get_input_relation(dsinfo,dev,adp, instance, input_port, \
+                         apply_scale_transform=False):
+
+  cfg = adp.configs.get(instance.block,instance.loc)
+  block = dev.get_block(instance.block)
+  mode = list(cfg.modes)[0]
+  inp = block.inputs[input_port]
+  args = []
+  for conn in adp.conns:
+    if conn.dest_inst == instance and \
+       conn.dest_port == input_port:
+        if dsinfo.get_expr(conn.source_inst, \
+                           conn.source_port):
+          src_expr = dsinfo.get_expr(conn.source_inst, \
+                                     conn.source_port)
+          args.append(src_expr)
+
+  if not args is None:
+    expr = genoplib.sum(args)
+    return expr
+
+
+
+def get_output_relation(dev,adp, instance, output_port, \
+                         apply_scale_transform=False):
+  def scale_integ(expr):
+    if not apply_scale_transform:
+      return expr
+    else:
+      if expr.op == baseoplib.OpType.INTEG:
+        return genoplib.Integ(genoplib.Mult(genoplib.Const(1.0/adp.tau, \
+                                                           latex_style="\\rscf{%s}"), \
+                                            expr.deriv), expr.init_cond)
+      else:
+        return expr
+
+
+  cfg = adp.configs.get(instance.block,instance.loc)
+  block = dev.get_block(instance.block)
+  mode = list(cfg.modes)[0]
+  out = block.outputs[output_port]
+
+  if not apply_scale_transform:
+    return scale_integ(out.relation[mode])
+  else:
+    # scaled  circuit
+    if not adp.metadata.has(adplib.ADPMetadata.Keys.LSCALE_ID):
+      return scale_integ(out.relation[mode])
+
+    unsc_adp = get_unscaled_adp(dev,adp)
+    bl_mode = unsc_adp.configs.get(instance.block,instance.loc).modes[0]
+    baseline_expr = out.relation[bl_mode]
+
+    scale_method = scalelib.ScaleMethod(adp.metadata.get(adplib.ADPMetadata.Keys.LSCALE_SCALE_METHOD))
+    calib_obj = llenums.CalibrateObjective(adp.metadata.get(adplib.ADPMetadata.Keys.RUNTIME_CALIB_OBJ))
+    deviations = [scalelib.HardwareInfo.get_empirical_relation_helper(dev, instance,  \
+                                                                      mode,output_port, \
+                                                                      scale_method=scale_method, \
+                                                                      calib_obj=calib_obj)]
+
+    master_expr,modes,gains,coeffs = harmlib.get_master_relation( \
+                                                           baseline_expr, \
+                                                           all_deviations=deviations, \
+                                                           all_modes=cfg.modes)
+
+    coeff_dict = dict(coeffs)
+    assigns = {}
+    for gain_var,mode_dep_values in gains:
+      #assigns[gain_var] =   genoplib.Const(mode_dep_values[mode])
+      assigns[gain_var] = genoplib.Mult( \
+                                         genoplib.Const(mode_dep_values[mode], \
+                                                        latex_style='\\rmast{%s}'),
+                                         genoplib.Const(coeff_dict[gain_var]))
+
+    return scale_integ(master_expr.substitute(assigns))
+
+def _generate_dsinfo_expr_recurse(dev,dsinfo,adp, \
+                                  apply_scale_transform=False):
   count = 0
   for conn in adp.conns:
     if not dsinfo.has_expr(conn.dest_inst,conn.dest_port):
@@ -76,45 +176,85 @@ def _generate_dsinfo_expr_recurse(dev,dsinfo,adp,apply_scale_transform=False):
       if dsinfo.has_expr(cfg.inst,out.name):
         continue
 
-      orig_rel = out.relation[bl_mode].substitute(fxns).concretize()
-      rel = orig_rel.substitute(inputs)
-      all_inputs_bound = all(map(lambda v: v in inputs,orig_rel.vars()))
+      orig_rel = get_output_relation(dev,adp, cfg.inst, out.name, \
+                                      apply_scale_transform=apply_scale_transform)
+      conc_rel =  orig_rel \
+        .substitute(fxns).concretize()
+      rel = conc_rel.substitute(inputs)
+      all_inputs_bound = all(map(lambda v: v in inputs,conc_rel.vars()))
 
       if not all_inputs_bound:
-          continue
+        continue
 
       dsinfo.set_expr(cfg.inst,out.name,rel)
       count += 1
 
   return count
 
+def report_missing(dev,dsinfo,adp):
+  print("---- MISSING ---")
+  for conn in adp.conns:
+    if not dsinfo.has_expr(conn.source_inst,conn.source_port):
+      print("%s.%s" % (conn.source_inst,conn.source_port))
+    if not dsinfo.has_expr(conn.dest_inst,conn.dest_port):
+      print("%s.%s" % (conn.dest_inst,conn.dest_port))
 
 
 def generate_dynamical_system_expr_info(dsinfo,dev,program,adp, \
                                         apply_scale_transform=False, \
                                         label_integrators_only=False):
   ds_ivals = dict(program.intervals())
+
+  has_integ = []
+  sources = {}
   for config in adp.configs:
+    block = dev.get_block(config.inst.block)
     for stmt in config.stmts_of_type(adplib.ConfigStmtType.PORT):
       if not stmt.source is None:
           expr = stmt.source
-          if(apply_scale_transform):
-              expr = genoplib.Mult(genoplib.Const(stmt.scf),expr)
+          if expr.op == baseoplib.OpType.VAR:
+            expr._latex_style = "\\rvar{%s}"
 
-          if not label_integrators_only or config.inst.block == "integ":
-            dsinfo.set_expr(config.inst,stmt.name,expr)
+          if(apply_scale_transform):
+              expr = genoplib.Mult(genoplib.Const(stmt.scf,latex_style="\\rscf{%s}"),expr)
+
+
+          if not expr in sources:
+            sources[expr] = []
+          sources[expr].append((config.inst,stmt.name))
 
     for datum in config.stmts_of_type(adplib.ConfigStmtType.CONSTANT):
-        value = genoplib.Const(datum.value)
-        if(apply_scale_transform):
-              value = genoplib.Mult(genoplib.Const(datum.scf),value)
+        value = genoplib.Const(datum.value,latex_style="\\rdat{%s}")
+        if apply_scale_transform:
+              value = genoplib.Mult(genoplib.Const(datum.scf,latex_style="\\rscf{%s}"),value)
 
         dsinfo.set_expr(config.inst,datum.name,value)
+
+
+  for expr,ports in sources.items():
+    integ_ports = list(filter(lambda tup: tup[0].block == "integ", ports ))
+    if label_integrators_only:
+      for inst,port in integ_ports:
+        dsinfo.set_expr(inst,port,expr)
+
+    else:
+      for inst,port in integ_ports:
+        dsinfo.set_expr(inst,port,expr)
+
+      if len(integ_ports) == 0:
+        for inst,port in ports:
+          block = dev.get_block(inst.block)
+          if block.outputs.has(port):
+            dsinfo.set_expr(inst,port,expr)
+
+
+    dsinfo.set_expr(inst,port,expr)
 
   while _generate_dsinfo_expr_recurse(dev,dsinfo,adp, \
                                        apply_scale_transform=apply_scale_transform) > 0:
     pass
 
+  #report_missing(dev,dsinfo,adp)
   #while _generate_dsinfo_expr_backprop(dev,dsinfo,adp,) > 0:
    # pass
 
@@ -143,7 +283,7 @@ def generate_dynamical_system_info(dev,program,adp, \
                                    label_integrators_only=False):
   dsinfo = scalelib.DynamicalSystemInfo()
   generate_dynamical_system_expr_info(dsinfo,dev,program,adp, \
-                                      apply_scale_transform=apply_scale_transform, \
+                                      apply_scale_transform=apply_scale_transform,\
                                       label_integrators_only=label_integrators_only)
   generate_dynamical_system_interval_info(dsinfo,dev,program,adp)
   return dsinfo

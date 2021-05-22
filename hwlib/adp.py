@@ -2,6 +2,7 @@ import hwlib.block as blocklib
 import hwlib.device as devlib
 import ops.base_op as baseoplib
 import ops.lambda_op as lamboplib
+import ops.generic_op as genoplib
 from enum import Enum
 
 
@@ -155,6 +156,12 @@ class ConstDataConfig(ConfigStmt):
     return "val=%f scf=%f" \
       % (self.value,self.scf)
 
+  def to_latex(self,scale_transform=True):
+    yield "\\keyw{set} %s \\keyw{at} %.3f" % (self.name,self.value)
+    if scale_transform:
+      yield "\\keyw{scale} %s = %.3f" % (self.name,self.scf)
+
+
   @staticmethod
   def from_json(obj):
     cfg = ConstDataConfig(obj['name'],obj['value'])
@@ -211,6 +218,22 @@ class ExprDataConfig(ConfigStmt):
     cfg.scfs = dict(self.scfs)
     cfg.injs = dict(self.injs)
     return cfg
+
+  def to_latex(self,scale_transform=True):
+    assigns = {}
+    for key,coeff in self.injs.items():
+      assigns[key] = genoplib.Mult( \
+                                    genoplib.Const(coeff,latex_style="\\rinj{%s}"), \
+                                    genoplib.Var(key))
+
+    out_scale = self.injs[self.name]
+    expr = genoplib.Mult( \
+                          genoplib.Const(out_scale,latex_style="\\rinj{%s}"), \
+                          self.expr.substitute(assigns))
+    yield "\\keyw{set} %s \\keyw{at} %s" % (self.name,expr.pretty_print())
+    if self.name in self.scfs and scale_transform:
+      yield "\\keyw{scale} %s = %.3f" % (self.name,self.scfs[self.name])
+
 
 
   @property
@@ -302,6 +325,13 @@ class PortConfig(ConfigStmt):
       st += " src=%s" % self.source
     return st
 
+  def to_latex(self,scale_transform=True):
+    if not self.source is None:
+      yield "\\keyw{source} %s \\keyw{at} %s" % (self.source.pretty_print(), self.name)
+
+    if scale_transform:
+      yield "\\keyw{scale} %s = %.3f" % (self.name,self._scf)
+
   def to_json(self):
     return {
       'name':self.name,
@@ -329,6 +359,9 @@ class StateConfig(ConfigStmt):
 
   def copy(self):
     return StateConfig(self.name,self.value)
+
+  def to_latex(self,scale_transform=True):
+    return []
 
   def pretty_print(self):
     return "val=%s" % (self.value)
@@ -462,6 +495,29 @@ class BlockConfig:
         cfg.add(StateConfig(state.name, state.impl.default))
     return cfg
 
+  def to_latex(self,scale_transform=True):
+    indent = "  "
+    stmts =[]
+    stmts.append("\\keyw{modes} %s" % (str(self.modes)))
+    for stmt in self.stmts:
+      for line in stmt.to_latex(scale_transform=scale_transform):
+        stmts.append(line)
+
+    st = "\\keyw{config block} %s \\keyw{@} %s \\{\n%s" \
+      % (self.inst.block,tuple(self.inst.loc.address), indent)
+    line = ""
+
+    for stmt in stmts:
+      if len(line) + len(stmt) > 140:
+        st += "%s\n%s" % (line,indent)
+        line = ""
+
+      line += "%s; "% (stmt)
+
+    st += "%s" % (line)
+    st += "\\}\n"
+    return st
+
   def __str__(self):
     st = "block %s:\n" % (self.inst)
     indent = "  "
@@ -470,6 +526,10 @@ class BlockConfig:
       st += "%s%s\n" % (indent,stmt)
 
     return st
+
+
+
+
 
 class ADPConnection:
   WILDCARD = "_"
@@ -511,6 +571,19 @@ class ADPConnection:
         return False
     return True
 
+  def to_latex(self):
+    port_fmt = "\\keyw{block} %s \\keyw{port} %s \\keyw{loc} %s"
+    src_port = port_fmt \
+      % (self.source_inst.block, self.source_port,  \
+         str(tuple(self.source_inst.loc.address)))
+    dest_port = port_fmt  \
+      % (self.dest_inst.block, self.dest_port, \
+         str(tuple(self.dest_inst.loc.address)))
+
+    fmt = "\\keyw{conn} %s \\keyw{with} %s" \
+      % (src_port, dest_port)
+
+    return fmt
 
   def dest_match(self,block_name,loc,port):
     assert(isinstance(block_name,str))
@@ -780,6 +853,23 @@ class ADP:
       'conns': list(map(lambda c: c.to_json(), self.conns)),
       'configs': self.configs.to_json()
     }
+
+  def to_latex(self):
+    stmt = ""
+    scaled = False
+    if self.metadata.has(ADPMetadata.Keys.LSCALE_ID):
+      scaled = True
+
+    for cfg in self.configs:
+      stmt += cfg.to_latex(scale_transform=scaled)
+
+    for conn in self.conns:
+      stmt += "%s;\n" % conn.to_latex()
+
+    if self.tau != 1.0:
+      stmt += "\keyw{timescale} %f\n" % self.tau
+
+    return stmt
 
   def __repr__(self):
     st = []

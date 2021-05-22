@@ -61,6 +61,12 @@ class Op:
 
         return child_nodes
 
+    def has_op(self,op):
+      for n in self.nodes():
+        if n.op == op:
+          return True
+      return False
+
     def count(self):
         child_nodes = sum(map(lambda a: a.count(), self._args))
         return 1 + child_nodes

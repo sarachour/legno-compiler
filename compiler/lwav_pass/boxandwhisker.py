@@ -21,6 +21,7 @@ class BoxAndWhiskerVis:
         self.draw_maximum = False
         self.show_outliers = True
         self.show_labels = True
+        self.log_scale = False
 
     @property
     def time_units(self):
@@ -73,6 +74,9 @@ class BoxAndWhiskerVis:
         ax.set_title(title,fontsize=32)
 
         ax.grid(False)
+
+        if self.log_scale:
+            plt.yscale("log")
 
         if self.draw_minimum:
             plt.axhline(y=min_line,xmin=0,xmax=len(labels))

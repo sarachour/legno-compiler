@@ -26,6 +26,27 @@ def insert_value(dic,key,val):
         dic[key] = []
     dic[key].append(val)
 
+def get_port_info(dev,block,mode,port):
+    spec = block.inputs.get(port) if block.inputs.has(port) else \
+        (block.outputs.get(port) if block.outputs.has(port) else \
+            block.data.get(port))
+
+    is_port = block.inputs.has(port) or block.outputs.has(port)
+
+    oprng = spec.interval.get(mode)
+    error = spec.quantize.get(mode).error(oprng) \
+        if spec.type == blocklib.BlockSignalType.DIGITAL or \
+            isinstance(spec,blocklib.BlockData) else \
+            spec.noise.get(mode)
+
+
+    if is_port:
+        freq_limit = spec.freq_limit.get(mode)
+    else:
+        freq_limit = None
+
+    return freq_limit,oprng,error
+
 
 def get_coverages(dev,dsprog,adp,  \
                   per_instance=False, \
@@ -50,26 +71,15 @@ def get_coverages(dev,dsprog,adp,  \
         for stmt in cfg.stmts:
             if stmt.type == adplib.ConfigStmtType.CONSTANT or \
             stmt.type == adplib.ConfigStmtType.PORT:
-                spec = block.inputs.get(stmt.name) if block.inputs.has(stmt.name) else \
-                    (block.outputs.get(stmt.name) if block.outputs.has(stmt.name) else \
-                        block.data.get(stmt.name))
-
-                if stmt.type == adplib.ConfigStmtType.PORT:
-                    freq_limit = spec.freq_limit.get(cfg.mode)
-                    if not freq_limit is None:
-                        freq_limits.append(freq_limit)
+                freq_limit,oprng,error = get_port_info(dev,block,cfg.mode,stmt.name)
+                if not freq_limit is None:
+                    freq_limits.append(freq_limit)
 
                 if not dsinfo.has_interval(cfg.inst,stmt.name):
                     continue
 
                 orig_ival = ival = dsinfo.get_interval(cfg.inst, stmt.name)
                 expr = dsinfo.get_expr(cfg.inst, stmt.name)
-
-                oprng = spec.interval.get(cfg.mode)
-                error = spec.quantize.get(cfg.mode).error(oprng) \
-                    if spec.type == blocklib.BlockSignalType.DIGITAL or \
-                       isinstance(spec,blocklib.BlockData) else \
-                       spec.noise.get(cfg.mode)
 
                 if not per_instance:
                     key = (cfg.inst.block,stmt.name)

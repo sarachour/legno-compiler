@@ -372,8 +372,7 @@ def exec_stats(args,trials=1):
             continue
 
         for vizlib in [general_vizlib,lgraph_vizlib,lscale_vizlib]:
-                vises = vizlib.print_aggregate_summaries(board,adps)
-                input("continue...")
+                vises = vizlib.print_aggregate_summaries(board,args,adps)
                 for kwargs,vis in vises:
                     plot_file = path_handler.summary_plot_file( \
                                                     phys_db=adps[0].metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB], \

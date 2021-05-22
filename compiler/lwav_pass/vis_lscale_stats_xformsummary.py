@@ -25,22 +25,64 @@ import numpy as np
 import math
 import re
 
+def summarize_quality_measures(dsinfo,title,aqms,aqmes,aqm_sts,aqm_derivs,aqm_obses,dqms,dqmes):
+        def format_float(min_val,max_val):
+                if min_val is None or max_val is None:
+                    return ""
+
+                if min_val == max_val:
+                    return "%.2f" % min_val
+                else:
+                    return "%.2f-%.2f" % (min_val,max_val)
+
+        header = ["program","aqm","labels","state vars", "deriv", "obs"]
+        tbl = tbllib.Tabular(header, \
+                             ["%s"]*len(header))
+
+        row = [dsinfo.name]
+        median,iqr,min_val,max_val = visutil.get_statistics(aqms)
+        row += [format_float(min_val,max_val)]
+        median,iqr,min_val,max_val = visutil.get_statistics(aqmes)
+        row += [format_float(min_val,max_val)]
+        median,iqr,min_val,max_val = visutil.get_statistics(aqm_sts)
+        row += [format_float(min_val,max_val)]
+        median,iqr,min_val,max_val = visutil.get_statistics(aqm_derivs)
+        row += [format_float(min_val,max_val)]
+        median,iqr,min_val,max_val = visutil.get_statistics(aqm_obses)
+        row += [format_float(min_val,max_val)]
+        tbl.add(row)
+
+        print("===== %s =====" % title)
+        print("------ AQM summary ----")
+        print(tbl.render())
+        print("\n")
+
+
+        header = ["program","dqm","signals"]
+        tbl = tbllib.Tabular(header, \
+                             ["%s"]*len(header))
+
+        row = [dsinfo.name]
+        median,iqr,min_val,max_val = visutil.get_statistics(dqms)
+        row += [format_float(min_val,max_val)]
+        median,iqr,min_val,max_val = visutil.get_statistics(dqmes)
+        row += [format_float(min_val,max_val)]
+        tbl.add(row)
+        print("------ DQM summary ----")
+        print(tbl.render())
+        print("\n")
+
+
+
+
+
 
 def quality_measure_summary(dev,adps):
-    def format_float(min_val,max_val):
-        if min_val is None or max_val is None:
-            return ""
-
-        if min_val == max_val:
-            return "%.2f" % min_val
-        else:
-            return "%.2f-%.2f" % (min_val,max_val)
-
     program = DSProgDB.get_prog(adps[0].metadata[ADPMetadata.Keys.DSNAME])
     dsinfo = DSProgDB.get_info(program.name)
     for (no_scale,one_mode,scale_method,scale_objective),adp_group in  \
             visutil.adps_groupby(adps,[ADPMetadata.Keys.LSCALE_NO_SCALE, \
-                            ADPMetadata.Keys.LSCALE_ONE_MODE, \
+                                       ADPMetadata.Keys.LSCALE_ONE_MODE, \
                                        ADPMetadata.Keys.LSCALE_SCALE_METHOD, \
                                        ADPMetadata.Keys.LSCALE_OBJECTIVE]):
 
@@ -63,46 +105,30 @@ def quality_measure_summary(dev,adps):
             aqm_obses.append(aqm_obs)
 
         #exp_dqms = visutil.adps_get_values(adp_group, ADPMetadata.Keys.LSCALE_DQME)
-
-
-        header = ["program","aqm","labels","state vars", "deriv", "obs"]
-        tbl = tbllib.Tabular(header, \
-                             ["%s"]*len(header))
-
-        row = [dsinfo.name]
-        median,iqr,min_val,max_val = visutil.get_statistics(aqms)
-        row += [format_float(min_val,max_val)]
-        median,iqr,min_val,max_val = visutil.get_statistics(aqmes)
-        row += [format_float(min_val,max_val)]
-        median,iqr,min_val,max_val = visutil.get_statistics(aqm_sts)
-        row += [format_float(min_val,max_val)]
-        median,iqr,min_val,max_val = visutil.get_statistics(aqm_derivs)
-        row += [format_float(min_val,max_val)]
-        median,iqr,min_val,max_val = visutil.get_statistics(aqm_obses)
-        row += [format_float(min_val,max_val)]
-        tbl.add(row)
-
         title = "%s / %s" % (scale_method,scale_objective)
-        print("===== %s =====" % title)
-        print("------ AQM summary ----")
-        print(tbl.render())
-        print("\n")
+        summarize_quality_measures(dsinfo,title,aqms,aqmes,aqm_sts,aqm_derivs,aqm_obses,dqms,dqmes)
 
 
-        header = ["program","dqm","signals"]
-        tbl = tbllib.Tabular(header, \
-                             ["%s"]*len(header))
 
-        row = [dsinfo.name]
-        median,iqr,min_val,max_val = visutil.get_statistics(dqms)
-        row += [format_float(min_val,max_val)]
-        median,iqr,min_val,max_val = visutil.get_statistics(dqmes)
-        row += [format_float(min_val,max_val)]
-        tbl.add(row)
-        print("------ DQM summary ----")
-        print(tbl.render())
-        print("\n")
+        print("====== BREAKDOWN =====")
+        for (calib_obj,adp_subgroup) in visutil.adps_groupby(adp_group, [ADPMetadata.Keys.RUNTIME_CALIB_OBJ]):
 
+            dqms,aqms,dqmes,aqmes,aqm_sts,aqm_derivs,aqm_obses = [],[],[],[],[],[],[]
+            for adp in adp_subgroup:
+                qual_meas,sig_covs,val_covs,time_coverage = statsutil.get_coverages(dev,program,adp, \
+                                                                                    per_instance=True, \
+                                                                                    apply_scale_transform=True)
+                aqm, dqm, aqme,dqme,aqm_st,aqm_deriv,aqm_obs = statsutil.get_aggregate_quality_measures(dev,adp,qual_meas)
+                aqms.append(aqm)
+                dqms.append(dqm)
+                aqmes.append(aqme)
+                dqmes.append(dqme)
+                aqm_sts.append(aqm_st)
+                aqm_derivs.append(aqm_deriv)
+                aqm_obses.append(aqm_obs)
+
+            subtitle = "%s calib_obj=%s" % (title,calib_obj)
+            summarize_quality_measures(dsinfo,subtitle,aqms,aqmes,aqm_sts,aqm_derivs,aqm_obses,dqms,dqmes)
 
 
 
