@@ -20,8 +20,11 @@ import compiler.lwav_pass.vis_util as vislib
 import compiler.lscale_pass.lscale_dynsys as lscaleprob
 import compiler.lscale_pass.lscale_ops as lscalelib
 
+import runtime.models.exp_delta_model as deltalib
+
 import hwlib.block as blocklib
 import hwlib.device as devlib
+import hwlib.hcdc.llenums as llenums
 
 import ops.generic_op as genoplib
 import ops.lambda_op as lambdoplib
@@ -95,6 +98,63 @@ def scaled_expression_simplify(expr):
     else:
         return expr
 
+
+def delta_model_summary(dev,all_adps):
+    def get_model(cfg,output):
+        mdls = deltalib.get_models(dev,  \
+                                   clauses=[ \
+                                             deltalib.ExpDeltaModelClause.BLOCK, \
+                                             deltalib.ExpDeltaModelClause.LOC, \
+                                             deltalib.ExpDeltaModelClause.OUTPUT, \
+                                             deltalib.ExpDeltaModelClause.STATIC_CONFIG, \
+                                             deltalib.ExpDeltaModelClause.CALIB_OBJ
+                                   ], \
+                                   block=block, \
+                                   loc=cfg.inst.loc, \
+                                   output=output, \
+                                   config=cfg, \
+                                   calib_obj = calib_obj )
+        if len(mdls) == 0:
+            return None
+        elif len(mdls) == 1:
+            mdl = mdls[0]
+            return mdl
+        else:
+            for mdl in mdls:
+                print(mdl)
+            raise Exception("only one delta model expected")
+
+    adps = get_valid_adps(all_adps)
+    rmses = vislib.adps_get_values(adps,ADPMetadata.Keys.LWAV_NRMSE)
+    idx = np.argmin(rmses)
+    adp = adps[idx]
+    adp_unsc = vislib.get_unscaled_adp(dev,adp)
+    calib_obj_name = adp.metadata.get(adplib.ADPMetadata.Keys.RUNTIME_CALIB_OBJ)
+    calib_obj = llenums.CalibrateObjective(calib_obj_name)
+
+    print("------ Unscaled Circuit -----")
+    for cfg in adp_unsc.configs:
+        block = dev.get_block(cfg.inst.block)
+        for output in block.outputs:
+            cfg.modes = [cfg.modes[0]]
+            mdl = get_model(cfg,output)
+            if mdl is None:
+                continue
+
+            print("%s mode=%s port=%s" % (cfg.inst,cfg.mode,output.name))
+            print("  %s" % mdl)
+
+    print("===== DELTA MODEL SUMMARY ====")
+    print("------ Scaled Circuit / calibration objective %s -----" % calib_obj_name)
+    for cfg in adp.configs:
+        block = dev.get_block(cfg.inst.block)
+        for output in block.outputs:
+            mdl = get_model(cfg,output)
+            if mdl is None:
+                continue
+
+            print("%s mode=%s port=%s" % (cfg.inst,cfg.mode,output.name))
+            print("  %s" % mdl)
 
 
 def scaled_circuit_block_mode_change_summary(dev,all_adps):
@@ -195,5 +255,9 @@ def scaled_circuit_block_equation_summary(dev,all_adps):
 
     print("--------- mode changes ---------------")
     scaled_circuit_block_mode_change_summary(dev,adps)
+
+
+    print("--------- delta models  ---------------")
+    delta_model_summary(dev,adps)
     return []
 
