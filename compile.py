@@ -21,7 +21,7 @@ def compile_it(program,model_number,scale_only=False,num_lgraph=10,num_lscale=10
   lgraph_cmd = "python3 -u legno.py lgraph {program} --adps {num_lgraph}"
   lscale_cmd = "python3 -u legno.py lscale --model-number {model_number} " + \
     "--objective qtytau --scale-adps {num_lscale} --scale-method phys --calib-obj {calib_obj} {program}"
-  lcal_cmd = "python3 -u legno.py lcal {program} {calib_obj_arg}"
+  lcal_cmd = "python3 -u legno.py lcal --model-number {model_number} {program} {calib_obj_arg}"
 
   if not scale_only:
     cmd = lgraph_cmd.format(program=program,num_lgraph=num_lgraph)
@@ -48,7 +48,7 @@ def compile_it(program,model_number,scale_only=False,num_lgraph=10,num_lscale=10
       print("----------------------------------")
       result = input("automatically calibrate the device (y/n)?")
       if "y" in result:
-        cmd2 = lcal_cmd.format(program=program,calib_obj_arg=calib_flag)
+        cmd2 = lcal_cmd.format(program=program,calib_obj_arg=calib_flag,model_number=model_number)
         ret,out = execute_command(cmd2)
         if ret != 0:
           raise Exception("[[ Failed to Calibrate the device]]")
