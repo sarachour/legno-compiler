@@ -203,7 +203,7 @@ class HardwareInfo:
                                                       calib_obj=self.calib_obj)
 
   def get_ideal_relation(self,instance,mode,port):
-    return HardwareInfo.get_ideal_relation_helper(self,dev,instance,mode,port)
+    return HardwareInfo.get_ideal_relation_helper(self.dev,instance,mode,port)
 
 class SCVar:
 
