@@ -8,7 +8,7 @@ def widen_modes(block,config):
       # idealized relation
       baseline = out.relation[config.modes[0]]
       deviations = list(map(lambda mode: out.relation[mode], all_modes))
-      _, modes, _ = harmlib.get_master_relation(baseline, \
+      _, modes, _, _ = harmlib.get_master_relation(baseline, \
                                                 deviations, \
                                                 all_modes)
       modes_subset = modes_subset.intersection(set(modes))

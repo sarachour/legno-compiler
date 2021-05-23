@@ -2,28 +2,21 @@ import argparse
 import os
 import subprocess
 
-def execute_command(cmd,save_output=True):
-  if save_output:
+def execute_command(cmd):
     p = subprocess.Popen(cmd.split(),  \
                         stdout=subprocess.PIPE, \
                         stderr=subprocess.STDOUT)
     out_text = ""
     while True:
       output = p.stdout.readline()
-      if output == '' and process.poll() is not None:
+      out_str = output.decode('utf-8')
+      if out_str == '' and p.poll() is not None:
         break
       if output:
-        print(output.strip())
-        out_text += output
+        print(out_str.strip())
+        out_text += out_str
 
     return p.returncode,out_text
-  else:
-    p = subprocess.Popen(cmd.split(),  \
-                         stdout=subprocess.STDOUT, \
-                         stderr=subprocess.STDOUT)
-    out,err = p.communicate()
-    return p.returncode,None
- 
 
 def is_uncalibrated(out):
   for line in out.split("\n"):
@@ -35,7 +28,7 @@ def compile_it(program,model_number,scale_only=False,num_lgraph=10,num_lscale=10
   lgraph_cmd = "python3 -u legno.py lgraph {program} --adps {num_lgraph}"
   lscale_cmd = "python3 -u legno.py lscale --model-number {model_number} " + \
     "--objective qtytau --scale-adps {num_lscale} --scale-method phys --calib-obj {calib_obj} {program}"
-  lcal_cmd = "python3 -u legno.py lcal {program} {calib_obj_arg}"
+  lcal_cmd = "python3 -u legno.py lcal --model-number {model_number} {program} {calib_obj_arg}"
 
   if not scale_only:
     cmd = lgraph_cmd.format(program=program,num_lgraph=num_lgraph)
@@ -64,8 +57,8 @@ def compile_it(program,model_number,scale_only=False,num_lgraph=10,num_lscale=10
       print("")
       if "y" in result:
         print("===== CALIBRATING DEVICE ===")
-        cmd2 = lcal_cmd.format(program=program,calib_obj_arg=calib_flag)
-        ret,out = execute_command(cmd2,save_output=False)
+        cmd2 = lcal_cmd.format(program=program,calib_obj_arg=calib_flag,model_number=model_number)
+        ret,out = execute_command(cmd2)
         if ret != 0:
           raise Exception("[[ Failed to Calibrate the device]]")
         else:
