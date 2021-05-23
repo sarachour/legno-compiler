@@ -342,9 +342,8 @@ def exec_render(args,trials=1):
                     adp = ADP.from_json(board, adp_obj)
                     filename = path_handler.lgraph_adp_diagram_file(adp.metadata[ADPMetadata.Keys.LGRAPH_ID])
                     print(filename)
-                    renderer.render(board,adp,filename)
+                    renderer.render(board,adp,filename,scale_transform=False)
 
-    return
     for dirname, subdirlist, filelist in \
         os.walk(path_handler.lscale_adp_dir()):
         for adp_file in filelist:
@@ -369,9 +368,8 @@ def exec_render(args,trials=1):
                         one_mode=adp.metadata[ADPMetadata.Keys.LSCALE_ONE_MODE] \
                     )
                     print(filename)
-                    renderer.render(board,adp,filename)
+                    renderer.render(board,adp,filename,scale_transform=True)
 
-                        
 def exec_stats(args,trials=1):
     import compiler.lwav_pass.waveform as wavelib
     import compiler.lwav_pass.vis_lscale_stats as  lscale_vizlib

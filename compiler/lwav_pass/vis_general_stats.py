@@ -251,9 +251,6 @@ def print_compile_time_summary(dev,adps):
     return []
 
 def print_aggregate_summaries(dev,args,adps):
-    print("------------ metadata ----------------")
-    print(adps[0].metadata)
-
     vises = []
     if args.performance:
         for vis in print_performance_summary(dev,adps):

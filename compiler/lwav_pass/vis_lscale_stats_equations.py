@@ -225,6 +225,9 @@ def scaled_circuit_block_equation_summary(dev,all_adps):
                                                        label_integrators_only=False)
 
 
+    print("------------ metadata ---------------")
+    print(adp.metadata)
+
     print("------------ equations ---------------")
     genoplib.Const.STRING_PRECISION= 4
     genoplib.Const.STRING_SIGFIGS = 3
