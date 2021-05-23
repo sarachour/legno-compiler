@@ -2,14 +2,28 @@ import argparse
 import os
 import subprocess
 
-def execute_command(cmd):
-  p = subprocess.Popen(cmd.split(),  \
-                       stdout=subprocess.PIPE, \
-                       stderr=subprocess.STDOUT)
-  out,err = p.communicate()
-  out_text = out.decode('utf-8')
-  print(out_text)
-  return p.returncode,out_text
+def execute_command(cmd,save_output=True):
+  if save_output:
+    p = subprocess.Popen(cmd.split(),  \
+                        stdout=subprocess.PIPE, \
+                        stderr=subprocess.STDOUT)
+    out_text = ""
+    while True:
+      output = p.stdout.readline()
+      if output == '' and process.poll() is not None:
+        break
+      if output:
+        print(output.strip())
+        out_text += output
+
+    return p.returncode,out_text
+  else:
+    p = subprocess.Popen(cmd.split(),  \
+                         stdout=subprocess.STDOUT, \
+                         stderr=subprocess.STDOUT)
+    out,err = p.communicate()
+    return p.returncode,None
+ 
 
 def is_uncalibrated(out):
   for line in out.split("\n"):
@@ -47,9 +61,11 @@ def compile_it(program,model_number,scale_only=False,num_lgraph=10,num_lscale=10
       print("  The HCDCv2 will need to be plugged in for this procedure to work.")
       print("----------------------------------")
       result = input("automatically calibrate the device (y/n)?")
+      print("")
       if "y" in result:
+        print("===== CALIBRATING DEVICE ===")
         cmd2 = lcal_cmd.format(program=program,calib_obj_arg=calib_flag)
-        ret,out = execute_command(cmd2)
+        ret,out = execute_command(cmd2,save_output=False)
         if ret != 0:
           raise Exception("[[ Failed to Calibrate the device]]")
         else:
