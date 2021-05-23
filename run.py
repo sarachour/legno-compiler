@@ -26,12 +26,12 @@ def compile_it(program):
     "--individual-plots --summary-plots"
 
   cmd = lexec_cmd.format(program=program)
-  return_code,_ = execute_cmd(cmd)
+  return_code,_ = execute_command(cmd)
   if return_code != 0:
     raise Exception("[ERROR] Failed to execute application on HCDC. <lexec> returned %d" % return_code)
 
   cmd = lwav_cmd.format(program=program)
-  return_code,_ = execute_cmd(cmd)
+  return_code,_ = execute_command(cmd)
   if return_code != 0:
     raise Exception("[ERROR] Failed to execute application on HCDC. <lexec> returned %d" % return_code)
 

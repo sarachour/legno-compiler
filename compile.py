@@ -24,7 +24,7 @@ def is_uncalibrated(out):
       if "no valid modes" in line:
         return True
 
-def compile_it(program,model_number,scale_only=False,num_lgraph=10,num_lscale=10):
+def compile_it(program,model_number,scale_only=False,num_lgraph=10,num_lscale=10,noninteractive=True):
   lgraph_cmd = "python3 -u legno.py lgraph {program} --adps {num_lgraph}"
   lscale_cmd = "python3 -u legno.py lscale --model-number {model_number} " + \
     "--objective qtytau --scale-adps {num_lscale} --scale-method phys --calib-obj {calib_obj} {program}"
@@ -53,8 +53,12 @@ def compile_it(program,model_number,scale_only=False,num_lgraph=10,num_lscale=10
       print("  The compiler will now automatically calibrate these blocks")
       print("  The HCDCv2 will need to be plugged in for this procedure to work.")
       print("----------------------------------")
-      result = input("automatically calibrate the device (y/n)?")
-      print("")
+      if noninteractive:
+         result = "y"
+      else:
+         result = input("automatically calibrate the device (y/n)?")
+         print("")
+
       if "y" in result:
         print("===== CALIBRATING DEVICE ===")
         cmd2 = lcal_cmd.format(program=program,calib_obj_arg=calib_flag,model_number=model_number)
@@ -81,13 +85,15 @@ def compile_it(program,model_number,scale_only=False,num_lgraph=10,num_lscale=10
 parser = argparse.ArgumentParser(description='synthesize graphs for and scale application.')
 parser.add_argument('program', help="name of program to run. Program must be in progs/ directory")
 parser.add_argument('model_number', help="board model number.")
-parser.add_argument('--num-circuits',default=10,help="number of circuits to synthesize.")
-parser.add_argument('--num-scale-xforms',default=10,help="number of scaling transforms.")
+parser.add_argument('--num-lgraph',default=10,help="number of circuits to synthesize.")
+parser.add_argument('--num-lscale',default=10,help="number of scaling transforms.")
 parser.add_argument('--scale-only',action="store_true",help="only scale the existing circuits.")
+parser.add_argument('--yes',action="store_true",help="say yes to all calibration requests.")
 
 args = parser.parse_args()
 
 compile_it(args.program,args.model_number, \
            scale_only=args.scale_only,\
-           num_lgraph=args.num_circuits, \
-           num_lscale=args.num_scale_xforms)
+           num_lgraph=args.num_lgraph, \
+           num_lscale=args.num_lscale, \
+           noninteractive=args.yes)
