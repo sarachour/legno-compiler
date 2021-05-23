@@ -83,9 +83,10 @@ class ExtVar(GenericOp):
 
 class Var(Op):
 
-    def __init__(self,name):
+    def __init__(self,name,latex_style=None):
         GenericOp.__init__(self,OpType.VAR,[])
         self._name = name
+        self._latex_style = latex_style
 
     def to_json(self):
         obj = Op.to_json(self)
@@ -93,7 +94,8 @@ class Var(Op):
         return obj
 
     def concretize(self):
-        return Var(self._name)
+        return Var(self._name,latex_style=self._latex_style)
+
     def __repr__(self):
         return "(%s %s)" % \
             (self._op.value,self._name)
@@ -125,16 +127,23 @@ class Var(Op):
         return [self._name]
 
     def pretty_print(self):
-        return "%s" % self.name
+        fmtstr = "%s"
+        if not self._latex_style is None:
+            fmtstr = self._latex_style % fmtstr
+
+        return fmtstr % self.name
 
 
 
 
 class Const(GenericOp):
+    STRING_PRECISION = 2
+    STRING_SIGFIGS = 1
 
-    def __init__(self,value,tag=None):
+    def __init__(self,value,tag=None,latex_style=None):
         GenericOp.__init__(self,OpType.CONST,[])
         self._value = float(value)
+        self._latex_style = latex_style
 
     def to_json(self):
         obj = Op.to_json(self)
@@ -142,15 +151,16 @@ class Const(GenericOp):
         return obj
 
     def substitute(self,bindings={}):
-        return Const(self._value)
+        return Const(self._value, \
+                     latex_style=self._latex_style)
 
     def concretize(self):
-        return Const(self._value)
+        return Const(self._value,  \
+                     latex_style=self._latex_style)
 
     @staticmethod
     def from_json(obj):
         return Const(obj['value'])
-
 
     def compute(self,bindings={}):
         return self._value
@@ -165,10 +175,16 @@ class Const(GenericOp):
 
 
     def pretty_print(self):
-        if abs(self.value) < 0.01 and abs(self.value) > 0.0:
-            fmtstr = "%.3e"
+        thresh = 1.0/(10**(Const.STRING_PRECISION - Const.STRING_SIGFIGS+1))
+        if abs(self.value) < thresh  and abs(self.value) > 0.0:
+            fmtstr = "%."+str(Const.STRING_PRECISION)+"e"
+        elif self.value.is_integer():
+            fmtstr = "%d"
         else:
-            fmtstr = "%.2f"
+            fmtstr = "%."+str(Const.STRING_PRECISION)+"f"
+
+        if not self._latex_style is None:
+            fmtstr = self._latex_style % fmtstr
 
         if self.value < 0:
             fmtstr = "(%s)" % fmtstr
@@ -507,3 +523,17 @@ def unpack_integ(expr):
                      )
     else:
         raise Exception("cannot unpack: %s" % expr)
+
+def break_expr_string(expr_string,max_len=70):
+    terms = expr_string.split("+")
+    clauses = []
+    line = terms[0]
+    for term in terms[1:]:
+        if len(line) + len(term) > max_len:
+            clauses.append(line)
+            line = "+"+term
+        else:
+            line += "+"+term
+
+    clauses.append(line)
+    return clauses

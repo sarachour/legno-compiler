@@ -15,6 +15,10 @@ class ScatterVis:
         self.points = {}
         self.styles = {}
         self.show_legend = False
+        self.x_logscale = False
+        self.y_logscale = False
+        self.order = None
+
 
     @property
     def time_units(self):
@@ -35,8 +39,8 @@ class ScatterVis:
         self.points[name] = (xs,ys)
 
 
-    def set_style(self,name,color,pointstyle,opacity=1.0):
-        self.styles[name] = (color,pointstyle,opacity)
+    def set_style(self,name,color,pointstyle,size=100,opacity=1.0):
+        self.styles[name] = (color,pointstyle,size,opacity)
 
 
     def plot(self,filepath):
@@ -49,17 +53,30 @@ class ScatterVis:
         ax.set_title(title,fontsize=32)
         ax.grid(False)
 
-        for name,(xs,ys) in self.points.items():
+        if not self.order is None:
+            assert(all(map(lambda k: k in self.order, self.points.keys())))
+            series = self.order
+        else:
+            series = self.points.keys()
+
+        for name in series:
+            xs,ys = self.points[name]
             if not name in self.styles:
                 ax.scatter(xs,ys,label=name,
+                           marker='x',
                            s=100)
             else:
-                color,pointstyle,opacity = self.styles[name]
+                color,pointstyle,size,opacity = self.styles[name]
                 ax.scatter(xs,ys,label=name,
                            marker=pointstyle, \
-                           s=100,\
+                           s=size,\
                            color=color, \
                            alpha=opacity)
+
+        if self.x_logscale:
+            plt.xscale("log")
+        if self.y_logscale:
+            plt.yscale("log")
 
         #ax.set_ylim(ymin=ymin*1.1,ymax=ymax*1.1)
         #ax.set_xlim(xmin=xmin*1.1,xmax=xmax*1.1)

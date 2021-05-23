@@ -515,7 +515,7 @@ def generate_constraint_problem(dev,program,adp, \
           deviation_modes.append(mode)
           print(dev_rel)
 
-      master_rel, modes, mode_assignments = harmlib.get_master_relation(baseline, \
+      master_rel, modes, mode_assignments,_ = harmlib.get_master_relation(baseline, \
                                                                         deviations, \
                                                                         deviation_modes)
       modes_subset = list(set(modes_subset).intersection(set(modes)))

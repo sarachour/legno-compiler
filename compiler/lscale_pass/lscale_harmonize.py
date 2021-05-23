@@ -58,44 +58,46 @@ def do_harmonize(baseline,deviations,modes):
             raise NotHarmonizableError("expressions not equal")
 
     master_expr = genoplib.Mult(genoplib.Var(gain_var_name),expr)
-    return master_expr,[(gain_var_name,gains)]
+    return master_expr,[(gain_var_name,gains)],[(gain_var_name,coeff)]
 
 def harmonizable(baseline,deviations,modes):
     try:
-        master_expr,new_gains = do_harmonize(baseline,deviations,modes)
+        master_expr,new_gains,_ = do_harmonize(baseline,deviations,modes)
         return True
     except NotHarmonizableError:
         return False
 
 def harmonize(baseline,deviations,modes):
     if harmonizable(baseline,deviations,modes):
-        master_expr,gains_expr = \
+        master_expr,gains_expr,coeffs_expr = \
                                  do_harmonize(baseline, \
                                               deviations, \
                                               modes)
-        return master_expr,gains_expr
+        return master_expr,gains_expr,coeffs_expr
 
     if baseline.op == baseoplib.OpType.MULT and \
        match_op(baseoplib.OpType.MULT, deviations):
-        master_expr1,gains_expr1 = \
+        master_expr1,gains_expr1,coeffs_expr1 = \
             do_harmonize(baseline.arg(0), \
                      get_term(deviations,0),modes)
-        master_expr2,gains_expr2 = \
+        master_expr2,gains_expr2,coeffs_expr2 = \
             do_harmonize(baseline.arg(1), \
                      get_term(deviations,1),modes)
         gains_expr = gains_expr1 + gains_expr2
-        return genoplib.Mult(master_expr1,master_expr2),gains_expr
+        coeffs_expr = coeffs_expr1 + coeffs_expr2
+        return genoplib.Mult(master_expr1,master_expr2),gains_expr,coeffs_expr
 
     elif baseline.op == baseoplib.OpType.INTEG and \
          match_op(baseoplib.OpType.INTEG, deviations):
-        master_expr1,gains_expr1 = \
+        master_expr1,gains_expr1,coeffs_expr1 = \
             do_harmonize(baseline.arg(0), \
                      get_term(deviations,0),modes)
-        master_expr2,gains_expr2 = \
+        master_expr2,gains_expr2,coeffs_expr2 = \
             do_harmonize(baseline.arg(1), \
                      get_term(deviations,1),modes)
         gains_expr = gains_expr1 + gains_expr2
-        return genoplib.Integ(master_expr1,master_expr2),gains_expr
+        coeffs_expr = coeffs_expr1 + coeffs_expr2
+        return genoplib.Integ(master_expr1,master_expr2),gains_expr,coeffs_expr
 
     elif match_op(baseline.op, deviations):
         raise NotImplementedError
@@ -121,5 +123,5 @@ def find_maximal_subset(baseline,deviations,modes):
 def get_master_relation(baseline,all_deviations,all_modes):
     deviations,modes = find_maximal_subset(baseline,all_deviations,all_modes)
     assert(len(deviations) == len(modes))
-    master,gains= harmonize(baseline,deviations,modes)
-    return master,modes,gains
+    master,gains,coeffs= harmonize(baseline,deviations,modes)
+    return master,modes,gains,coeffs

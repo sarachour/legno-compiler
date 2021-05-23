@@ -7,20 +7,27 @@ class Colors:
     LIGHTYELLOW = "#ffeaa7"
     LIGHTPURPLE = "#a29bfe"
     LIGHTGREY = "#ecf0f1"
-    LIGHTPINK = "#fd79a8"
+    LIGHTPINK="#f8a5c2"
+    LIGHTCYAN="#9AECDB"
+
+    PINK = "#fd79a8"
     ORANGE = "#e17055"
     BLUE = "#3B3B98"
+    PURPLE= "#B53471"
+    CYAN = "#12CBC4"
 
 def render_config_info(board,graph,cfg):
     blk = board.get_block(cfg.inst.block)
-    st = []
-    st.append("\modes: %s" % (cfg.modes))
+    mode_st = []
+    df_st = []
+    lb_st = []
+    for mode in cfg.modes:
+        mode_st.append("%s" % (mode))
+
     for data in cfg.stmts_of_type(adplib \
                                   .ConfigStmtType \
                                   .CONSTANT):
-        st.append("%s=%.2f scf=%.2e" % (data.name, \
-                                        data.value, \
-                                        data.scf))
+        df_st.append("%s=%.2f" % (data.name, data.value))
 
     for data in cfg.stmts_of_type(adplib \
                                   .ConfigStmtType \
@@ -30,11 +37,36 @@ def render_config_info(board,graph,cfg):
                                                    genoplib.Const(tup[1]))), \
                         data.injs.items()))
         subexpr = data.expr.substitute(inj_args)
-        st.append("%s=%s injs=%s scfs=%s" \
-                  % (data.name,data.expr,data.injs,data.scfs))
+        df_st.append("%s=%s" \
+                  % (data.name,data.expr.pretty_print()))
+
+    label_groups = {}
+    for port in cfg.stmts_of_type(adplib \
+                                  .ConfigStmtType \
+                                  .PORT):
+        if not port.source is None:
+            pretty_expr = port.source.pretty_print()
+            if not pretty_expr in label_groups:
+                label_groups[pretty_expr] = []
+            label_groups[pretty_expr].append(port.name)
+
+    for expr,ports in label_groups.items():
+        lhs = ",".join(ports)
+        lb_st.append("%s=%s" % (lhs,expr))
+
+    st = []
+    st.append("[modes]")
+    st += mode_st
+    if len(df_st) > 0:
+        st.append("[data]")
+        st += df_st
+    if len(lb_st) > 0:
+        st.append("[labels]")
+        st += lb_st
+
 
     ident = "%s-config" % cfg.inst
-    graph.node(ident, "%s" % "\n".join(st), \
+    graph.node(ident, "%s" % "\l".join(st), \
                shape="note", \
                style="filled", \
                fillcolor=Colors.LIGHTYELLOW)
@@ -49,14 +81,63 @@ def render_config_info(board,graph,cfg):
     return st
 
 
-def render_instance(board,graph,cfg,scale=False,source=False):
+def render_time_constant(graph,tau):
+    ident = "time-constant"
+    graph.node(ident, "time scale factor\n%.3f" % tau, \
+               shape="note", \
+               style="filled", \
+               fillcolor=Colors.LIGHTPINK)
+
+def render_scale_xform_info(board,graph,cfg):
+    groupings = {}
+    def add(name,scf):
+        scf_fmt = "%.3f" % scf
+        if not scf_fmt in groupings:
+            groupings[scf_fmt] = []
+
+        groupings[scf_fmt].append(name)
+
+    blk = board.get_block(cfg.inst.block)
+    for data in cfg.stmts_of_type(adplib \
+                                  .ConfigStmtType \
+                                  .CONSTANT):
+        add(data.name,data.scf)
+
+    for data in cfg.stmts_of_type(adplib \
+                                  .ConfigStmtType \
+                                  .EXPR):
+        add(data.name,data.scfs[data.name])
+
+    for port in cfg.stmts_of_type(adplib \
+                                  .ConfigStmtType \
+                                  .PORT):
+        add(port.name,port.scf)
+
+
+    st = []
+    for value,names in groupings.items():
+        lhs = ",".join(names)
+        st.append("%s=%s" % (lhs,value))
+
+    ident = "%s-xform" % cfg.inst
+    graph.node(ident, "%s" % "\n".join(st), \
+               shape="note", \
+               style="filled", \
+               fillcolor=Colors.LIGHTCYAN)
+
+    port_id = "%s:block" % (cfg.inst)
+    graph.edge(ident,port_id, \
+               penwidth="2", \
+               style="dashed", \
+               arrowhead="tee",
+               arrowtail="normal", \
+               color=Colors.CYAN)
+    return st
+
+
+def render_instance(board,graph,cfg):
     def port_text(port):
         text = "%s" % port.name
-        if scale:
-            text += "\n %.2e" % cfg[port.name].scf
-        if source and not cfg[port.name].source is None:
-            text += "\n %s" % cfg[port.name].source
-
         return "<%s> %s" % (port.name,text)
 
     # render
@@ -83,7 +164,7 @@ def render_instance(board,graph,cfg,scale=False,source=False):
                fillcolor=Colors.LIGHTGREY)
 
 def render_port_scf(board,graph,inst,stmt):
-    source_templ = "{port} scf={scf:.2f}"
+    source_templ = "{port}"
     source_text = source_templ.format(
         scf=stmt.scf, \
         port=stmt.name
@@ -98,7 +179,7 @@ def render_port_scf(board,graph,inst,stmt):
     graph.edge(source_id,port_id)
 
 def render_source_label(board,graph,inst,stmt):
-    source_templ = "expr={dsexpr} scf={scf:.2f}"
+    source_templ = "expr={dsexpr}"
     source_id = "%s-%s-%s" % (inst,stmt.name,stmt.source)
     source_text = source_templ.format(
         dsexpr=stmt.source, \
@@ -121,7 +202,7 @@ def render_conn(graph,conn):
                arrowtail="normal", \
                color=Colors.BLUE)
 
-def render(board,adp,filename):
+def render(board,adp,filename,scale_transform=True):
     print(graphviz.version())
     graph = graphviz.Digraph('adp-viz', \
                            filename=filename, \
@@ -130,10 +211,15 @@ def render(board,adp,filename):
                                "splines":'true', \
                            })
     for cfg in adp.configs:
-        render_instance(board,graph,cfg,scale=True,source=True)
+        render_instance(board,graph,cfg)
         render_config_info(board,graph,cfg)
+        if scale_transform:
+            render_scale_xform_info(board,graph,cfg)
 
     for conn in adp.conns:
         render_conn(graph,conn)
-    graph.node("time_const", "tau:%f" % adp.tau)
+
+    if scale_transform:
+        render_time_constant(graph,adp.tau)
+
     graph.render()

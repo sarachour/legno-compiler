@@ -1,5 +1,6 @@
 import hwlib.adp as adplib
 from hwlib.adp import ADP,ADPMetadata
+import hwlib.block as blocklib
 
 import compiler.lscale_pass.lscale_dynsys as lscaleprob
 import compiler.lscale_pass.lscale_ops as  lscalelib
@@ -21,22 +22,13 @@ import math
 import util.paths as paths
 import json
 
-def get_lgraph_adp(dev,adp):
-    path_handler = paths.PathHandler( \
-                                      adp.metadata.get(ADPMetadata.Keys.FEATURE_SUBSET), \
-                                     adp.metadata.get(ADPMetadata.Keys.DSNAME))
-    filename = path_handler.lgraph_adp_file(adp.metadata.get(ADPMetadata.Keys.LGRAPH_ID))
-
-    with open(filename,'r') as fh:
-        adp_obj = json.loads(fh.read())
-        adp = ADP.from_json(dev, adp_obj)
-
-    return adp
-
 def print_lgraph_comparison(adps):
     adp = adps[0]
     program = DSProgDB.get_prog(adp.metadata[ADPMetadata.Keys.DSNAME])
     dsinfo = DSProgDB.get_info(program.name)
+
+    if not vislib.has_waveforms(adps):
+        return
 
     # compute upper bound for all plots
     for (no_scale,one_mode,scale_method,scale_objective),adp_super_group in  \
@@ -169,48 +161,118 @@ def circuit_block_equation_summary(dev,adps):
         rel = block.outputs[port].relation[mode] if block.outputs.has(port) \
             else None
 
-        if inst.block == "integ" and port == 'z':
-            deriv = dsinfo.get_expr(inst,'x')
-            init_cond = dsinfo.get_expr(inst,'z0')
-            return rel.substitute({'x':deriv, 'z0':init_cond})
+        if block.outputs.has(port):
+            rel = lscaleprob.get_output_relation(dev,adp,inst, \
+                                                 port, \
+                                                 apply_scale_transform=False)
+            inputs = {}
+            for var in rel.vars():
+                inputs[var] = dsinfo.get_expr(inst,var)
+            return  rel.substitute(inputs)
 
         else:
-            return dsinfo.get_expr(inst,port)
+            rel = lscaleprob.get_input_relation(dsinfo,dev,adp,inst, \
+                                                 port, \
+                                                 apply_scale_transform=False)
+            return  rel
+
+    if not vislib.has_waveforms(adps):
+        return
 
     rmses = vislib.adps_get_values(adps,ADPMetadata.Keys.LWAV_NRMSE)
     idx = np.argmin(rmses)
 
-    adp = get_lgraph_adp(dev,adps[idx])
+    adp = vislib.get_unscaled_adp(dev,adps[idx])
 
     program = DSProgDB.get_prog(adp.metadata[ADPMetadata.Keys.DSNAME])
     dssim = DSProgDB.get_sim(program.name)
     dsinfo = lscaleprob.generate_dynamical_system_info(dev,program,adp, \
                                                        apply_scale_transform=False, \
-                                                       label_integrators_only=True)
+                                                       label_integrators_only=False)
 
 
     print("------------ equations ---------------")
     for var in program.variables():
         sources = adp.get_by_source(genoplib.Var(var))
         exprs = list(map(lambda src: get_expr(adp,dsinfo,src[0],src[1]), sources))
-        valid_exprs = list(filter(lambda e: e.op != baseoplib.OpType.VAR, exprs))
+        valid_exprs = list(filter(lambda e: not set(e.vars()) == set([var])  or \
+                                  e.has_op(baseoplib.OpType.INTEG), exprs))
         if len(valid_exprs) == 0:
             raise Exception("could not identify variable expression <%s> %s / %s" % (var,exprs,sources))
 
         expr = valid_exprs[0]
-        print("%s = %s" % (var,expr.pretty_print()))
+        clauses = genoplib.break_expr_string(expr.pretty_print())
+        lhs = genoplib.Var(var,latex_style="\\rvar{%s}")
+        print("%s = %s" % (lhs.pretty_print(),"\n\t".join(clauses)))
+    print("\n\n")
+
+    print("--------- adp ---------------")
+    print(adp.to_latex())
+    print("\n\n")
 
     return []
 
 
 
+def runtime_summary(adps):
+    program = DSProgDB.get_prog(adps[0].metadata[ADPMetadata.Keys.DSNAME])
+    dsinfo = DSProgDB.get_info(program.name)
 
-def print_aggregate_summaries(dev,adps):
+    if not adps[0].metadata.has(adplib.ADPMetadata.Keys.LGRAPH_SYNTH_RUNTIME):
+        return
+
+    synth_time = adps[0].metadata.get(adplib.ADPMetadata.Keys.LGRAPH_SYNTH_RUNTIME)
+    asm_runtimes = vislib.adps_get_values(adps, ADPMetadata.Keys.LGRAPH_ASM_RUNTIME)
+    route_runtimes = vislib.adps_get_values(adps, ADPMetadata.Keys.LGRAPH_ROUTE_RUNTIME)
+
+    header = ["benchmark","time", "median","iqr","min","max", "median","iqr","min","max"]
+    tbl = tbllib.Tabular(header, \
+                         ["%s"]+ ["%.2f"]*(len(header)-1))
+
+    row = []
+    row.append(dsinfo.name)
+    row.append(synth_time)
+    median,iqr,min_val,max_val = vislib.get_statistics(asm_runtimes)
+    row += [median,iqr,min_val,max_val]
+    median,iqr,min_val,max_val = vislib.get_statistics(route_runtimes)
+    row += [median,iqr,min_val,max_val]
+    tbl.add(row)
+
+    print(tbl.render())
+    print("\n")
+
+    print("----- fragment synthesis breakdown ----")
+    synth_times_by_variable = adps[0].metadata.get(adplib.ADPMetadata.Keys.LGRAPH_SYNTH_RUNTIME_BY_VAR)
+    by_variable = json.loads(synth_times_by_variable)
+
+    header = [dsinfo.name] + ['median','iqr','min','max']
+    tbl = tbllib.Tabular(header, \
+                         ["%s"]+ ["%.4f"]*(len(header)))
+    for variable,runts in by_variable.items():
+        median,iqr,min_val,max_val = vislib.get_statistics(runts)
+        tbl.add([variable]+[median,iqr,min_val,max_val])
+
+    tbl_trans = tbl.transpose()
+    print("----- lgraph runtime breakdown -----")
+    print(tbl_trans.render())
+    print("\n")
+
+
+
+def print_aggregate_summaries(dev,args,adps):
     vises = []
 
-    for kwargs,vis in print_lgraph_comparison(adps):
-        vises.append((kwargs,vis))
+    if args.lgraph_rmse_plots:
+        for kwargs,vis in print_lgraph_comparison(adps):
+            vises.append((kwargs,vis))
 
-    circuit_block_equation_summary(dev,adps)
-    circuit_block_distribution_summary(dev,adps)
+    if args.equations:
+        circuit_block_equation_summary(dev,adps)
+
+    if args.lgraph_static:
+        circuit_block_distribution_summary(dev,adps)
+
+    if args.compile_times:
+        runtime_summary(adps)
+
     return vises

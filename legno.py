@@ -117,11 +117,40 @@ emul_subp.add_argument('--separate-figures', action='store_true', \
 
 
 
+rend_subp = subparsers.add_parser('lrender', help='re-render circuit diagrams.')
+rend_subp.add_argument('program', help='program to analyze.')
 
 plot_subp = subparsers.add_parser('lstats', help='analyze waveforms.')
 plot_subp.add_argument('program', help='program to analyze.')
-plot_subp.add_argument('--runtimes-only', action='store_true', \
-                       help='only print out runtime summary.')
+plot_subp.add_argument('--equations', action='store_true', \
+                       help='print signal equation latex formulas.')
+plot_subp.add_argument('--performance', action='store_true', \
+                       help='print energy/power/runtime/quality summary.')
+plot_subp.add_argument('--compile-times', action='store_true', \
+                       help='print performance summary.')
+
+
+
+plot_subp.add_argument('--lgraph-rmse-plots', action='store_true', \
+                       help='plot rmse breakdown by lgraph circuit.')
+plot_subp.add_argument('--lgraph-static', action='store_true', \
+                       help='print out block breakdown.')
+
+
+plot_subp.add_argument('--lscale-static', action='store_true', \
+                       help='print quality measure and scale transform breakdown.')
+plot_subp.add_argument('--lscale-correlation', action='store_true', \
+                       help='print out quality measure + signal correlations to rmse.')
+plot_subp.add_argument('--lscale-top5', action='store_true', \
+                       help='print top 5 circuits.')
+plot_subp.add_argument('--lscale-delta-model-plots', action='store_true', \
+                       help='plot delta model compensation plots.')
+plot_subp.add_argument('--lscale-scale-objective-plots', action='store_true', \
+                       help='plot scale objective plots.')
+
+
+
+
 
 
 plot_subp = subparsers.add_parser('lwav', help='analyze waveforms.')
@@ -177,6 +206,10 @@ elif args.subparser_name == "lwav":
 
 elif args.subparser_name == "lstats":
    legno_util.exec_stats(args)
+
+elif args.subparser_name == "lrender":
+   legno_util.exec_render(args)
+
 
 
 else:

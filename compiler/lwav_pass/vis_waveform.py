@@ -205,9 +205,26 @@ def plot_waveform_summaries(dev,adps,waveforms):
         vis.add_waveform(series,awf)
     yield vis
 
+
     print("==== Best Waveform ====")
     best_idx = np.argmin(errors)
     vis = wavelib.WaveformVis("bestwf",ylabel,dsinfo.name)
+    vis.add_waveform("ref",reference)
+    vis.set_style('ref',ref_color,'-')
+    vis.set_style('meas',meas_color,'--')
+    vis.add_waveform("meas",align_wfs[best_idx])
+    yield vis
+
+
+
+
+    print("==== Median Waveform ====")
+    npts = len(errors)
+    median_value = np.percentile(errors,50,interpolation='nearest')
+    best_idx = list(filter(lambda idx: abs(errors[idx] - median_value) < 1e-6,  \
+                           range(npts)))[0]
+
+    vis = wavelib.WaveformVis("medianwf",ylabel,dsinfo.name)
     vis.add_waveform("ref",reference)
     vis.set_style('ref',ref_color,'-')
     vis.set_style('meas',meas_color,'--')
