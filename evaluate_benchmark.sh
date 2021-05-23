@@ -37,6 +37,25 @@ if [[ "$FLAGS" == *"e"* ]]; then
 	mv ${TMPDIR}/${BMARK}_*.adp outputs/legno/unrestricted/${BMARK}/lgraph-adp/
 fi
 
+if [[ "$FLAGS" == *"x"* ]]; then
+	# generate up to 500 signal maximizing circuits
+ 	mkdir -p ${TMPDIR}/
+	mv outputs/legno/unrestricted/${BMARK}/lgraph-adp/*.adp ${TMPDIR}/
+	mv ${TMPDIR}/${BMARK}_g0.adp outputs/legno/unrestricted/${BMARK}/lgraph-adp/
+
+	OBJECTIVE=rand
+	MIN_AQM=1.0
+	MIN_DQM=5.0
+	MIN_DQME=5.0
+	MIN_TAU=0.001
+        NUM_CIRCS=500
+	python3 -u legno.py lscale --model-number c4  --min-aqm ${MIN_AQM} --min-dqme ${MIN_DQME} --min-dqm ${MIN_DQM} --min-tau ${MIN_TAU} --objective ${OBJECTIVE} --scale-adps ${NUM_CIRCS} --scale-method phys --calib-obj maximize_fit ${BMARK}
+
+	python3 -u legno.py lexec ${BMARK}
+	python3 -u legno.py lwav ${BMARK}
+	mv ${TMPDIR}/${BMARK}_*.adp outputs/legno/unrestricted/${BMARK}/lgraph-adp/
+fi
+
 if [[ "$FLAGS" == *"r"* ]]; then
 	# generate up to 500 signal maximizing circuits
  	mkdir -p ${TMPDIR}/
