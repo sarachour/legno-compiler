@@ -192,8 +192,6 @@ def generate_port_oprange_constraints(hwinfo,dsinfo,inst,  \
   cstr.monom.upper.add_term(v_upper)
   cstr.submonom.lower.add_term(v_scalevar)
   cstr.submonom.upper.add_term(v_scalevar)
-  print(inst,port,cstr)
-  input()
   yield cstr
 
 def generate_port_quantize_constraints(hwinfo, dsinfo,inst,  \
