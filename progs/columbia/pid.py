@@ -37,7 +37,7 @@ def dsprog(prob):
   #prob.emit("{one}*PLANT","TrackedSig",params)
   #prob.emit("{one}*ERR","TrackingError",params)
   prob.emit("{one}*CTRL","Controlled",params)
-  for v in ['PLANT','CTRL','ERR','INTEG']:
+  for v in ['PLANT','INTEG']:
     prob.interval(v,-2.0,2.0)
 
   prob.check()

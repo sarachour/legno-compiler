@@ -50,12 +50,14 @@ def get_port_info(dev,block,mode,port):
 
 def get_coverages(dev,dsprog,adp,  \
                   per_instance=False, \
-                  apply_scale_transform=False):
+                  apply_scale_transform=False, \
+                  prescale=1.0, \
+                  label_integrators_only=True):
     unscaled_adp = visutil.get_unscaled_adp(dev,adp)
     dsinfo= lscaleprob.generate_dynamical_system_info(dev, \
-                                                        dsprog, \
-                                                        unscaled_adp, \
-                                                        apply_scale_transform=False)
+                                                      dsprog, \
+                                                      unscaled_adp, \
+                                                      apply_scale_transform=False)
     signal_coverages = {}
     value_coverages = {}
     quality_measures = {}
@@ -88,13 +90,18 @@ def get_coverages(dev,dsprog,adp,  \
 
                 if ival.bound > 0:
                     if  apply_scale_transform:
-                        ival = ival.scale(stmt.scf)
+                        ival = orig_ival.scale(stmt.scf)
 
                     if ival.is_constant():
-                        ratio = ival.bound/oprng.bound
+                        ratio = ival.bound/(oprng.bound*prescale)
                         insert_value(value_coverages,key,ratio)
                     else:
-                        ratio = ival.spread/oprng.spread
+                        ratio = ival.spread/(oprng.spread*prescale)
+                        if ratio-1.0 > 1e-5:
+                            print(block.name,cfg.inst,cfg.mode,stmt.name,ratio)
+                            print("  %s %s %s %s" % (orig_ival,oprng,stmt.scf,ival))
+                            print(" %s" % expr)
+
                         insert_value(signal_coverages,key,ratio)
 
 

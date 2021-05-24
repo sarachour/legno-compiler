@@ -192,6 +192,8 @@ def generate_port_oprange_constraints(hwinfo,dsinfo,inst,  \
   cstr.monom.upper.add_term(v_upper)
   cstr.submonom.lower.add_term(v_scalevar)
   cstr.submonom.upper.add_term(v_scalevar)
+  print(inst,port,cstr)
+  input()
   yield cstr
 
 def generate_port_quantize_constraints(hwinfo, dsinfo,inst,  \
@@ -579,21 +581,20 @@ def generate_constraint_problem(dev,program,adp, \
           yield cstr
 
     # any data-specific constraints
-    for mode in block.modes:
-      for datum in block.data:
-        if datum.type == blocklib.BlockDataType.CONST:
-          for cstr in generate_const_data_field_constraints(hwinfo, \
-                                                        dsinfo, \
-                                                        config.inst, \
-                                                        config.modes[0], \
-                                                        block.modes,  \
-                                                        datum.name):
-            yield cstr
+    for datum in block.data:
+      if datum.type == blocklib.BlockDataType.CONST:
+        for cstr in generate_const_data_field_constraints(hwinfo, \
+                                                      dsinfo, \
+                                                      config.inst, \
+                                                      config.modes[0], \
+                                                      block.modes,  \
+                                                      datum.name):
+          yield cstr
 
-        elif datum.type == blocklib.BlockDataType.EXPR:
-          pass
-        else:
-          raise NotImplementedError
+      elif datum.type == blocklib.BlockDataType.EXPR:
+        pass
+      else:
+        raise NotImplementedError
 
   for cstr in add_average_quality_terms(hwinfo):
     yield cstr
