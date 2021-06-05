@@ -5,6 +5,7 @@
 #include "profile.h"
 
 
+
 bool helper_check_steady(Fabric * fab,
                          Fabric::Chip::Tile::Slice::ChipAdc* adc,
                          Fabric::Chip::Tile::Slice::Dac* dac,
@@ -109,11 +110,12 @@ float Fabric::Chip::Tile::Slice::ChipAdc::calibrateMaxDeltaFit(Fabric::Chip::Til
   // put no emphasis on deviation because parameter setting doesn't
   // change it that much.
   float min,max;
+  float max_gain = 1.2;
   this->computeInterval(this->m_state, out0Id, min, max);
   return cutil::compute_loss(bias,highest_std,avg_error,
                              1.0+gain_mean,     \
                              max, \
-                             0.0, 1.0);
+                             0.0, max_gain);
 }
 
 float Fabric::Chip::Tile::Slice::ChipAdc::getLoss(calib_objective_t obj,
@@ -141,7 +143,7 @@ void Fabric::Chip::Tile::Slice::ChipAdc::calibrate (calib_objective_t obj) {
   //backup
   adc_state_t codes_adc = this->m_state;
   dac_state_t codes_dac = val_dac->m_state;
-  const float EPS = 1e-4;
+  const float EPS = 0.04;
 
   cutil::calibrate_t calib;
   cutil::initialize(calib);
@@ -162,6 +164,7 @@ void Fabric::Chip::Tile::Slice::ChipAdc::calibrate (calib_objective_t obj) {
   unsigned char opts[] = {nA100,nA200,nA300,nA400};
   int signs[] = {-1,1};
   bool found_code = false;
+  float bias_thresh = 128.0;
   for(unsigned char fs=0; fs < 4 && !found_code; fs += 1){
     this->m_state.lower_fs = opts[fs];
     this->m_state.upper_fs = opts[fs];
@@ -190,7 +193,8 @@ void Fabric::Chip::Tile::Slice::ChipAdc::calibrate (calib_objective_t obj) {
                                  this->m_state.i2v_cal,
                                  error,
                                  MEAS_ADC);
-            sprintf(FMTBUF,"A fs=(%d,%d) def=(%d,%d) nmos=%d i2v=%d loss=%f",
+            sprintf(FMTBUF,"A thr=%f fs=(%d,%d) def=(%d,%d) nmos=%d i2v=%d loss=%f",
+		    bias_thresh,
                     this->m_state.lower_fs,
                     this->m_state.upper_fs,
                     this->m_state.lower,
@@ -199,9 +203,10 @@ void Fabric::Chip::Tile::Slice::ChipAdc::calibrate (calib_objective_t obj) {
                     this->m_state.i2v_cal,
                     error);
             print_info(FMTBUF);
-            if(error > 0.5){
+            if(fabs(error) > bias_thresh){
               continue;
             }
+	    bias_thresh = max(0.5,min(fabs(bias_thresh),fabs(error)));
             update(this->m_state);
             float loss = getLoss(obj,val_dac);
             sprintf(FMTBUF,"B fs=(%d,%d) def=(%d,%d) nmos=%d i2v=%d loss=%f",
@@ -220,12 +225,13 @@ void Fabric::Chip::Tile::Slice::ChipAdc::calibrate (calib_objective_t obj) {
                                       this->m_state.upper,
                                       nmos,
                                       this->m_state.i2v_cal);
-            found_code = true;
-            break;
-            //if(fabs(calib_table.loss) < EPS && calib_table.set)
-            // break;
+            
           }
         }
+      }
+      if(fabs(calib_table.loss) < EPS && calib_table.set){
+	       found_code = true;
+  	       break;
       }
     }
   }
