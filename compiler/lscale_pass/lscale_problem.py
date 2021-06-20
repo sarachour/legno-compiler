@@ -518,6 +518,8 @@ def generate_constraint_problem(dev,program,adp, \
       master_rel, modes, mode_assignments,_ = harmlib.get_master_relation(baseline, \
                                                                         deviations, \
                                                                         deviation_modes)
+      print("baseline=%s modes=%s valid=%s" % (baseline,modes_subset,modes))
+      print(" deviations=%s" % str(deviations))
       modes_subset = list(set(modes_subset).intersection(set(modes)))
       cstrs,op_monom = generate_factor_constraints(config.inst,master_rel)
       for cstr in cstrs:

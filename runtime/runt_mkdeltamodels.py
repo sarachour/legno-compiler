@@ -42,7 +42,6 @@ def update_delta_model(dev,delta_model,dataset):
 
     else:
         return False,-1
-
     if not fitlib.fit_delta_model_to_data(delta_model, \
                                           rel, \
                                           dataset):
@@ -88,6 +87,8 @@ def _update_delta_models_for_configured_block(dev,delta_models,blk,loc,output, \
                                            block=blk, loc=loc, output=output, config=config):
         #print("# data points %s (%s): %d" % (blk.name,dataset.method,len(dataset)))
         for delta_model in delta_models:
+
+            print("fitting %s %s %s %s npts=%d" %  (blk.name,loc,output.name,config.mode, len(dataset)))
             succ,error = update_delta_model(dev,delta_model,dataset)
             noise = np.mean(dataset.meas_stdev)
             if succ:
