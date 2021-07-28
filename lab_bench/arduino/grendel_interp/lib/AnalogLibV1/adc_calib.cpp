@@ -225,13 +225,14 @@ void Fabric::Chip::Tile::Slice::ChipAdc::calibrate (calib_objective_t obj) {
                                       this->m_state.upper,
                                       nmos,
                                       this->m_state.i2v_cal);
-            
+            found_code = true;
+	    break; 
           }
         }
       }
       if(fabs(calib_table.loss) < EPS && calib_table.set){
-	       found_code = true;
-  	       break;
+	found_code = true;
+  	break;
       }
     }
   }
