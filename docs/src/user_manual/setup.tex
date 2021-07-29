@@ -74,7 +74,7 @@ installed using the python package manager, \tx{pip}. Execute the following comm
 from the root directory of the \tx{legno-compiler} project to execute all the required packages:
 
 \begin{snippet}
-  pip3 install -r packages-legno.list
+  pip3 install -r requirements.txt
 \end{snippet}
 
 \section{Setting up the HCDCv2 Device}
@@ -135,7 +135,7 @@ Execute the following command from the root directory of the \tx{legno-compiler}
 project to install all the required packages.
 
 \begin{snippet}
-  pip3 install -r packages-grendel.list
+  pip3 install -r requirements.txt
 \end{snippet}
 
 \subsection{Writing Firmware to the HCDCv2 Device}
@@ -152,7 +152,6 @@ To build the firmware, type the following command:
 \end{snippet}
 
 This should complete without incident. 
-
 
 \subsubsection{[Linux] \tx{Sam.mk} not found}
 
@@ -300,6 +299,66 @@ The remaining fields are automatically populated from these three fields. We
 don't recommend directly setting any of these. The \tx{ARDUINO_FILE_DESC} field
 points to the USB port that is linked to the Arduino and is automatically
 populated by looking for the proper file descriptor in the \tx{/dev/} directory.
+
+
+\subsection{Setting up the Calibration, Delta Model, and Profiling Databases}
+
+Next, we want to unpack the characterization data that was collected during chip testing. First,
+locate the tag that was shipped with the \hcdc{} board -- this is the model number of the board. 
+For example, the tag may indicate the board has the model number \tx{<c3>}. 
+
+\noindent\textbf{Important}: This manual will use \tx{<model-number>} to indicate where the model of the board
+should be filled in when dispatching commands. Whenever you see the \tx{<model-number>} argument, replace the 
+argument with the model number: \tx{c4}, for example.
+
+\noindent\textbf{Getting the Data}: Contact Sendyne and ask for the characterization and 
+benchmark data for the board you have. Provide them with the model number. They will provide you 
+with the device state archive \tx{<model-number>-devstate.zip} and benchmarks 
+archive \tx{<model-number>-bmarks.zip}. 
+
+The device state archive contains all of the characterization data collected from the chip. The benchmark
+archive contains the end-to-end application executions from the chip on hand. Note that this data
+can be automatically rebuilt from scratch if the archives cannot be located. 
+
+\subsubsection{Unpacking and Analyzing the Data}
+
+Execute the following command to unpack the data:
+
+\begin{snippet}
+python3 scripts/unpack_char_data.py <model-number>
+\end{snippet}
+
+This will unpack the relevent databases to the \tx{device-state/hcdc/<model-number>} directory and the benchmark
+executions to the `outputs/legno/unrestricted` directory. Execute the following command to visualize all of the 
+characterized data.
+
+\begin{snippet}
+python3 grendel.py vis <model-number>
+\end{snippet}
+
+The benchmark execution data can be viewed without any special processing. Simply navigate to the 
+\tx{outputs/legno/unrestricted} directory and peruse the \tx{lgraph-vis} and \tx{lscale-vis} for visualizations of the 
+generated unscaled and scaled circuits, respectively.
+
+\noindent\textbf{Reproducing Benchmark Data}: It is trivial to re-execute the unscaled and scaled \adp{}s. To reproduce the
+benchmark \tx{<bmark>}, remove the following directories:
+
+\begin{snippet}
+   rm outputs/legno/unrestricted/<bmark>/out-waveform*
+   rm outputs/legno/unrestricted/<bmark>/plots*
+\end{snippet}
+
+Removing these directories clears out the stored waveforms. Note that these directories can be repopulated by re-running the
+unpacking script. After removing these directories, you can re-execute the benchmark applications with the following commands:
+
+\begin{snippet}
+   python3 legno.py lexec <bmark>
+   python3 legno.py lwav <bmark> --summary-plots --individual-plots
+\end{snippet}
+
+The first command re-runs the \adp{}s on the \hcdc{} device and records the emitted waveforms to the \tx{out-waveforms} directory. 
+The second command processes the collected waveforms and plots the data -- the plotted data is written to the \tx{plots} directory.
+
 
 
 \section{Troubleshooting}
