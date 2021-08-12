@@ -8,6 +8,7 @@ def run_adp_simulation(dev, \
                        adp, \
                        dssim, \
                        recover=False, \
+                       unscaled=False, \
                        enable_model_error=True, \
                        enable_physical_model=True, \
                        enable_intervals=True, \
@@ -15,9 +16,10 @@ def run_adp_simulation(dev, \
   sim =  \
          buildsim.build_simulation(dev, \
                                    adp, \
+                                   unscaled=unscaled,\
                                    enable_model_error=enable_model_error, \
                                    enable_physical_model=enable_physical_model, \
-                                   enable_intervals=enable_intervals,
+                                   enable_intervals=enable_intervals, \
                                    enable_quantization=enable_quantization)
 
   res = buildsim.run_simulation(sim,dssim.sim_time)
@@ -85,6 +87,7 @@ def plot_simulation(times,stvars,plot_file):
 
 
 def simulate_adp(dev,adp,plot_file, \
+                 unscaled=False,\
                  enable_model_error=True, \
                  enable_physical_model=True, \
                  enable_intervals=True, \
@@ -93,10 +96,15 @@ def simulate_adp(dev,adp,plot_file, \
   print(adp.metadata)
   prog = adp.metadata[adplib.ADPMetadata.Keys.DSNAME]
   dssim = DSProgDB.get_sim(prog)
-  dev.model_number = adp.metadata[adplib.ADPMetadata.Keys.RUNTIME_PHYS_DB]
+  if not unscaled:
+      dev.model_number = adp.metadata[adplib.ADPMetadata.Keys.RUNTIME_PHYS_DB] if \
+              adp.metadata.has(adplib.ADPMetadata.Keys.RUNTIME_PHYS_DB) else None
+
   times,values = run_adp_simulation(dev, \
                                     adp,
                                     dssim, \
+                                    unscaled=unscaled,  \
+                                    enable_intervals=enable_intervals,\
                                     enable_model_error=enable_model_error, \
                                     enable_physical_model=enable_physical_model, \
                                     enable_quantization=enable_quantization)

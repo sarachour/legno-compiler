@@ -312,8 +312,10 @@ def exec_lemul(args):
                     print(plot_file)
 
 
-                    board = get_device(adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB])
+                    board = get_device(adp.metadata[ADPMetadata.Keys.RUNTIME_PHYS_DB] if \
+                            adp.metadata.has(ADPMetadata.Keys.RUNTIME_PHYS_DB) else None)
                     lsim.simulate_adp(board,adp,plot_file, \
+                            unscaled=args.unscaled, \
                                       enable_quantization=not args.no_quantize, \
                                       enable_intervals=not args.no_operating_range, \
                                       enable_physical_model= not args.no_physdb, \

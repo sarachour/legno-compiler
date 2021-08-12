@@ -322,13 +322,17 @@ class ADPEmulBlock:
                       % (self.port.name,self.block.name))
 
     out = self.block.outputs[self.port.name]
-    models = deltalib.get_models(self.board, \
-                                ['block','loc','output','static_config','calib_obj'],
-                                block=self.block, \
-                                loc=self.loc, \
-                                output=out, \
-                                config=self.cfg, \
-                                calib_obj=self.calib_obj)
+    if SETTINGS["physdb"]:
+        models = deltalib.get_models(self.board, \
+                                    ['block','loc','output','static_config','calib_obj'],
+                                    block=self.block, \
+                                    loc=self.loc, \
+                                    output=out, \
+                                    config=self.cfg, \
+                                    calib_obj=self.calib_obj)
+    else:
+        models = []
+
     if len(models) == 0:
       model = None
     else:
@@ -475,13 +479,16 @@ class ADPStatefulEmulBlock(ADPEmulBlock):
 
     #expr = blk.outputs[port.name].relation[cfg.mode]
     out = self.block.outputs[self.port.name]
-    models = deltalib.get_models(self.board, \
-                                 ['block','loc','output','static_config','calib_obj'], \
-                                 block=self.block, \
-                                 loc=self.loc, \
-                                 output=out, \
-                                 config=self.cfg, \
-                                 calib_obj=self.calib_obj)
+    if SETTINGS["physdb"]:
+        models = deltalib.get_models(self.board, \
+                                     ['block','loc','output','static_config','calib_obj'], \
+                                     block=self.block, \
+                                     loc=self.loc, \
+                                     output=out, \
+                                     config=self.cfg, \
+                                     calib_obj=self.calib_obj)
+    else:
+        models = []
 
     set_to_ideal_expr()
 
@@ -492,7 +499,7 @@ class ADPStatefulEmulBlock(ADPEmulBlock):
       print(self.cfg)
       raise Exception("no delta models for block")
 
-    model = models[0]
+    model = models[0] if not models is None else None
     llcmdcomp.compute_expression_fields(self.board, \
                                         adp, \
                                         self.cfg, \
@@ -547,9 +554,13 @@ def is_integrator(block,cfg,port):
                     expr.nodes()))
 
 def build_expr(dev,sim,adp,block,cfg,port):
-  calib_obj = llenums.CalibrateObjective(adp \
-                                         .metadata \
-                                         .get(adplib.ADPMetadata.Keys.RUNTIME_CALIB_OBJ))
+  if SETTINGS["compensate"]:
+      calib_obj = llenums.CalibrateObjective(adp \
+                                             .metadata \
+                                             .get(adplib.ADPMetadata.Keys.RUNTIME_CALIB_OBJ))
+  else:
+      calib_obj = None
+
   print(block.name, port.name)
   if is_integrator(block,cfg,port):
     emul_block = ADPStatefulEmulBlock(dev,adp,block,cfg,port,calib_obj)
@@ -621,18 +632,30 @@ def func_state(sim,values):
 
 
 def build_simulation(dev,_adp,  \
+                     unscaled=False, \
                      enable_model_error=True, \
                      enable_physical_model=True, \
                      enable_intervals=True, \
                      enable_quantization=True):
   adp = _adp.copy(dev)
-  SETTINGS['interval'] = enable_intervals
-  SETTINGS['quantize'] = enable_quantization
-  SETTINGS['model_error'] = enable_model_error and enable_physical_model
-  SETTINGS['physdb'] = enable_physical_model
-  SETTINGS['compensate'] = adp.metadata[adplib.ADPMetadata.Keys.LSCALE_SCALE_METHOD] != \
-    lscalelib.ScaleMethod.IDEAL
-
+  SETTINGS['unscaled'] = unscaled
+  assert(not (unscaled and enable_intervals))
+  assert(not (unscaled and enable_quantization))
+  assert(not (unscaled and enable_model_error))
+  assert(not (unscaled and enable_physical_model))
+  if not unscaled:
+      SETTINGS['interval'] = enable_intervals
+      SETTINGS['quantize'] = enable_quantization
+      SETTINGS['model_error'] = enable_model_error and enable_physical_model
+      SETTINGS['physdb'] = enable_physical_model
+      SETTINGS['compensate'] = adp.metadata[adplib.ADPMetadata.Keys.LSCALE_SCALE_METHOD] != \
+        lscalelib.ScaleMethod.IDEAL
+  else:
+      SETTINGS["interval"] = False
+      SETTINGS["compensate"] = False
+      SETTINGS["model_error"] = False
+      SETTINGS["quantize"] = False
+      SETTINGS["physdb"] = False
   print("--- settings ---")
   for k,v in SETTINGS.items():
     print("par %s = %s" % (k,v))
