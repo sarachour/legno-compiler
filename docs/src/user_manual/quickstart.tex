@@ -27,6 +27,13 @@ the operating range restrictions of the device. For this reason, we need to
 scale the unscaled circuit. We will be generating ten scaled circuits that
 respect the hardware restrictions with the \tx{lscale} pass:
 
+TODO 
+\begin{snippet}
+  python3 legno.py lscale --scale-adps 10 --calib-obj minimize_error
+  --scale-method phys--objective qtytau --model-number <model-number> cos
+\end{snippet}
+
+
 \begin{snippet}
   python3 legno.py lscale --scale-adps 10 --calib-obj minimize_error
   --scale-method ideal --objective qty --model-number <model-number> cos
@@ -139,7 +146,7 @@ The \tx{lexec} subcommand in the legno compiler (\tx{legno.py}) executes
 all generated scaled circuits on the analog hardware:
 
 \begin{snippet}
-python3 legno.py lexec cos --model-number <model-number>
+python3 legno.py lexec cos 
 \end{snippet}
 
 This command may complain that it can't find the calibration codes for a
@@ -181,7 +188,7 @@ The \tx{lwav} subcommand is used to analyze and render oscilloscope outputs. We
 execute the following command to produce visualizations from the collected waveforms: 
 
 \begin{snippet}
-python3 legno.py lwav cos
+python3 legno.py lwav cos --individual-plots --summary-plots
 \end{snippet}
 
 This command generates plots for each measured signal and then attempts to align
