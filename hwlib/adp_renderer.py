@@ -222,4 +222,4 @@ def render(board,adp,filename,scale_transform=True):
     if scale_transform:
         render_time_constant(graph,adp.tau)
 
-    graph.render()
+    graph.render(format="png")

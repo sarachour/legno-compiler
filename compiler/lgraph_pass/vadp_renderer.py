@@ -1,6 +1,6 @@
 import graphviz
 import compiler.lgraph_pass.vadp as vadplib
-
+import util.config as configlib
 
 def render_config(graph, stmt):
     # render
@@ -64,4 +64,4 @@ def render(vadp, filename):
           graph.node(source_id, "source: "+str(stmt.dsexpr))
           graph.edge(port_id,source_id)
 
-    graph.render()
+    graph.render(format="png")
