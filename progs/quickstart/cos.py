@@ -17,9 +17,15 @@ def dsprog(prob):
     'P0': 1.0,
     'V0' :0.0
   }
+  # V' = -P
+  # V(0) = params['V0']
   prob.decl_stvar("V","(-P)","{V0}",params)
+  # P' = V
+  # P(0) = params['P0']
   prob.decl_stvar("P","V","{P0}",params)
+  # please measure 0.6*P
   prob.emit("0.6*P","Position")
+  #
   prob.interval("P",-1.0,1.0)
   prob.interval("Position",-1.0,1.0)
   prob.interval("V",-1.0,1.0)
