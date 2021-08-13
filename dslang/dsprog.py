@@ -77,6 +77,8 @@ class DSProg:
         self._lambdas = {}
         self._intervals = {}
         self._variables = []
+        self._parameters = []
+
         self._time_constant_range = (None,None);
         self.max_time = 100.0
 
@@ -165,6 +167,8 @@ class DSProg:
         obj = opparse.parse(self,expr_conc)
         self._bind(var,obj)
 
+    def decl_parameter(self,par):
+        self._parameters.append(par)
 
     def decl_extvar(self,varname,loc):
         self._bind(varname,op.ExtVar("EXT_%s" % varname, \
@@ -211,8 +215,7 @@ class DSProg:
 
     def interval(self,v,min_v,max_v):
         assert(min_v <= max_v)
-        if not v in self._variables:
-            self._variables.append(v)
+        assert(v in self._variables or v in self._parameters)
         self._intervals[v] = intervallib.Interval.type_infer(min_v,max_v)
 
     def intervals(self):
@@ -239,7 +242,9 @@ class DSProg:
                     print("  :ival %s" % k)
             raise Exception("can't compile %s: missing intervals" % self.name)
 
-
+        for p in self._parameters:
+            if not p in self._intervals:
+                raise Exception("can't compile hybrid program %s: missing intervals" % p)
         self._compute_order()
 
     @property
