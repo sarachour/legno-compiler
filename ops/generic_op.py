@@ -122,7 +122,6 @@ class Var(Op):
 
         return bindings[self._name]
 
-
     def vars(self):
         return [self._name]
 

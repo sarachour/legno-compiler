@@ -218,8 +218,26 @@ def sympy_equals(e1,e2):
     result = sympy.simplify(e1_symexpr - e2_symexpr)
     return result == 0
 
-def sympy_unify_rewrite(pat_expr,targ_expr,cstrs,blacklist={}):
+def is_constant(node,params):
+    if node.op == oplib.OpType.CONST:
+        return True
+    # expression of constantly resolved parameters
+    elif all(map(lambda n: n in params, node.vars())):
+        return True
+    else:
+        return False
+
+def is_variable(node,params):
+    if node.op == oplib.OpType.VAR and \
+            not node.name in params:
+                return True
+    else:
+        return False
+
+
+def sympy_unify_rewrite(pat_expr,targ_expr,cstrs,params=[],blacklist={}):
     deterministic = False
+    
     def add_to_bl(wildvar,expr):
         assert(isinstance(wildvar,sympy.Wild))
         if not wildvar.name in blacklist:
@@ -271,16 +289,18 @@ def sympy_unify_rewrite(pat_expr,targ_expr,cstrs,blacklist={}):
         cstr = cstrs[var.name] if var.name in cstrs else \
                UnifyConstraint.NONE
 
+        # constant value mapped to a non-constant value
         if cstr == UnifyConstraint.NOT_CONSTANT\
-            and expr.op == oplib.OpType.CONST:
+            and is_constant(expr,params):
             updated_blacklist |= add_to_bl(var,symexpr)
             valid = False
+        # non-constant value mapped to a constant value
         if cstr == UnifyConstraint.CONSTANT \
-            and expr.op != oplib.OpType.CONST:
+            and not is_constant(expr,params):
             updated_blacklist |= add_to_bl(var,symexpr)
             valid = False
         if cstr == UnifyConstraint.VARIABLE \
-           and expr.op != oplib.OpType.VAR:
+           and not is_variable(expr,params):
             updated_blacklist |= add_to_bl(var,symexpr)
             valid = False
         if cstr == UnifyConstraint.SAMEVAR:
@@ -297,11 +317,11 @@ def sympy_unify_rewrite(pat_expr,targ_expr,cstrs,blacklist={}):
 
     #print("blacklist: %s (valid=%s,updated=%s)" % (blacklist,valid,updated_blacklist))
     if updated_blacklist and not deterministic:
-        for unif in sympy_unify_rewrite(pat_expr,targ_expr,cstrs,blacklist):
+        for unif in sympy_unify_rewrite(pat_expr,targ_expr,cstrs=cstrs,blacklist=blacklist,params=params):
             yield unif
 
 
-def unify(pat_expr,targ_expr,cstrs):
+def unify(pat_expr,targ_expr,cstrs,params=[]):
     def targ_exact_match(op):
         if op == oplib.OpType.EMIT or \
            op == oplib.OpType.INTEG:
@@ -324,5 +344,5 @@ def unify(pat_expr,targ_expr,cstrs):
         pat_expr = new_pat_expr
 
     for result in sympy_unify_rewrite(pat_expr,targ_expr,cstrs, \
-                                      blacklist={}):
+                                      blacklist={},params=params):
         yield result

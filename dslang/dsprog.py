@@ -87,6 +87,10 @@ class DSProg:
         self.__types = None
 
 
+    @property
+    def parameters(self):
+        return list(self._parameters)
+
     def speed(self,tmin,tmax):
         self._time_constant_range = (tmin,tmax)
 
@@ -245,6 +249,7 @@ class DSProg:
         for p in self._parameters:
             if not p in self._intervals:
                 raise Exception("can't compile hybrid program %s: missing intervals" % p)
+
         self._compute_order()
 
     @property
@@ -253,6 +258,8 @@ class DSProg:
 
     def __repr__(self):
         s = "prog %s\n" % self._name
+        for p in self._parameteres:
+            s += "par %s" % p
         for v,e in self._bindings.items():
             s += "  %s=%s\n" % (v,e)
         s += "\n"

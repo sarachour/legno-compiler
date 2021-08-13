@@ -146,6 +146,14 @@ class ConstDataConfig(ConfigStmt):
     ConfigStmt.__init__(self,ConfigStmtType.CONSTANT,field)
     self.value = value
     self.scf = 1.0
+    self.label = None
+
+  def complete(self):
+    assert((self.label is None) or (self.value is None))
+    return (not self.label is None) or (not self.value is None)
+
+  def is_parametrized(self):
+    return not self.label is None
 
   def copy(self):
     cfg = ConstDataConfig(self.name,self.value)
@@ -153,8 +161,10 @@ class ConstDataConfig(ConfigStmt):
     return cfg
 
   def pretty_print(self):
-    return "val=%f scf=%f" \
-      % (self.value,self.scf)
+    if self.is_parametrized():
+        return "par=%s scf=%f" % (self.label.pretty_print(),self.scf)
+    else:
+        return "val=%f scf=%f" % (self.value,self.scf)
 
   def to_latex(self,scale_transform=True):
     yield "\\keyw{set} %s \\keyw{at} %.3f" % (self.name,self.value)
@@ -166,6 +176,10 @@ class ConstDataConfig(ConfigStmt):
   def from_json(obj):
     cfg = ConstDataConfig(obj['name'],obj['value'])
     cfg.scf = obj['scf']
+    cfg.label = baseoplib.Op.from_json(obj['label']) \
+           if not obj['label'] is None \
+              else None
+
     return cfg
 
   def to_json(self):
@@ -173,6 +187,7 @@ class ConstDataConfig(ConfigStmt):
       'name':self.name,
       'type': self.type.value,
       'scf': self.scf,
+      'label': self.label.to_json() if not self.label is None else None,
       'value': self.value
     }
 

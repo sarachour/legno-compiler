@@ -27,7 +27,11 @@ def render_config_info(board,graph,cfg):
     for data in cfg.stmts_of_type(adplib \
                                   .ConfigStmtType \
                                   .CONSTANT):
-        df_st.append("%s=%.2f" % (data.name, data.value))
+        if not data.value is None:
+            df_st.append("%s=%.2f" % (data.name, data.value))
+        else:
+            assert(not data.label is None)
+            df_st.append("%s=%s" % (data.name, data.label.pretty_print()))
 
     for data in cfg.stmts_of_type(adplib \
                                   .ConfigStmtType \

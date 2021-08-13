@@ -224,7 +224,12 @@ def generate_dynamical_system_expr_info(dsinfo,dev,program,adp, \
           sources[expr].append((config.inst,stmt.name))
 
     for datum in config.stmts_of_type(adplib.ConfigStmtType.CONSTANT):
-        value = genoplib.Const(datum.value,latex_style="\\rdat{%s}")
+        assert(datum.complete())
+        if datum.is_parametrized():
+            value = datum.label
+        else:
+            value = genoplib.Const(datum.value,latex_style="\\rdat{%s}")
+
         if apply_scale_transform:
               value = genoplib.Mult(genoplib.Const(datum.scf,latex_style="\\rscf{%s}"),value)
 
@@ -273,9 +278,13 @@ def generate_dynamical_system_interval_info(dsinfo,dev,program,adp):
 
         for datum in config.stmts_of_type(adplib.ConfigStmtType.CONSTANT):
             expr = dsinfo.get_expr(config.inst, datum.name)
-            value = expr.compute()
-            dsinfo.set_interval(config.inst,datum.name, \
-                                ivallib.Interval.type_infer(value,value))
+            if datum.is_parametrized():
+                ival = ivallib.propagate_intervals(expr,ds_ivals)
+                dsinfo.set_interval(config.inst,datum.name,ival)
+            else:
+                value = expr.compute()
+                dsinfo.set_interval(config.inst,datum.name, \
+                                    ivallib.Interval.type_infer(value,value))
 
 
 def generate_dynamical_system_info(dev,program,adp, \

@@ -361,7 +361,11 @@ def to_adp(vadps):
           cfg[datafield].expr = value
 
         elif(isinstance(cfg[datafield], adplib.ConstDataConfig)):
-          cfg[datafield].value = value.compute()
+            if value.is_computable():
+                cfg[datafield].value = value.compute()
+            else:
+                cfg[datafield].value = None
+                cfg[datafield].label = value
         else:
           raise Exception("cannot set field <%s>" % datafield)
 

@@ -43,6 +43,13 @@ class Op:
                                   else False
 
 
+    def is_computable(self):
+        try:
+            self.compute()
+            return True
+        except Exception as e:
+            return False
+
     @property
     def op(self):
         return self._op

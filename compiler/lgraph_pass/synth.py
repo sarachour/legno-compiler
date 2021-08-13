@@ -224,19 +224,19 @@ def valid_port_unif(expr,unif):
 
   return True
 
-def derive_tableaus(dev,tableau,goal):
+def derive_tableaus(dssys,dev,tableau,goal):
   for rel in tableau.relations:
     if not compatible_relation(dev,goal,rel):
       continue
     if isinstance(rel,PortRelation):
-      for unif in unifylib.unify(rel.expr,goal.expr,rel.cstrs):
+      for unif in unifylib.unify(rel.expr,goal.expr,rel.cstrs,params=dssys.parameters):
         if valid_port_unif(goal.expr, unif):
           new_tableau = derive_tableau_from_port_rel(tableau,goal,rel,unif)
           yield new_tableau
 
     elif isinstance(rel,PhysicsLawRelation):
       cstrs = rel.law.virt.unify_cstrs()
-      for unif in unifylib.unify(rel.expr,goal.expr,cstrs):
+      for unif in unifylib.unify(rel.expr,goal.expr,cstrs,params=dssys.parameters):
         if rel.law.valid(unif):
           new_tableau = derive_tableau_from_phys_rel(tableau,goal,rel,unif)
           yield new_tableau
@@ -346,7 +346,7 @@ def simplify_tableau(tableau,simplify_laws=False):
 
   return new_tableau
 
-def search(dev,blocks,laws,variable,expr,depth=20):
+def search(dssys,dev,blocks,laws,variable,expr,depth=20):
   tableau = make_initial_tableau(blocks,laws, \
                                  variable,expr)
 
@@ -372,7 +372,7 @@ def search(dev,blocks,laws,variable,expr,depth=20):
       print("------")
       input()
 
-    for new_tableau in derive_tableaus(dev,tableau,goal):
+    for new_tableau in derive_tableaus(dssys,dev,tableau,goal):
       simpl_tableau = simplify_tableau(new_tableau)
       if simpl_tableau.success():
         if debug:

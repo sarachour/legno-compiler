@@ -103,7 +103,7 @@ def compile(board,prob,
 
         var_timer = util.Timer("synth-%s" % variable,None)
         var_timer.start()
-        for vadp in synthlib.search(board, \
+        for vadp in synthlib.search(prob,board, \
                                     compute_blocks,laws,variable,expr, \
                                     depth=synth_depth):
             var_timer.end()
